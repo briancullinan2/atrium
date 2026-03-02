@@ -68,6 +68,7 @@
 
 
 <div class="flash-card @((PreviousStep == StepMode.Quiz && QuizStep == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && CurrentQuiz?.Count() == QuizStep) ? "animate-in" : "hidden")">
+    <h2>Quiz Results:</h2>
     <MetadataControl TModel="Controls.CardsControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.CardsControl.ResultCard() {Card = card.Card, Response = Responses.FirstOrDefault(r => r.Card == card.Card)}).ToList()"></MetadataControl>
     <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span> Back</button>
     @if (Responses.Count() == CurrentQuiz?.Count())

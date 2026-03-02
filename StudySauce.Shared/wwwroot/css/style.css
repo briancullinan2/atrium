@@ -105,6 +105,29 @@ input.large-present {
     left: 10px;
 }
 
+.preview-response {
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid lightgrey;
+    margin: 5px;
+}
+
+.preview-response.correct {
+    border-color: lightgreen;
+}
+
+.preview-response.wrong {
+    border-color: red;
+}
+
+.preview-prompt {
+    display:block;
+    padding: 10px;
+    background:#DDDDDD;
+    border-left: 4px solid darkorange;
+}
+
+
 input.large-present + label[for] {
     padding: 10px;
     cursor: pointer;

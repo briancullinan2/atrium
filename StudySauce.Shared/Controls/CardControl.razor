@@ -37,7 +37,7 @@ else if (Mode == DataLayer.Customization.ControlMode.View && Data?.Count() > 0)
             <div class="preview-inner">
                 @if (card.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
                 {
-                    <img src="@card.Card?.Content" class="centerized" />
+                    <img src="@card.Card?.Content" />
                 }
                 else if (card.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
                 {
@@ -73,10 +73,45 @@ else if (Mode == DataLayer.Customization.ControlMode.Result && Data?.Count() > 0
     @foreach (CardsControl.ResultCard result in Data ?? [])
     {
         <div class="card-back">
+            <div class="preview-inner">
+                @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+                {
+                    <img src="@result.Card?.Content" />
+                }
+                else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+                {
+                    <audio controls src="@result.Card?.Content"></audio>
+                }
+                else if (result.Card != null)
+                {
+                    <div class="preview-content">@(result.Card?.Content.Replace("\n", "<br/>"))</div>
+                }
+            </div>
+            @if (result.Card?.Answers.Any(a => a.IsCorrect) == true)
+            {
+                <div class="preview-inner">
+                    <div class="preview-correct">Correct answer:</div>
+                    @*Show the users answer and the correct answer if they are both available*@
+                    <div class="preview-response correct">@result.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</div>
+                    @if (result.Response != null && result.Response.Answer != null && !result.Response.Answer.IsCorrect)
+                    {
+                        <div class="preview-correct">Your response:</div>
+                        <div class="preview-response wrong">@result.Response.Value</div>
+                    }
+                </div>
+            }
+            else if (result.Response != null && result.Response.Answer != null)
+            {
+                <div class="preview-inner">
+                    <div class="preview-correct">Your response:</div>
+                    @*Show the users answer and the correct answer if they are both available*@
+                    <div class="preview-response">@result.Response.Value</div>
+                </div>
+            }
             <div class="preview-prompt">
                 @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
                 {
-                    <img src="@result.Card?.ResponseContent" class="centerized" />
+                    <img src="@result.Card?.ResponseContent" />
                 }
                 else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
                 {
@@ -87,13 +122,6 @@ else if (Mode == DataLayer.Customization.ControlMode.Result && Data?.Count() > 0
                     <div class="preview-content">@(result.Card?.ResponseContent?.Replace("\n", "<br/>"))</div>
                 }
             </div>
-            @if (result.Card?.Answers.Any(a => a.IsCorrect) == true)
-            {
-                <div class="preview-inner">
-                    <div class="preview-correct">Correct answer:</div>
-                    <div class="preview-content">@result.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</div>
-                </div>
-            }
 
             @*@if (result.Card?.ResponseType == null || result.Card?.ResponseType == DataLayer.Customization.CardType.FlashCard)
             {

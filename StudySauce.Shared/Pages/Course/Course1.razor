@@ -5,8 +5,11 @@
     public static IEnumerable<DataLayer.Entities.Pack> Generate()
     {
         var newItem = CourseMenu.GetCourse(typeof(Course1));
-
-        return newItem?.Children.Select(mi => new DataLayer.Entities.Pack() { Title = mi.Title, CourseId = 0 }) ?? [];
+        // TODO: return 1 per course not 15
+        return [new DataLayer.Entities.Pack() { 
+            Title = newItem?.Title ?? "Course 1", 
+            Description = "Pack topics:\n* " + string.Join("\n* ", newItem?.Children.Select(ci => ci.Title) ?? []) 
+        }];
     }
 
 }

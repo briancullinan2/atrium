@@ -7,7 +7,10 @@
     {
         var newItem = CourseMenu.GetCourse(typeof(Course2));
 
-        return newItem?.Children.Select(mi => new DataLayer.Entities.Pack() { Title = mi.Title, CourseId = 0 }) ?? [];
+        return [new DataLayer.Entities.Pack() {
+            Title = newItem?.Title ?? "Course 2",
+            Description = "Pack topics:\n* " + string.Join("\n* ", newItem?.Children.Select(ci => ci.Title) ?? [])
+        }];
     }
 
 }
