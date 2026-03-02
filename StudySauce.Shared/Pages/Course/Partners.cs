@@ -14,6 +14,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "Select the two main ways an accountability partner can help you in school from the list below:",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "Your accountability partner may be able to help you in several different ways, but the two main ways are by keeping you focused and motivated.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "To motivate you", Value = "motivate", IsCorrect = true },
@@ -28,6 +29,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "Which of the following is not a key attribute to look for when choosing your accountability partner?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "Take time to choose your accountability partner.  You should have already established trust with the person because you will need them to challenge you and to celebrate successes with you.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Someone you trust.", Value = "trust", IsCorrect = false },
@@ -42,6 +44,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "How often should you talk with your accountability partner?",
                     ResponseType = CardType.Short,
+                    ResponseContent = "Ideally, you can communicate with your accountability partner on a weekly basis.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Ideally, you can communicate with your accountability partner on a weekly basis.", Value = "weekly", IsCorrect = true }
@@ -53,6 +56,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "According to the video, which of the following are examples of other ways accountability partners are used?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "Although there are many other ways that accountability partners are used, the video specifically highlights gyms, dieting, and churches.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Learning to drive", Value = "drive", IsCorrect = false },

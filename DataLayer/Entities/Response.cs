@@ -20,7 +20,7 @@ namespace DataLayer.Entities
         public int? CardId { get; set; }
 
         [ForeignKey("CardId")]
-        public virtual Card Card { get; set; }
+        public virtual Card? Card { get; set; }
 
         // Foreign Key for Answer
         [Column("answer_id")]

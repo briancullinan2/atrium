@@ -10,8 +10,10 @@ namespace StudySauce.Shared.Pages.Course
             return [
                 new Card
                 {
-                                        Content = "What grade are you in?",
+                    Content = "What grade are you in?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "We are excited to help you learn how to study more effectively.",
+                    QuizOnly = true,
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "High school student", Value = "highschool" },
@@ -24,8 +26,9 @@ namespace StudySauce.Shared.Pages.Course
                 },
                 new Card
                 {
-                                        Content = "Which do you agree with more regarding academic ability?",
+                    Content = "Which do you agree with more regarding academic ability?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "We will talk about this concept in great detail later in the course.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Some people are born good at academics.", Value = "born", IsCorrect = false },
@@ -34,8 +37,9 @@ namespace StudySauce.Shared.Pages.Course
                 },
                 new Card
                 {
-                                        Content = "How do you manage your time studying for exams?",
+                    Content = "How do you manage your time studying for exams?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "Our study tools will help you break the procrastination habit.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "I space out my studying far in advance to avoid stress.", Value = "advance", IsCorrect = true },
@@ -45,8 +49,9 @@ namespace StudySauce.Shared.Pages.Course
                 },
                 new Card
                 {
-                                        Content = "How do you manage your electronic devices when you study?",
+                    Content = "How do you manage your electronic devices when you study?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "Get ready to learn how your electronic devices are killing your ability to study effectively.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "I keep them nearby and respond to texts immediately.", Value = "on", IsCorrect = false },
@@ -55,8 +60,9 @@ namespace StudySauce.Shared.Pages.Course
                 },
                 new Card
                 {
-                                        Content = "How much do you study per day?",
+                    Content = "How much do you study per day?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "We will help you develop a plan to make sure that you are spending the right amount of time studying.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "0-1 hour", Value = "one" },

@@ -33,6 +33,7 @@
     [Parameter] public IEnumerable<PropertyMetadata>? Model { get; set; }
     [Parameter] public IEnumerable<TModel>? Data { get; set; }
     string? containerClass;
+    [Parameter] public EventCallback<Tuple<PropertyMetadata, TModel, object?>>? ValueChanged { get; set; }
 
     private List<(PropertyMetadata Metadata, Dictionary<string, object?> Params)>? _parameterCache;
 
@@ -62,19 +63,21 @@
         }
         return typeof(TypeControl);
     }
-    
+
 
     protected override void OnParametersSet()
     {
         // Only rebuild if the model actually exists and we haven't cached it yet
         if (_parameterCache == null)
         {
-            _parameterCache = Model?.Select(prop => (
+            _parameterCache = Model?.Select((prop, i) => (
                 prop,
                 new Dictionary<string, object?>
                 {
                     { "Model", prop },
-                    { "ValueChanged", EventCallback.Factory.Create<object>(this, (val) => {})}
+                    { "ValueChanged", EventCallback.Factory.Create<object?>(this, (val) => { 
+                        ValueChanged?.InvokeAsync(new Tuple<PropertyMetadata, TModel, object?>(prop, (Data ?? []).ElementAt(i), val)); 
+                    })}
                 }
             )).ToList();
         }

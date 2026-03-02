@@ -12,6 +12,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "How much more likely are you to perform at a higher level if you set specific and challenging goals?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "You are 90% more likely to perform at a higher level if you set specific and challenging goals.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "20%", Value = "20", IsCorrect = false },
@@ -24,6 +25,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "What does the SMART acronym stand for?",
                     ResponseType = CardType.Short,
+                    ResponseContent = "Answers are specific, measurable, achievable, relevant, time-bound",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Specific", IsCorrect = true, Value = "quiz-specific" },
@@ -37,6 +39,7 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "What are the two types of motivation?",
                     ResponseType = CardType.Short,
+                    ResponseContent = "The two types of motivation are intrinsic and extrinsic motivation.\nIntrinsic motivation is motivation that comes from within.  Ex. studying because you want the satisfaction of learning something new.\nExtrinsic motivation is a reward that comes externally.  Ex. studying in order to get a good grade.",
                     Answers = new List<Answer>
                     {
                         new Answer { Content = "Intrinsic", IsCorrect = true, Value = "quiz-intrinsic" },

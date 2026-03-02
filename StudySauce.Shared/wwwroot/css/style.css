@@ -14,9 +14,22 @@
     transition: color ease-in-out 0.6s;
 }
 
+button.deemphasize
+{
+    background: none;
+    border: none;
+    color: lightgrey;
+    text-decoration:none;
+    cursor: pointer;
+}
+
+button.deemphasize:hover {
+    text-decoration: underline;
+}
+
+
+
 /* accordion */
-
-
 h4.inactive ~ *:not(h4) {
     display: none;
 }
@@ -52,6 +65,7 @@ h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {
     right: 0.75rem;
     top: 0.5rem;
 }
+
 
 .container-logo {
     display: flex;

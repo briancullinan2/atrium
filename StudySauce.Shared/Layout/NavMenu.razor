@@ -77,7 +77,7 @@
     {
         var hasChildren = item.Children != null && item.Children.Any();
 
-        <div class="nav-item px-3">
+        <div class="nav-item">
             @* Use @onclick:stopPropagation if you don't want the side-panel click logic to fire *@
             <div @onclick="() => HandleClick(item)"
                  @onclick:stopPropagation="true"
@@ -91,7 +91,7 @@
 
                     @if (hasChildren)
                     {
-                        <span class="bi @(item.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down") ms-auto small"></span>
+                        <span class="bi @(item.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down")"></span>
                     }
                 </NavLink>
             </div>

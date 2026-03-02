@@ -45,6 +45,13 @@ namespace DataLayer.Entities
 
         [Required]
         [Category("System")]
+        public bool QuizOnly { get; set; } = false;
+
+        [Required]
+        [Category("System")]
+        public bool Excluded { get; set; } = false;
+        [Required]
+        [Category("System")]
         public bool Deleted { get; set; } = false;
 
         [Required]

@@ -1,14 +1,15 @@
 @using System.Timers
 @code
 {
-    [Parameter] public IEnumerable<Controls.CardsControl.ViewCard>? Data { get; set; }
+    [Parameter] public IEnumerable<object>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public DataLayer.Customization.ControlMode Mode
     {
         get
         {
-            return Model?.DeclaringType == typeof(CardsControl.EditCard) ? DataLayer.Customization.ControlMode.Edit : DataLayer.Customization.ControlMode.View;
+            return Model?.DeclaringType == typeof(CardsControl.EditCard) ? DataLayer.Customization.ControlMode.Edit : 
+            Model?.DeclaringType == typeof(CardsControl.ResultCard) ? DataLayer.Customization.ControlMode.Result : DataLayer.Customization.ControlMode.View;
         }
     }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
@@ -27,73 +28,84 @@
     <MetadataControl TModel="PropertyMetadata" Model="@CardLayout"></MetadataControl>
 
 }
-else
+else if (Mode == DataLayer.Customization.ControlMode.View && Data?.Count() > 0)
+{
+    @foreach (CardsControl.ViewCard card in Data ?? [])
+    {
+
+        <div class="card-front @card.Card?.ResponseType-card-type">
+            <div class="preview-inner">
+                @if (card.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+                {
+                    <img src="@card.Card?.Content" class="centerized" />
+                }
+                else if (card.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+                {
+                    <audio controls src="@card.Card?.Content"></audio>
+                }
+                else if (card.Card != null)
+                {
+                    <div class="preview-content">@(card.Card?.Content.Replace("\n", "<br/>"))</div>
+                }
+            </div>
+
+            <div class="preview-footer">
+                @if (card.Card?.ResponseType == null || card.Card?.ResponseType == DataLayer.Customization.CardType.FlashCard) // Flashcard mode
+                {
+                    <button class="preview-tap" @onclick="Flip">Click to see answer</button>
+                }
+                else if (card.Card?.ResponseType == DataLayer.Customization.CardType.TrueFalse) // True/False
+                {
+                    <button @onclick="@(() => HandleAnswer(null))" class="preview-false">False</button>
+                    <button @onclick="@(() => HandleAnswer(null))" class="preview-true">True</button>
+                }
+                else if (card.Card?.ResponseType == DataLayer.Customization.CardType.Multiple) // Multiple Choice
+                {
+                    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, CardsControl.ViewCard, object?>>(this, HandleAnswer))" TModel="Controls.CardsControl.ViewCard" Model="@AnswerLayout" Data="Data.Cast<CardsControl.ViewCard>()"></MetadataControl>
+                }
+            </div>
+        </div>
+    }
+}
+else if (Mode == DataLayer.Customization.ControlMode.Result && Data?.Count() > 0)
 {
 
-    <div class="card-front @Data?.ElementAt(0).Card?.ResponseType-card-type">
-        <div class="preview-inner">
-            @if (Data?.ElementAt(0).Card?.ContentType == DataLayer.Customization.DisplayType.Image)
-            {
-                <img src="@Data?.ElementAt(0).Card?.Content" class="centerized" />
-            }
-            else if (Data?.ElementAt(0).Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
-            {
-                <audio controls src="@Data?.ElementAt(0).Card?.Content"></audio>
-            }
-            else if(Data != null && Data?.ElementAt(0).Card != null)
-            {
-                <div class="preview-content">@(Data?.ElementAt(0).Card?.Content.Replace("\n", "<br/>"))</div>
-            }
-        </div>
-
-        <div class="preview-footer">
-            @if (Data?.ElementAt(0).Card?.ResponseType == null || Data?.ElementAt(0).Card?.ResponseType == DataLayer.Customization.CardType.FlashCard) // Flashcard mode
-            {
-                <button class="preview-tap" @onclick="Flip">Click to see answer</button>
-            }
-            else if (Data?.ElementAt(0).Card?.ResponseType == DataLayer.Customization.CardType.TrueFalse) // True/False
-            {
-                <button @onclick="@(() => HandleAnswer("false"))" class="preview-false">False</button>
-                <button @onclick="@(() => HandleAnswer("true"))" class="preview-true">True</button>
-            }
-            else if (Data?.ElementAt(0).Card?.ResponseType == DataLayer.Customization.CardType.Multiple) // Multiple Choice
-            {
-                <MetadataControl TModel="Controls.CardsControl.ViewCard" Model="@AnswerLayout" Data="Data"></MetadataControl>
-            }
-        </div>
-    </div>
-
-    <div class="card-back">
-        <div class="preview-prompt">
-            @if (Data?.ElementAt(0).Card?.ContentType == DataLayer.Customization.DisplayType.Image)
-            {
-                <img src="@Data?.ElementAt(0).Card?.ResponseContent" class="centerized" />
-            }
-            else if (Data?.ElementAt(0).Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
-            {
-                <audio controls src="@Data?.ElementAt(0).Card?.ResponseContent"></audio>
-            }
-            else if (Data != null && Data?.ElementAt(0).Card != null && Data?.ElementAt(0).Card?.ResponseContent != null)
-            {
-                <div class="preview-content">@(Data?.ElementAt(0).Card?.ResponseContent?.Replace("\n", "<br/>"))</div>
-            }
-        </div>
-        @if (Data?.ElementAt(0).Card?.Answers.Any(a => a.IsCorrect) == true)
-        {
-            <div class="preview-inner">
-                <div class="preview-correct">Correct answer:</div>
-                <div class="preview-content">@Data?.ElementAt(0).Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</div>
+    @foreach (CardsControl.ResultCard result in Data ?? [])
+    {
+        <div class="card-back">
+            <div class="preview-prompt">
+                @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+                {
+                    <img src="@result.Card?.ResponseContent" class="centerized" />
+                }
+                else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+                {
+                    <audio controls src="@result.Card?.ResponseContent"></audio>
+                }
+                else if (Data != null && result.Card != null && result.Card?.ResponseContent != null)
+                {
+                    <div class="preview-content">@(result.Card?.ResponseContent?.Replace("\n", "<br/>"))</div>
+                }
             </div>
-        }
-        @if (Data?.ElementAt(0).Card?.ResponseType == null || Data?.ElementAt(0).Card?.ResponseType == DataLayer.Customization.CardType.FlashCard)
-        {
-            <div class="preview-footer">
-                <button class="preview-wrong" @onclick="() => Next(false)">✘</button>
-                <div class="preview-guess">Did you get it right?</div>
-                <button class="preview-right" @onclick="() => Next(true)">✔</button>
-            </div>
-        }
-    </div>
+            @if (result.Card?.Answers.Any(a => a.IsCorrect) == true)
+            {
+                <div class="preview-inner">
+                    <div class="preview-correct">Correct answer:</div>
+                    <div class="preview-content">@result.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</div>
+                </div>
+            }
+
+            @*@if (result.Card?.ResponseType == null || result.Card?.ResponseType == DataLayer.Customization.CardType.FlashCard)
+            {
+                <div class="preview-footer">
+                    <button class="preview-wrong" @onclick="() => Next(false)">✘</button>
+                    <div class="preview-guess">Did you get it right?</div>
+                    <button class="preview-right" @onclick="() => Next(true)">✔</button>
+                </div>
+            }*@
+        </div>
+    }
+
 }
 
 
@@ -104,22 +116,14 @@ else
 
     private void Flip() => isFlipped = true;
 
-    private async Task HandleAnswer(string selectedValue)
+    private async Task HandleAnswer(Tuple<PropertyMetadata, CardsControl.ViewCard, object?> selectedValue)
     {
-        //bool isCorrect = selectedValue.Equals(Card.CorrectAnswerValue, StringComparison.OrdinalIgnoreCase);
-
-        // Trigger Flash Effect
-        //flashClass = isCorrect ? "flash-green" : "flash-red";
-        //StateHasChanged();
-
-        //await Task.Delay(600); // Let the flash play
-        //isFlipped = true;
-        //flashClass = "";
+        ValueChanged?.InvokeAsync(selectedValue.Item3);
     }
 
     private async Task Next(bool wasCorrect)
     {
-        isFlipped = false;
-        await ValueChanged.InvokeAsync(wasCorrect);
+        //isFlipped = false;
+        //await (ValueChanged?.InvokeAsync(wasCorrect) ?? Task.CompletedTask);
     }
 }

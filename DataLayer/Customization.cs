@@ -27,7 +27,8 @@ namespace DataLayer.Customization
         View = 1,
         Edit = 2,
         Owner = 3,
-        Group = 4
+        Group = 4,
+        Result = 5
     }
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]

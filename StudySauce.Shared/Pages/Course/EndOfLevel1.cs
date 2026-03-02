@@ -13,6 +13,8 @@ namespace StudySauce.Shared.Pages.Course
                 {
                     Content = "Have you enjoyed the Study Sauce course?",
                     ResponseType = CardType.Multiple,
+                    ResponseContent = "We hope you have enjoyed the course to this point.  Even if you decide not to upgrade, you are welcome to continue to use our free tools.",
+                    QuizOnly = true,
                     Answers = new List<Answer>
                     {
                         new Answer {
@@ -27,7 +29,7 @@ namespace StudySauce.Shared.Pages.Course
                         }
                     }
                 }
-                ];
+            ];
         }
     }
 }

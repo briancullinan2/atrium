@@ -42,25 +42,40 @@
 
 <div class="flash-card @GetCurrentClass(StepMode.Video)">
     <div class="video-placeholder">Video content for @Lesson</div>
-    <button @onclick="() => Next(StepMode.Intro)">Back</button>
+    <button class="deemphasize back" @onclick="() => Next(StepMode.Intro)"><span class="bi bi-chevron-left"></span> Back</button>
     <button typeof="submit" @onclick="() => Next(StepMode.Quiz)">Take Quiz</button>
 </div>
 
-<div class="flash-card @GetCurrentClass(StepMode.Quiz)">
-    @*TODO: integrate this with Pack.razor*@
-    @*Switching this to one card at a time*@
-    <MetadataControl TModel="Controls.CardsControl.ViewCard" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(QuizStep ?? 0)]"></MetadataControl>
-    <button @onclick="() => Next(StepMode.Video)">Back</button>
+@*TODO: need to stream this on the really big sets?*@
+@for(var i = 0; i < CurrentQuiz?.Count(); i++)
+{
+    <div class="flash-card @(QuizStep == i + 1 || (PreviousStep == StepMode.Quiz && i == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && i == QuizStep) ? "animate-in" : "hidden")">
+        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, CardsControl.ViewCard, object?>>(this, OnQuizAnswered))" TModel="Controls.CardsControl.ViewCard" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
+        <button class="deemphasize back" @onclick="() => { 
+            if(QuizStep > 0) {
+                QuizStep--;
+                StateHasChanged();
+            }
+            else
+                Next(StepMode.Video);
+        }"><span class="bi bi-chevron-left"></span> Back</button>
+        @if (Responses.Count() == CurrentQuiz?.Count())
+        {
+            <button @onclick="() => Next(StepMode.Reward)">See Reward</button>
+        }
+    </div>
+}
+
+
+<div class="flash-card @((PreviousStep == StepMode.Quiz && QuizStep == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && CurrentQuiz?.Count() == QuizStep) ? "animate-in" : "hidden")">
+    <MetadataControl TModel="Controls.CardsControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.CardsControl.ResultCard() {Card = card.Card, Response = Responses.FirstOrDefault(r => r.Card == card.Card)}).ToList()"></MetadataControl>
+    <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span> Back</button>
     @if (Responses.Count() == CurrentQuiz?.Count())
     {
         <button @onclick="() => Next(StepMode.Reward)">See Reward</button>
-    } 
-    @*else
-    {
-        <button @onclick="() => { QuizStep++; StateHasChanged(); }">Next Question</button>
-    }*@
+    }
 </div>
-@*TODO: insert card flipped version here*@
+
 
 <div class="flash-card @GetCurrentClass(StepMode.Reward)">
     <div class="reward">
@@ -79,12 +94,15 @@
 
     </div>
     <div class="highlighted-link">
+        @*TODO: back to last quiz question?*@
+        <button class="deemphasize back" @onclick="() => Next(StepMode.Quiz)"><span class="bi bi-chevron-left"></span> Back</button>
         <button @onclick="() => Next(StepMode.Investment)">See Activity</button>
     </div>
 </div>
 
 <div class="flash-card @GetCurrentClass(StepMode.Investment)">
     <CourseInvestment Lesson="@ActiveItem?.Lesson" />
+    <button class="deemphasize back" @onclick="() => Next(StepMode.Reward)"><span class="bi bi-chevron-left"></span> Back</button>
 </div>
 
 
@@ -116,24 +134,54 @@
     private IEnumerable<Controls.CardsControl.ViewCard>? CurrentQuiz { get; set; }
     private IEnumerable<PropertyMetadata>? PackLayout;
     private IEnumerable<PropertyMetadata>? CardLayout;
+    private IEnumerable<PropertyMetadata>? ResultLayout;
 
     private List<DataLayer.Entities.Response> Responses = new();
 
     public ICourseMenuItem? ActiveItem { get; set; }
     public int? QuizStep { get; set; }
     public int? CurrentIndex { get => Step < StepMode.Quiz 
-        ? (int)Step : Step > StepMode.Quiz 
-        ? (CurrentQuiz?.Count() + (int)Step) : ((int)Step + Responses.Count()); }
+        ? (int)Step : Step > StepMode.Quiz
+        ? (CurrentQuiz?.Count() + (int)Step) : ((int)Step + QuizStep); }
+    // minus one because first step of quiz is the first question, UNDO minus one for quiz results page
     public int? TotalCards { get => Enum.GetValues<StepMode>().Count() + CurrentQuiz?.Count(); }
     public string? IndexToStep(int i) => i < (int)StepMode.Quiz 
         ? Enum.GetName<StepMode>((StepMode)i)?.ToString() : i > (CurrentQuiz?.Count() + (int)StepMode.Quiz) 
         ? Enum.GetName<StepMode>((StepMode)(i - CurrentQuiz!.Count()))?.ToString()
         : "Quiz " + (i - (int)StepMode.Quiz + 1);
 
+    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, Controls.CardsControl.ViewCard, object?> valueChanged)
+    {
+        var answer = valueChanged.Item3 as DataLayer.Entities.Answer;
+        if(answer == null) 
+        {
+            return;
+        }
+        var response = new DataLayer.Entities.Response() { 
+            Answer = answer, 
+            Value = answer.Content, 
+            IsCorrect = answer.IsCorrect, 
+            Card = valueChanged.Item2.Card 
+        };
+        Responses.Add(response);
+        // takes us to results page
+        //if(QuizStep + 1 < CurrentQuiz?.Count())
+        {
+            QuizStep++;
+            StateHasChanged();
+        }
+        //else 
+        //{
+        //    Next(StepMode.Reward);
+        //}
+    }
+
+
     protected override void OnInitialized()
     {
         PackLayout = Controls.PackControl.ViewPack.Metadata.Groups["Display"]?.ToList();
         CardLayout = Controls.CardsControl.ViewCard.Metadata.Groups["Display"]?.ToList();
+        ResultLayout = Controls.CardsControl.ResultCard.Metadata.Groups["Display"]?.ToList();
 
         // TODO: make sure this goes through RemoteQuery on web assembly client
         //_ = LoadDataAsync();
@@ -214,7 +262,6 @@
     {
         PreviousStep = Step;
         Step = step ?? StepMode.Intro;
-        QuizStep = 0;
         SetCourseTitle();
         StateHasChanged();
     }
@@ -222,6 +269,7 @@
     protected void OnCourseChanged(ICourseMenuItem? item)
     {
         PreviousStep = null;
+        QuizStep = 0;
         ActiveItem = item;
         SetCourseTitle();
         StateHasChanged();
