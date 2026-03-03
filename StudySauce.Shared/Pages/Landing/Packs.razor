@@ -18,7 +18,7 @@
         <label>Last Studied</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="Controls.PackControl.ViewPack" Model="@RecentLayout" Data="Recent"></MetadataControl>
+    <MetadataControl TModel="DataLayer.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
 
     <h2>Packs Needing Study</h2>
@@ -32,9 +32,9 @@
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Packs));
 
     [Category("Recent")]
-    public List<Controls.PackControl.ViewPack> Recent { get; set; } = new();
-    public List<Controls.PackControl.ViewPack> Study { get; set; } = new();
-    public List<Controls.PackControl.ViewPack> Store { get; set; } = new();
+    public List<DataLayer.Entities.Pack> Recent { get; set; } = new();
+    public List<DataLayer.Entities.Pack> Study { get; set; } = new();
+    public List<DataLayer.Entities.Pack> Store { get; set; } = new();
 
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
 
@@ -57,11 +57,11 @@
         StateHasChanged();
     }
 
-    protected static IEnumerable<Controls.PackControl.ViewPack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
     {
         var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
-        return packs?.Select(p => new Controls.PackControl.ViewPack() { Pack = p }).ToList();
+        return packs;
     }
 
 }

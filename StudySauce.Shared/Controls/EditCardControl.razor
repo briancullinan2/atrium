@@ -1,0 +1,22 @@
+@using System.ComponentModel.DataAnnotations
+@using System.ComponentModel
+@using System.Text.Json.Serialization
+@code
+{
+    
+    [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
+    [Parameter] public PropertyMetadata? Model { get; set; }
+    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    private IEnumerable<PropertyMetadata>? CardLayout;
+
+    protected override void OnInitialized()
+    {
+        CardLayout = DataLayer.EntityMetadata.Card.Groups["Display"]?.ToList();
+    }
+
+}
+
+@foreach (var card in Data ?? [])
+{
+    <MetadataControl TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
+}

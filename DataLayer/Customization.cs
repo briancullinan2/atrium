@@ -30,7 +30,8 @@ namespace DataLayer.Customization
         Group = 4,
         Result = 5,
         List = 6,
-        Add = 7
+        Add = 7,
+        Delete = 8,
     }
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]

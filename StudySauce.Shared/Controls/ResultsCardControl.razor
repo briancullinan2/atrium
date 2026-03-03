@@ -1,0 +1,115 @@
+@using System.Timers
+@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json.Serialization
+@code
+{
+
+    public class ResultCard
+    {
+        public static EntityMetadata Metadata => new EntityMetadata(typeof(ResultCard));
+        [Category("Content")]
+        [Display(Name = "Cards", GroupName = "Display", Description = "Card currently being viewed by the user")]
+        public DataLayer.Entities.Card? Card { get; set; }
+        [Category("Answers")]
+        [JsonIgnore]
+        public ICollection<Answer>? Answers { get => Card?.Answers; }
+        [Category("Results")]
+        [JsonIgnore]
+        public Response? Response { get; set; }
+    }
+
+    [Parameter] public IEnumerable<ResultCard>? Data { get; set; }
+    [Parameter] public PropertyMetadata? Model { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+
+    //private IEnumerable<PropertyMetadata>? AnswerLayout;
+    private IEnumerable<PropertyMetadata>? CardLayout;
+
+    protected override void OnInitialized()
+    {
+        //AnswerLayout = ResultCard.Metadata.Categories["Answers"]?.ToList();
+        // TODO: AnswerLayout
+    }
+
+}
+
+
+@foreach (ResultCard result in Data ?? [])
+{
+    <div class="card-back">
+        <div class="preview-inner">
+            @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+            {
+                <img src="@result.Card?.Content" />
+            }
+            else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+            {
+                <audio controls src="@result.Card?.Content"></audio>
+            }
+            else if (result.Card != null)
+            {
+                <div class="preview-content">@(result.Card?.Content.Replace("\n", "<br/>"))</div>
+            }
+        </div>
+        @if (result.Card?.Answers.Any(a => a.IsCorrect) == true)
+        {
+            <div class="preview-inner">
+                <div class="preview-correct">Correct answer:</div>
+                @*Show the users answer and the correct answer if they are both available*@
+                <div class="preview-response correct">@result.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</div>
+                @if (result.Response != null && result.Response.Answer != null && !result.Response.Answer.IsCorrect)
+                {
+                    <div class="preview-correct">Your response:</div>
+                    <div class="preview-response wrong">@result.Response.Value</div>
+                }
+            </div>
+        }
+        else if (result.Response != null && result.Response.Answer != null)
+        {
+            <div class="preview-inner">
+                <div class="preview-correct">Your response:</div>
+                @*Show the users answer and the correct answer if they are both available*@
+                <div class="preview-response">@result.Response.Value</div>
+            </div>
+        }
+        <div class="preview-prompt">
+            @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+            {
+                <img src="@result.Card?.ResponseContent" />
+            }
+            else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+            {
+                <audio controls src="@result.Card?.ResponseContent"></audio>
+            }
+            else if (Data != null && result.Card != null && result.Card?.ResponseContent != null)
+            {
+                <div class="preview-content">@(result.Card?.ResponseContent?.Replace("\n", "<br/>"))</div>
+            }
+        </div>
+
+        @*@if (result.Card?.ResponseType == null || result.Card?.ResponseType == DataLayer.Customization.CardType.FlashCard)
+        {
+            <div class="preview-footer">
+                <button class="preview-wrong" @onclick="() => Next(false)">✘</button>
+                <div class="preview-guess">Did you get it right?</div>
+                <button class="preview-right" @onclick="() => Next(true)">✔</button>
+            </div>
+        }*@
+    </div>
+}
+
+
+@code {
+
+    private bool isFlipped = false;
+    private string flashClass = "";
+
+    private void Flip() => isFlipped = true;
+
+    private async Task Next(bool wasCorrect)
+    {
+        //isFlipped = false;
+        //await (ValueChanged?.InvokeAsync(wasCorrect) ?? Task.CompletedTask);
+    }
+}

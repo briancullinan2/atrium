@@ -144,7 +144,7 @@ namespace DataLayer
         {
             EntityType = entityType;
 
-            var props = entityType.GetProperties()
+            var props = entityType.GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                                              .Select(p => new { p, attr = p.GetCustomAttribute<DisplayAttribute>() })
                                              .OrderBy(x => x.attr?.GetOrder() ?? 1000)
                                              .Select(x => x.p)
@@ -163,7 +163,7 @@ namespace DataLayer
         }
 
         // TODO: ? i guess update if the attribute in the change?
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 
     // TODO: syntax sugar to allow for EntityMetadata.User.MaxLength[x => x.Name]
@@ -186,7 +186,7 @@ namespace DataLayer
         {
             get
             {
-                return _selector(_model, property.FindProperty().Name);
+                return _selector(_model, property.FindProperty()?.Name);
             }
         }
 

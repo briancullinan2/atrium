@@ -40,14 +40,11 @@
     public static readonly Dictionary<Type, Type> TypeToControl = new()
         {
             // order matters, put more specific types first, then general system types last
-            { typeof(StudySauce.Shared.Controls.PackControl.ViewPack), typeof(PackControl) },
-            { typeof(StudySauce.Shared.Controls.PackControl.EditPack), typeof(PackControl) },
             { typeof(DataLayer.Entities.Card), typeof(CardControl) },
-            { typeof(IEnumerable<StudySauce.Shared.Controls.CardsControl.EditCard>), typeof(CardsControl) },
-            { typeof(IEnumerable<StudySauce.Shared.Controls.CardsControl.ViewCard>), typeof(CardsControl) },
+            { typeof(IEnumerable<DataLayer.Entities.Card>), typeof(CardControl) },
+            { typeof(IEnumerable<Controls.ResultsCardControl.ResultCard>), typeof(ResultsCardControl) },
             { typeof(IEnumerable<DataLayer.Entities.Answer>), typeof(AnswersControl) },
-            { typeof(IEnumerable<StudySauce.Shared.Controls.PackControl.ViewPack>), typeof(PacksControl) },
-            { typeof(IEnumerable<StudySauce.Shared.Controls.PackControl.EditPack>), typeof(PacksControl) },
+            { typeof(IEnumerable<DataLayer.Entities.Pack>), typeof(PacksControl) },
             { typeof(IEnumerable<DataLayer.Entities.User>), typeof(UsersControl) },
             { typeof(IEnumerable<DataLayer.Entities.Group>), typeof(GroupsControl) },
             { typeof(IEnumerable<RolesControl.ControlRole>), typeof(RolesControl) },

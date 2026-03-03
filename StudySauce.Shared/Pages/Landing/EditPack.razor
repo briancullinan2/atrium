@@ -1,1 +1,137 @@
+@implements IDisposable
 @page "/pack/{Id:int}/edit"
+@page "/pack/{Id:int}/add"
+@page "/pack/{Id:int}/cards"
+@using StudySauce.Shared.Controls
+@using StudySauce.Shared.Services
+@using System.ComponentModel
+@inject IMenuService MenuService
+@inject NavigationManager Nav
+
+<SyncedTitle Title="Edit Pack"></SyncedTitle>
+
+<div class="pack-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <h2>
+        <MetadataControl TModel="DataLayer.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
+    </h2>
+
+    <div>
+        <fieldset>
+            <legend>Pack Info</legend>
+            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
+        </fieldset>
+    </div>
+
+
+    <div>
+        <fieldset>
+            <legend>Pack Status</legend>
+            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
+        </fieldset>
+    </div>
+
+
+    <h2>Cards Tools</h2>
+
+    <div class="link-list">
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Edit @(CurrentCards?.Count()) Cards</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Content.Upload>())"><i class="bi bi-activity" aria-hidden="true"></i> Import Cards</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i> Delete Pack</a>
+    </div>
+
+</div>
+
+
+<div class="pack-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Add)">
+    <h2>Editing @CurrentPack?.Title</h2>
+
+
+</div>
+
+
+@code
+{
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.EditPack));
+
+    [Category("Pack")]
+    public DataLayer.Entities.Pack? CurrentPack { get; set; }
+    [Category("Cards")]
+    public IEnumerable<DataLayer.Entities.Card>? CurrentCards { get => CurrentPack?.Cards; }
+
+    public PropertyMetadata? TitleLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? StatusLayout { get; set; }
+
+    public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.Edit;
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    [Parameter] public int? Id { get; set; }
+
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    {
+        if (ControlMode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+    protected override void OnInitialized()
+    {
+        TitleLayout = DataLayer.EntityMetadata.Pack.Groups["Title"]?.FirstOrDefault();
+        GeneralLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Info"];
+        StatusLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Status"];
+        Nav.LocationChanged += OnLocationChanged;
+
+    }
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+        if (segments.Count() == 3 && Id != null && segments.Last() == "cards")
+        {
+            newStep = DataLayer.Customization.ControlMode.Add;
+        }
+        else if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+        }
+
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            StateHasChanged();
+        }
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if(Id < 0 && Id >= -3)
+        {
+            Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
+            CurrentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
+        }
+        SetControlMode();
+        StateHasChanged();
+    }
+
+    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    {
+        var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        return packs?.ToList();
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

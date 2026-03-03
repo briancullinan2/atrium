@@ -11,7 +11,7 @@ namespace StudySauce.Shared.Utilities.Extensions
         {
             Dictionary<string, string?> result = new();
             var props = component.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 .Select(p => (
                     prop: p,
                     include: p.GetCustomAttribute<JsonPropertyNameAttribute>()
@@ -44,7 +44,7 @@ namespace StudySauce.Shared.Utilities.Extensions
         public static void ToProperties<TComponent>(this TComponent component, Dictionary<string, string?> pageValues) where TComponent : IComponent
         {
             var props = component.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 .Select(p => (
                     prop: p,
                     include: p.GetCustomAttribute<JsonPropertyNameAttribute>()

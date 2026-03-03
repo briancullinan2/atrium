@@ -44,10 +44,21 @@ button.deemphasize:hover {
 }
 
 
+input[type="text"]
+{
+    padding: 4px;
+    border: 2px solid lightgrey;
+    border-radius: 5px;
+}
+
+input[type="text"]:focus,
+input[type="text"]:active {
+    border-color:darkorange;
+}
 
 /* accordion */
 .accordion-item h4 {
-    display:flex;
+    display: flex;
     justify-content: space-between;
     color: #212529; /* --bs-accordion-color */
     background-color: #fff; /* --bs-accordion-bg */
@@ -261,25 +272,31 @@ heading.flex-row > * {
 }
 
 
+.pack-edit,
 .user-add {
     display: flex;
     flex-wrap: wrap;
 }
 
+.pack-edit > *,
 .user-add > * {
     flex-basis: 50%;
     margin: 0;
     padding: 10px;
 }
 
+.pack-edit .link-list,
+.pack-edit .highlighted-link,
 .user-add .highlighted-link {
     flex-basis: 100%;
 }
 
+.pack-edit > h2,
 .user-add > h2 {
     flex-basis: 100%;
 }
 
+.pack-edit .form-field,
 .user-add .form-field {
     display: flex;
     flex-direction: column;

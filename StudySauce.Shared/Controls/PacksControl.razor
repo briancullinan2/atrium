@@ -4,35 +4,27 @@
 @code
 {
 
-    [Parameter] public IEnumerable<Controls.PackControl.ViewPack>? Data { get; set; }
+    [Parameter] public IEnumerable<DataLayer.Entities.Pack>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
-    public DataLayer.Customization.ControlMode Mode
-    {
-        get
-        {
-            return Model?.DeclaringType == typeof(Controls.PackControl.EditPack) ? DataLayer.Customization.ControlMode.Edit : DataLayer.Customization.ControlMode.View;
-        }
-    }
-}
-
-
-
-@if (Mode == DataLayer.Customization.ControlMode.Edit)
-{
 
 }
-else
+
+
+@foreach (var pack in Data ?? [])
 {
-    @foreach (var pack in Data ?? [])
-    {
-        <div class="flex-row">
-            <img src="@(pack.Pack?.LogoHosted ?? pack.Pack?.Logo?.Url)" />
-            <span><a href="">@pack.Pack?.Title</a></span>
-            <span>@pack.Pack?.Tags</span>
-            <span>@pack.Pack?.Cards.Count()</span>
-            <span>@*@pack.Pack?.UserPacks.Where(up => up.User == )*@ Never studied</span>
-            <span><a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new () {}))"><span class="bi bi-pencil"></span></a></span>
-        </div>
-    }
+    <div class="flex-row">
+        <img src="@(pack.LogoHosted ?? pack.Logo?.Url)" />
+        <span><a href="">@pack.Title</a></span>
+        <span>@pack.Tags</span>
+        <span>@pack.Cards.Count()</span>
+        <span>@*@pack.UserPacks.Where(up => up.User == )*@ Never studied</span>
+        <span>
+
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new () { ControlMode = DataLayer.Customization.ControlMode.Edit, Id = pack.Id}))">
+            <span class="bi bi-pencil"></span>
+            </a>
+
+        </span>
+    </div>
 }

@@ -15,6 +15,15 @@
 
 <div class="user-list flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
     <h2>Manage Users</h2>
+
+    <heading class="flex-row">
+        <label></label>
+        <label>User Name</label>
+        <label>Groups</label>
+        <label>Cards Completed</label>
+        <label>Last Login</label>
+        <label>Actions</label>
+    </heading>
     <MetadataControl TModel="DataLayer.Entities.User" Model="@UserLayout" Data="@CurrentUsers"></MetadataControl>
 
 

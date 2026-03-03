@@ -7,13 +7,6 @@
     [Parameter] public IEnumerable<DataLayer.Entities.User>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
-    public DataLayer.Customization.ControlMode Mode
-    {
-        get
-        {
-            return Model?.DeclaringType == typeof(Controls.PackControl.EditPack) ? DataLayer.Customization.ControlMode.Edit : DataLayer.Customization.ControlMode.View;
-        }
-    }
 
     public string GetBackgroundColor(DataLayer.Entities.User user)
     {
@@ -26,38 +19,23 @@
 
 
 
-@if (Mode == DataLayer.Customization.ControlMode.Edit)
+@foreach (var user in Data ?? [])
 {
-
-}
-else
-{
-    <heading class="flex-row">
-        <label></label>
-        <label>User Name</label>
-        <label>Groups</label>
-        <label>Cards Completed</label>
-        <label>Last Login</label>
-        <label>Actions</label>
-    </heading>
-    @foreach (var user in Data ?? [])
-    {
-        <div class="flex-row">
-            <span>
-                @if (user.PhotoHosted != null || user.Photo?.Url != null) 
-                {
-                    <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
-                }
-                else
-                {
-                    <span style="@GetBackgroundColor(user)" class="bi bi-person-circle"></span>
-                }
-            </span>
-            <span><a href="">@user.FirstName @user.LastName (@user.Username)</a></span>
-            <span>@string.Join(", ", user.Groups.Take(3).Select(g => g.Name))</span>
-            <span>@user.CardsCompleted</span>
-            <span>@user.LastVisit</span>
-            <span><a href=""><span class="bi bi-pencil"></span></a><a href=""><span class="bi bi-person-vcard"></span></a></span>
-        </div>
-    }
+    <div class="flex-row">
+        <span>
+            @if (user.PhotoHosted != null || user.Photo?.Url != null) 
+            {
+                <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
+            }
+            else
+            {
+                <span style="@GetBackgroundColor(user)" class="bi bi-person-circle"></span>
+            }
+        </span>
+        <span><a href="">@user.FirstName @user.LastName (@user.Username)</a></span>
+        <span>@string.Join(", ", user.Groups.Take(3).Select(g => g.Name))</span>
+        <span>@user.CardsCompleted</span>
+        <span>@user.LastVisit</span>
+        <span><a href=""><span class="bi bi-pencil"></span></a><a href=""><span class="bi bi-person-vcard"></span></a></span>
+    </div>
 }

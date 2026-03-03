@@ -15,6 +15,7 @@
 @using StudySauce.Shared.Services
 @using DataLayer.Customization;
 @using System.Text.Json.Serialization
+@using System.ComponentModel
 
 @inject NavigationManager Nav
 @inject TranslationContext Context
@@ -54,7 +55,7 @@
 @for(var i = 0; i < CurrentQuiz?.Count(); i++)
 {
     <div class="flash-card @(QuizStep == i + 1 || (PreviousStep == StepMode.Quiz && i == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && i == QuizStep) ? "animate-in" : "hidden")">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, CardsControl.ViewCard, object?>>(this, OnQuizAnswered))" TModel="Controls.CardsControl.ViewCard" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
+        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="() => { 
                 if(QuizStep > 0) {
@@ -75,7 +76,7 @@
 
 <div class="flash-card @((PreviousStep == StepMode.Quiz && QuizStep == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && CurrentQuiz?.Count() == QuizStep) ? "animate-in" : "hidden")">
     <h2>Quiz Results:</h2>
-    <MetadataControl TModel="Controls.CardsControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.CardsControl.ResultCard() {Card = card.Card, Response = Responses.FirstOrDefault(r => r.Card == card.Card)}).ToList()"></MetadataControl>
+    <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.ResultsCardControl.ResultCard() {Card = card, Response = Responses.FirstOrDefault(r => r.Card == card)}).ToList()"></MetadataControl>
     <div class="highlighted-link">
         <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span> Back</button>
         @if (Responses.Count() == CurrentQuiz?.Count())
@@ -137,10 +138,13 @@
     [JsonPropertyName("step")]
     public StepMode Step { get; set; } = StepMode.Intro;
     public StepMode? PreviousStep { get; set; } = null;
-
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Course.Course));
     [JsonPropertyName("quiz")]
-    private IEnumerable<Controls.CardsControl.ViewCard>? CurrentQuiz { get; set; }
-    private IEnumerable<PropertyMetadata>? PackLayout;
+    [Category("Display")]
+    public IEnumerable<DataLayer.Entities.Card>? CurrentQuiz { get; set; }
+    [JsonIgnore]
+    [Category("Results")]
+    public IEnumerable<Controls.ResultsCardControl.ResultCard>? Results { get; set; }
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;
 
@@ -158,7 +162,7 @@
         ? Enum.GetName<StepMode>((StepMode)(i - CurrentQuiz!.Count()))?.ToString()
         : "Quiz " + (i - (int)StepMode.Quiz + 1);
 
-    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, Controls.CardsControl.ViewCard, object?> valueChanged)
+    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> valueChanged)
     {
         var answer = valueChanged.Item3 as DataLayer.Entities.Answer;
         if(answer == null) 
@@ -169,7 +173,7 @@
             Answer = answer, 
             Value = answer.Content, 
             IsCorrect = answer.IsCorrect, 
-            Card = valueChanged.Item2.Card 
+            Card = valueChanged.Item2
         };
         Responses.Add(response);
         // takes us to results page
@@ -187,9 +191,8 @@
 
     protected override void OnInitialized()
     {
-        PackLayout = Controls.PackControl.ViewPack.Metadata.Groups["Display"]?.ToList();
-        CardLayout = Controls.CardsControl.ViewCard.Metadata.Groups["Display"]?.ToList();
-        ResultLayout = Controls.CardsControl.ResultCard.Metadata.Groups["Display"]?.ToList();
+        CardLayout = Pages.Course.Course.Metadata.Categories["Display"]?.ToList();
+        ResultLayout = Pages.Course.Course.Metadata.Categories["Results"]?.ToList();
 
         // TODO: make sure this goes through RemoteQuery on web assembly client
         //_ = LoadDataAsync();
@@ -200,11 +203,11 @@
     }
 
 
-    protected static IEnumerable<Controls.CardsControl.ViewCard>? GetCurrentQuiz(Type? lesson)
+    protected static IEnumerable<DataLayer.Entities.Card>? GetCurrentQuiz(Type? lesson)
     {
         var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Card>? cards = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Card>;
-        return cards?.Select(c => new Controls.CardsControl.ViewCard() { Card = c });
+        return cards;
     }
 
 

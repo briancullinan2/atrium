@@ -12,8 +12,9 @@
             Title = newItem?.Title ?? "Course 3",
             Category = "Studying",
             Description = "Pack topics:\n* " + string.Join("\n* ", newItem?.Children.Select(ci => ci.Title) ?? []),
-            Cards = cards ?? []
-        }];
+            Cards = cards ?? [],
+            Id = -3
+       }];
     }
 
 }
