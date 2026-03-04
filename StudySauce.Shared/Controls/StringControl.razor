@@ -11,7 +11,7 @@ else
 {
     <input type="@Type"
            autocomplete="@Autocomplete"
-           value="@ValueString"
+           value="@(Model?.DataType == System.ComponentModel.DataAnnotations.DataType.Password ? "***********" : ValueString)"
            step="@(Model?.DataType == System.ComponentModel.DataAnnotations.DataType.Currency ? "0.50" : "any")"
            maxlength="@MaxLength" />
 }

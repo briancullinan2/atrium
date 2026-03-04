@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using StudySauce.Platforms.Windows;
 using StudySauce.Services;
 using StudySauce.Shared.Services;
+using System.Runtime.InteropServices;
 
 namespace StudySauce.WinUI
 {
@@ -22,9 +24,63 @@ namespace StudySauce.WinUI
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
+        private static User32.WndProcDelegate? _wndProc; // Keep static to prevent GC
+        private static nint _oldWndProc;
+
         public App()
         {
-            this.InitializeComponent();
+            InitializeComponent();
+
+            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
+            {
+#if WINDOWS
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(h.PlatformView);
+                Shell32.DragAcceptFiles(hwnd, 1);
+
+                _wndProc = MyWndProc; // Simplified assignment
+                _oldWndProc = User32.SetWindowLongPtr(hwnd, -4, Marshal.GetFunctionPointerForDelegate(_wndProc));
+#endif
+            });
+        }
+
+        private nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
+        {
+            if (msg == 0x0233) // WM_DROPFILES
+            {
+                HandleNativeDrop(wParam);
+                return nint.Zero;
+            }
+            return User32.CallWindowProc(_oldWndProc, hWnd, msg, wParam, lParam);
+        }
+
+
+        private static void HandleNativeDrop(nint hDrop)
+        {
+            // Get count of dropped files
+            uint fileCount = Shell32.DragQueryFile(hDrop, 0xFFFFFFFF, nint.Zero, 0);
+
+            for (uint i = 0; i < fileCount; i++)
+            {
+                // 1. Get required length (returns length without null terminator)
+                uint length = Shell32.DragQueryFile(hDrop, i, nint.Zero, 0) + 1;
+
+                // 2. Allocate buffer and pin it
+                char[] buffer = new char[length];
+                unsafe
+                {
+                    fixed (char* pBuffer = buffer)
+                    {
+                        // 3. Fill the buffer
+                        Shell32.DragQueryFile(hDrop, i, (nint)pBuffer, length);
+                    }
+                }
+
+                // 4. Convert to C# string
+                string filePath = new string(buffer).TrimEnd('\0');
+                Console.WriteLine($"Dropped: {filePath}");
+            }
+
+            Shell32.DragFinish(hDrop);
         }
 
         protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
@@ -64,6 +120,7 @@ namespace StudySauce.WinUI
             webBuilder.Services.AddSingleton<ILoginService, LoginService>();
             webBuilder.Services.AddSingleton<ICourseService, CourseService>();
             webBuilder.Services.AddSingleton<IJsonService, JsonService>();
+            webBuilder.Services.AddSingleton<IFileManager, FileManager>();
 
             // FUCK DI
             TitleService._setTitle = SetTitle;
@@ -144,6 +201,7 @@ namespace StudySauce.WinUI
             // 2. Mapping happens AFTER routing is configured
             //webApp.MapBlazorHub();
             webApp.MapPost("/api/query", QueryService.RespondQuery);
+            webApp.MapPost("/api/upload", FileManager.OnUploadFile);
 
 
 
@@ -197,6 +255,9 @@ namespace StudySauce.WinUI
                 var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(handle);
                 var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
 
+                Shell32.DragAcceptFiles(handle, 1);
+                User32.AllowDrops(handle);
+
                 appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
                 appWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
                 appWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
@@ -210,5 +271,7 @@ namespace StudySauce.WinUI
         {
             StudySauce.App.Current?.Windows.FirstOrDefault()?.Title = title;
         }
+
+
     }
 }

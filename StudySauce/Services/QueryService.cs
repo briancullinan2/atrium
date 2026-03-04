@@ -7,7 +7,7 @@ namespace StudySauce.Services
 {
     internal static class QueryService
     {
-        public async static void RespondQuery(HttpContext context, IServiceProvider _service)
+        public async static Task RespondQuery(HttpContext context, IServiceProvider _service)
         {
             try
             {

@@ -12,4 +12,5 @@
             return new Window(new MainPage()) { Title = "Study Sauce" };
         }
     }
+
 }

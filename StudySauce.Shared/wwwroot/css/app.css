@@ -23,6 +23,10 @@ a, .btn-link {
     color: #fff;
     background-color: #1b6ec2;
     border-color: #1861ac;
+    border-style:solid;
+    line-height: 1.5rem;
+    margin: 2px;
+    cursor:pointer;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {

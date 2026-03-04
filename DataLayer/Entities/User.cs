@@ -89,6 +89,8 @@ namespace DataLayer.Entities
         public virtual string? PhotoHosted { get; set; }
         public virtual string? AvatarColor { get; set; }
 
+        public int? DownloadTokens { get; set; } = 30;
+
         // --- Navigation Properties (One-to-Many) ---
 
         //public virtual ICollection<Payment> Payments { get; set; } = new HashSet<Payment>();

@@ -1,13 +1,76 @@
 @page "/upload"
+@using StudySauce.Shared.Services
+@inject IFileManager File
 
-<h2>Import Packs</h2>
+<div class="flash-card animate-in @(isDragOver ? "dropping" : "")"
+     @ondragover:preventdefault="true"
+     @ondragenter:preventdefault="true"
+     @ondragover="HandleDragOver"
+     @ondragleave="HandleDragLeave"
+     @ondrop="HandleDrop">
+    <div class="drop-shader"><span class="bi bi-cloud-upload"></span><br /><span>Drop Anki Files</span></div>
+    <h2>Import Packs</h2>
 
-Upload pack content from Anki or spreadsheet.
+    Upload pack content from Anki or spreadsheet.<br />
+    @if (!OperatingSystem.IsWindows())
+    {
+        <InputFile OnChange="HandleFileSelection" />
+    }
+    else
+    {
+        <button class="btn btn-primary" @onclick="() => File.OpenFileDialog()">
+            <i class="bi bi-file-earmark-plus"></i> Open File
+        </button>
+    }
 
-<h2>Content Controls</h2>
+    <h2>Content Controls</h2>
 
-Import content into a group or release schedule.
+    Import content into a group or release schedule.
 
-<h2>Content Sharing</h2>
+    <h2>Content Sharing</h2>
 
-Notify users now or distribute to subscribers.
+    Notify users now or distribute to subscribers.
+
+</div>
+
+
+@code
+{
+    bool isDragOver = false;
+
+    void HandleDragOver() => isDragOver = true;
+    void HandleDragLeave() => isDragOver = false;
+
+    protected async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        isDragOver = false;
+        // Process the dropped files
+        foreach (var file in e.GetMultipleFiles())
+        {
+            // Access file properties like file.Name, file.Size, etc.
+            // You can read the file stream here:
+            // using var stream = file.OpenReadStream();
+            // ... further processing ...
+        }
+        StateHasChanged();
+    }
+
+
+
+    protected async Task HandleDrop(DragEventArgs e)
+    {
+        isDragOver = false;
+        // In Blazor Hybrid, e.DataTransfer.Files is usually populated
+        if (e.DataTransfer.Files != null)
+        {
+            foreach (var file in e.DataTransfer.Files)
+            {
+                Console.WriteLine($"Dropped: {file}");
+            }
+        }
+        
+        StateHasChanged();
+
+    }
+
+}

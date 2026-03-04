@@ -2,10 +2,13 @@
   <Folder Name="/Docs/">
     <File Path="README.md" />
   </Folder>
+  <Project Path="AnkiParser/AnkiParser.csproj" Id="615d09d4-ed2f-43b8-973c-488d1c7ae695" />
   <Project Path="DataLayer/DataLayer.csproj" Id="d32e03e0-e36a-48aa-9778-9bb92d682ed4" />
   <Project Path="StudySauce.Shared/StudySauce.Shared.csproj">
     <BuildDependency Project="DataLayer/DataLayer.csproj" />
   </Project>
   <Project Path="StudySauce.Web.Client/StudySauce.Web.Client.csproj" />
-  <Project Path="StudySauce/StudySauce.csproj" />
+  <Project Path="StudySauce/StudySauce.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>
