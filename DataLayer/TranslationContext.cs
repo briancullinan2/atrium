@@ -37,7 +37,7 @@ namespace DataLayer
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
-            options.AddInterceptors(new WrapperInterceptor());
+            //options.AddInterceptors(new WrapperInterceptor());
         }
 
 

@@ -1,8 +1,13 @@
 @page "/upload"
 @implements IDisposable
+@using DataLayer.Utilities.Extensions
+@using Microsoft.EntityFrameworkCore
+@using StudySauce.Shared.Controls
 @using StudySauce.Shared.Services
+@using System.ComponentModel
 @inject IFileManager File
 @inject IMenuService MenuService
+
 
 <SyncedTitle Title="Import Packs"></SyncedTitle>
 
@@ -15,6 +20,14 @@
     <div class="drop-shader"><span class="bi bi-cloud-upload"></span><br /><span>Drop Anki Files</span></div>
 
     <h2>Upload Anki</h2>
+    <heading class="flex-row">
+        <label></label>
+        <label>File Name</label>
+        <label>Description</label>
+        <label>Source</label>
+        <label>Actions</label>
+    </heading>
+    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads"></MetadataControl>
 
 
     Upload pack content from Anki or spreadsheet.<br />
@@ -42,6 +55,12 @@
 
 @code
 {
+    // TODO: decide when to synchronize the file storage with memory storage
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Content.Upload));
+    [Category("Display")]
+    public IEnumerable<DataLayer.Entities.File>? Uploads { get; set; }
+    public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
+
     bool isDragOver = false;
 
     void HandleDragOver() => File.SetDragging(true);
@@ -51,7 +70,41 @@
     {
         base.OnInitialized();
         MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Packs />);
+        FilesLayout = Pages.Content.Upload.Metadata.Categories["Display"]?.ToList();
         File.OnFileDragging += OnDragging;
+    }
+
+    [Inject] 
+    public IDbContextFactory<DataLayer.PersistentStorage>? PersistentFactory { get; set; }
+
+    [Inject] 
+    public IDbContextFactory<DataLayer.EphemeralStorage>? MemoryFactory { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ = base.OnInitializedAsync();
+        if(PersistentFactory == null || MemoryFactory == null)
+        {
+            await PopulateUploads();
+            return;
+        }
+        using var fileContext = PersistentFactory.CreateDbContext();
+        using var memoryContext = MemoryFactory.CreateDbContext();
+        await fileContext.Sync(memoryContext, (DataLayer.Entities.File f) => f.Source == "Upload");
+        await PopulateUploads(memoryContext);
+    }
+
+    protected async Task PopulateUploads(EphemeralStorage? memoryContext = null)
+    {
+        if (MemoryFactory == null)
+        {
+            return;
+        }
+        if (memoryContext == null)
+        {
+            memoryContext = MemoryFactory.CreateDbContext();
+        }
+        Uploads = await memoryContext.Files.Where(f => f.Source == "Upload").ToListAsync();
     }
 
 

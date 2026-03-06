@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
+using System.Linq.Expressions;
 
 namespace DataLayer.Utilities.Extensions
 {
@@ -129,6 +130,32 @@ namespace DataLayer.Utilities.Extensions
             return results;
         }
         */
+
+        public static async Task Sync<TFrom, TTo, TSet>(this TFrom memoryContext, TTo persistentContext, Expression<Func<TSet, bool>> qualifier)
+            where TFrom : TranslationContext
+            where TTo : TranslationContext
+            where TSet : Entity<TSet>
+        {
+            // 1. Get the "Dirty" or all entities from memory
+            var entities = await memoryContext.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
+
+            foreach (var entity in entities)
+            {
+                // 2. Upsert logic: Check if it exists in the persistent store
+                var exists = await persistentContext.Set<TSet>().AnyAsync(qualifier);
+
+                if (exists)
+                {
+                    persistentContext.Set<TSet>().Update(entity);
+                }
+                else
+                {
+                    persistentContext.Set<TSet>().Add(entity);
+                }
+            }
+
+            await persistentContext.SaveChangesAsync();
+        }
 
     }
 }

@@ -1,0 +1,53 @@
+@using System.ComponentModel.DataAnnotations
+@using System.ComponentModel
+@using System.Text.Json.Serialization
+@code
+{
+
+    [Parameter] public IEnumerable<DataLayer.Entities.File>? Data { get; set; }
+    [Parameter] public PropertyMetadata? Model { get; set; }
+    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        
+    }
+
+
+    public class ControlRole
+    {
+        public DataLayer.Entities.Role? Role { get; set; }
+        public DataLayer.Customization.ControlMode? Mode { get; set; }
+        public int? Index { get; set; }
+    }
+
+    public async Task Delete(DataLayer.Entities.File file)
+    {
+
+    }
+
+    public async Task Import(DataLayer.Entities.File file)
+    {
+
+    }
+
+}
+
+
+
+@for (var i = 0; i < Data?.Count(); i++)
+{
+    var file = Data.ElementAt(i);
+    if (file == null) continue;
+    <div class="flex-row ">
+        <span>@(i + 1)</span>
+        <span>@Path.GetFileName(file.Filename)</span>
+        <span>@file.Url</span>
+        <span>@file.Source</span>
+        <span>
+            <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
+            <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
+        </span>
+    </div>
+}
