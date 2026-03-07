@@ -104,6 +104,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AnkiParser\AnkiParser.csproj" />
     <ProjectReference Include="..\DataLayer\DataLayer.csproj" />
     <ProjectReference Include="..\StudySauce.Shared\StudySauce.Shared.csproj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

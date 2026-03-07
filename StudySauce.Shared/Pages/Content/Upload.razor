@@ -27,7 +27,7 @@
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads"></MetadataControl>
+    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.File, object?>>(this, OnAnkiSelected))" TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads"></MetadataControl>
 
 
     Upload pack content from Anki or spreadsheet.<br />
@@ -45,6 +45,27 @@
     <h2>Content Controls</h2>
 
     Import content into a group or release schedule.
+    <h4>Anki Files</h4>
+    <heading class="flex-row">
+        <label></label>
+        <label>File Name</label>
+        <label>Description</label>
+        <label>Source</label>
+        <label>Actions</label>
+    </heading>
+    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Inside"></MetadataControl>
+
+
+    <h4>Converted Cards</h4>
+    <heading class="flex-row">
+        <label></label>
+        <label>Prompt</label>
+        <label>Response</label>
+        <label>Type</label>
+        <label>Answers</label>
+        <label>Actions</label>
+    </heading>
+    <MetadataControl TModel="Controls.EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards"></MetadataControl>
 
     <h2>Content Sharing</h2>
 
@@ -59,7 +80,11 @@
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Content.Upload));
     [Category("Display")]
     public IEnumerable<DataLayer.Entities.File>? Uploads { get; set; }
+    public IEnumerable<DataLayer.Entities.File>? Inside { get; set; }
+    [Category("Content")]
+    public IEnumerable<Controls.EditCardControl.EditControl>? CurrentCards { get; set; }
     public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
 
     bool isDragOver = false;
 
@@ -71,8 +96,19 @@
         base.OnInitialized();
         MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Packs />);
         FilesLayout = Pages.Content.Upload.Metadata.Categories["Display"]?.ToList();
+        CardsLayout = Pages.Content.Upload.Metadata.Categories["Content"]?.ToList();
         File.OnFileDragging += OnDragging;
     }
+
+    protected void OnAnkiSelected(Tuple<PropertyMetadata, DataLayer.Entities.File, object?> callback)
+    {
+        var ankiResults = callback.Item3 as Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>;
+        if (ankiResults == null) return;
+
+        Inside = ankiResults.Item1;
+        CurrentCards = ankiResults.Item2.Select(c => new EditCardControl.EditControl() { Card = c });
+    }
+
 
     [Inject] 
     public IDbContextFactory<DataLayer.PersistentStorage>? PersistentFactory { get; set; }

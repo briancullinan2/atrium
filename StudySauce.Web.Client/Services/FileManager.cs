@@ -1,5 +1,7 @@
-﻿using StudySauce.Shared.Services;
+﻿using DataLayer.Entities;
+using StudySauce.Shared.Services;
 using System.Net;
+using System.Net.Http.Json;
 
 namespace StudySauce.Web.Client.Services
 {
@@ -50,8 +52,23 @@ namespace StudySauce.Web.Client.Services
         {
             OnFileDragging?.Invoke(dragging);
         }
+
+        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>> InspectFile(string ankiPackage)
+        {
+            var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, null);
+
+            var result = await response.Content.ReadFromJsonAsync<Inspection>();
+            return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>(result.Files, result.Cards);
+        }
     }
 
+
+    public class Inspection
+    {
+        public List<DataLayer.Entities.File> Files { get; set; }
+        public List<DataLayer.Entities.Card> Cards { get; set; }
+
+    }
 
     public class ProgressableStreamContent : HttpContent
     {

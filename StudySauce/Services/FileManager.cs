@@ -55,6 +55,53 @@ namespace StudySauce.Services
             }
         }
 
+
+        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>> InspectFile(string ankiPackage)
+        {
+            var files = AnkiParser.Parser.ListFiles(ankiPackage);
+            var cards = AnkiParser.Parser.ParseCards(ankiPackage);
+            return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>(files, cards);
+        }
+
+
+        public static async Task OnInspectFile(HttpContext context, IServiceProvider _service)
+        {
+            try
+            {
+                var files = AnkiParser.Parser.ListFiles(context.Request.Query["anki"]);
+                var cards = AnkiParser.Parser.ParseCards(context.Request.Query["anki"]);
+                context.Response.ContentType = "application/json";
+                var json = JsonSerializer.Serialize(new Inspection()
+                {
+                    Files = files,
+                    Cards = cards
+                }, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
+                });
+                await context.Response.WriteAsync(json);
+
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json";
+                var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
+                });
+                await context.Response.WriteAsync(json);
+            }
+        }
+
+        public class Inspection
+        {
+            public List<DataLayer.Entities.File> Files { get; set; }
+            public List<DataLayer.Entities.Card> Cards { get; set; }
+
+        }
+
         //[HttpPost("upload")]
         public static async Task OnUploadFile(HttpContext context, IServiceProvider _service)
         {
