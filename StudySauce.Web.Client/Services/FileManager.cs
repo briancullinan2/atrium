@@ -55,7 +55,7 @@ namespace StudySauce.Web.Client.Services
 
         public async Task<Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>> InspectFile(string ankiPackage)
         {
-            var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, null);
+            var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, new StringContent("", System.Text.Encoding.UTF8, "application/json"));
 
             var result = await response.Content.ReadFromJsonAsync<Inspection>();
             return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>(result.Files, result.Cards);

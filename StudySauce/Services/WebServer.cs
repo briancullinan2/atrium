@@ -135,6 +135,7 @@ namespace StudySauce.Services
             //webApp.MapBlazorHub();
             webApp.MapPost("/api/query", QueryService.RespondQuery);
             webApp.MapPost("/api/upload", FileManager.OnUploadFile);
+            webApp.MapPost("/api/inspect", FileManager.OnInspectFile);
 
 
 
