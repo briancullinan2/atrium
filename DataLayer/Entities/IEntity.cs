@@ -24,12 +24,17 @@ namespace DataLayer.Entities
         protected abstract override object? Invoke(MethodInfo? targetMethod, object?[]? args);
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider service, Type? context = null) where T : IEntity
+        {
+            return Wrap((IEntity)target, service, context) as ProxyEntity<T>;
+        }
+
         public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider service) where T : IEntity
         {
             return Wrap((IEntity)target, service) as ProxyEntity<T>;
         }
 
-        public static IEntity Wrap(IEntity target, IServiceProvider service)
+        public static IEntity Wrap(IEntity target, IServiceProvider? service = null, Type? context = null)
         {
             // 1. Create the specific interface type: IEntity<MyEntity>
             Type interfaceType = typeof(IEntity<>).MakeGenericType(target.GetType());
@@ -49,8 +54,17 @@ namespace DataLayer.Entities
             var targetField = proxy.GetType().GetField("_target", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             targetField?.SetValue(proxy, target);
 
-            var serviceField = proxy.GetType().GetField("_service", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            serviceField?.SetValue(proxy, service);
+            if (service != null)
+            {
+                var serviceField = proxy.GetType().GetField("_service", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                serviceField?.SetValue(proxy, service);
+            }
+
+            if (context != null)
+            {
+                var contextField = proxy.GetType().GetField("_context", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                contextField?.SetValue(proxy, context);
+            }
 
             return proxy as IEntity;
         }
@@ -73,7 +87,8 @@ namespace DataLayer.Entities
         }
 
         public T _target = default!;
-        public IServiceProvider _service = default!;
+        public IServiceProvider? _service = default!;
+        public Type? _context = default!;
 
         // 1. You create a static helper to wrap the real object
         public static T Create(T target, IServiceProvider service)

@@ -3,6 +3,7 @@
 @using System.Text.Json.Serialization
 @using StudySauce.Shared.Services
 @inject IFileManager FileManager
+@inject IAnkiService AnkiService
 
 @code
 {
@@ -22,9 +23,15 @@
 
     }
 
+    public async Task Download(DataLayer.Entities.File file)
+    {
+        var ankiResults = await AnkiService.Download(file.Url);
+        await ValueChanged.InvokeAsync(ankiResults);
+    }
+
     public async Task Import(DataLayer.Entities.File file)
     {
-        var ankiResults = await FileManager.InspectFile(file.Filename);
+        var ankiResults = await AnkiService.InspectFile(file.Filename);
         await ValueChanged.InvokeAsync(ankiResults);
     }
 
@@ -44,8 +51,15 @@
         <span>
             @if (Model?.DeclaringType == typeof(Pages.Content.Upload))
             {
-                <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
-                <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
+                @if(file.Url != null && file.Filename == null)
+                {
+                    <a @onclick="() => { _ = Download(file!); }"><span class="bi bi-download"></span></a>
+                }
+                else
+                {
+                    <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
+                    <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
+                }
             }
         </span>
     </div>

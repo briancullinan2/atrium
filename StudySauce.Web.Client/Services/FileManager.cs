@@ -1,13 +1,11 @@
-﻿using DataLayer.Entities;
-using StudySauce.Shared.Services;
+﻿using StudySauce.Shared.Services;
 using System.Net;
-using System.Net.Http.Json;
 
 namespace StudySauce.Web.Client.Services
 {
     public class FileManager : IFileManager
     {
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient? _httpClient;
         internal int currentProgress = 0;
         public event Action<DataLayer.Entities.File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
@@ -16,7 +14,7 @@ namespace StudySauce.Web.Client.Services
 
         public FileManager()
         {
-            _httpClient = _service.GetRequiredService<HttpClient>();
+            _httpClient = _service?.GetRequiredService<HttpClient>();
         }
 
         public async Task UploadFile(string localPath)
@@ -25,7 +23,7 @@ namespace StudySauce.Web.Client.Services
             await UploadFile(fileStream, localPath);
         }
 
-        public async Task UploadFile(Stream fileStream, string localPath)
+        public async Task UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
         {
             var content = new MultipartFormDataContent();
 
@@ -38,8 +36,8 @@ namespace StudySauce.Web.Client.Services
 
             content.Add(streamContent, "file", Path.GetFileName(localPath));
 
-            var response = await _httpClient.PostAsync("api/upload", content);
-
+            var response = await _httpClient?.PostAsync("api/upload", content);
+            // TODO: update file list wasn't implemented until after saving
 
         }
 
@@ -53,22 +51,8 @@ namespace StudySauce.Web.Client.Services
             OnFileDragging?.Invoke(dragging);
         }
 
-        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>> InspectFile(string ankiPackage)
-        {
-            var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, new StringContent("", System.Text.Encoding.UTF8, "application/json"));
-
-            var result = await response.Content.ReadFromJsonAsync<Inspection>();
-            return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>(result.Files, result.Cards);
-        }
     }
 
-
-    public class Inspection
-    {
-        public List<DataLayer.Entities.File> Files { get; set; }
-        public List<DataLayer.Entities.Card> Cards { get; set; }
-
-    }
 
     public class ProgressableStreamContent : HttpContent
     {

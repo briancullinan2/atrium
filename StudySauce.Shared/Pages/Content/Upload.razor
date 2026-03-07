@@ -8,6 +8,7 @@
 @inject IFileManager File
 @inject IMenuService MenuService
 @inject IServiceProvider Services
+@inject IAnkiService AnkiService
 
 <SyncedTitle Title="Import Packs"></SyncedTitle>
 
@@ -20,17 +21,18 @@
     <div class="drop-shader"><span class="bi bi-cloud-upload"></span><br /><span>Drop Anki Files</span></div>
 
     <h2>Upload Anki</h2>
+    Upload pack content from Anki or spreadsheet.<br />
+    <input type="text" placeholder="Search..." @bind="Search" />
     <heading class="flex-row">
         <label></label>
         <label>File Name</label>
-        <label>Description</label>
+        <label>Url</label>
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.File, object?>>(this, OnAnkiSelected))" TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads"></MetadataControl>
+    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.File, object?>>(this, OnAnkiSelected))" TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
 
 
-    Upload pack content from Anki or spreadsheet.<br />
     @if (!OperatingSystem.IsWindows())
     {
         <InputFile OnChange="HandleFileSelection" />
@@ -49,11 +51,11 @@
     <heading class="flex-row">
         <label></label>
         <label>File Name</label>
-        <label>Description</label>
+        <label>Url</label>
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Inside"></MetadataControl>
+    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Inside?.Take(Take).ToList()"></MetadataControl>
 
 
     <h4>Converted Cards</h4>
@@ -65,11 +67,7 @@
         <label>Answers</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="Controls.EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards"></MetadataControl>
-
-    <h2>Content Sharing</h2>
-
-    Notify users now or distribute to subscribers.
+    <MetadataControl TModel="Controls.EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards?.Take(Take).ToList()"></MetadataControl>
 
 </div>
 
@@ -79,12 +77,35 @@
     // TODO: decide when to synchronize the file storage with memory storage
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Content.Upload));
     [Category("Display")]
-    public IEnumerable<DataLayer.Entities.File>? Uploads { get; set; }
+    public List<DataLayer.Entities.File>? Uploads { get; set; }
+    public List<DataLayer.Entities.File>? AnkiSearch { get; set; }
     public IEnumerable<DataLayer.Entities.File>? Inside { get; set; }
     [Category("Content")]
     public List<Controls.EditCardControl.EditControl>? CurrentCards { get; set; }
     public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
     public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
+
+    public int Take { get; set; } = 10;
+    public int Skip { get; set; } = 0;
+
+    protected string? _search;
+    public string? Search { get => _search; set 
+        {
+            _search = value;        
+            _ = InitAnkiSearch();
+        } 
+    }
+
+    protected async Task InitAnkiSearch()
+    {
+        AnkiSearch = (await AnkiService.Search(Search))?.ToList();
+        if (AnkiSearch == null)
+        {
+            return;
+        }
+        Uploads?.AddRange(AnkiSearch);
+        StateHasChanged();
+    }
 
     bool isDragOver = false;
 
@@ -113,7 +134,7 @@
     public IDbContextFactory<DataLayer.PersistentStorage>? PersistentFactory { get {
             try {
                 return Services.GetService(typeof(IDbContextFactory<DataLayer.PersistentStorage>)) as IDbContextFactory<DataLayer.PersistentStorage>;
-            } catch (Exception ex)
+            } catch (Exception)
             {
                 return null;
             }
@@ -134,7 +155,7 @@
         }
         using var fileContext = PersistentFactory.CreateDbContext();
         using var memoryContext = MemoryFactory.CreateDbContext();
-        await fileContext.Sync(memoryContext, (DataLayer.Entities.File f) => f.Source == "Upload");
+        await fileContext.Sync(memoryContext, (DataLayer.Entities.File f) => f.Source == "Upload" || f.Source == "AnkiDownloads");
         await PopulateUploads(memoryContext);
     }
 
@@ -148,7 +169,7 @@
         {
             memoryContext = MemoryFactory.CreateDbContext();
         }
-        Uploads = await memoryContext.Files.Where(f => f.Source == "Upload").ToListAsync();
+        Uploads = await memoryContext.Files.Where(f => f.Source == "Upload" || f.Source == "AnkiDownloads").ToListAsync();
     }
 
 

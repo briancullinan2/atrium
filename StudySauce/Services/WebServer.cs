@@ -46,6 +46,11 @@ namespace StudySauce.Services
             webBuilder.Services.AddSingleton<ICourseService, CourseService>();
             webBuilder.Services.AddSingleton<IJsonService, JsonService>();
             webBuilder.Services.AddSingleton<IFileManager, FileManager>();
+            webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
+            webBuilder.Services.AddScoped<HttpClient>(sp => new HttpClient
+            {
+
+            });
 
             // FUCK DI
             webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
@@ -135,9 +140,9 @@ namespace StudySauce.Services
             //webApp.MapBlazorHub();
             webApp.MapPost("/api/query", QueryService.RespondQuery);
             webApp.MapPost("/api/upload", FileManager.OnUploadFile);
-            webApp.MapPost("/api/inspect", FileManager.OnInspectFile);
-
-
+            webApp.MapPost("/api/inspect", AnkiService.OnInspectFile);
+            webApp.MapPost("/api/search", AnkiService.OnSearchAnki);
+            webApp.MapPost("/api/download", AnkiService.OnDownloadAnki);
 
             webApp.MapRazorComponents<Components.App>()
                 .AddInteractiveServerRenderMode()

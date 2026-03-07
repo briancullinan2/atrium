@@ -21,6 +21,7 @@ builder.Services.AddScoped<HttpClient>(sp => new HttpClient
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
 builder.Services.AddSingleton<IFileManager, FileManager>();
+builder.Services.AddSingleton<IAnkiService, AnkiService>();
 /*builder.Services.AddDbContext<TranslationContext>((sp, options) =>
 {
     options.UseInMemoryDatabase("RemoteShell");
@@ -38,6 +39,7 @@ var app = builder.Build();
 // FUCK DI
 RemoteQuery._service = app.Services;
 FileManager._service = app.Services;
+AnkiService._service = app.Services;
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();
 var navigation = app.Services.GetRequiredService<NavigationManager>();

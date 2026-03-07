@@ -11,7 +11,6 @@ namespace StudySauce.WinUI
     /// </summary>
     public partial class App : MauiWinUIApplication
     {
-        private IServiceProvider _services;
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -25,7 +24,7 @@ namespace StudySauce.WinUI
 #if WINDOWS
             Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
             {
-                FileManager.InitializeWndProc(h, _services);
+                FileManager.InitializeWndProc(h);
             });
 #endif
         }
@@ -33,8 +32,6 @@ namespace StudySauce.WinUI
         protected override MauiApp CreateMauiApp()
         {
             var app = MauiProgram.CreateMauiApp();
-            _services = app.Services;
-            MainPage._services = app.Services;
             return app;
         }
 

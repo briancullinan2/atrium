@@ -33,9 +33,17 @@ namespace DataLayer.Utilities.Extensions
         public static void Save<T>(this ProxyEntity<T> ent, bool? recurse = false) where T : class, IEntity<T>
         {
             // Start the Transaction
-            using var scope = ent._service.CreateScope();
-            var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-            using var persistentContext = persistentStore.CreateDbContext();
+            using var scope = ent._service?.CreateScope();
+            var persistentStore = scope?.ServiceProvider.GetRequiredService(ent._context ?? typeof(IDbContextFactory<DataLayer.PersistentStorage>));
+            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<DataLayer.PersistentStorage>)?.CreateDbContext();
+            if (persistentContext == null)
+            {
+                persistentContext = (persistentStore as IDbContextFactory<DataLayer.EphemeralStorage>)?.CreateDbContext();
+            }
+            if (persistentContext == null)
+            {
+                throw new InvalidOperationException("Cannot determine database context.");
+            }
             using (var transaction = persistentContext.Database.BeginTransaction())
             {
                 try

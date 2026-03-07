@@ -12,8 +12,7 @@ namespace DataLayer.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; protected set; }
 
-        [Required]
-        public int PackId { get; set; }
+        public int? PackId { get; set; }
 
         [ForeignKey(nameof(PackId))]
         public virtual Pack? Pack { get; set; }
@@ -56,14 +55,23 @@ namespace DataLayer.Entities
 
         [Required]
         [Category("System")]
-        public DateTime Created { get; set; } = DateTime.UtcNow;
+        public DateTime Created { get; protected set; } = DateTime.UtcNow;
 
         [Category("System")]
         public DateTime? Modified { get; set; }
+
+
+        public string? Tag { get; set; }
+        public string? Source { get; set; }
 
         // Navigation for Anki-style responses and multiple choice answers
         //public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
         [Category("Answers")]
         public virtual ICollection<Answer> Answers { get; set; } = new HashSet<Answer>();
+
+        public Card()
+        {
+            Created = DateTime.Now;
+        }
     }
 }

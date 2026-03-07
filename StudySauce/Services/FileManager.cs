@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using StudySauce.Shared.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Stream = System.IO.Stream;
 #if WINDOWS
 using StudySauce.Platforms.Windows;
 #endif
@@ -15,7 +16,7 @@ namespace StudySauce.Services
     {
         public event Action<DataLayer.Entities.File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
-        private static IServiceProvider? _services;
+        internal static IServiceProvider? _services;
 
         public async Task UploadFile(string localPath)
         {
@@ -24,7 +25,10 @@ namespace StudySauce.Services
         }
 
 
-        public async Task UploadFile(Stream localStream, string localPath)
+        // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
+        //   so any implementer can designate themselves as the source of the data
+
+        public async Task UploadFile(Stream localStream, string localPath, string? source = "Uploads")
         {
             if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "Uploads")))
             {
@@ -37,14 +41,14 @@ namespace StudySauce.Services
             fileStream.Close();
             localStream.Close();
 
-            var persistentStore = _services.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-            using var fileContext = persistentStore.CreateDbContext();
+            var persistentStore = _services?.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
+            using var fileContext = persistentStore?.CreateDbContext();
             try
             {
                 ProxyEntity<DataLayer.Entities.File> file = DataLayer.Entities.Entity.Wrap(new DataLayer.Entities.File()
                 {
                     Filename = savePath,
-                    Source = "Upload" // TODO: fill in from nav or parameter or something
+                    Source = source // TODO: fill in from nav or parameter or something
                 }, _services);
                 file.Save();
 
@@ -56,62 +60,8 @@ namespace StudySauce.Services
         }
 
 
-        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>> InspectFile(string ankiPackage)
-        {
-            try
-            {
-                var files = AnkiParser.Parser.ListFiles(ankiPackage);
-                var cards = AnkiParser.Parser.ParseCards(ankiPackage);
-                return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>(files, cards);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                return new Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<Card>>([], []);
-            }
-        }
-
-
-        public static async Task OnInspectFile(HttpContext context, IServiceProvider _service)
-        {
-            try
-            {
-                var files = AnkiParser.Parser.ListFiles(context.Request.Query["anki"]);
-                var cards = AnkiParser.Parser.ParseCards(context.Request.Query["anki"]);
-                context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(new Inspection()
-                {
-                    Files = files,
-                    Cards = cards
-                }, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
-                await context.Response.WriteAsync(json);
-
-            }
-            catch (Exception ex)
-            {
-                context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
-                await context.Response.WriteAsync(json);
-            }
-        }
-
-        public class Inspection
-        {
-            public List<DataLayer.Entities.File> Files { get; set; }
-            public List<DataLayer.Entities.Card> Cards { get; set; }
-
-        }
-
         //[HttpPost("upload")]
-        public static async Task OnUploadFile(HttpContext context, IServiceProvider _service)
+        public static async Task OnUploadFile(HttpContext context)
         {
             try
             {
@@ -127,7 +77,7 @@ namespace StudySauce.Services
                         using (var scope = _services?.CreateScope())
                         {
                             var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                            await manager.UploadFile(stream, file.FileName);
+                            await (manager?.UploadFile(stream, file.FileName) ?? Task.CompletedTask);
                         }
 
                         // Now you can log the file entry into your TranslationContext 
@@ -166,8 +116,11 @@ namespace StudySauce.Services
                 {
                     // You get the ABSOLUTE path immediately! 
                     // No more "browser sandbox" stream restrictions.
-                    var fullPath = result.FullPath;
-                    //await HandleFile(fullPath);
+                    using (var scope = _services?.CreateScope())
+                    {
+                        var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
+                        await manager?.UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
+                    }
                 }
             }
             catch (Exception ex)
@@ -187,14 +140,13 @@ namespace StudySauce.Services
         private static nint _oldWndProc;
         private static bool _isFileDragging;
 
-        internal static void InitializeWndProc(Microsoft.Maui.Handlers.IWindowHandler h, IServiceProvider? services)
+        internal static void InitializeWndProc(Microsoft.Maui.Handlers.IWindowHandler h)
         {
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(h.PlatformView);
             // 0x0233 is WM_DROPFILES
             // 0x0049 is WM_COPYGLOBALDATA (Crucial for the "No-Drop" cursor fix)
             User32.AllowDrops(hwnd);
             Shell32.DragAcceptFiles(hwnd, 1);
-            _services = services;
             _wndProc = MyWndProc; // Simplified assignment
             _oldWndProc = User32.SetWindowLongPtr(hwnd, -4,  System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
 

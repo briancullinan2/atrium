@@ -218,14 +218,15 @@ namespace DataLayer.Utilities.Extensions
                 {ExpressionType.Constant, BuildConstant},
                 {ExpressionType.Quote, BuildUnary},
                 {ExpressionType.Lambda, BuildLambda},
-                {ExpressionType.Equal, BuildEquals},
+                {ExpressionType.Equal, BuildLeftRight},
                 {ExpressionType.Convert, BuildUnary},
                 {ExpressionType.MemberAccess, BuildProperty},
-
+                {ExpressionType.OrElse, BuildLeftRight}
                 //{ExpressionType.Extension, BuildExtension}
             };
 
         public delegate Expression? ExpressionFactory(XElement el, Func<XElement, Expression?> ToExpression);
+
 
         private static Expression? BuildProperty(XElement el, Func<XElement, Expression?> ToExpression)
         {
@@ -250,7 +251,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        private static Expression? BuildEquals(XElement el, Func<XElement, Expression?> ToExpression)
+        private static Expression? BuildLeftRight(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var rightEl = el.Element("Right")?.Elements().FirstOrDefault();
             var leftEl = el.Element("Left")?.Elements().FirstOrDefault();
@@ -264,7 +265,11 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("Could not resolve right expression on " + el);
             }
-            return Expression.Equal(leftOperand, rightOperand);
+            if (el.Attribute("NodeType")?.Value == "Equal")
+                return Expression.Equal(leftOperand, rightOperand);
+            if (el.Attribute("NodeType")?.Value == "OrElse")
+                return Expression.OrElse(leftOperand, rightOperand);
+            throw new InvalidOperationException("Node Type not supported." + el.Attribute("NodeType"));
         }
 
         private static Expression? BuildLambda(XElement el, Func<XElement, Expression?> ToExpression)
