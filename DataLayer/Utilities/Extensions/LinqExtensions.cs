@@ -490,11 +490,15 @@ namespace DataLayer.Utilities.Extensions
                 .FirstOrDefault(p => p.PropertyType.IsGenericType &&
                                      p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>) &&
                                      p.PropertyType.GetGenericArguments()[0] == entityType);
+            var asQueryableMethod = typeof(Queryable)
+                .GetMethods()
+                .First(m => m.Name == "AsQueryable" && m.IsGenericMethod)
+                .MakeGenericMethod(entityType);
 
             if (dbSetProperty != null)
             {
                 // Pull the live DbSet instance from your context
-                set = dbSetProperty.GetValue(context) as IQueryable;
+                set = asQueryableMethod.Invoke(null, new[] { dbSetProperty.GetValue(context) }) as IQueryable;
                 // TODO: out DbSet until expression can 
                 return set?.Expression; // This is the "Real" root for EF Core
             }
@@ -547,7 +551,9 @@ namespace DataLayer.Utilities.Extensions
         public static object? ToQueryable(string query, IServiceProvider _service)
         {
             using var scope = _service.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<TranslationContext>();
+            var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
+            using var context = ephemeralStore.CreateDbContext();
+
 
             using (XmlReader reader = XmlReader.Create(new StringReader(query)))
             {
@@ -565,7 +571,21 @@ namespace DataLayer.Utilities.Extensions
                 {
                     throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
                 }
-                return set?.Provider.Execute(finalExpression);
+
+                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(finalExpression.Type) && finalExpression.Type != typeof(string))
+                {
+                    // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
+                    var toListMethod = typeof(Enumerable).GetMethods()
+                        .First(m => m.Name == "ToList" && m.IsGenericMethod)
+                        .MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]);
+
+                    return toListMethod.Invoke(null, new[] { set });
+                }
+                else
+                {
+                    return set.Provider.Execute(finalExpression);
+                }
+
             }
         }
 

@@ -68,7 +68,6 @@ namespace StudySauce
             builder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
                 options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "StudySauce.sqlite.db")));
 
-            //builder.Services.AddSingleton<DbContext>(new DataLayer.TranslationContext(c => c == null ? "Data Source=:memory:" : c.UseSqlite()));
             builder.Services.AddMauiBlazorWebView();
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

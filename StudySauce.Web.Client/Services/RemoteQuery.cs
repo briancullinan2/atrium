@@ -33,36 +33,80 @@ namespace StudySauce.Web.Client.Services
         // You must also implement ExecuteAsync for ToListAsync() support
         public TResult ExecuteAsync<TResult>(Expression query, CancellationToken cancellationToken = default)
         {
-            // Same logic, but returning a Task/ValueTask
+            var typeT = typeof(TResult);
+
+            // If TResult is IAsyncEnumerable<File>, we need to fetch List<File>
+            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            {
+                var itemType = typeT.GetGenericArguments()[0];
+
+                // Use reflection to call ExecuteRemoteAsync<List<File>>
+                var listType = typeof(List<>).MakeGenericType(itemType);
+                var task = (Task)typeof(RemoteQuery)
+                    .GetMethod(nameof(ExecuteRemoteAsync))
+                    .MakeGenericMethod(listType) // THIS IS THE KEY: Ask for the List
+                    .Invoke(this, new object[] { query, cancellationToken });
+
+                // Bridge the Task<List<File>> to IAsyncEnumerable<File>
+                return (TResult)CreateAsyncEnumerableFromTask(task, itemType);
+            }
+
+            // Fallback for scalars (Count, Any, etc.)
             return (TResult)typeof(RemoteQuery)
                 .GetMethod(nameof(ExecuteRemoteAsync))
-                .MakeGenericMethod(typeof(TResult).GetGenericArguments())
+                .MakeGenericMethod(typeT)
                 .Invoke(this, new object[] { query, cancellationToken });
+        }
+
+        // Helper to wrap the Task into a stream EF Core can read
+        private object CreateAsyncEnumerableFromTask(Task task, Type itemType)
+        {
+            var method = typeof(RemoteQuery)
+                .GetMethod(nameof(ToAsyncEnumerableInternal), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .MakeGenericMethod(itemType);
+
+            return method.Invoke(this, new object[] { task });
+        }
+
+        private async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task task)
+        {
+            await task; // Wait for the network call to finish
+            var result = (IEnumerable<T>)((dynamic)task).Result;
+            foreach (var item in result)
+            {
+                yield return item;
+            }
         }
 
         public async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken cancellationToken = default)
         {
-            Console.WriteLine("Executing: " + query.ToString());
-            // 1. Serialize the expression tree using your converter
             var serialized = query.ToXDocument().ToString();
-            Console.WriteLine("Converted: " + query.ToString());
-            try
-            {
-                // 2. Perform the async network call
-                var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
+            response.EnsureSuccessStatusCode();
 
-                // Ensure the request was successful
-                response.EnsureSuccessStatusCode();
+            // The key is checking the requested type T
+            var typeT = typeof(T);
 
-                // 3. Deserialize and return the result
-                // Note: If T is a collection, ensure your API returns the expected format
-                return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
+            // If the caller (EF Core) is asking for IAsyncEnumerable<File>
+            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
             {
-                Console.WriteLine(ex);
-                return default(T);
+                var itemType = typeT.GetGenericArguments()[0];
+                var listType = typeof(List<>).MakeGenericType(itemType);
+
+                // 1. Deserialize as a concrete List first
+                var list = await response.Content.ReadFromJsonAsync(listType, cancellationToken: cancellationToken);
+
+                // 2. Convert List to IAsyncEnumerable (using .ToAsyncEnumerable())
+                // Requires 'System.Linq.Async' NuGet package
+                var toAsyncMethod = typeof(AsyncEnumerable)
+                    .GetMethods()
+                    .First(m => m.Name == "ToAsyncEnumerable" && m.IsGenericMethod)
+                    .MakeGenericMethod(itemType);
+
+                return (T)toAsyncMethod.Invoke(null, new[] { list });
             }
+
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
         }
 
         public Func<QueryContext, TResult> CreateCompiledAsyncQuery<TResult>(Expression query)

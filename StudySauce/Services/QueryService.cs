@@ -1,5 +1,4 @@
-﻿using DataLayer;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -13,8 +12,10 @@ namespace StudySauce.Services
             {
                 // 1. Read the serialized query from the request body
                 context.Response.ContentType = "application/json";
-                using var scope = _service.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<TranslationContext>();
+                //using var scope = _service.CreateScope();
+                //var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
+                //using var dbContext = ephemeralStore.CreateDbContext();
+
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
                 string? rawXml = JsonSerializer.Deserialize<string>(jsonQuery);

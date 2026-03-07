@@ -51,10 +51,6 @@ namespace StudySauce.Services
             webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
             _keepAlive = new KeepAlive("Data Source=:memory:");
             _keepAlive.Open();
-            //webBuilder.Services.AddDbContext<DataLayer.TranslationContext>((serviceProvider, options) =>
-            //{
-            //    options.UseSqlite(_keepAlive);
-            //});
             webBuilder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
                 options.UseSqlite(_keepAlive));
 

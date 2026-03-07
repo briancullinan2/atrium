@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace DataLayer.Entities
 {
@@ -35,7 +36,7 @@ namespace DataLayer.Entities
         // Relationship: Many Files to One User
         [Column("user_id")]
         public string? UserId { get; set; }
-
+        [JsonIgnore]
         [ForeignKey("UserId")]
         public virtual User? User { get; set; }
 
