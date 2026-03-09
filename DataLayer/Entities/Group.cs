@@ -69,6 +69,9 @@ namespace DataLayer.Entities
         public virtual ICollection<User> Users { get; set; } = new List<User>();
         [InverseProperty(nameof(Role.Groups))]
         public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+        [InverseProperty(nameof(Course.Groups))]
+        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+
         public Group()
         {
             Created = DateTime.UtcNow;

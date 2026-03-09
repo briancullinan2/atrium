@@ -130,6 +130,8 @@ namespace DataLayer.Entities
         public User? Parent { get; set; }
         [InverseProperty(nameof(Parent))]
         public virtual ICollection<User> Children { get; set; } = new List<User>();
+        [InverseProperty(nameof(Course.Users))]
+        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
 
         public User()
         {
