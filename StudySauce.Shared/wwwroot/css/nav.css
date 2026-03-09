@@ -23,12 +23,31 @@ a .bi {
 
 .highlighted-link {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    vertical-align: middle;
+    align-items: center;
+    flex-basis:100%;
 }
 
-.link-list > a
-{
+.link-list {
+    display: flex;
+    vertical-align: middle;
+    justify-content: flex-start;
+    align-items: center;
+    flex-basis: 100%;
+}
+
+.highlighted-link > a,
+.highlighted-link > button,
+.link-list > a,
+.link-list > button {
     margin-left: 8px;
+    font-size:16px;
+}
+
+.highlighted-link > a:last-child,
+.highlighted-link > button:last-child {
+    margin-left:auto;
 }
 
 .link-list > a:first-of-type

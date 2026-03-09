@@ -2,7 +2,7 @@
 @page "/account/edit"
 @page "/account/list"
 @page "/account/delete"
-
+@implements IDisposable
 @using StudySauce.Shared.Controls
 @using StudySauce.Shared.Services
 @inject IMenuService MenuService
@@ -11,7 +11,7 @@
 
 <SyncedTitle Title="Account Settings"></SyncedTitle>
 
-<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+<div class="user-account flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
     <div>
         <fieldset>
             <legend>Login Info</legend>
@@ -25,9 +25,8 @@
         </fieldset>
     </div>
     <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span> Back</button>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new () { ControlMode = DataLayer.Customization.ControlMode.List }))" >Connected Accounts</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-link-45deg"></span> Connected Accounts</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.Delete }))"><span class="bi bi-trash"></span> Close Account</a>
         <button class="cta" @onclick="() => UpdateUser()">Save</button>
     </div>
 
@@ -65,6 +64,12 @@
         MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Settings />);
         GeneralLayout = DataLayer.EntityMetadata.User.Groups["General Info"]?.ToList();
         LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
     }
 
     protected void SetControlMode()
@@ -96,5 +101,10 @@
             CurrentUser = LoginService.User;
             StateHasChanged();
         }
-    }        
+    }
+    
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 }

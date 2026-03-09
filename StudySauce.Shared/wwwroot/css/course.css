@@ -67,6 +67,7 @@
     perspective: 1000px;
     padding: 0 30px;
     padding-bottom: 30px;
+    height: 100%;
 }
 
 .card-viewer {

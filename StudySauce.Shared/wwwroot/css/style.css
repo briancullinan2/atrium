@@ -14,13 +14,13 @@
     transition: color ease-in-out 0.6s;
 }
 
-button.deemphasize
-{
+button.deemphasize {
     background: none;
     border: none;
     color: lightgrey;
-    text-decoration:none;
+    text-decoration: none;
     cursor: pointer;
+    padding: 0;
 }
 
 .drop-shader {
@@ -94,10 +94,14 @@ button.deemphasize:hover {
     text-decoration: underline;
 }
 
+button
+{
+}
 
 
 select,
 textarea,
+input[type="password"], 
 input[type="number"],
 input[type="date"],
 input[type="text"] {
@@ -125,6 +129,8 @@ select:focus,
 select:active,
 textarea:focus,
 textarea:active,
+input[type="password"]:focus,
+input[type="password"]:active,
 input[type="number"]:focus,
 input[type="number"]:active,
 input[type="date"]:focus,
@@ -446,12 +452,14 @@ heading.flex-row > * {
 }
 
 
+.user-account,
 .pack-edit,
 .user-add {
     display: flex;
     flex-wrap: wrap;
 }
 
+.user-account > *,
 .pack-edit > *,
 .user-add > * {
     flex-basis: 50%;
