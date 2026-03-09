@@ -23,12 +23,30 @@
 {
     var card = CurrentQuiz?.ElementAt(i);
 
-    <div class="flash-card @(GetDisplayClass(i * 2))">
+    <div class="flash-card @(GetDisplayClass(i * 2))" style="@(QuizStep == i * 2 ? CurrentManualTransform : "") user-select:none;"
+         @ondragstart="DragStart"
+         @ondragstart:preventDefault="true"
+         @ondragstart:stopPropagation="true"
+         @ondragend="DragStop"
+         @onmousedown="DragStart"
+         @onmouseup="DragStop"
+         @onmousemove="HandleMove">
         <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
     </div>
 
-    <div class="flash-card @(GetDisplayClass(i * 2 + 1))">
+    <div class="flash-card @(GetDisplayClass(i * 2 + 1))" style="@(QuizStep == (i * 2 + 1) ? CurrentManualTransform : "") user-select:none;"
+         @ondragstart="DragStart"
+         @ondragstart:preventDefault="true"
+         @ondragstart:stopPropagation="true"
+         @ondragend="DragStop"
+         @onmousedown="DragStart"
+         @onmouseup="DragStop"
+         @onmousemove="HandleMove" 
+         @onclick="() => NextStep()">
         <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
+        <div class="link-list">
+            <a class="deemphasize" @onclick="() => NextStep()">Tap or Swipe for next card</a>
+        </div>
     </div>
 }
 
@@ -87,9 +105,81 @@
     public int? PreviousStep { get; set; }
     public int QuizStep { get; set; } = 0;
     public int? TotalCards { get => CurrentQuiz?.Count(); }
+    private bool Dragging = false;
+    private double CumulativeX = 0;
+    private double CumulativeY = 0;
 
 
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Pack));
+    private string CurrentManualTransform = "";
+    protected async Task DragStart(MouseEventArgs e)
+    {
+        Dragging = true;
+        CumulativeX = 0;
+        CumulativeY = 0;
+    }
+
+    protected async Task DragStop(MouseEventArgs e)
+    {
+        CurrentManualTransform = "";
+        CumulativeX = 0;
+        CumulativeY = 0;
+        Dragging = false;
+        StateHasChanged();
+    }
+
+    protected async Task HandleMove(MouseEventArgs e)
+    {
+        if ((e.Buttons & 1) > 0 && Dragging)
+        {
+            CumulativeX += e.MovementX;
+            CumulativeY += e.MovementY;
+
+            CurrentManualTransform = CalculateTransform(CumulativeX, CumulativeY);
+            StateHasChanged();
+
+            // Auto-trigger the full animation if they hit 100%
+            double distance = Math.Sqrt(Math.Pow(CumulativeX, 2) + Math.Pow(CumulativeY, 2));
+
+            if (distance >= MaxDistance / 5)
+            {
+                NextStep();
+            }
+        }
+    }
+
+
+    protected void NextStep()
+    {
+        PreviousStep = QuizStep;
+        QuizStep++;
+        CurrentManualTransform = "";
+        CumulativeX = 0;
+        CumulativeY = 0;
+        Dragging = false;
+        StateHasChanged();
+    }
+
+    private const double MaxDistance = 1000.0; // Your 100% threshold in pixels
+
+    public string CalculateTransform(double currentX, double currentY)
+    {
+        // 1. Calculate the 'Percent Complete' (0.0 to 1.0)
+        double distance = Math.Sqrt(Math.Pow(currentX, 2) + Math.Pow(currentY, 2));
+        double t = Math.Clamp(distance / MaxDistance, 0, 1);
+
+        // 2. Quadratic Bézier for X and Y positions
+        // Formula: (1-t)^2*P0 + 2(1-t)*t*P1 + t^2*P2
+        double x = (2 * (1 - t) * t * 20) + (Math.Pow(t, 2) * 400);
+        double y = (2 * (1 - t) * t * -20) + (Math.Pow(t, 2) * -600);
+
+        // 3. Linear Interpolation for Rotation, Scale, and Opacity
+        double rotateY = t * 180;        // 0 to 180deg
+        double scale = 1.0 - (t * 0.8);  // 1.0 to 0.2
+        double opacity = 1.0 - t;        // 1.0 to 0.0
+
+        return $"transform: translate({x:F2}px, {y:F2}px) rotateY({rotateY:F2}deg) scale({scale:F2}) !important; opacity: {opacity:F2};";
+    }
 
     protected override void OnInitialized()
     {
@@ -131,9 +221,9 @@
             {
                 Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
                 CurrentQuiz = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault()?.Cards;
-            }*/
-            // only show one id quiz
-            var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
+                }*/
+                        // only show one id quiz
+                        var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
             var due = up?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
             CurrentQuiz = up?.Pack?.Cards.Where(c => due.Contains(c.Id) == true) ?? [];
         }
@@ -145,7 +235,7 @@
         var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
         return packs?.ToList();
-    }
+        }
     */
 
     protected async Task OnQuizAnswered(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> valueChanged)
@@ -163,8 +253,7 @@
             Card = valueChanged.Item2
         };
         Responses.Add(response);
-        QuizStep++;
-        StateHasChanged();
+        NextStep();
     }
 
 }

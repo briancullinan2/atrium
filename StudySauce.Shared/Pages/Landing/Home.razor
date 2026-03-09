@@ -43,7 +43,7 @@
         foreach (var up in LoginService.User.UserPacks.Where(up => up.GetRetention().Any(r => r.Value.IsDue)))
         {
             <div class="study-row">
-                <span>@up.Pack?.Title</span>
+                <span><a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.PackId, Mode = DataLayer.Customization.PackMode.Card }))">@up.Pack?.Title</a></span>
                 <span>@up.GetRetention().Count(r => r.Value.IsDue)</span>
             </div>
         }

@@ -97,6 +97,12 @@ h1:focus {
     flex-direction: column;
 }
 
+.study-now a
+{
+    color:white;
+    text-decoration:none;
+}
+
 
 .big-button {
     display: flex;
