@@ -19,14 +19,14 @@ namespace DataLayer.Entities
         [Column("card_id")]
         public int? CardId { get; set; }
 
-        [ForeignKey("CardId")]
+        [ForeignKey(nameof(CardId))]
         public virtual Card? Card { get; set; }
 
         // Foreign Key for Answer
         [Column("answer_id")]
         public int? AnswerId { get; set; }
 
-        [ForeignKey("AnswerId")]
+        [ForeignKey(nameof(AnswerId))]
         public virtual Answer Answer { get; set; }
 
         // Foreign Key for User
@@ -34,7 +34,7 @@ namespace DataLayer.Entities
         [Column("user_id")]
         public string UserId { get; set; }
 
-        [ForeignKey("UserId")]
+        [ForeignKey(nameof(UserId))]
         public virtual User User { get; set; }
 
         // One-to-One relationship with File
@@ -42,7 +42,7 @@ namespace DataLayer.Entities
         //public int? FileId { get; set; }
 
         // i don't know why tf this is here.
-        //[ForeignKey("FileId")]
+        //[ForeignKey(nameof(FileId")]
         //public virtual DataLayer.Entities.File Attachment { get; set; }
 
         [Column("value")]

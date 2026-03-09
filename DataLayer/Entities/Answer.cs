@@ -14,18 +14,18 @@ namespace DataLayer.Entities
         [Column("card_id")]
         public int CardId { get; set; }
 
-        [ForeignKey("CardId")]
-        public virtual Card Card { get; set; }
+        [ForeignKey(nameof(CardId))]
+        public virtual Card? Card { get; set; }
 
         [Column("content", TypeName = "text")]
         [Required]
-        public string Content { get; set; }
+        public string? Content { get; set; }
 
         [Column("response", TypeName = "text")]
-        public string ResponseText { get; set; }
+        public string? ResponseText { get; set; }
 
         [Column("value", TypeName = "text")]
-        public string Value { get; set; }
+        public string? Value { get; set; }
 
         [Column("correct")]
         public bool IsCorrect { get; set; } = false;

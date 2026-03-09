@@ -314,12 +314,21 @@
 
     public static IEnumerable<DataLayer.Entities.Course> Generate()
     {
-        var ss = new DataLayer.Entities.Course() { Title = "Study Sauce" };
-        return ((Type[])[typeof(Course1), typeof(Course2), typeof(Course3)]).Select(type => CourseMenu.GetCourse(typeof(Course3)))
-            .Select(mi => new DataLayer.Entities.Course() { 
-                Parent = ss, 
-                Title = "Study Sauce: " + mi?.Title, 
-                Description = "Course topics:\n* " + string.Join("\n* ", mi?.Children.Select(ci => ci.Title) ?? [])
-            });
+        var ss = new DataLayer.Entities.Course() { 
+            Title = "Study Sauce",
+            LogoHosted = "/_content/StudySauce.Shared/studysauce-icon-76x76.png",
+            Subject = "Studying",
+            Description = "Course topics:\nStudying\nTaking tests\nSpaced repetition"
+        };
+        ss.Courses = ((Type[])[typeof(Course1), typeof(Course2), typeof(Course3)]).Select(type => CourseMenu.GetCourse(typeof(Course3)))
+            .Select(mi => new DataLayer.Entities.Course()
+                {
+                    Parent = ss,
+                    Title = "Study Sauce: " + mi?.Title,
+                    LogoHosted = "/_content/StudySauce.Shared/studysauce-icon-76x76.png",
+                    Subject = "Studying",
+                    Description = "Course topics:\n* " + string.Join("\n* ", mi?.Children.Select(ci => ci.Title) ?? [])
+                }).ToList();
+        return [ss];
     }
 }

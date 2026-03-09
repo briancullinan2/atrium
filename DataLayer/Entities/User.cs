@@ -83,7 +83,7 @@ namespace DataLayer.Entities
 
         // photo field (One-to-One with File)
         public int? PhotoFileId { get; set; }
-        [ForeignKey("PhotoFileId")]
+        [ForeignKey(nameof(PhotoFileId))]
         public virtual File? Photo { get; set; }
         // like out of google profile if they logged in that way
         public virtual string? PhotoHosted { get; set; }
@@ -99,12 +99,12 @@ namespace DataLayer.Entities
         //public virtual ICollection<Invite> InvitesReceived { get; set; } = new HashSet<Invite>();
         public virtual ICollection<Pack> AuthoredPacks { get; set; } = new HashSet<Pack>();
         public virtual ICollection<UserPack> UserPacks { get; set; } = new HashSet<UserPack>();
-        [InverseProperty("User")]
+        [InverseProperty(nameof(File.User))]
         public virtual ICollection<File> Files { get; set; } = new HashSet<File>();
         public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
-        [InverseProperty("Users")]
+        [InverseProperty(nameof(Group.Users))]
         public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
-        [InverseProperty("Users")]
+        [InverseProperty(nameof(Role.Users))]
         public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
 
 
@@ -126,9 +126,9 @@ namespace DataLayer.Entities
         /// </summary>
         public string? Devices { get; set; }
         public string? ParentId { get; set; }
-        [ForeignKey("ParentId")]
+        [ForeignKey(nameof(ParentId))]
         public User? Parent { get; set; }
-        [InverseProperty("Parent")]
+        [InverseProperty(nameof(Parent))]
         public virtual ICollection<User> Children { get; set; } = new List<User>();
 
         public User()

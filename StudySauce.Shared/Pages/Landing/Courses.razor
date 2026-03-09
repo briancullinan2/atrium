@@ -1,20 +1,54 @@
 @page "/courses"
 
+@using StudySauce.Shared.Controls
 @using StudySauce.Shared.Services
+@using System.ComponentModel
 @inject IMenuService MenuService
 
 <SyncedTitle Title="Courses"></SyncedTitle>
 
 <div class="flash-card">
+    <heading class="flex-row">
+        <label></label>
+        <label>Course Name</label>
+        <label>Category</label>
+        <label>Card Count</label>
+        <label>Last Studied</label>
+        <label>Actions</label>
+    </heading>
+    <MetadataControl TModel="DataLayer.Entities.Course" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
 </div>
 
 @code {
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Courses));
+    [Category("Recent")]
+    public List<DataLayer.Entities.Course> Recent { get; set; } = new();
+    public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
 
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
         MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Packs />);
+        RecentLayout = Pages.Landing.Courses.Metadata.Categories["Recent"]?.ToList();
     }
 
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        Recent.Clear();
+        foreach (var course in (Type[])([typeof(Pages.Course.Course)]))
+        {
+            var packs = GetCourses(course);
+            Recent.AddRange(packs ?? []);
+        }
+        StateHasChanged();
+    }
+
+    protected static IEnumerable<DataLayer.Entities.Course>? GetCourses(Type? lesson)
+    {
+        var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<DataLayer.Entities.Course>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Course>;
+        return packs;
+    }
 }

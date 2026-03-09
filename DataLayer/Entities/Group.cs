@@ -37,7 +37,7 @@ namespace DataLayer.Entities
         [Column("file_id")]
         public int? FileId { get; set; }
 
-        [ForeignKey("FileId")]
+        [ForeignKey(nameof(FileId))]
         [Display(GroupName = "Group Info")]
         public virtual File? Logo { get; set; }
         [Display(GroupName = "Group Info")]
@@ -47,10 +47,10 @@ namespace DataLayer.Entities
         [Column("parent")]
         public int? ParentId { get; set; }
 
-        [ForeignKey("ParentId")]
+        [ForeignKey(nameof(ParentId))]
         [Display(GroupName = "Extended Info")]
         public virtual Group? Parent { get; set; }
-        [InverseProperty("Parent")]
+        [InverseProperty(nameof(Parent))]
         public virtual ICollection<Group> Subgroups { get; set; } = new List<Group>();
 
         // Navigation Collections
@@ -58,16 +58,16 @@ namespace DataLayer.Entities
         //public virtual ICollection<Invite> Invites { get; set; } = new List<Invite>();
 
         // One-To-Many: Packs owned by this group
-        [InverseProperty("Group")]
+        [InverseProperty(nameof(Pack.Group))]
         public virtual ICollection<Pack> Packs { get; set; } = new List<Pack>();
 
         // Many-To-Many: Packs associated with groups
         //public virtual ICollection<Pack> GroupPacks { get; set; } = new List<Pack>();
 
         // Many-To-Many: Users in groups
-        [InverseProperty("Groups")]
+        [InverseProperty(nameof(User.Groups))]
         public virtual ICollection<User> Users { get; set; } = new List<User>();
-        [InverseProperty("Groups")]
+        [InverseProperty(nameof(Role.Groups))]
         public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
         public Group()
         {

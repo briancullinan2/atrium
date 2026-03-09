@@ -38,7 +38,7 @@ namespace DataLayer.Entities
         [Column("file_id")]
         public int? FileId { get; set; }
 
-        [ForeignKey("FileId")]
+        [ForeignKey(nameof(FileId))]
         public virtual File? Logo { get; set; }
         public virtual string? LogoHosted { get; set; }
 

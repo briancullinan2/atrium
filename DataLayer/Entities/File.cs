@@ -37,12 +37,13 @@ namespace DataLayer.Entities
         [Column("user_id")]
         public string? UserId { get; set; }
         [JsonIgnore]
-        [ForeignKey("UserId")]
+        [ForeignKey(nameof(UserId))]
         public virtual User? User { get; set; }
 
         public virtual string? Source { get; set; }
 
         // Relationship: One File to One Response (Mapped by 'file' in Response entity)
+        // don't know wtf this was for?
         //public virtual Entities.Response? Response { get; set; }
 
         // Helper property to mimic PHP basename logic

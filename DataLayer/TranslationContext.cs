@@ -23,6 +23,7 @@ namespace DataLayer
         public DbSet<DataLayer.Entities.Schedule> Schedules { get; set; }
         public DbSet<DataLayer.Entities.Subject> Subjects { get; set; }
         public DbSet<DataLayer.Entities.Grade> Grades { get; set; }
+        public DbSet<DataLayer.Entities.Lesson> Lessons { get; set; }
 
 
         // Add other entities here...
@@ -84,6 +85,7 @@ namespace DataLayer
             modelBuilder.Entity<Entities.Subject>().ToTable(EntityMetadata.Subject.TableName);
             modelBuilder.Entity<Entities.Schedule>().ToTable(EntityMetadata.Schedule.TableName);
             modelBuilder.Entity<Entities.Grade>().ToTable(EntityMetadata.Grade.TableName);
+            modelBuilder.Entity<Entities.Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
             /*
             modelBuilder.Entity<User>()
@@ -130,6 +132,7 @@ namespace DataLayer
         public static EntityMetadata<Entities.Subject> Subject => new EntityMetadata<Entities.Subject>();
         public static EntityMetadata<Entities.Schedule> Schedule => new EntityMetadata<Entities.Schedule>();
         public static EntityMetadata<Entities.Grade> Grade => new EntityMetadata<Entities.Grade>();
+        public static EntityMetadata<Entities.Lesson> Lesson => new EntityMetadata<Entities.Lesson>();
 
     }
 

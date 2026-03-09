@@ -14,7 +14,7 @@ namespace DataLayer.Entities
         [Column("file_id")]
         public int? FileId { get; set; }
 
-        [ForeignKey("FileId")]
+        [ForeignKey(nameof(FileId))]
         public virtual File? Logo { get; set; }
         public virtual string? LogoHosted { get; set; }
 
@@ -32,6 +32,8 @@ namespace DataLayer.Entities
         [Category("Content")]
         [Display(Name = "Category", Description = "Industry or subject area (e.g., Real Estate, Medical, Law)")]
         public string? Category { get; set; }
+        [Display(Name = "Subject", GroupName = "Pack Info", Description = "Formal school subject the pack falls under", Order = 1)]
+        public string Subject { get; set; } = "";
 
         [Category("Economics")]
         [Display(Name = "Bundled Price", Description = "Discounted price for purchasing the entire course instead of individual packs")]
@@ -63,6 +65,11 @@ namespace DataLayer.Entities
 
         [ForeignKey(nameof(CourseId))]
         public virtual Course? Parent { get; set; }
+        [InverseProperty(nameof(Parent))]
+        public virtual ICollection<Course> Courses { get; set; } = new HashSet<Course>();
+        [InverseProperty(nameof(Lesson.Course))]
+        public virtual ICollection<Lesson> Lessons { get; set; } = new HashSet<Lesson>();
+
 
     }
 }
