@@ -17,6 +17,8 @@
 
 .page.login-mode .course-container {
     padding-top: 30px;
+    max-height: calc(100vh - 3.5rem);
+    min-height: 0;
 }
 
 .page.login-mode .canvas-container {
@@ -47,6 +49,7 @@ main {
     min-width: 200px;
     padding: 0;
     overflow: hidden;
+    min-height: 100%;
 }
 
 
@@ -62,6 +65,16 @@ main {
 @media (max-width: 640px) {
     .top-row {
         /* justify-content: space-between; */
+    }
+
+    header.top-row
+    {
+        padding: 10px;
+    }
+
+    main
+    {
+        overflow:visible;
     }
 
     .top-row a, .top-row .btn-link {

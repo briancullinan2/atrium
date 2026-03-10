@@ -56,6 +56,8 @@
         opacity: 1;
     }
 }
+
+
 .card-stage {
     position: relative;
 }
@@ -67,7 +69,7 @@
     perspective: 1000px;
     padding: 0 30px;
     padding-bottom: 30px;
-    height: 100%;
+    min-height: calc(100vh);
 }
 
 .card-viewer {
@@ -78,7 +80,6 @@
     background: white;
     border-radius: 15px;
     padding: 2rem;
-    padding-bottom: 6rem;
     box-shadow: 0 10px 20px rgba(255,255,255,0.8), 5px 5px 10px rgba(0,0,0,1.0);
     /*transition: all 0.5s ease-in-out;*/
     max-height: 400px;
@@ -87,10 +88,20 @@
     transition: max-height ease-in-out 0.4s, padding ease-in-out 0.3s;
 }
 
+.page.login-mode .flash-card
+{
+    padding-top: 6rem;
+}
+
+.page.login-mode .flash-card h2 {
+    position: fixed;
+    top: 2rem;
+}
+
 .flash-card.animate-out {
     padding: 0;
     max-height: 0;
-    overflow:hidden;
+    overflow: hidden;
 }
 
 .flash-card.hidden {
@@ -165,7 +176,11 @@
 
 @media (max-width: 640px) {
 
-    main
+    .course-container {
+        min-height: calc(100vh - 3.5rem);
+    }
+
+    article
     {
         padding-bottom: 30px;
     }

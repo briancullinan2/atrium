@@ -85,3 +85,28 @@ header.top-row a:first-child {
 .header-text {
     font-size: 0.9rem;
 }
+
+
+@media (max-width: 640px)
+{
+    .top-row > .contextual-menu > *:first-child,
+    .top-row > .contextual-menu > *:nth-child(2) {
+        display: none;
+    }
+
+}
+
+
+@media (max-width: 540px) {
+    .top-row > .contextual-menu > *:nth-child(3),
+    .top-row > .contextual-menu > *:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 440px) {
+    .top-row > .contextual-menu > *:nth-child(5),
+    .top-row > .contextual-menu > *:nth-child(6) {
+        display: none;
+    }
+}

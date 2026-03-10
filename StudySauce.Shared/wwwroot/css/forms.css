@@ -1,0 +1,365 @@
+﻿
+
+button {
+}
+
+
+select,
+textarea,
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="text"] {
+    padding: 4px;
+    border: 2px solid lightgrey;
+    border-radius: 5px;
+    min-width: auto;
+    width: 100%;
+    max-width: 100%;
+}
+
+textarea {
+    width: 100%;
+    resize: vertical;
+    min-width: 100%;
+    max-width: 100%;
+}
+
+h2 input[type="text"] {
+    font-size: 18px;
+}
+
+select:focus,
+select:active,
+textarea:focus,
+textarea:active,
+input[type="password"]:focus,
+input[type="password"]:active,
+input[type="number"]:focus,
+input[type="number"]:active,
+input[type="date"]:focus,
+input[type="date"]:active,
+input[type="text"]:focus,
+input[type="text"]:active {
+    border-color: darkorange;
+}
+
+
+input.large-present {
+    height: 0;
+    width: 0;
+    border: 0;
+    opacity: 0;
+    position: absolute;
+    top: -10px;
+    left: 10px;
+}
+
+.preview-response {
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid lightgrey;
+    margin: 5px;
+}
+
+.preview-response.correct {
+    border-color: lightgreen;
+}
+
+.preview-response.wrong {
+    border-color: red;
+}
+
+.preview-prompt {
+    display: block;
+    padding: 10px;
+    background: #DDDDDD;
+    border-left: 4px solid darkorange;
+    margin: 10px 10px 20px 10px;
+}
+
+
+input.large-present + label[for] {
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 2px solid lightgrey;
+    flex-basis: 100%;
+    margin: 5px;
+}
+
+input.large-present + label[for]:hover {
+    background: lightgreen;
+}
+
+input.large-present:checked + label[for] {
+    border-width: 10px;
+    border-color: lightgreen;
+}
+
+.flex-row {
+    display: flex;
+    vertical-align: middle;
+    align-items: center;
+}
+
+.flex-row > * {
+    flex-basis: 20%;
+    padding: 0 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.flex-row img {
+    padding: 0;
+    max-height: 48px;
+    max-width: 48px;
+}
+
+heading.flex-row {
+    font-weight: bold;
+}
+
+heading.flex-row > * {
+    padding: 0 5px;
+}
+
+.flex-row > *:first-child {
+    max-width: 80px;
+}
+
+.Recent-form-field .flex-row > *:nth-child(4) {
+    text-align: center;
+}
+
+.Recent-form-field .flex-row > *:nth-child(5) {
+    text-align: right;
+}
+
+.Currentusers-form-field .flex-row > *:nth-child(4) {
+    text-align: center;
+}
+
+.Currentroles-form-field .flex-row .Role-form-container {
+    flex-basis: 60%;
+    display: flex;
+    flex-grow: 0;
+    padding: 0;
+}
+
+
+.cards-edit heading > *:nth-child(4) {
+    flex-basis: 15%;
+    flex-grow: 0;
+}
+
+
+
+.cards-edit .flex-row > *:nth-child(4) {
+    flex-basis: 15%;
+}
+
+.cards-edit .flex-row > *:nth-child(5) {
+    flex-basis: 20%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.Editcards-form-field > .flex-row {
+    flex-wrap: wrap;
+}
+
+.cards-edit .Editcards-form-field .preview {
+    flex-basis: 66%;
+    max-width: none;
+    text-align: left;
+    white-space: wrap;
+    display: inline-block;
+    overflow: visible;
+    display: flex;
+    gap: 10px;
+    margin: 0 auto;
+}
+
+.cards-edit .flex-row > *:nth-child(5) > * {
+    padding: 5px;
+}
+
+.cards-edit .flex-row > *:nth-child(3),
+.cards-edit .flex-row > *:nth-child(2) {
+    flex-grow: 0;
+}
+
+.roles-container heading > *:nth-child(2),
+.roles-container heading > *:nth-child(3) {
+    flex-basis: 30%;
+}
+
+.roles-container heading > *:nth-child(4),
+.roles-container heading > *:nth-child(5) {
+    flex-basis: 100px;
+}
+
+.Currentroles-form-field .flex-row.view > *:nth-child(2),
+.Currentroles-form-field .flex-row.view > *:nth-child(3) {
+    flex-basis: 30%;
+    flex-grow: 0;
+}
+
+.Currentroles-form-field .flex-row.edit > *:nth-child(3),
+.Currentroles-form-field .flex-row > *:nth-child(4),
+.Currentroles-form-field .flex-row > *:nth-child(5) {
+    flex-basis: 100px;
+    flex-grow: 0;
+    text-align: center;
+}
+
+.Role-form-container > .form-field {
+    padding: 0 5px;
+}
+
+.cards-edit div.flex-row.View > *:nth-last-child(2),
+.flex-row > *:last-child {
+    text-align: right;
+    max-width: 48px;
+    white-space: nowrap;
+    display: inline-block;
+    overflow: visible;
+}
+
+.Recent-form-field .flex-row > * {
+    vertical-align: middle;
+}
+
+.cards-edit .preview > .Resultcard-form-container,
+.cards-edit .preview > .Card-form-container {
+    border: 2px solid darkgrey;
+    padding: 10px;
+    border-radius: 10px;
+    pointer-events: none;
+    flex-basis: 50%;
+    flex-grow: 0;
+    overflow: auto;
+    max-height: 300px;
+}
+
+.cards-edit .flex-row.View {
+    cursor: pointer;
+}
+
+.cards-edit .flex-row > span:first-child {
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-content: center;
+    align-items: center;
+}
+
+.cards-edit .flex-row > span:first-child .bi {
+    border-radius: 0;
+    margin: auto;
+    font-size: inherit;
+    height: auto;
+    width: auto;
+    background: transparent;
+    color: grey;
+    padding: 10px;
+}
+
+.cards-edit .flex-row.Edit > *:nth-child(5) > span {
+    display: flex;
+}
+
+
+.user-account,
+.pack-edit,
+.user-add {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.user-account > *,
+.pack-edit > *,
+.user-add > * {
+    flex-basis: 50%;
+    margin: 0;
+    padding: 10px;
+}
+
+.pack-edit .link-list,
+.pack-edit .highlighted-link,
+.user-add .highlighted-link {
+    flex-basis: 100%;
+}
+
+.pack-edit > h2,
+.user-add > h2 {
+    flex-basis: 100%;
+}
+
+.pack-edit .form-field,
+.user-add .form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-list {
+    display: flex;
+}
+
+.user-avatar {
+    border: 3px solid lightgrey;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    margin: 10px;
+    justify-content: space-between;
+}
+
+
+.user-avatar > a:first-child {
+    color: darkgrey;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .user-avatar > a:first-child:hover {
+        text-decoration: underline;
+    }
+
+
+.user-avatar img {
+    border-radius: 50%;
+    margin: auto;
+}
+
+
+.flex-row span:first-child .bi,
+.user-avatar > a:first-child .bi {
+    border-radius: 50%;
+    margin: auto;
+    font-size: 32px;
+    height: 54px;
+    width: 54px;
+    background: blue;
+    color: white;
+    padding: 10px;
+}
+
+.flex-row span:first-child .bi {
+    font-size: 24px;
+    height: 44px;
+    width: 44px;
+    display: flex;
+}

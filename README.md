@@ -2,6 +2,13 @@
 
 A spaced repetition studying app. Prepopulated with study course content. Build on M$ MAUI Blazor because C# is nice.
 
+## Build
+
+#### Android
+
+dotnet publish StudySauce/StudySauce.csproj -f net10.0-android -c Release -r android-arm64 --self-contained
+
+
 ## History
 
 I worked on this app years ago and got paid a lot of money to do it. I got hung up on the data management stuff, I build this JavaScript -> PHP template engine thing that made
@@ -16,6 +23,11 @@ upload Anki format option. So in this version I'll add all of it.
 The only reason I am here is because I heard about 2 years ago while I was working on game stuff that M$ ported .Net Core to web assembly. I also heard Linq and runtime Generics were 
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
+
+#### 3/9/2026
+
+Added basic landing pages for most functionality planned. Needs lots of merchantising. Needs more solid login and sessions and connected accounts. Getting spaced repetition and card
+editor working first. Just tried it on Android build and it works! But needs lots of formatting and fixing, scolling issues on menu.
 
 #### 2/22/2026
 

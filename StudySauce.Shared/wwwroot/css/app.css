@@ -94,6 +94,7 @@ h1:focus {
     background: rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     display: flex;
+    max-width: 100%;
     flex-direction: column;
 }
 
@@ -173,3 +174,28 @@ h1:focus {
     box-shadow: 3px 3px 15px rgba(0, 0, 0, 1.0);
 }
 
+@media (max-width: 640px) {
+    .big-button {
+        position: static;
+        margin: 20px auto;
+        display: inline-block;
+
+    }
+
+    .page.home article {
+        text-align: center;
+    }
+
+    .study-now {
+        position:static;
+        margin-top: 0;
+        margin-left: 0;
+        left: auto;
+        top: auto;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        text-align: left;
+        padding: 20px;
+    }
+}
