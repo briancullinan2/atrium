@@ -1,23 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
+		<TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
+
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-		<!-- changed based on what we are building for -->
-		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
-		<OutputPath>..\StudySauce\bin\$(Configuration)\$(RuntimeIdentifier)\</OutputPath>
+
 		<Platforms>AnyCPU</Platforms>
 		<PlatformTarget>AnyCPU</PlatformTarget>
-
 		<Prefer32Bit>false</Prefer32Bit>
 	</PropertyGroup>
 
+	<PropertyGroup>
+		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+	</PropertyGroup>
+	
 	<ItemGroup>
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.3" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
 	</ItemGroup>
 
 </Project>

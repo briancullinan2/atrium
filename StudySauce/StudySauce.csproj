@@ -20,7 +20,8 @@
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
+	  <WasmFingerprintAssets>false</WasmFingerprintAssets>
+	  
 	  <!-- Enable XAML source generation for faster build times and improved performance.
          This generates C# code from XAML at compile time instead of runtime inflation.
          To disable, remove this line.
@@ -50,10 +51,7 @@
 
 	  <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
 		<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-	  <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-	  <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 	  <RuntimeIdentifier Condition="$(TargetFramework.Contains('-windows'))">win-x64</RuntimeIdentifier>
-	  <OutputPath>.\bin\$(Configuration)\$(RuntimeIdentifier)\</OutputPath>
   </PropertyGroup>
 	
   <ItemGroup>
@@ -72,6 +70,10 @@
 
     <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <AndroidResource Remove="Platforms\Android\Resources\values\styles.xml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -109,11 +111,17 @@
     <ProjectReference Include="..\StudySauce.Shared\StudySauce.Shared.csproj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </ProjectReference>
-    <ProjectReference Include="..\StudySauce.Web.Client\StudySauce.Web.Client.csproj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </ProjectReference>
   </ItemGroup>
-
+	
+	
+	<ItemGroup Condition="$(TargetFramework.Contains('windows'))">
+		<ProjectReference Include="..\StudySauce.Web.Client\StudySauce.Web.Client.csproj">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</ProjectReference>
+	</ItemGroup>
+	
+	
+	
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
 		<ItemGroup>
 			<_GeneratedWinIcon Include="$(IntermediateOutputPath)resizetizer\r\teardrop.ico" />

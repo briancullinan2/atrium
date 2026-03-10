@@ -6,6 +6,7 @@ namespace StudySauce.Services
 
     public class LocalServer : ILocalServer
     {
+#if WINDOWS
         private WebApplication app;
 
         public string BaseUrl => app.Urls.FirstOrDefault() ?? "http://localhost:5000";
@@ -24,6 +25,9 @@ namespace StudySauce.Services
         {
             app = _app;
         }
-
+#else
+        public string BaseUrl => "http://localhost:5000";
+        public async Task StopAsync() { }
+#endif
     }
 }
