@@ -38,17 +38,14 @@
         <div class="preview-footer">
             @if (card.ResponseType == DataLayer.Customization.CardType.FlashCard) // Flashcard mode
             {
-                <button class="preview-tap" @onclick="Flip">Click to see answer</button>
             }
             else if (card.ResponseType == DataLayer.Customization.CardType.Short)
             {
                 <input type="text" placeholder="Enter your best guess" />
-                <button class="preview-tap" @onclick="Flip">Submit</button>
             }
             else if (card.ResponseType == DataLayer.Customization.CardType.TrueFalse) // True/False
             {
-                <button @onclick="@(() => HandleAnswer(null))" class="preview-false">False</button>
-                <button @onclick="@(() => HandleAnswer(null))" class="preview-true">True</button>
+                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, HandleAnswer))" TModel="DataLayer.Entities.Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
             }
             else if (card.ResponseType == DataLayer.Customization.CardType.Multiple) // Multiple Choice
             {

@@ -167,3 +167,17 @@ h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {
 .navbar-brand:hover {
     text-decoration: none;
 }
+
+@media (max-width: 640px) {
+
+    heading.flex-row 
+    {
+        display:none;
+    }
+
+    .flex-row {
+        flex-direction: column;
+        padding: 10px 0;
+    }
+}
+

@@ -32,6 +32,14 @@
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
         <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
+        @if (card?.ResponseType == CardType.FlashCard)
+        {
+            <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for answer</a>
+        }
+        else if (CurrentQuiz?.ElementAt(i).ResponseType == CardType.Short)
+        {
+            <button class="cta preview-tap" @onclick="() => { QuizStep++; StateHasChanged(); }">Submit</button>
+        }
     </div>
 
     <div class="flash-card @(GetDisplayClass(i * 2 + 1))" style="@(QuizStep == (i * 2 + 1) ? CurrentManualTransform : "") user-select:none;"
@@ -104,7 +112,7 @@
     private IEnumerable<PropertyMetadata>? ResultLayout;
     public int? PreviousStep { get; set; }
     public int QuizStep { get; set; } = 0;
-    public int? TotalCards { get => CurrentQuiz?.Count(); }
+    public int? TotalCards { get => CurrentQuiz?.Count() * 2; }
     private bool Dragging = false;
     private double CumulativeX = 0;
     private double CumulativeY = 0;
@@ -141,7 +149,7 @@
             // Auto-trigger the full animation if they hit 100%
             double distance = Math.Sqrt(Math.Pow(CumulativeX, 2) + Math.Pow(CumulativeY, 2));
 
-            if (distance >= MaxDistance / 5)
+            if (distance >= MaxDistance / 6)
             {
                 NextStep();
             }

@@ -64,6 +64,13 @@
                 else
                     Next(StepMode.Video);
             }"><span class="bi bi-chevron-left"></span> Back</button>
+            @if(CurrentQuiz?.ElementAt(i).ResponseType == CardType.FlashCard)
+            {
+                <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => { QuizStep++; StateHasChanged(); }">Tap or Swipe for answer</a>
+            } else if (CurrentQuiz?.ElementAt(i).ResponseType == CardType.Short)
+            {
+                <button class="cta preview-tap" @onclick="() => { QuizStep++; StateHasChanged(); }">Submit</button>
+            }
             @if (Responses.Count() == CurrentQuiz?.Count())
             {
                 <button class="cta" @onclick="() => Next(StepMode.Reward)">See Reward</button>
