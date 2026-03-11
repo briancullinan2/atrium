@@ -45,12 +45,18 @@ a .bi {
     font-size:16px;
 }
 
+
+.link-list > a:last-child,
+.link-list > button:last-child,
 .highlighted-link > a:last-child,
 .highlighted-link > button:last-child {
     margin-left:auto;
 }
 
-.link-list > a:first-of-type
+.highlighted-link > button:first-child,
+.link-list > button:first-child,
+.highlighted-link > a:first-child,
+.link-list > a:first-child
 {
     margin-left: 0;
 }

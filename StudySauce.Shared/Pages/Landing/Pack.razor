@@ -32,14 +32,21 @@
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
         <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
-        @if (card?.ResponseType == CardType.FlashCard)
-        {
-            <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for answer</a>
-        }
-        else if (CurrentQuiz?.ElementAt(i).ResponseType == CardType.Short)
-        {
-            <button class="cta preview-tap" @onclick="() => { QuizStep++; StateHasChanged(); }">Submit</button>
-        }
+        <div class="highlighted-link">
+            @if (QuizStep > 0)
+            {
+                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span> Back</button>
+            }
+
+            @if (card?.ResponseType == CardType.FlashCard)
+            {
+                <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for answer</a>
+            }
+            else if (CurrentQuiz?.ElementAt(i).ResponseType == CardType.Short)
+            {
+                <button class="cta preview-tap" @onclick="() => NextStep()">Submit</button>
+            }
+        </div>
     </div>
 
     <div class="flash-card @(GetDisplayClass(i * 2 + 1))" style="@(QuizStep == (i * 2 + 1) ? CurrentManualTransform : "") user-select:none;"
@@ -49,10 +56,13 @@
          @ondragend="DragStop"
          @onmousedown="DragStart"
          @onmouseup="DragStop"
-         @onmousemove="HandleMove" 
-         @onclick="() => NextStep()">
+         @onmousemove="HandleMove">
         <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
         <div class="link-list">
+            @if (QuizStep > 0)
+            {
+                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span> Back</button>
+            }
             <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for next card</a>
         </div>
     </div>
@@ -154,6 +164,18 @@
                 NextStep();
             }
         }
+    }
+
+
+    protected void LastStep()
+    {
+        PreviousStep = QuizStep;
+        QuizStep--;
+        CurrentManualTransform = "";
+        CumulativeX = 0;
+        CumulativeY = 0;
+        Dragging = false;
+        StateHasChanged();
     }
 
 

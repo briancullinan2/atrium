@@ -135,7 +135,9 @@
 .Answers-form-field {
     display: flex;
     flex-direction: column;
+    margin-bottom: 20px;
 }
+
 
 .pulse-animation {
     animation: pulse 2s infinite;
