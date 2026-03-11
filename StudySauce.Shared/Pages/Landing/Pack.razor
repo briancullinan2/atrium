@@ -45,7 +45,7 @@
          @onclick="() => NextStep()">
         <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
         <div class="link-list">
-            <a class="deemphasize" @onclick="() => NextStep()">Tap or Swipe for next card</a>
+            <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for next card</a>
         </div>
     </div>
 }
