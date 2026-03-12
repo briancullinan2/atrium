@@ -5,6 +5,7 @@
 @page "/demo/{Id:int}"
 @inject NavigationManager Nav
 @inject ILoginService LoginService
+@inject ITitleService TitleService
 @using StudySauce.Shared.Services
 @using StudySauce.Shared.Controls
 @using System.ComponentModel
@@ -257,7 +258,11 @@
             var due = up?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
             CurrentQuiz = up?.Pack?.Cards.Where(c => due.Contains(c.Id) == true) ?? [];
         }
+
+        TitleService.UpdateTitle(CurrentQuiz?.ElementAt(QuizStep).Pack?.Title);
+
     }
+
 
     /*
     protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)

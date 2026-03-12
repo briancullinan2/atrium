@@ -98,7 +98,7 @@
     [Category("Cards")]
     public IEnumerable<DataLayer.Entities.Card>? CurrentCards { get => CurrentPack?.Cards; }
     [Category("Edit")]
-    public IEnumerable<Controls.EditCardControl.EditControl>? EditCards { get => CurrentCards?.Select(c => new EditCardControl.EditControl() { Card = c }); }
+    public IEnumerable<Controls.EditCardControl.EditControl>? EditCards { get => CurrentCards?.Select((c, i) => new EditCardControl.EditControl() { Card = c, Index = i + 1 }); }
 
     public PropertyMetadata? TitleLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }

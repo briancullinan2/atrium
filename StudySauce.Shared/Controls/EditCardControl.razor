@@ -11,6 +11,7 @@
 
         public DataLayer.Customization.ControlMode? Mode { get; set; } = DataLayer.Customization.ControlMode.View;
         public bool IsCollapsed { get; set; } = true;
+        public int? Index { get; set; }
     }
 
     public static EntityMetadata Metadata = new EntityMetadata(typeof(Controls.EditCardControl));
@@ -47,7 +48,7 @@
     <div @onclick="() => ToggleCard(card)" class="flex-row Card-form-container auto-form-container @(card.Mode.ToString())">
         @if (card.Mode == DataLayer.Customization.ControlMode.Edit)
         {
-            <span>@(Data?.IndexOf(card) + 1)</span>
+            <span>@(card.Index)</span>
             <div class="form-field Content-form-field" b-apmja2q7gc="">
                 <input value="@card.Card?.Content" type="text" maxlength="4096" class="my-custom-input-style">
             </div>
@@ -105,7 +106,7 @@
         {
             <span>
                 <span class="bi @(card.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down")"></span>
-                @(Data?.IndexOf(card) + 1)
+                @(card.Index)
             </span>
             <span>@card.Card?.Content</span>
             <span>@card.Card?.ResponseContent</span>
