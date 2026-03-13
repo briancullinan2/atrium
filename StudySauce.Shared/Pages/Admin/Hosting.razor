@@ -8,6 +8,12 @@
 <SyncedTitle Title="Hosting"></SyncedTitle>
 
 <div class="flash-card hosting">
+
+    <div>
+        <label>Enable HTTP hosting</label>
+        <input type="checkbox" />
+    </div>
+
     <AccordionSection IsExpanded="IsWorking != true" Title="Become A Host">
         <p>The easiest pipeline to monitored hosting is to enable the Study Sauce web service.</p>
         <p>Then use cloud-flared reverse tunnel to secure your domain past any firewall restrictions.</p>
@@ -24,7 +30,8 @@
         @if (!OperatingSystem.IsWindows())
         {
             <p>Click here to run Study Sauce service install</p>
-        } else
+        }
+        else
         {
             <p>Run Study Sauce desktop to use your own hosted service</p>
         }

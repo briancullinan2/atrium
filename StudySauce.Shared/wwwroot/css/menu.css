@@ -7,7 +7,7 @@
 .top-row > .contextual-menu {
     white-space: nowrap;
     max-width: 100%;
-    min-width: 200px;
+    min-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
     flex-grow: 1;
@@ -102,26 +102,83 @@ header.top-row a:first-child {
 }
 
 
+@media (max-width: 1200px) {
+    .top-row > .contextual-menu > *:nth-last-child(6) {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .top-row > .contextual-menu > *:nth-last-child(5) {
+        display: none;
+    }
+}
+
+@media (max-width: 1000px) {
+    .top-row > .contextual-menu > *:nth-last-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .top-row > .contextual-menu > *:nth-last-child(3) {
+        display: none;
+    }
+}
+
+@media (max-width: 800px) {
+    .top-row > .contextual-menu > *:nth-last-child(2) {
+        display: none;
+    }
+}
+
+
 @media (max-width: 640px)
 {
-    .top-row > .contextual-menu > *:first-child,
-    .top-row > .contextual-menu > *:nth-child(2) {
+    .top-row > .contextual-menu > *:nth-last-child(1) {
         display: none;
     }
 
+    header.top-row > h2 ~ .contextual-menu {
+        display: none;
+    }
+
+    .top-row > .contextual-menu > *:nth-last-child(6),
+    .top-row > .contextual-menu > *:nth-last-child(5) {
+        display: none;
+    }
+
+    .top-row > .contextual-menu > *:nth-last-child(3),
+    .top-row > .contextual-menu > *:nth-last-child(2),
+    .top-row > .contextual-menu > *:nth-last-child(1) {
+        display: flex;
+    }
+
+    header.top-row > h2 ~ .contextual-menu {
+        display: flex;
+    }
 }
 
 
-@media (max-width: 540px) {
-    .top-row > .contextual-menu > *:nth-child(3),
-    .top-row > .contextual-menu > *:nth-child(4) {
+@media (max-width: 600px) {
+    .top-row > .contextual-menu > *:nth-last-child(4),
+    .top-row > .contextual-menu > *:nth-last-child(3) {
         display: none;
     }
 }
 
-@media (max-width: 440px) {
-    .top-row > .contextual-menu > *:nth-child(5),
-    .top-row > .contextual-menu > *:nth-child(6) {
+@media (max-width: 500px) {
+    .top-row > .contextual-menu > *:nth-last-child(2) {
+        display: none;
+    }
+}
+
+@media (max-width: 350px) {
+    .top-row > .contextual-menu > *:nth-last-child(1) {
+        display: none;
+    }
+
+    header.top-row > h2 ~ .contextual-menu {
         display: none;
     }
 }

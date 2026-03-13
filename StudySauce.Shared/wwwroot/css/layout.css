@@ -75,7 +75,7 @@ main {
 
     main
     {
-        overflow-y:visible;
+        overflow:visible;
     }
 
     .top-row a, .top-row .btn-link {

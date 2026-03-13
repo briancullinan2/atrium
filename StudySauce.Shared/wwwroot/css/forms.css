@@ -363,3 +363,54 @@ heading.flex-row > * {
     width: 44px;
     display: flex;
 }
+
+@media (max-width: 800px) {
+
+    .user-account,
+    .pack-edit,
+    .user-add {
+        flex-direction:column;
+        flex-wrap:nowrap;
+    }
+    .user-account > *,
+    .pack-edit > *,
+    .user-add > * {
+        flex-basis: unset;
+    }
+}
+
+
+@media (max-width: 640px) {
+
+    .user-account,
+    .pack-edit,
+    .user-add {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .user-account > *,
+    .pack-edit > *,
+    .user-add > * {
+        flex-basis: 50%;
+    }
+}
+
+
+@media (max-width: 500px) {
+
+    .user-account,
+    .pack-edit,
+    .user-add {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .user-account > *,
+    .pack-edit > *,
+    .user-add > * {
+        flex-basis: unset;
+    }
+}
+
+
