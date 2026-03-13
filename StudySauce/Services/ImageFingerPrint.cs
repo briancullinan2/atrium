@@ -5,9 +5,10 @@ using OpenCvSharp.ImgHash;
 using System.Runtime.InteropServices;
 using Size = OpenCvSharp.Size;
 
+
 namespace StudySauce.Services
 {
-    internal class FingerPrint
+    internal static class ImageFingerPrint
     {
         private static Net? _net;
 
@@ -56,62 +57,12 @@ namespace StudySauce.Services
         }
 
 
-        public static long Text(string text)
-        {
-            // 1. Tokenize and clean (Lowercase, remove punctuation)
-            var tokens = text.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            // 2. Hash each token and weigh them
-            int[] v = new int[64];
-            foreach (var token in tokens)
-            {
-                long hash = GetFNV1aHash(token); // Standard 64-bit hash
-                for (int i = 0; i < 64; i++)
-                {
-                    // Bitwise weighting
-                    if (((hash >> i) & 1) == 1) v[i]++;
-                    else v[i]--;
-                }
-            }
-
-            // 3. Fingerprint construction
-            long fingerprint = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                if (v[i] > 0) fingerprint |= (1L << i);
-            }
-            return fingerprint;
-        }
-
-        public static long GetFNV1aHash(string text)
-        {
-            // FNV-1a constants for 64-bit
-            const ulong offsetBasis = 0xcbf29ce484222325;
-            const ulong prime = 0x100000001b3;
-
-            ulong hash = offsetBasis;
-
-            // Use unchecked to allow the math to wrap around naturally
-            unchecked
-            {
-                foreach (char c in text)
-                {
-                    // FNV-1a order: XOR then Multiply
-                    hash ^= (ushort)c;
-                    hash *= prime;
-                }
-            }
-
-            // Return as long for database compatibility (BIGINT)
-            return (long)hash;
-        }
-
-        static FingerPrint()
+        static ImageFingerPrint()
         {
             _net = CvDnn.ReadNetFromOnnx("wwwroot/models/feature_extractor.onnx");
         }
 
-        public double VerifyAuthorship(Mat img1, Mat img2)
+        public static double VerifyAuthorship(Mat img1, Mat img2)
         {
             // 1. Load the pre-trained model (e.g., SqueezeNet or a ReID model)
             // You only need to do this once, ideally cached in a DI singleton
@@ -141,7 +92,7 @@ namespace StudySauce.Services
         }
 
 
-        public byte[] GetImageFingerprint(Mat img)
+        public static byte[] GetImageFingerprint(Mat img)
         {
             using var hasher = PHash.Create();
             using var hash = new Mat();
@@ -155,7 +106,7 @@ namespace StudySauce.Services
             return bytes;
         }
 
-        public double CompareFingerprints(byte[] hash1, byte[] hash2)
+        public static double CompareFingerprints(byte[] hash1, byte[] hash2)
         {
             using var hasher = PHash.Create();
 
@@ -166,5 +117,6 @@ namespace StudySauce.Services
             // Returns the Hamming distance (0 = identical)
             return hasher.Compare(mat1, mat2);
         }
+
     }
 }

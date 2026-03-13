@@ -116,7 +116,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Packs />);
+        MenuService.SetMenu(@<StudySauce.Shared.Pages.Shared.Packs />);
         FilesLayout = Pages.Content.Upload.Metadata.Categories["Display"]?.ToList();
         CardsLayout = Pages.Content.Upload.Metadata.Categories["Content"]?.ToList();
         File.OnFileDragging += OnDragging;

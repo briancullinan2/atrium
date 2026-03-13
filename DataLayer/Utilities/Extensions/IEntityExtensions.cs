@@ -99,6 +99,7 @@ namespace DataLayer.Utilities.Extensions
                     // 1. Perform relational checks here (e.g., does the linked Facility exist?)
                     // if (!context.Facilities.Any(f => f.Id == messageEntity.FacilityId)) 
                     //    throw new Exception("Invalid Facility Link");
+                    ent._target.CanonicalFingerprint = ent._target.GetHashCode();
 
                     // 2. Add the primary entity
                     if (recurse == false)

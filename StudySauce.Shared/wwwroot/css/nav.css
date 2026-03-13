@@ -196,7 +196,6 @@ a .bi {
         z-index: 100;
         transition: height ease-in-out 0.6s;
     }
-
 }
 
 @media (min-width: 640px) {
