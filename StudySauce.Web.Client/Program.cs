@@ -16,6 +16,7 @@ builder.Services.AddSingleton<IStudyService, StudyService>();
 builder.Services.AddSingleton<ILoginService, LoginService>();
 builder.Services.AddSingleton<ICourseService, CourseService>();
 builder.Services.AddSingleton<IJsonService, StateService>();
+builder.Services.AddSingleton<IStatusService, StatusService>();
 builder.Services.AddScoped<HttpClient>(sp => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
@@ -40,6 +41,7 @@ var app = builder.Build();
 RemoteQuery._service = app.Services;
 FileManager._service = app.Services;
 AnkiService._service = app.Services;
+StatusService._service = app.Services;
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();
 var navigation = app.Services.GetRequiredService<NavigationManager>();

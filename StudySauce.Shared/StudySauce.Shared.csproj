@@ -27,4 +27,11 @@
     </ProjectReference>
   </ItemGroup>
 
+
+  <ItemGroup>
+    <Content Update="wwwroot\teardrop.svg">
+      <Color>transparent</Color>
+    </Content>
+  </ItemGroup>
+
 </Project>

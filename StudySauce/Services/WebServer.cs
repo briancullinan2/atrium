@@ -47,6 +47,7 @@ namespace StudySauce.Services
             webBuilder.Services.AddSingleton<IJsonService, JsonService>();
             webBuilder.Services.AddSingleton<IFileManager, FileManager>();
             webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
+            webBuilder.Services.AddSingleton<IStatusService, StatusService>();
             webBuilder.Services.AddScoped<HttpClient>(sp => new HttpClient
             {
 
@@ -143,6 +144,7 @@ namespace StudySauce.Services
             webApp.MapPost("/api/inspect", AnkiService.OnInspectFile);
             webApp.MapPost("/api/search", AnkiService.OnSearchAnki);
             webApp.MapPost("/api/download", AnkiService.OnDownloadAnki);
+            webApp.MapPost("/api/status", StatusService.OnStatusCheck);
 
             webApp.MapRazorComponents<Components.App>()
                 .AddInteractiveServerRenderMode()

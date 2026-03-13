@@ -20,13 +20,14 @@
     // or instance-based if you want it to reset on every visit.
     private static Dictionary<string, bool> _states = new();
 
-    private bool IsExpanded 
+    [Parameter]
+    public bool IsExpanded
     {
         get => _states.TryGetValue(Title, out var expanded) && expanded;
         set => _states[Title] = value;
     }
 
-    private void Toggle() => IsExpanded = !IsExpanded;
+    public void Toggle() => IsExpanded = !IsExpanded;
 
 
 

@@ -8,12 +8,12 @@ namespace StudySauce.Web.Client.Services
 {
     public class RemoteQuery : IQueryCompiler
     {
-        private readonly HttpClient _httpClient;
-        internal static IServiceProvider _service;
+        private readonly HttpClient? _httpClient;
+        internal static IServiceProvider? _service;
 
         public RemoteQuery()
         {
-            _httpClient = _service.GetRequiredService<HttpClient>();
+            _httpClient = _service?.GetRequiredService<HttpClient>();
         }
 
 
@@ -25,7 +25,7 @@ namespace StudySauce.Web.Client.Services
             Console.WriteLine("Converted: " + query.ToString());
 
             // Send to your remote endpoint
-            var response = _httpClient.PostAsJsonAsync("api/query", serialized).Result;
+            var response = _httpClient.PostAsJsonAsync("/api/query", serialized).Result;
 
             return response.Content.ReadFromJsonAsync<TResult>().Result;
         }

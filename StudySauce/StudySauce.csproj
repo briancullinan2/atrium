@@ -115,6 +115,7 @@
 	
 	
 	<ItemGroup Condition="$(TargetFramework.Contains('windows'))">
+		<PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.5" />
 		<ProjectReference Include="..\StudySauce.Web.Client\StudySauce.Web.Client.csproj">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</ProjectReference>

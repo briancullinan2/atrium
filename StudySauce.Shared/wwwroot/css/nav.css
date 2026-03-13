@@ -21,12 +21,13 @@ a .bi {
     overflow: hidden;
 }
 
+.flash-card > .highlighted-link,
 .highlighted-link {
     display: flex;
     justify-content: flex-start;
     vertical-align: middle;
     align-items: center;
-    flex-basis:100%;
+    flex-basis: 100%;
 }
 
 .link-list {

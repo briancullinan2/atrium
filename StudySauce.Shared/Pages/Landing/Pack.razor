@@ -6,6 +6,8 @@
 @inject NavigationManager Nav
 @inject ILoginService LoginService
 @inject ITitleService TitleService
+@inject IMenuService MenuService
+@inject IStudyService StudyService
 @using StudySauce.Shared.Services
 @using StudySauce.Shared.Controls
 @using System.ComponentModel
@@ -160,7 +162,7 @@
             // Auto-trigger the full animation if they hit 100%
             double distance = Math.Sqrt(Math.Pow(CumulativeX, 2) + Math.Pow(CumulativeY, 2));
 
-            if (distance >= MaxDistance / 6)
+            if (distance >= MaxDistance / 10)
             {
                 NextStep();
             }
@@ -217,6 +219,7 @@
         base.OnInitialized();
         CardLayout = Pages.Landing.Pack.Metadata.Categories["Display"]?.ToList();
         ResultLayout = Pages.Landing.Pack.Metadata.Categories["Results"]?.ToList();
+        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-study"></span> Study Mode</a>);
     }
 
     protected string? GetDisplayClass(int? step)

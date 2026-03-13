@@ -9,7 +9,7 @@ namespace StudySauce.Services
 #if WINDOWS
         private WebApplication app;
 
-        public string BaseUrl => app.Urls.FirstOrDefault() ?? "http://localhost:5000";
+        public string BaseUrl => app.Urls.FirstOrDefault() ?? "http://localhost:8080";
         public Task StopAsync() => app.StopAsync();
 
         internal void Initialize(WebApplication _app)
@@ -26,7 +26,7 @@ namespace StudySauce.Services
             app = _app;
         }
 #else
-        public string BaseUrl => "http://localhost:5000";
+        public string BaseUrl => "http://localhost:8080";
         public async Task StopAsync() { }
 #endif
     }

@@ -36,7 +36,7 @@ namespace StudySauce.Web.Client.Services
 
             content.Add(streamContent, "file", Path.GetFileName(localPath));
 
-            var response = await _httpClient?.PostAsync("api/upload", content);
+            var response = await _httpClient?.PostAsync("/api/upload", content);
             // TODO: update file list wasn't implemented until after saving
 
         }

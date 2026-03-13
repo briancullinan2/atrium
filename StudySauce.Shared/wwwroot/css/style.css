@@ -110,6 +110,7 @@ h4.inactive ~ *:not(h4) {
 
 h4.header-active ~ *:not(h4) {
     display: inline-block;
+    padding-bottom: 20px;
 }
 
 h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {

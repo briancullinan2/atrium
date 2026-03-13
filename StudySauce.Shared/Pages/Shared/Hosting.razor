@@ -1,0 +1,19 @@
+@foreach (var item in HeaderLinks)
+{
+    <NavLink class="header-link" href="@item.Href" Match="NavLinkMatch.All">
+        <i class="bi @item.Icon" aria-hidden="true"></i>
+        <span class="header-text">@item.Title</span>
+    </NavLink>
+}
+
+@code {
+    private List<INavMenuItem> HeaderLinks = new()
+    {
+        new NavMenuItem<Pages.Admin.Hosting>() { Title = "Hosting", Icon = "bi-hdd-network" },
+        new NavMenuItem<Pages.Content.Marshal>() { Title = "Marshalling", Icon = "bi-database-lock" },
+        new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
+        new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "bi-exclamation-triangle" }
+    };
+
+}
+

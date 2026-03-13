@@ -32,17 +32,18 @@
     </heading>
     <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.File, object?>>(this, OnAnkiSelected))" TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
 
-
-    @if (!OperatingSystem.IsWindows())
-    {
-        <InputFile OnChange="HandleFileSelection" />
-    }
-    else
-    {
-        <button class="btn btn-primary" @onclick="() => File.OpenFileDialog()">
-            <i class="bi bi-file-earmark-plus"></i> Open File
-        </button>
-    }
+    <div class="link-list">
+        @if (!OperatingSystem.IsWindows())
+        {
+            <InputFile class="cta" OnChange="HandleFileSelection" />
+        }
+        else
+        {
+            <button class="btn btn-primary" @onclick="() => File.OpenFileDialog()">
+                <i class="bi bi-file-earmark-plus"></i> Open File
+            </button>
+        }
+    </div>
 
     <h2>Content Controls</h2>
 

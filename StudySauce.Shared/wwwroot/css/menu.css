@@ -17,6 +17,21 @@
     transition: max-width ease-in-out 0.6s;
 }
 
+.top-row > .contextual-menu a,
+.top-row > .contextual-menu button
+{
+    cursor:pointer;
+}
+
+.bi-study::before {
+    content: " ";
+    mask: url(/_content/StudySauce.Shared/teardrop.svg) no-repeat center / contain;
+    width: 20px;
+    height: 20px;
+    background-size: 100% 100%;
+    background-color: currentColor;
+    color: white;
+}
 
 .top-row > * {
     flex-shrink: 1;

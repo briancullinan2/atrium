@@ -61,6 +61,7 @@ namespace StudySauce
             builder.Services.AddSingleton<IJsonService, JsonService>();
             builder.Services.AddSingleton<IFileManager, FileManager>();
             builder.Services.AddSingleton<IAnkiService, AnkiService>();
+            builder.Services.AddSingleton<IStatusService, StatusService>();
             builder.Services.AddScoped<HttpClient>(sp => new HttpClient
             {
 
@@ -97,6 +98,7 @@ namespace StudySauce
             MainPage._services = mauiApp.Services;
             FileManager._services = mauiApp.Services;
             AnkiService._services = mauiApp.Services;
+            StatusService._services = mauiApp.Services;
 
             // 2. Now you can create a scope from the built app
             using (var scope = mauiApp.Services.CreateScope())
