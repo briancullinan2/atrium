@@ -5,10 +5,10 @@
 
 @if (Model != null)
 {
-    <select value="@(Data?.ElementAt(0) != null ? Model.GetValue(Data.ElementAt(0)!) : "")">
-        @foreach (var value in Enum.GetValues(EnumType))
+    <select @bind="Value">
+        @foreach (var value in EnumValues)
         {
-            var attribute = EnumType.GetField(value.ToString()!)?.GetCustomAttribute<DescriptionAttribute>();
+            var attribute = EnumType?.GetField(value.ToString()!)?.GetCustomAttribute<DescriptionAttribute>();
             <option value="@value.ToString()">@(attribute != null ? attribute.Description : value.ToString())</option>
         }
     </select>
@@ -19,12 +19,45 @@
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
-    public System.Type EnumType {
+    [Parameter] public EventCallback<object>? ValueChanged { get; set; }
+    public object[] EnumValues
+    {
+        get
+        {
+            return EnumType == null ? [] :  Enum.GetValues(EnumType).Cast<object>().ToArray();
+        }
+    }
+    public System.Type? EnumType {
         get
         {
             if (Model == null) return default(Type);
             return Nullable.GetUnderlyingType(Model.PropertyType) ?? Model.PropertyType;
+        }
+    }
+
+    string? _value = null;
+    public string? Value
+    {
+        get
+        {
+            if (Data?.ElementAt(0) == null) return _value;
+            return Model?.GetValue(Data.ElementAt(0)!)?.ToString() ?? _value;
+        }
+        set
+        {
+            _value = value;
+            if (Data?.ElementAt(0) != null)
+            {
+                Model?.SetValue(Data.ElementAt(0)!, value);
+            }
+            if (EnumType != null && Enum.TryParse(EnumType, value, true, out var myEnum))
+            {
+                ValueChanged?.InvokeAsync(myEnum);
+            }
+            else
+            {
+                ValueChanged?.InvokeAsync(value);
+            }
         }
     }
 

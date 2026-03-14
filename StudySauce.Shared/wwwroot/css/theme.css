@@ -1,4 +1,6 @@
 ﻿
+
+
 .page, .theme-ivory {
     --slate-bg: #fdfdf2;
     --slate-surface: #ffffff;
@@ -9,7 +11,29 @@
     --amber-locus: #fbbf24;
     --text-main: #1e293b;
     --text-muted: #64748b;
+    --atrium-stone: #3f6212;
+    --atrium-nature: #10b981;
+    --atrium-electric: #67e8f9;
+    --atrium-gold: #fbbf24;
 }
+
+#theme-sensor
+{
+    height: 0;
+    width: 0;
+    opacity: 0;
+    position: absolute;
+}
+.sensor-bg { color: var(--slate-bg); }
+.sensor-surface { color: var(--slate-surface); }
+.sensor-primary { color: var(--cyan-bolt); }
+.sensor-secondary { color: var(--emerald-glow); }
+.sensor-main { color: var(--text-main); }
+.sensor-accent { color: var(--amber-locus); }
+.sensor-stone { color: var(--atrium-stone); }
+.sensor-nature { color: var(--atrium-nature); }
+.sensor-electric { color: var(--atrium-electric); }
+.sensor-gold { color: var(--atrium-gold); }
 
 .theme-darkslate {
     --slate-bg: #05050a;
@@ -178,6 +202,165 @@
     --text-main: #e5e5e5;
     --text-muted: #737373;
 }
+
+
+/* 1. Daybreak (Vibrant Pink/Orange) -> Soft Peach Card, Deep Purple Accents */
+.theme-daybreak {
+    --slate-bg: #fff0f5;
+    --slate-surface: #ffe4e1;
+    --slate-card: #fff5f0;
+    --slate-border: #ff0080;
+    --emerald-glow: #ff8c00;
+    --cyan-bolt: #ff0080;
+    --amber-locus: #800080;
+    --text-main: #4a0026;
+    --text-muted: #800080;
+}
+
+/* 2. Desert Sunset (Gold/Orange/Purple) -> Warm Sand Card, Sunset Accents */
+.theme-desertsunset {
+    --slate-bg: #fffbf0;
+    --slate-surface: #fdf5e6;
+    --slate-card: #fff8e1;
+    --slate-border: #ff4500;
+    --emerald-glow: #ffd700;
+    --cyan-bolt: #ff4500;
+    --amber-locus: #4b0082;
+    --text-main: #2d1b4d;
+    --text-muted: #4b0082;
+}
+
+/* 3. Ocean Ripple (Deep Blue/White) -> Midnight Slate Card, Cyan Accents */
+.theme-oceanripple {
+    --slate-bg: #000510;
+    --slate-surface: #0a1931;
+    --slate-card: #000080;
+    --slate-border: #00ffff;
+    --emerald-glow: #ffffff;
+    --cyan-bolt: #00ffff;
+    --amber-locus: #0000ff;
+    --text-main: #f0f9ff;
+    --text-muted: #00ffff;
+}
+
+/* 4. Silver Chrome (Metallic) -> Polished Ash Card, Chrome Accents */
+.theme-silverchrome {
+    --slate-bg: #f5f5f5;
+    --slate-surface: #e5e5e5;
+    --slate-card: #ffffff;
+    --slate-border: #7a7a7a;
+    --emerald-glow: #4d4d4d;
+    --cyan-bolt: #c0c0c0;
+    --amber-locus: #000000;
+    --text-main: #171717;
+    --text-muted: #4d4d4d;
+}
+
+/* 5. Coral Reef (Tropical Cyan/Pink) -> Mint/Seafoam Card, Coral Accents */
+.theme-coralreef {
+    --slate-bg: #e0fcfc;
+    --slate-surface: #f0fff0;
+    --slate-card: #fdf2f8;
+    --slate-border: #ff1493;
+    --emerald-glow: #00ced1;
+    --cyan-bolt: #ff1493;
+    --amber-locus: #ff7f50;
+    --text-main: #831843;
+    --text-muted: #be185d;
+}
+
+/* 6. Dusk (Deep Night) -> Obsidian Card, Ultra-Violet Accents */
+.theme-dusk {
+    --slate-bg: #020210;
+    --slate-surface: #000033;
+    --slate-card: #1a0033;
+    --slate-border: #330066;
+    --emerald-glow: #000066;
+    --cyan-bolt: #330066;
+    --amber-locus: #1a0033;
+    --text-main: #e0e7ff;
+    --text-muted: #818cf8;
+}
+
+/* 7. Rainbow Peak (Full Spectrum) -> Off-White Card, Prism Accents */
+.theme-rainbowpeak {
+    --slate-bg: #fafafa;
+    --slate-surface: #f0fdf4;
+    --slate-card: #ffffff;
+    --slate-border: #ff0000;
+    --emerald-glow: #00ff00;
+    --cyan-bolt: #00ffff;
+    --amber-locus: #ff00ff;
+    --text-main: #171717;
+    --text-muted: #0000ff;
+}
+
+/* 8. Golden Gate (Polished Gold) -> Ivory/Cream Card, Bronze Accents */
+.theme-goldengate {
+    --slate-bg: #fffdf0;
+    --slate-surface: #fefce8;
+    --slate-card: #ffffff;
+    --slate-border: #b8860b;
+    --emerald-glow: #ffd700;
+    --cyan-bolt: #b8860b;
+    --amber-locus: #451a03;
+    --text-main: #422006;
+    --text-muted: #b8860b;
+}
+
+/* 9. Emerald Forest (Deep Green) -> Mossy Slate Card, Lime Accents */
+.theme-emeraldforest {
+    --slate-bg: #020502;
+    --slate-surface: #061a06;
+    --slate-card: #004d00;
+    --slate-border: #adff2f;
+    --emerald-glow: #32cd32;
+    --cyan-bolt: #008000;
+    --amber-locus: #adff2f;
+    --text-main: #f0fdf4;
+    --text-muted: #32cd32;
+}
+
+/* 10. Night Vision (The Matrix) -> Pitch Black Card, Neon Accents */
+.theme-nightvision {
+    --slate-bg: #000000;
+    --slate-surface: #001100;
+    --slate-card: #000000;
+    --slate-border: #00ff00;
+    --emerald-glow: #003300;
+    --cyan-bolt: #00ff00;
+    --amber-locus: #00ff00;
+    --text-main: #00ff00;
+    --text-muted: #003300;
+}
+
+/* 11. Berry Blast (Candy Blue/Red) -> Deep Berry Card, Neon Cyan Accents */
+.theme-berryblast {
+    --slate-bg: #05051a;
+    --slate-surface: #0000ff;
+    --slate-card: #1e1b4b;
+    --slate-border: #ff00ff;
+    --emerald-glow: #dc143c;
+    --cyan-bolt: #ff00ff;
+    --amber-locus: #0000ff;
+    --text-main: #ffffff;
+    --text-muted: #ff00ff;
+}
+
+/* 12. Parchment (Academic Beige) -> Antique Paper Card, Leather Accents */
+.theme-parchment {
+    --slate-bg: #fcfaf2;
+    --slate-surface: #f5f5dc;
+    --slate-card: #ffffff;
+    --slate-border: #d2b48c;
+    --emerald-glow: #8b4513;
+    --cyan-bolt: #d2b48c;
+    --amber-locus: #f5f5dc;
+    --text-main: #451a03;
+    --text-muted: #8b4513;
+}
+
+
 
 .canvas-container {
     background: var(--slate-bg);

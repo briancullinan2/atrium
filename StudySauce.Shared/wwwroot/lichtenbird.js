@@ -118,6 +118,8 @@
             }
         }
     }
+
+
     function drawBirds(cubeNodes) {
         const birdCount = 3;
         const orbitRadius = 280;
@@ -170,6 +172,8 @@
     let fpsInterval = 1000 / fps;
     let lastDrawTime = performance.now();
     let isCancelled = false;
+    let lastColorUpdate = performance.now();
+    let colors = getThemeColors();
 
     function animate(currentTime) {
         if (isCancelled) return;
@@ -179,6 +183,9 @@
             return;
         }
         lastDrawTime = currentTime - (elapsed % fpsInterval);
+        if (currentTime - lastDrawTime > 1000) {
+            colors = getThemeColors();
+        }
 
         // Clean slate with background (Warm Cream/Beige)
         ctx.fillStyle = 'rgba(245, 240, 220, 0.1)';
