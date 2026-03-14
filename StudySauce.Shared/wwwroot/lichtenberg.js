@@ -21,7 +21,14 @@
         nz = y * sin + nz * cos;
 
         const factor = 400 / (nz + 600);
-        return { x: nx * factor + width / 2, y: ny * factor + height / 2, nz: nz };
+
+        // Snapping to integers using | 0 stops the sub-pixel grid artifacts 
+        // by ensuring lines start and end exactly on a physical pixel.
+        return {
+            x: (nx * factor + width / 2) | 0,
+            y: (ny * factor + height / 2) | 0,
+            nz: nz
+        };
     }
 
     function drawBranch(x1, y1, z1, x2, y2, z2, depth, jitterScale = 10) {

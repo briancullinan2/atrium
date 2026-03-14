@@ -635,6 +635,7 @@ a:hover, .btn-link:hover
 header.top-row, .top-row > *,
 .navbar-brand, .nav-item .nav-link, .page .top-row > a, .page .contextual-menu a, .top-row .btn-link {
     color: var(--slate-surface);
+    text-shadow: 0px 1px 2px var(--text-main);
 }
 
 .nav-link:hover, .nav-link.active {

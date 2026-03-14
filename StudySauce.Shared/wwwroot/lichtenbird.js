@@ -49,8 +49,9 @@
         const shiftY = Math.cos(time / 5) * 20;
 
         return {
-            x: (nx * factor) + (width / 2) + shiftX, // Apply Shift X
-            y: (ny * factor) + (height / 2) + shiftY, // Apply Shift Y
+            // The | 0 trick is a very fast way to floor a float in JS
+            x: ((nx * factor) + (width / 2) + shiftX) | 0,
+            y: ((ny * factor) + (height / 2) + shiftY) | 0,
             nz: nz
         };
     }
@@ -58,7 +59,8 @@
     /**
      * Draws a Lichtenberg branch, modified to look like glowing veins in stone.
      */
-    function drawBranch(x1, y1, z1, x2, y2, z2, depth, jitterScale = 10, isBaseStatue = true) {
+
+    function drawBranch(x1, y1, z1, x2, y2, z2, depth, jitterScale = 10, isBaseStatue = true, colors) {
         if (depth <= 0) return;
 
         const p1 = project(x1, y1, z1);
@@ -74,20 +76,24 @@
             // High depth: The core "Stone" structure
             if (depth > 4) {
                 // Stone Gray with subtle pulse
-                const gray = Math.floor(180 + pulse * 20);
-                color = `rgb(${gray}, ${gray}, ${gray})`;
-                shadowColor = `rgba(0, 0, 0, 0.2)`; // Light shadow
+                const [br, bg, bb] = normalizeColor(colors.stone);
+                color = `rgb(${br * pulse}, ${bg * pulse}, ${bb * pulse})`;
+                const [br2, bg2, bb2] = normalizeColor(colors.gold);
+                shadowColor = `rgba(${br2}, ${bg2}, ${bb2}, 0.2)`;
                 lineWidth = depth * 0.8;
             } else {
                 // Low depth: Electric Cyan Veins growing on the stone
-                color = `rgb(${80 + pulse * 100}, 255, ${150 + pulse * 105})`;
-                shadowColor = color; // Cyan glow
+                const [br, bg, bb] = normalizeColor(colors.electric);
+                color = `rgb(${pulse * br}, ${pulse * bg}, ${pulse * bb})`;
+                const [br2, bg2, bb2] = normalizeColor(colors.nature);
+                shadowColor = `rgba(${br2}, ${bg2}, ${bb2}, 0.4)`;
                 lineWidth = depth * 0.6 * pulse;
             }
         } else {
             // We use this function for the Bird too (no jitter needed)
-            color = `rgb(200, 200, 200)`; // Light Gray/Silver Bird
-            shadowColor = `rgba(255, 255, 255, 0.4)`; // Subtle white glow
+            color = colors.nature; // Light Gray/Silver Bird
+            const [br, bg, bb] = normalizeColor(colors.main);
+            shadowColor = `rgba(${br}, ${bg}, ${bb}, 0.4)`;
             lineWidth = 1.5;
         }
 
@@ -113,14 +119,18 @@
             const midZ = (z1 + z2) / 2 + (Math.random() - 0.5) * depth * jitterScale;
 
             if (Math.random() > 0.15) { // 85% chance to bifurcate
-                drawBranch(x1, y1, z1, midX, midY, midZ, depth - 1, jitterScale, isBaseStatue);
-                drawBranch(midX, midY, midZ, x2, y2, z2, depth - 1, jitterScale, isBaseStatue);
+                drawBranch(x1, y1, z1, midX, midY, midZ, depth - 1, jitterScale, isBaseStatue, colors);
+                drawBranch(midX, midY, midZ, x2, y2, z2, depth - 1, jitterScale, isBaseStatue, colors);
             }
         }
+
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+
     }
 
 
-    function drawBirds(cubeNodes) {
+    function drawBirds(cubeNodes, colors) {
         const birdCount = 3;
         const orbitRadius = 280;
         const birdSize = 20;
@@ -147,9 +157,9 @@
             const rightWing = [birdCX + dirZ * birdSize, birdCY - 10, birdCZ - dirX * birdSize];
 
             // 3. DRAW BIRD BODY
-            drawBranch(...head, ...leftWing, 2, 0, false);
-            drawBranch(...leftWing, ...rightWing, 2, 0, false);
-            drawBranch(...rightWing, ...head, 2, 0, false);
+            drawBranch(...head, ...leftWing, 2, 0, false, colors);
+            drawBranch(...leftWing, ...rightWing, 2, 0, false, colors);
+            drawBranch(...rightWing, ...head, 2, 0, false, colors);
 
             // 4. SHOCK THE STATUE (Proximity Strikes)
             cubeNodes.forEach((target, nodeIndex) => {
@@ -162,11 +172,12 @@
                 if (dist < 350) {
                     // Alternating wings for the start point
                     const origin = (nodeIndex % 2 === 0) ? leftWing : rightWing;
-                    drawBranch(origin[0], origin[1], origin[2], target[0], target[1], target[2], 4, 25, true);
+                    drawBranch(origin[0], origin[1], origin[2], target[0], target[1], target[2], 4, 25, true, colors);
                 }
             });
         }
     }
+
 
     let fps = 24;
     let fpsInterval = 1000 / fps;
@@ -205,11 +216,12 @@
             [size, size, size], [-size, size, size]
         ];
 
+
         // 1. Draw the Stabilized Cube Edges (Stone structure)
         for (let i = 0; i < 4; i++) {
-            drawBranch(...nodes[i], ...nodes[(i + 1) % 4], 5, 0); // Higher depth (5), zero jitter
-            drawBranch(...nodes[i + 4], ...nodes[((i + 1) % 4) + 4], 5, 0);
-            drawBranch(...nodes[i], ...nodes[i + 4], 5, 0);
+            drawBranch(...nodes[i], ...nodes[(i + 1) % 4], 5, 0, true, colors); // Higher depth (5), zero jitter
+            drawBranch(...nodes[i + 4], ...nodes[((i + 1) % 4) + 4], 5, 0, true, colors);
+            drawBranch(...nodes[i], ...nodes[i + 4], 5, 0, true, colors);
         }
 
         // 2. Draw Lichtenberg Bursts from Center (0,0,0) to corners (The Cyan Veins)
@@ -219,11 +231,13 @@
         //});
 
         // 3. Draw the Flying Triangular Bird
-        drawBirds(nodes);
+        drawBirds(nodes, colors);
 
         requestAnimationFrame(animate);
     }
+
     animate(0);
+
     return {
         dispose: () => {
             isCancelled = true;

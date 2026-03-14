@@ -20,8 +20,9 @@
         const shiftX = Math.sin(time * 0.5) * 20;
         const shiftY = Math.cos(time * 0.5) * 15;
         return {
-            x: (x * factor) + (width / 2) + shiftX,
-            y: (y * factor) + (height / 2) + shiftY,
+            // The | 0 trick is a very fast way to floor a float in JS
+            x: ((x * factor) + (width / 2) + shiftX) | 0,
+            y: ((y * factor) + (height / 2) + shiftY) | 0,
             scale: factor
         };
     }
@@ -30,7 +31,7 @@
      * Elemental Draw Logic
      * Types: 'stone', 'nature', 'electric', 'gold'
      */
-    function drawElementalBranch(x1, y1, z1, x2, y2, z2, depth, type = 'electric') {
+    function drawElementalBranch(x1, y1, z1, x2, y2, z2, depth, type = 'electric', colors) {
         if (depth <= 0) return;
 
         const p1 = project(x1, y1, z1);
@@ -44,27 +45,28 @@
         // Styling based on SVG definitions
         switch (type) {
             case 'stone':
-                ctx.strokeStyle = `rgba(63, 98, 18, ${0.3 + pulse * 0.2})`; // atriumStone moss
+                const [br, bg, bb] = normalizeColor(colors.stone);
+                ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${0.3 + pulse * 0.2})`;
                 ctx.lineWidth = depth * 1.5;
                 ctx.shadowBlur = 0;
                 break;
             case 'nature':
-                ctx.strokeStyle = `rgb(16, 185, 129)`; // natureBurst emerald
+                ctx.strokeStyle = colors.nature; // natureBurst emerald
                 ctx.lineWidth = depth * 0.8;
                 ctx.shadowBlur = depth * 2;
-                ctx.shadowColor = '#10b981';
+                ctx.shadowColor = colors.nature;
                 break;
             case 'electric':
-                ctx.strokeStyle = `rgb(103, 232, 249)`; // naturalGlow cyan
+                ctx.strokeStyle = colors.electric; // naturalGlow cyan
                 ctx.lineWidth = depth * 0.4 * pulse;
                 ctx.shadowBlur = depth * 5 * pulse;
-                ctx.shadowColor = '#67e8f9';
+                ctx.shadowColor = colors.electric;
                 break;
             case 'gold':
-                ctx.strokeStyle = '#fbbf24'; // goldGrad
+                ctx.strokeStyle = colors.gold; // goldGrad
                 ctx.lineWidth = 2;
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = '#fbbf24';
+                ctx.shadowColor = colors.gold;
                 break;
         }
 
@@ -78,8 +80,8 @@
             const midZ = (z1 + z2) / 2 + (Math.random() - 0.5) * depth * jitter;
 
             if (Math.random() > 0.2) {
-                drawElementalBranch(x1, y1, z1, midX, midY, midZ, depth - 1, type);
-                drawElementalBranch(midX, midY, midZ, x2, y2, z2, depth - 1, type);
+                drawElementalBranch(x1, y1, z1, midX, midY, midZ, depth - 1, type, colors);
+                drawElementalBranch(midX, midY, midZ, x2, y2, z2, depth - 1, type, colors);
             }
         }
 
@@ -132,10 +134,10 @@
 
         // 1. ANCHOR NODES (Elementals)
         const anchors = [
-            { pos: [-300, 200, 0], col: '#fbbf24', type: 'gold' },
-            { pos: [200, 200, 0], col: '#fbbf24', type: 'gold' },
-            { pos: [0, -350, 100], col: '#67e8f9', type: 'electric' },
-            { pos: [150, 0, -100], col: '#fb7185', type: 'nature' }
+            { pos: [-300, 200, 0], col: colors.gold, type: 'gold' },
+            { pos: [200, 200, 0], col: colors.gold, type: 'gold' },
+            { pos: [0, -350, 100], col: colors.electric, type: 'electric' },
+            { pos: [150, 0, -100], col: colors.nature, type: 'nature' }
         ];
 
         // 2. THE BIRDS (3 Orbitals)
@@ -150,7 +152,7 @@
             const bz = Math.sin(speed + angleOffset) * r;
 
             // Draw Bird Body
-            drawElementalBranch(bx, by, bz, bx + 20, by - 10, bz, 2, 'gold');
+            drawElementalBranch(bx, by, bz, bx + 20, by - 10, bz, 2, 'gold', colors);
 
             // 3. LICHTENBERG STRIKES to Anchors
             anchors.forEach(a => {
@@ -160,7 +162,7 @@
                 const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
                 if (dist < 400) {
-                    drawElementalBranch(bx, by, bz, a.pos[0], a.pos[1], a.pos[2], 4, i === 1 ? 'nature' : 'electric');
+                    drawElementalBranch(bx, by, bz, a.pos[0], a.pos[1], a.pos[2], 4, i === 1 ? 'nature' : 'electric', colors);
                 }
             });
         }
@@ -172,7 +174,7 @@
             archNodes.push([Math.cos(a) * 400, -Math.sin(a) * 400, 0]);
         }
         for (let i = 0; i < archNodes.length - 1; i++) {
-            drawElementalBranch(...archNodes[i], ...archNodes[i + 1], 6, 'electric');
+            drawElementalBranch(...archNodes[i], ...archNodes[i + 1], 6, 'electric', colors);
         }
 
         // 5. DRAW NODES
