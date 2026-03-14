@@ -18,6 +18,19 @@
     --text-sidebar: #ffffff;
 }
 
+.sensor
+{
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    border: 1px solid black;
+}
+
+.theme-settings .flex-row > *
+{
+    flex-shrink: 0;
+}
+
 #theme-sensor
 {
     height: 0;

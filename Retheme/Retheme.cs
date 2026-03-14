@@ -20,7 +20,7 @@ namespace Retheme
             var listener = new ThemeListener();
             ParseTreeWalker.Default.Walk(listener, tree);
 
-            return listener.Themes;
+            return listener.Themes.Values.ToList();
         }
     }
 }

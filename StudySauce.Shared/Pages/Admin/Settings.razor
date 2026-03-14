@@ -71,13 +71,24 @@
 </div>
 
 
-<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card theme-settings @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>Theme Name</label>
         <label>Background</label>
+        <label>Card</label>
+        <label>Border</label>
+        <label>Emerald</label>
+        <label>Bolt</label>
+        <label>Amber</label>
+        <label>Compliment</label>
+        <label>Text</label>
+        <label>Muted</label>
+        <label>Sidebar</label>
+        <label>Stone</label>
+        <label>Nature</label>
         <label>Electric</label>
-        <label>Locus</label>
+        <label>Gold</label>
         <label>Actions</label>
     </heading>
     @foreach (var theme in extractedThemes ?? [])
@@ -85,9 +96,10 @@
         <div class="flex-row">
             <span></span>
             <span>@theme.ClassName.Replace("theme-", "")</span>
-            <span>@theme.Variables.GetValueOrDefault("--slate-bg")</span>
-            <span>@theme.Variables.GetValueOrDefault("--atrium-electric")</span>
-            <span>@theme.Variables.GetValueOrDefault("--amber-locus")</span>
+            @foreach(var variableKey in ThemeVariableKeys)
+            {
+                <span><span class="sensor" style="background-color: @(@theme.Variables.GetValueOrDefault(variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
+            }
             <span></span>
         </div>
     }
@@ -99,10 +111,28 @@
     public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
     public List<Retheme.ThemeData>? extractedThemes { get; set;  } 
 
+    public static readonly List<string> ThemeVariableKeys = new()
+    {
+        "--slate-bg",
+        "--slate-surface",
+        "--slate-card",
+        "--slate-border",
+        "--emerald-glow",
+        "--cyan-bolt",
+        "--amber-locus",
+        "--amber-compliment",
+        "--text-main",
+        "--text-muted",
+        "--text-sidebar",
+        "--atrium-stone",
+        "--atrium-nature",
+        "--atrium-electric",
+        "--atrium-gold"
+    };
 
     private string? themeContent;
 
-    protected override async Task OnInitializedAsync()
+    protected async Task InitializeTheme()
     {
         // Path is relative to wwwroot
         //using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/_content/StudySauce.Shared/css/theme.css");
@@ -110,6 +140,7 @@
         //themeContent = await reader.ReadToEndAsync();
         themeContent = await FileManager.OpenFile("_content/StudySauce.Shared/css/theme.css");
         extractedThemes = Retheme.Theme.ExtractThemes(themeContent ?? "");
+        StateHasChanged();
     }
 
 
@@ -240,6 +271,7 @@
         MenuService?.SetMenu(@<StudySauce.Shared.Pages.Shared.Settings />);
         ThemeLayout = Pages.Admin.Settings.Metadata.Groups["Themes"]?.ToList();
         Nav.LocationChanged += OnLocationChanged;
+        _ = InitializeTheme();
     }
     
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
