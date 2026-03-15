@@ -18,25 +18,25 @@
 
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
-<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+<div class="flash-card app-settings @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
     <h2>Display Settings</h2>
-    <div>
+    <div class="form-row">
         <span>Show animated background from packs</span>
         <input type="checkbox" />
     </div>
-    <div>
+    <div class="form-row">
         <span>Match dark/light mode to OS</span>
         <input type="checkbox" />
     </div>
-    <div>
+    <div class="form-row">
         <span>Dark mode</span>
         <input type="checkbox" />
     </div>
-    <div>
+    <div class="form-row">
         <span>High contrast theme</span>
         <input type="checkbox" />
     </div>
-    <div>
+    <div class="form-row">
         <span>Start when computer starts</span>
         <input type="checkbox" />
     </div>
@@ -49,18 +49,18 @@
     <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
 
     <h2>Parental Controls</h2>
-    <div>
+    <div class="form-row">
         <span>Allow child accounts to subscribe to new content</span>
         <input type="checkbox" />
     </div>
 
 
     <h2>Telemetry</h2>
-    <div>
+    <div class="form-row">
         <span>Enable non-specific usage statistics sharing with content creators</span>
         <input type="checkbox" />
     </div>
-    <div>
+    <div class="form-row">
         <span>Enable non-specific usage statistics sharing with hosts</span>
         <input type="checkbox" />
     </div>

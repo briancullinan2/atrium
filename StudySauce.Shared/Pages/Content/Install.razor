@@ -1,14 +1,116 @@
-@page "/installai"
+@page "/install"
 
-<h2>Install AI</h2>
+@using System.Net.Http.Json
+@inject HttpClient Http
 
-Instructions for setting up Automatic1111 and llama.cpp/GGUF.
+<SyncedTitle Title="Install AI"></SyncedTitle>
 
-<h2>Parameter Builder</h2>
 
-Test the image generator and LLM with local HTTP requests.
+<div class="flash-card">
+    Instructions for setting up <a href="https://github.com/lllyasviel/stable-diffusion-webui-forge">Automatic1111</a> and <a href="https://github.com/ggml-org/llama.cpp">llama.cpp/GGUF</a>.
 
-<h2>Recent Activity</h2>
+    <h2>Parameter Builder</h2>
 
-Usage information on what queries are being used by the application.
+    Test the image generator and LLM with local HTTP requests.
 
+    <div class="row">
+        <div class="col-md-6">
+            <label>Service Endpoint</label>
+            <input @bind="ServiceUrl" class="form-control" placeholder="http://localhost:11434/api/generate" />
+        </div>
+        <div class="col-md-6">
+            <label>Model Name</label>
+            <input @bind="ModelName" class="form-control" placeholder="llama3" />
+        </div>
+        <div class="col-md-6">
+            <label>API Key</label>
+            <input @bind="ApiKey" class="form-control" placeholder="Api Key" />
+        </div>
+
+    </div>
+
+    <button class="btn btn-sm btn-outline-primary float-end" @onclick="AddParameter">+ Add</button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var parameter in Parameters)
+            {
+                <tr>
+                    <td><input @bind="parameter.Key" class="form-control" /></td>
+                    <td>
+                        <select @bind="parameter.Type" class="form-control">
+                            <option value="string">String</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean</option>
+                        </select>
+                    </td>
+                    <td>
+                        @if (parameter.Type == "boolean") {
+                            <input type="checkbox" @bind="parameter.BoolValue" />
+                        } else {
+                            <input @bind="parameter.Value" class="form-control" />
+                        }
+                    </td>
+                    <td>
+                        @if(Parameters.Count() > 1)
+                        {
+                            <button class="btn btn-danger btn-sm" @onclick="() => Parameters.Remove(parameter)">X</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="btn btn-success" @onclick="ExecutePost">Send Request</button>
+
+    <hr />
+    <pre>@ResponseJson</pre>
+
+    <h2>Recent Activity</h2>
+
+    Usage information on what queries are being used by the application.
+</div>
+@code {
+    private string ServiceUrl = "http://localhost:11434/api/generate";
+    private string ModelName = "llama3";
+    private string ApiKey = "";
+    private string ResponseJson = "Result will appear here...";
+    private List<DynamicParam> Parameters = new() { new DynamicParam() };
+
+    public class DynamicParam {
+        public string Key { get; set; } = "";
+        public string Type { get; set; } = "string";
+        public string Value { get; set; } = "";
+        public bool BoolValue { get; set; }
+    }
+
+    private void AddParameter() => Parameters.Add(new DynamicParam());
+
+    private async Task ExecutePost() {
+        // Build the dynamic payload
+        var payload = new Dictionary<string, object> {
+            { "model", ModelName },
+            { "stream", false } // Common for local AI APIs
+        };
+
+        foreach (var p in Parameters) {
+            if (p.Type == "number" && double.TryParse(p.Value, out var n)) payload[p.Key] = n;
+            else if (p.Type == "boolean") payload[p.Key] = p.BoolValue;
+            else payload[p.Key] = p.Value;
+        }
+
+        try {
+            var response = await Http.PostAsJsonAsync(ServiceUrl, payload);
+            ResponseJson = await response.Content.ReadAsStringAsync();
+        } catch (Exception ex) {
+            ResponseJson = $"Error: {ex.Message}";
+        }
+    }
+}
