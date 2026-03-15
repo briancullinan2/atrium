@@ -9,6 +9,17 @@ namespace FlashCard.Services
         Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null);
         Task<bool?> CheckInstalled();
     }
+
+
+    public class HostingSettings
+    {
+        public string? AccountId { get; set; }
+        public string? ApiToken { get; set; }
+        public string? TunnelName { get; set; }
+        public string? Domain { get; set; }
+    }
+
+
     public class StatusResponse
     {
         [JsonIgnore]

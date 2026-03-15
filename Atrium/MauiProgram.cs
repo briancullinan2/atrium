@@ -3,11 +3,11 @@
 using Microsoft.Extensions.Logging;
 #endif
 #endif
+using Atrium.Services;
 using DataLayer.Entities;
+using FlashCard.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Atrium.Services;
-using FlashCard.Services;
 
 namespace Atrium
 {
@@ -62,6 +62,8 @@ namespace Atrium
             builder.Services.AddSingleton<IFileManager, FileManager>();
             builder.Services.AddSingleton<IAnkiService, AnkiService>();
             builder.Services.AddSingleton<IStatusService, StatusService>();
+            builder.Services.AddSingleton<IThemeService, ThemeService>();
+            builder.Services.AddSingleton<IChatService, ChatService>();
             builder.Services.AddScoped<HttpClient>(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")
@@ -99,6 +101,7 @@ namespace Atrium
             FileManager._services = mauiApp.Services;
             AnkiService._services = mauiApp.Services;
             StatusService._services = mauiApp.Services;
+            ChatService._services = mauiApp.Services;
 
             // 2. Now you can create a scope from the built app
             using (var scope = mauiApp.Services.CreateScope())

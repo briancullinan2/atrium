@@ -52,19 +52,18 @@ namespace Atrium.Services
 
         public static async Task OnStatusCheck(HttpContext context)
         {
-            context.Response.ContentType = "application/json";
             string? tunnel = null;
             try
             {
 
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
-                var cloudflaredSettings = JsonSerializer.Deserialize<Dictionary<string, string?>>(jsonQuery);
-                if (cloudflaredSettings?.TryGetValue("ApiToken", out var ApiToken) == true
-                    && cloudflaredSettings?.TryGetValue("TunnelName", out var TunnelName) == true
-                    && cloudflaredSettings?.TryGetValue("AccountId", out var AccountId) == true)
+                var cloudflaredSettings = JsonSerializer.Deserialize<HostingSettings>(jsonQuery);
+                if (cloudflaredSettings?.ApiToken != null
+                    && cloudflaredSettings?.TunnelName != null
+                    && cloudflaredSettings?.AccountId != null)
                 {
-                    tunnel = await CheckTunnelStatus(AccountId, TunnelName, ApiToken);
+                    tunnel = await CheckTunnelStatus(cloudflaredSettings?.AccountId, cloudflaredSettings?.TunnelName, cloudflaredSettings?.ApiToken);
                 }
                 else
                 {
@@ -75,6 +74,8 @@ namespace Atrium.Services
             {
 
             }
+
+            context.Response.ContentType = "application/json";
 
             var json = JsonSerializer.Serialize(new StatusResponse()
             {
@@ -103,6 +104,7 @@ namespace Atrium.Services
 
         public async Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null)
         {
+            // TODO: save from desktop app if tunnel is working
             return await CheckTunnelStatus(_account, _tunnel, _api);
         }
 
@@ -138,6 +140,14 @@ namespace Atrium.Services
                 if (result == null) return null;
                 lastChecked = DateTime.Now;
                 lastStatus = result.Result?.FirstOrDefault()?.Status ?? "Unknown";
+
+                if (string.Equals(lastStatus, "healthy", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    // TODO: notice don't edit domain in this save
+
+                    // TODO: save connection info if it came from parameters in json file
+                }
+
                 return lastStatus;
             }
             catch (Exception ex)
@@ -150,11 +160,4 @@ namespace Atrium.Services
     public class CloudflareResponse { public List<TunnelInfo>? Result { get; set; } }
     public class TunnelInfo { public string? Status { get; set; } }
 
-    public class HostingSettings
-    {
-        public string? AccountId { get; set; }
-        public string? ApiToken { get; set; }
-        public string? TunnelName { get; set; }
-        public string? Domain { get; set; }
-    }
 }

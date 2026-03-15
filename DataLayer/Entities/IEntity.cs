@@ -89,6 +89,23 @@ namespace DataLayer.Entities
 
         public int? CanonicalFingerprint { get; set; } = null;
 
+        /*
+        [NotMapped]
+        public IEnumerable<PropertyInfo> DatabaseProperties { get => ListDatabaseProperties(typeof(T)); }
+        [NotMapped]
+        public IEnumerable<PropertyInfo> InterestingProperties { get => ListInterestingProperties(typeof(T)); }
+        */
+
+        private static IEnumerable<PropertyInfo> ListDatabaseProperties(Type type)
+        {
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =>
+                    p.GetGetMethod()?.IsVirtual != true
+                    && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute)));
+
+            return properties;
+        }
 
         private static IEnumerable<PropertyInfo> ListInterestingProperties(Type type)
         {

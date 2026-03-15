@@ -10,6 +10,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject IMenuService MenuService
+@inject IThemeService ThemeService
 @inject IStudyService StudyService
 @inject ILoginService LoginService
 @inject ITitleService TitleService
@@ -214,9 +215,9 @@
         TitleService.OnTitleChanged += SetTitle;
         MenuService.OnMenuChanged += SetHeaderMenu;
         MenuService.OnHeaderChanged += SetHeader;
-        MenuService.OnApplicationChanged += SetApplication;
-        MenuService.OnSidebarChanged += SetSidebar;
-        MenuService.OnBackgroundChanged += SetBackground;
+        ThemeService.OnApplicationChanged += SetApplication;
+        ThemeService.OnSidebarChanged += SetSidebar;
+        ThemeService.OnBackgroundChanged += SetBackground;
         StudyService.OnStudyChanged += SetStudyMode;
         LoginService.OnLoginChanged += SetLoginMode;
         LoginService.OnUserChanged += SetUser;
@@ -264,9 +265,9 @@
         }
     }
 
-    public Pages.Admin.Settings.ApplicationTheme? Application { get; set; }
+    public ApplicationTheme? Application { get; set; }
 
-    private void SetApplication(Pages.Admin.Settings.ApplicationTheme? theme)
+    private void SetApplication(ApplicationTheme? theme)
     {
         if (theme != Application)
         {
@@ -276,9 +277,9 @@
     }
 
 
-    public Pages.Admin.Settings.SidebarTheme? Sidebar { get; set; }
+    public SidebarTheme? Sidebar { get; set; }
 
-    private void SetSidebar(Pages.Admin.Settings.SidebarTheme? theme)
+    private void SetSidebar(SidebarTheme? theme)
     {
         if (theme != Sidebar)
         {
@@ -288,10 +289,10 @@
     }
 
 
-    public Pages.Admin.Settings.AnimationMode? Background { get; set; } = Pages.Admin.Settings.AnimationMode.None;
+    public AnimationMode? Background { get; set; } = AnimationMode.None;
     public bool initRender { get; set; } = true;
 
-    private void SetBackground(Pages.Admin.Settings.AnimationMode? theme)
+    private void SetBackground(AnimationMode? theme)
     {
         if (theme != Background)
         {
@@ -361,9 +362,9 @@
         Nav.LocationChanged -= OnLocationChanged;
         TitleService.OnTitleChanged -= SetTitle;
         MenuService.OnMenuChanged -= SetHeaderMenu;
-        MenuService.OnApplicationChanged -= SetApplication;
-        MenuService.OnSidebarChanged -= SetSidebar;
-        MenuService.OnBackgroundChanged -= SetBackground;
+        ThemeService.OnApplicationChanged -= SetApplication;
+        ThemeService.OnSidebarChanged -= SetSidebar;
+        ThemeService.OnBackgroundChanged -= SetBackground;
         StudyService.OnStudyChanged -= SetStudyMode;
         LoginService.OnLoginChanged -= SetLoginMode;
         LoginService.OnUserChanged -= SetUser;
@@ -400,7 +401,7 @@
             _animationCts = null;
         }
 
-        if(Background == Pages.Admin.Settings.AnimationMode.None)
+        if(Background == AnimationMode.None)
         {
             return;
         }

@@ -27,10 +27,12 @@ namespace WebClient.Services
             {
                 return recentResult.ItWorks?[0];
             }
-            var response = _httpClient?.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(new Dictionary<string, string?>() {
-                { "AccountId", _account },
-                { "TunnelName", _tunnel },
-                { "ApiToken", _api },
+            var response = _httpClient?.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
+            new HostingSettings()
+            {
+                AccountId = _account,
+                TunnelName = _tunnel,
+                ApiToken = _api
             }), System.Text.Encoding.UTF8, "application/json")).Result;
             if (response == null) return null;
             var result = await response.Content.ReadFromJsonAsync<StatusResponse>();

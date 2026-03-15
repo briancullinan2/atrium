@@ -1,7 +1,9 @@
 @page "/install"
 
 @using System.Net.Http.Json
+@using FlashCard.Services
 @inject HttpClient Http
+@inject IChatService ChatService
 
 <SyncedTitle Title="Install AI"></SyncedTitle>
 
@@ -14,6 +16,15 @@
     Test the image generator and LLM with local HTTP requests.
 
     <div class="row">
+        <div>
+            <label>Load Preset</label>
+            <select class="form-control" @onchange="ApplyPreset">
+                <option value="">-- Select a Service --</option>
+                @foreach(var preset in Services) {
+                    <option value="@preset.Name">@preset.Name</option>
+                }
+            </select>
+        </div>
         <div class="col-md-6">
             <label>Service Endpoint</label>
             <input type="text" @bind="ServiceUrl" class="form-control" placeholder="http://localhost:11434/api/generate" />
@@ -24,7 +35,7 @@
         </div>
         <div class="col-md-6">
             <label>API Key</label>
-            <input type="text" @bind="ApiKey" class="form-control" placeholder="Api Key" />
+            <input type="text" @bind="ApiKey" class="form-control" placeholder="Api Key @(ApiKeySample)" />
         </div>
 
     </div>
@@ -75,42 +86,45 @@
 
     <h2>Recent Activity</h2>
 
+
     Usage information on what queries are being used by the application.
 </div>
 @code {
+    private bool? IsWorking = null;
     private string ServiceUrl = "http://localhost:11434/api/generate";
     private string ModelName = "llama3";
     private string ApiKey = "";
+    private string ApiKeySample = "";
     private string ResponseJson = "Result will appear here...";
     private List<DynamicParam> Parameters = new() { new DynamicParam() };
+    private List<ServicePreset> Services = new();
 
-    public class DynamicParam {
-        public string Key { get; set; } = "";
-        public string Type { get; set; } = "string";
-        public string Value { get; set; } = "";
-        public bool BoolValue { get; set; }
+    private void ApplyPreset(ChangeEventArgs e) {
+        var preset = Services.FirstOrDefault(p => p.Name == e.Value?.ToString());
+        if (preset != null) {
+            ServiceUrl = preset.Url;
+            ModelName = preset.DefaultModel;
+            ApiKeySample = "(" + preset.ApiKey + ")";
+            Parameters = preset.Params.ToList(); // Clone the list
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _ = InitializePresets();
+    }
+
+
+    protected async Task InitializePresets()
+    {
+        Services = await ChatService.ListPresets();
+        StateHasChanged();
     }
 
     private void AddParameter() => Parameters.Add(new DynamicParam());
 
     private async Task ExecutePost() {
-        // Build the dynamic payload
-        var payload = new Dictionary<string, object> {
-            { "model", ModelName },
-            { "stream", false } // Common for local AI APIs
-        };
-
-        foreach (var p in Parameters) {
-            if (p.Type == "number" && double.TryParse(p.Value, out var n)) payload[p.Key] = n;
-            else if (p.Type == "boolean") payload[p.Key] = p.BoolValue;
-            else payload[p.Key] = p.Value;
-        }
-
-        try {
-            var response = await Http.PostAsJsonAsync(ServiceUrl, payload);
-            ResponseJson = await response.Content.ReadAsStringAsync();
-        } catch (Exception ex) {
-            ResponseJson = $"Error: {ex.Message}";
-        }
+        IsWorking = await ChatService.PingService(ServiceUrl, ModelName, ApiKey, Parameters);
     }
 }

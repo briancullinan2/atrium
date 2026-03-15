@@ -9,15 +9,6 @@ namespace FlashCard.Services
 
         Task SetHeader(bool? show);
         event Action<bool?>? OnHeaderChanged;
-
-        Task SetSidebar(Pages.Admin.Settings.SidebarTheme? theme);
-        event Action<Pages.Admin.Settings.SidebarTheme?>? OnSidebarChanged;
-
-        Task SetApplication(Pages.Admin.Settings.ApplicationTheme? theme);
-        event Action<Pages.Admin.Settings.ApplicationTheme?>? OnApplicationChanged;
-
-        Task SetBackground(Pages.Admin.Settings.AnimationMode? theme);
-        event Action<Pages.Admin.Settings.AnimationMode?>? OnBackgroundChanged;
     }
 
     public class MenuService : IMenuService
@@ -37,24 +28,5 @@ namespace FlashCard.Services
             OnHeaderChanged?.Invoke(show);
         }
 
-        public event Action<Pages.Admin.Settings.SidebarTheme?>? OnSidebarChanged;
-        public async Task SetSidebar(Pages.Admin.Settings.SidebarTheme? theme)
-        {
-            OnSidebarChanged?.Invoke(theme);
-        }
-
-        public event Action<Pages.Admin.Settings.ApplicationTheme?>? OnApplicationChanged;
-
-        public async Task SetApplication(Pages.Admin.Settings.ApplicationTheme? theme)
-        {
-            OnApplicationChanged?.Invoke(theme);
-        }
-
-        public event Action<Pages.Admin.Settings.AnimationMode?>? OnBackgroundChanged;
-
-        public async Task SetBackground(Pages.Admin.Settings.AnimationMode? theme)
-        {
-            OnBackgroundChanged?.Invoke(theme);
-        }
     }
 }

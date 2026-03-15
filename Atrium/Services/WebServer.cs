@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using FlashCard.Services;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
-using FlashCard.Services;
 
 namespace Atrium.Services
 {
@@ -48,6 +48,8 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IFileManager, FileManager>();
             webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
             webBuilder.Services.AddSingleton<IStatusService, StatusService>();
+            webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
+            webBuilder.Services.AddSingleton<IChatService, ChatService>();
             webBuilder.Services.AddScoped<HttpClient>(sp => new HttpClient
             {
 
@@ -145,6 +147,9 @@ namespace Atrium.Services
             webApp.MapPost("/api/search", AnkiService.OnSearchAnki);
             webApp.MapPost("/api/download", AnkiService.OnDownloadAnki);
             webApp.MapPost("/api/status", StatusService.OnStatusCheck);
+            webApp.MapPost("/api/chat/presets", ChatService.OnPresets);
+            webApp.MapPost("/api/chat/ping", ChatService.OnPing);
+            webApp.MapPost("/api/chat", ChatService.OnChat);
 
             webApp.MapRazorComponents<Components.App>()
                 .AddInteractiveServerRenderMode()
