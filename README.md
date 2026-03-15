@@ -24,6 +24,20 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 3/15/2026
+
+I am adding this theme editor for the app and I thought it looked cool enough to share.
+
+![Settings](./Docs/Screenshot%202026-03-15%20003359.png?raw=true)
+
+![Home](./Docs/Screenshot%202026-03-15%20003808.png?raw=true)
+
+![Packs](./Docs/Screenshot%202026-03-15%20003926.png?raw=true)
+
+![Study](./Docs/Screenshot%202026-03-15%20004257.png?raw=true)
+
+
+
 #### 3/9/2026
 
 Added basic landing pages for most functionality planned. Needs lots of merchantising. Needs more solid login and sessions and connected accounts. Getting spaced repetition and card

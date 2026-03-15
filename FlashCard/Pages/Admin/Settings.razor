@@ -317,9 +317,12 @@
         Nav.LocationChanged += OnLocationChanged;
         _ = InitializeTheme();
     }
-    
+
+    protected bool IsClosing = false;
+
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        if (IsClosing) return;
         SetControlMode();
     }
 
@@ -332,6 +335,7 @@
     
     public void Dispose()
     {
+        IsClosing = true;
         Nav.LocationChanged -= OnLocationChanged;
     }
 
