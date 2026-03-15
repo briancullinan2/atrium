@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace StudySauce.Entities
+namespace Atrium.Entities
 {
     [Table("payment")]
     public class Payment

@@ -1,0 +1,272 @@
+.award > .medal {
+    background: url("/_content/FlashCard/awards_compressed.png") no-repeat scroll 0 -150px transparent;
+    width: 150px;
+    height: 150px;
+    z-index: 4;
+    display: inline-block;
+    box-shadow: 0 0 5px rgba(255,255,255,.75);
+    border-radius: 100%;
+}
+
+.award > .medal.setup-pulse,
+.page-dashboard .awards > a.awarded[href="#setup-pulse"] span
+{
+    background-position:0 -150px;
+}
+
+.award > .medal.setup-linked,
+.page-dashboard .awards > a.awarded[href="#setup-linked"] span
+{
+    background-position:0 -300px;
+}
+
+.award > .medal.setup-hours,
+.page-dashboard .awards > a.awarded[href="#setup-hours"] span
+{
+    background-position:0 -450px;
+}
+
+.award > .medal.setup-milestone,
+.page-dashboard .awards > a.awarded[href="#setup-milestone"] span
+{
+    background-position:0 -600px;
+}
+
+.award > .medal.setup-outcome,
+.page-dashboard .awards > a.awarded[href="#setup-outcome"] span
+{
+    background-position:0 -750px;
+}
+
+.award > .medal.beginner-checkin,
+.page-dashboard .awards > a.awarded[href="#beginner-checkin"] span
+{
+    background-position:0 -1200px;
+}
+
+.award > .medal.beginner-checklist,
+.page-dashboard .awards > a.awarded[href="#beginner-checklist"] span
+{
+    background-position:0 -900px;
+}
+
+.award > .medal.beginner-commuter,
+.page-dashboard .awards > a.awarded[href="#beginner-commuter"] span
+{
+    background-position:0 -1050px;
+}
+
+.award > .medal.beginner-mix,
+.page-dashboard .awards > a.awarded[href="#beginner-mix"] span
+{
+    background-position:0 -1650px;
+}
+
+.award > .medal.beginner-breaks,
+.page-dashboard .awards > a.awarded[href="#beginner-breaks"] span
+{
+    background-position:0 -1800px;
+}
+
+.award > .medal.beginner-brain,
+.page-dashboard .awards > a.awarded[href="#beginner-brain"] span
+{
+    background-position:0 -1950px;
+}
+
+.award > .medal.beginner-cram,
+.page-dashboard .awards > a.awarded[href="#beginner-cram"] span
+{
+    background-position:0 -2100px;
+}
+
+.award > .medal.beginner-sponsored,
+.page-dashboard .awards > a.awarded[href="#beginner-sponsored"] span
+{
+    background-position:0 -2250px;
+}
+
+.award > .medal.beginner-chicken,
+.page-dashboard .awards > a.awarded[href="#beginner-chicken"] span
+{
+    background-position:0 -2400px;
+}
+
+.award > .medal.beginner-apples,
+.page-dashboard .awards > a.awarded[href="#beginner-apples"] span
+{
+    background-position:0 -2550px;
+}
+
+.award > .medal.beginner-jackpot,
+.page-dashboard .awards > a.awarded[href="#beginner-jackpot"] span
+{
+    background-position:0 -2700px;
+}
+
+.award > .medal.intermediate-flier,
+.page-dashboard .awards > a.awarded[href="#intermediate-flier"] span
+{
+    background-position:0 -1350px;
+}
+
+.award > .medal.intermediate-cross,
+.page-dashboard .awards > a.awarded[href="#intermediate-cross"] span
+{
+    background-position:0 -2850px;
+}
+
+.award > .medal.intermediate-breaker,
+.page-dashboard .awards > a.awarded[href="#intermediate-breaker"] span
+{
+    background-position:0 -3300px;
+}
+
+.award > .medal.intermediate-cured,
+.page-dashboard .awards > a.awarded[href="#intermediate-cured"] span
+{
+    background-position:0 -3450px;
+}
+
+.award > .medal.intermediate-disco,
+.page-dashboard .awards > a.awarded[href="#intermediate-disco"] span
+{
+    background-position:0 -3600px;
+}
+
+.award > .medal.intermediate-high,
+.page-dashboard .awards > a.awarded[href="#intermediate-high"] span
+{
+    background-position:0 -3750px;
+}
+
+.award > .medal.advanced-magellan,
+.page-dashboard .awards > a.awarded[href="#advanced-magellan"] span
+{
+    background-position:0 -1500px;
+}
+
+.award > .medal.advanced-bo,
+.page-dashboard .awards > a.awarded[href="#advanced-bo"] span
+{
+    background-position:0 -3150px;
+}
+
+.award > .medal.advanced-comber,
+.page-dashboard .awards > a.awarded[href="#advanced-comber"] span
+{
+    background-position:0 -3000px;
+}
+
+.award > .medal.advanced-nocram,
+.page-dashboard .awards > a.awarded[href="#advanced-nocram"] span
+{
+    background-position:0 -3900px;
+}
+
+.award > .medal.advanced-magneto,
+.page-dashboard .awards > a.awarded[href="#advanced-magneto"] span
+{
+    background-position:0 -4050px;
+}
+
+.award > .medal.advanced-wall,
+.page-dashboard .awards > a.awarded[href="#advanced-wall"] span
+{
+    background-position:0 -4200px;
+}
+
+.award > .medal.advanced-veni,
+.page-dashboard .awards > a.awarded[href="#advanced-veni"] span
+{
+    background-position:0 -4350px;
+}
+
+.award > .medal.beaver,
+.page-dashboard .awards > a.awarded[href="#beaver"] span
+{
+    background-position:0 -4500px;
+}
+
+.award > .medal.squirrel,
+.page-dashboard .awards > a.awarded[href="#squirrel"] span
+{
+    background-position:0 -4650px;
+}
+
+.award > .medal.study-metrics,
+.page-dashboard .awards > a.awarded[href="#study-metrics"] span
+{
+    background-position:0 -4800px;
+}
+
+.award > .medal.turtle,
+.page-dashboard .awards > a.awarded[href="#turtle"] span
+{
+    background-position:0 -4950px;
+}
+
+.award > .medal.bullwhip,
+.page-dashboard .awards > a.awarded[href="#bullwhip"] span
+{
+    background-position:0 -5100px;
+}
+
+.award > .medal.buddha,
+.page-dashboard .awards > a.awarded[href="#buddha"] span
+{
+    background-position:0 -5250px;
+}
+
+.award > .medal.ants,
+.page-dashboard .awards > a.awarded[href="#ants"] span
+{
+    background-position:0 -5400px;
+}
+
+.award > .medal.yoda,
+.page-dashboard .awards > a.awarded[href="#yoda"] span
+{
+    background-position:0 -5550px;
+}
+
+.award
+{
+    margin: 0 4%;
+    display:inline-block;
+    vertical-align: middle;
+    border:5px solid #555;
+    background: url(../images/noise_white.png) repeat #ffffff;
+    padding:20px 10px;
+    border-radius: 5px;
+    width: 500px;
+    max-width: 40%;
+    text-align: center;
+}
+
+.award h3
+{
+    text-align: center;
+    margin-bottom:20px;
+    margin-top:0;
+}
+
+.award strong
+{
+    display:block;
+    font-size: 32px;
+    margin:20px 0;
+    line-height: 100%;
+}
+
+@media all and (max-width:700px)
+{
+
+    .award
+    {
+        margin: 10px auto;
+        display:block;
+        width: 300px;
+        max-width: 90%;
+    }
+}

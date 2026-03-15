@@ -1,0 +1,11 @@
+@using FlashCard.Services
+@inject ITitleService TitleService
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    protected override void OnInitialized()
+    {
+        TitleService.UpdateTitle(Title);
+    }
+}

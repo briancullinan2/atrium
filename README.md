@@ -1,4 +1,4 @@
-# Study Sauce
+# Atrium
 
 A spaced repetition studying app. Prepopulated with study course content. Build on M$ MAUI Blazor because C# is nice.
 
@@ -6,7 +6,7 @@ A spaced repetition studying app. Prepopulated with study course content. Build 
 
 #### Android
 
-dotnet publish StudySauce/StudySauce.csproj -f net10.0-android -c Release -r android-arm64 --self-contained
+dotnet publish Atrium/Atrium.csproj -f net10.0-android -c Release -r android-arm64 --self-contained
 
 
 ## History
@@ -17,7 +17,7 @@ Oddly, my skills on building the data marshaller didn't translate to better foun
 Handling lots of data is and always will be a nightmare for me, so I built the form generator using reflection so I have 1 less mode of maintenance. Controls, html + css layout on pages + 
 JS validation, and data model can finally be reduced to controls, css, data model (including validation attributes).
 I tried to write some stuff in Vue.JS and I really liked the appearance of the controls and my CSS rendering, but I was kind of depressed from the server/client split architecture.
-I remember writing a pretty nice plain DOM JavaScript uploader with Node.JS backend for Study Sauce 4 but that's about where it ended.
+I remember writing a pretty nice plain DOM JavaScript uploader with Node.JS backend for Atrium 4 but that's about where it ended.
 I spent so much time building these panels to control the permission model, I got lost on it and wondered if I should have just written a "select from Google drive" option or a 
 upload Anki format option. So in this version I'll add all of it.
 The only reason I am here is because I heard about 2 years ago while I was working on game stuff that M$ ported .Net Core to web assembly. I also heard Linq and runtime Generics were 

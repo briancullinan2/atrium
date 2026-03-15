@@ -1,0 +1,99 @@
+@page "/status"
+@using FlashCard.Services
+@inject IMenuService MenuService
+@inject HttpClient HttpClient
+@inject IStatusService StatusService
+
+<SyncedTitle Title="System Status"></SyncedTitle>
+<div class="flash-card">
+
+
+    <h2>Recent Errors</h2>
+
+    Shows a list of any recent application generated errors.
+
+    <h2>Integration Status</h2>
+
+    Shows status related to connecting to other platforms.
+
+    <h2>Connectivity Status</h2>
+
+    Shows status for application network access like download and backups.
+
+
+    <heading class="flex-row">
+        <label></label>
+        <label>Service</label>
+        <label>Status</label>
+        <label>Last Checked</label>
+        <label>Actions</label>
+    </heading>
+
+
+    <div class="flex-row">
+        <span></span>
+        <span>Hosting</span>
+        <span>@((MarkupString)(hostStatus ?? ""))</span>
+        <span>@hostChecked</span>
+        <span><span class="bi @(IsWorking == true ? "bi-check-circle" : IsWorking == false ? "bi-x-circle" : "bi-clock")"></span></span>
+    </div>
+
+</div>
+
+@code {
+    private string? hostStatus = "Checking Public Access...";
+    private string hostChecked = "Never";
+    private bool? IsWorking { get; set; } = null;
+    public string? Domain { get; set; } = null;
+
+    protected override void OnInitialized()
+    {
+        // Define the contextual menu for THIS page
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        _ = CheckStatus();
+    }
+
+    private async Task CheckStatus()
+    {
+        try
+        {
+
+            var token = await StatusService.GetToken();
+            var host = await StatusService.GetHost();
+
+            if (string.IsNullOrWhiteSpace(Domain))
+            {
+                Domain = host;
+            }
+
+            if (string.IsNullOrWhiteSpace(Domain))
+            {
+                hostStatus = "Domain name not set.";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var cancellation = new CancellationToken();
+            var response = await HttpClient.PostAsJsonAsync($"https://{Domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
+            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+
+            if (result?.ItWorks?[0] == token)
+            {
+                hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
+                IsWorking = true;
+            }
+            else
+            {
+                hostStatus = "Token mismatch, site is not accessible.";
+            }
+            hostChecked = DateTime.Now.ToLongTimeString();
+
+            // Required to tell Blazor the data changed outside of a UI event
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            hostStatus = "Error: " + ex.Message;
+        }
+    }
+}

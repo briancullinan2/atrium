@@ -1,0 +1,110 @@
+@page "/account"
+@page "/account/edit"
+@page "/account/list"
+@page "/account/delete"
+@implements IDisposable
+@using FlashCard.Controls
+@using FlashCard.Services
+@inject IMenuService MenuService
+@inject ILoginService LoginService
+@inject NavigationManager Nav
+
+<SyncedTitle Title="Account Settings"></SyncedTitle>
+
+<div class="user-account flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <div>
+        <fieldset>
+            <legend>Login Info</legend>
+            <MetadataControl TModel="DataLayer.Entities.User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
+        </fieldset>
+    </div>
+    <div>
+        <fieldset>
+            <legend>General Info</legend>
+            <MetadataControl TModel="DataLayer.Entities.User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
+        </fieldset>
+    </div>
+    <div class="highlighted-link">
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-link-45deg"></span> Connected Accounts</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.Delete }))"><span class="bi bi-trash"></span> Close Account</a>
+        <button class="cta" @onclick="() => UpdateUser()">Save</button>
+    </div>
+
+</div>
+
+<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+</div>
+
+<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Delete)">
+</div>
+
+@code
+{
+    public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
+    public DataLayer.Entities.User? CurrentUser { get; set; }
+    public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.Edit;
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+
+    protected void UpdateUser()
+    {
+        
+    }
+
+
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    {
+        if (ControlMode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+    protected override void OnInitialized()
+    {
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
+        GeneralLayout = DataLayer.EntityMetadata.User.Groups["General Info"]?.ToList();
+        LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
+    }
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+
+        if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+        }
+
+
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            StateHasChanged();
+        }        
+    }
+
+    protected override void OnParametersSet()
+    {
+        if(CurrentUser == null)
+        {
+            CurrentUser = LoginService.User;
+            StateHasChanged();
+        }
+    }
+    
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

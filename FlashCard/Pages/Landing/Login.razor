@@ -1,0 +1,71 @@
+@page "/login"
+@using FlashCard.Services
+@inject IMenuService MenuService
+@inject ILoginService LoginService
+@inject NavigationManager Nav
+
+<SyncedTitle Title="User Login"></SyncedTitle>
+
+<div class="flash-card">
+    <h2>Who is using the app?</h2>
+    <div class="user-list">
+        @foreach(var user in Users ?? [])
+        {
+            <div class="user-avatar">
+                <a @onclick="() => HandleLogin(user)">
+                    @if (user.PhotoHosted != null || user.Photo?.Url != null)
+                    {
+                        <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
+                    } else
+                    {
+                        <span style="@GetBackgroundColor(user)" class="bi bi-person-circle"></span>
+                    }
+                    <span>@user.FirstName @user.LastName</span>
+                    <span>@user.Username</span>
+                </a>
+                <span><a href=""><span class="bi bi-pencil"></span></a></span>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+
+    public IEnumerable<DataLayer.Entities.User>? Users { get; set; }
+
+    public string GetBackgroundColor(DataLayer.Entities.User user)
+    {
+        if (Users == null) return "blue";
+        var index = Users.ToList().IndexOf(user);
+        var (r, g, b) = Utilities.RgbToHslTools.HslToRgb((360 / (Users.Count() + 1)) * index, 0.5, 0.5);
+        return $"background-color:#{(int)r:X2}{(int)g:X2}{(int)b:X2};";
+    }
+
+    protected void HandleLogin(DataLayer.Entities.User user)
+    {
+        user.AvatarColor = GetBackgroundColor(user);
+        LoginService.SetUser(user);
+        LoginService.SetLoginMode(false);
+        NavigationExtensions.NavigateTo<Pages.Landing.Home>(Nav);
+    }
+
+    protected override void OnInitialized()
+    {
+        // Equivalent to: Source={x:Static data:EntityMetadata.User.Categories[Login Info]}
+        // We assign the specific "Login Info" object to the Model property
+        //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
+        MenuService.SetMenu(null);
+        MenuService.SetHeader(false);
+        LoginService.SetLoginMode(true);
+        LoginService.SetUser(null);
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        Users = DataLayer.Generators.Users.Generate();
+        StateHasChanged();
+    }
+}

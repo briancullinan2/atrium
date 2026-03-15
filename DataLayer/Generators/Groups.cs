@@ -9,7 +9,7 @@ namespace DataLayer.Generators
             return [
                 new Group() { Name = "Real Estate" },
                 new Group() { Name = "Immigration" },
-                new Group() { Name = "Study Sauce" },
+                new Group() { Name = "Atrium" },
             ];
         }
     }

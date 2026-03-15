@@ -1,0 +1,22 @@
+@page "/permissions"
+@using FlashCard.Services
+@inject IMenuService MenuService
+
+
+<SyncedTitle Title="User Permissions"></SyncedTitle>
+
+<div class="flash-card animate-in">
+</div>
+
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
+
+    }
+
+
+}

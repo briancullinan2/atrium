@@ -1,0 +1,197 @@
+﻿
+.badge.bg-secondary {
+    background: lightgrey;
+    border: 3px solid grey;
+    border-radius: 10px;
+    padding: 5px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.page .bi-chevron-down,
+.page .bi-chevron-left,
+.page .bi-chevron-right {
+    transition: color ease-in-out 0.6s;
+}
+
+a.deemphasize,
+button.deemphasize {
+    background: none;
+    border: none;
+    color: lightgrey;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.drop-shader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.75);
+    justify-content: center;
+    vertical-align: middle;
+    align-items: center;
+    text-align: center;
+    display: none;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+}
+
+.dropping .drop-shader {
+    display: flex;
+}
+
+
+h2 a
+{
+    text-decoration: none;
+    white-space: nowrap;
+}
+h2 a:hover {
+    text-decoration: underline;
+}
+
+.cards-edit h2 {
+    display: flex;
+    justify-content: space-between;
+    white-space: nowrap;
+}
+.cards-edit h2 span:nth-child(2) 
+{
+    flex-basis:100%;
+    padding: 0 20px;
+    flex-shrink: 1;
+    overflow:hidden;
+    text-overflow: ellipsis;
+}
+
+
+
+
+
+.btn-primary,
+a.cta,
+button.cta {
+    padding: 4px;
+    background: darkorange;
+    color: black;
+    text-shadow: 0px 1px 5px white;
+    margin: 5px 5px 5px auto;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 2px solid lightgrey;
+    line-height: 1.5rem;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus,
+button.cta:hover {
+    text-decoration: underline;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+
+button.deemphasize:hover {
+    text-decoration: underline;
+}
+
+/* accordion */
+.accordion-item h4 {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125); /* --bs-accordion-border-width / --bs-accordion-border-color */
+}
+
+h4.inactive ~ *:not(h4) {
+    display: none;
+}
+
+h4.header-active ~ *:not(h4) {
+    display: inline-block;
+    padding-bottom: 20px;
+}
+
+h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {
+    display: none;
+}
+
+/* blazor error */
+
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+
+.container-logo {
+/*    display: flex;*/
+    vertical-align: middle;
+    justify-content: flex-start;
+    height: 50px;
+    align-items: center;
+    display:flex;
+    padding-left: 50px;
+    background-image: url(/_content/FlashCard/atrium8.svg);
+    background-size: 50px 50px;
+    background-repeat: no-repeat;
+    background-position: 0 50%;
+    cursor: pointer;
+}
+
+.container-logo > * {
+    vertical-align: middle;
+    margin: auto 0;
+}
+
+.container-logo > img {
+    margin: auto 15px;
+    cursor: pointer;
+    display:none;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+    transition: color ease-in-out 0.6s;
+    color: white;
+    font-weight: bolder;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.navbar-brand:hover {
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+
+    heading.flex-row 
+    {
+        display:none;
+    }
+
+    .flex-row {
+        flex-direction: column;
+        padding: 10px 0;
+    }
+}
+

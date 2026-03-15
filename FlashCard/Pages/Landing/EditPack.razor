@@ -1,0 +1,210 @@
+@implements IDisposable
+@page "/pack/{Id:int}/edit"
+@page "/pack/{Id:int}/add"
+@page "/pack/{Id:int}/add/{Page:int}"
+@page "/pack/{Id:int}/add/{Page:int}/{Take:int}"
+@page "/pack/{Id:int}/cards"
+@page "/pack/{Id:int}/cards/{Page:int}"
+@using FlashCard.Controls
+@using FlashCard.Services
+@using System.ComponentModel
+@inject IMenuService MenuService
+@inject ITitleService TitleService
+@inject NavigationManager Nav
+
+<div class="pack-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <h2>
+        <MetadataControl TModel="DataLayer.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
+    </h2>
+
+    <div>
+        <fieldset>
+            <legend>Pack Info</legend>
+            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
+        </fieldset>
+    </div>
+
+
+    <div>
+        <fieldset>
+            <legend>Pack Status</legend>
+            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
+        </fieldset>
+    </div>
+
+
+    <h2>Cards Tools</h2>
+
+    <div class="link-list">
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = 0 }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Edit @(CurrentCards?.Count()) Cards</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Content.Upload>())"><i class="bi bi-activity" aria-hidden="true"></i> Import Cards</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i> Delete Pack</a>
+    </div>
+
+</div>
+
+
+@for (var page = 0; page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take); page++)
+{
+    <div class="cards-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Add, page)">
+        <h2>
+            @if(page == 0)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Edit }))" class="deemphasize"><span class="bi bi-chevron-left"></span> Back</a>
+            } else {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = page - 1 }))" class="deemphasize"><span class="bi bi-chevron-left"></span> @((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
+            }
+            <span>Editing cards @(page * Take + 1) to @((page + 1) * Take)</span>
+            @if (page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take) - 1)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = page + 1 }))" class="deemphasize">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
+            }
+        </h2>
+
+        <heading class="flex-row">
+            <label></label>
+            <label>Prompt</label>
+            <label>Response</label>
+            <label>Type</label>
+            <label>Answers</label>
+            <label>Actions</label>
+        </heading>
+
+        <MetadataControl TModel="Controls.EditCardControl.EditControl" Model="@CardsLayout" Data="EditCards?.Skip(page * Take).Take(Take).ToList()"></MetadataControl>
+    
+        <div class="link-list">
+            @if (page == 0)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Edit }))"><span class="bi bi-chevron-left"></span> Back</a>
+            }
+            else
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = page - 1 }))"><span class="bi bi-chevron-left"></span> @((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
+            }
+            @if(page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take) - 1)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = page + 1 }))">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
+            }
+        </div>
+    </div>
+}
+
+@code
+{
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.EditPack));
+
+    [Category("Pack")]
+    public DataLayer.Entities.Pack? CurrentPack { get; set; }
+    [Category("Cards")]
+    public IEnumerable<DataLayer.Entities.Card>? CurrentCards { get => CurrentPack?.Cards; }
+    [Category("Edit")]
+    public IEnumerable<Controls.EditCardControl.EditControl>? EditCards { get => CurrentCards?.Select((c, i) => new EditCardControl.EditControl() { Card = c, Index = i + 1 }); }
+
+    public PropertyMetadata? TitleLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? StatusLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
+
+    public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.Edit;
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    [Parameter] public int Page { get; set; } = 0;
+    [Parameter] public int Take { get; set; } = 10;
+    public int? PreviousPage { get; set; }
+
+    [Parameter] public int? Id { get; set; }
+
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode, int? page = null)
+    {
+        if(mode == DataLayer.Customization.ControlMode.Add)
+        {
+            if (ControlMode == mode && Page == page) return "animate-in";
+            if (ControlMode == mode && PreviousPage == page) return "animate-out";
+            if (PreviousMode == mode && Page == page) return "animate-out";
+            return "hidden";
+        }
+        else if (ControlMode == mode) return "animate-in";
+        else if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+    protected override void OnInitialized()
+    {
+        TitleLayout = DataLayer.EntityMetadata.Pack.Groups["Title"]?.FirstOrDefault();
+        GeneralLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Info"];
+        StatusLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Status"];
+        CardsLayout = Pages.Landing.EditPack.Metadata.Categories["Edit"];
+        Nav.LocationChanged += OnLocationChanged;
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
+        TitleService?.UpdateTitle("Edit Pack");
+    }
+
+    protected void SetControlMode()
+    {
+        if(Take < 10)
+        {
+            Take = 10;
+            StateHasChanged();
+        }
+
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+        if(segments.Count() == 4 && Id != null)
+        {
+            if(PreviousPage != Page)
+            {
+                PreviousPage = Page;
+                StateHasChanged();
+            }
+        }
+        
+        if (segments.Count() == 3 && Id != null && segments.ElementAt(2) == "cards")
+        {
+            newStep = DataLayer.Customization.ControlMode.Add;
+        }
+        else if (segments.Count() >= 2)
+        {
+            newStep = segments.ElementAt(2).TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+        }
+
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            StateHasChanged();
+        }
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if(Id < 0 && Id >= -3)
+        {
+            Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
+            CurrentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
+            TitleService?.UpdateTitle("Edit Pack - " + CurrentPack?.Title);
+
+        }
+        SetControlMode();
+        StateHasChanged();
+    }
+
+    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    {
+        var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        return packs?.ToList();
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

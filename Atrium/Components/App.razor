@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="/_content/FlashCard/css/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/_content/FlashCard/css/app.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/layout.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/style.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/nav.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/menu.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/study.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/tabs.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/course.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/timeline.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/forms.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/awards.css" />
+    <link rel="stylesheet" href="/_content/FlashCard/css/theme.css" />
+    <script>
+        // Blazor's dotnet.js looks for this global to extend the WASM environment
+        window.OnDotnetRuntimeAndPrimaryAssemblyLoaderReady = () => {
+            window.dotnet.instance.getConfig().assets.forEach(asset => {
+                if (asset.name === "dotnet.native.js") {
+                    // This is where the low-level linkage happens
+                }
+            });
+        };
+
+        // Hard override for Emscripten
+        if (!window.Module) window.Module = {};
+        window.Module.env = { '__assert_fail': function() {} };
+
+        window.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy'; // Turns the Red Circle into a Plus
+        });
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy'; // Keeps it a Plus
+        });
+    </script>
+
+    <ImportMap />
+    <link rel="icon" type="image/png" href="_content/FlashCard/favicon.ico" />
+    <AntiforgeryToken />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveAuto" />
+    <ReconnectModal />
+    <script src="/_content/FlashCard/main.js"></script>
+    <script src="/_framework/blazor.web.js"></script>
+</body>
+
+</html>

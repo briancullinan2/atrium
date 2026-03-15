@@ -143,7 +143,6 @@ namespace AnkiParser
                 var template = model.Tmpls.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
-                // 4. Map to Study Sauce Entity
                 var newCard = new DataLayer.Entities.Card()
                 {
                     // Inject the field values into the Mustache brackets

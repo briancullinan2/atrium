@@ -1,0 +1,93 @@
+@using FlashCard.Pages.Course
+
+
+@code 
+{
+    public static ICourseMenuItem? GetCourse(Type type)
+    {
+        return CourseMenu.MenuStructure.FirstOrDefault(c => c.Course == type);
+    }
+
+    public static ICourseMenuItem? GetActiveItem(int? level, string? lesson = null)
+    {
+        // If no level, we are at the root
+        if (level == null) return null;
+
+        // Find the course matching the Level index
+        var course = CourseMenu.MenuStructure.FirstOrDefault(c =>
+            CourseMap.TryGetValue(c.Lesson!, out var id) && id == level);
+
+        if (string.IsNullOrEmpty(lesson))
+        {
+            // TODO: grab the first menu item for this course
+            return course?.Children?.FirstOrDefault();
+        }
+
+        // Find the specific lesson within that course
+        return course?.Children?.FirstOrDefault(l =>
+            l.Lesson?.Name.ToSafe().Equals(lesson, StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    public static IEnumerable<ICourseMenuItem> MenuStructure =
+    [
+    // Course 1
+    new CourseMenuItem() {
+        Title = "Course 1", Lesson = typeof(Course1), Icon = "bi-book", Children = [
+            new () { Title = "Introduction", Icon = "bi-play-circle", Lesson = typeof(Introduction) },
+            new () { Title = "Setting goals", Icon = "bi-flag", Lesson = typeof(SettingGoals) },
+            new () { Title = "Distractions", Icon = "bi-shield-x", Lesson = typeof(Distractions) },
+            new () { Title = "Procrastination", Icon = "bi-hourglass-split", Lesson = typeof(Procrastination) },
+            new () { Title = "Study environment", Icon = "bi-house", Lesson = typeof(StudyEnvironment) },
+            new () { Title = "Partners", Icon = "bi-people", Lesson = typeof(Partners) },
+            new () { Title = "End of Level 1", RoleRequired = "ROLE_FREE", Icon = "bi-award", Lesson = typeof(EndOfLevel1) },
+        ]
+    },
+
+    // Course 2
+    new CourseMenuItem() {
+        Title = "Course 2", Lesson = typeof(Course2), Icon = "bi-journal-bookmark", Children = [
+            new() { Title = "Study metrics", Icon = "bi-graph-up", Lesson = typeof(StudyMetrics) },
+            new() { Title = "Study plan", Icon = "bi-calendar-check", Lesson = typeof(StudyPlan) },
+            new() { Title = "Interleaving", Icon = "bi-shuffle", Lesson = typeof(Interleaving) },
+            new() { Title = "Studying for tests", Icon = "bi-pencil-square", Lesson = typeof(StudyingForTests) },
+            new() { Title = "Test-taking", Icon = "bi-check2-all", Lesson = typeof(TestTaking) },
+        ]
+    },
+
+    // Course 3
+    new CourseMenuItem() {
+        Title = "Course 3", Lesson = typeof(Course3), Icon = "bi-mortarboard", Children = [
+            new() { Title = "Intro to strategies", Icon = "bi-lightbulb", Lesson = typeof(IntroToStrategies) },
+            new() { Title = "Group study", Icon = "bi-people-fill", Lesson = typeof(GroupStudy) },
+            new() { Title = "Teach to learn", Icon = "bi-person-video3", Lesson = typeof(TeachToLearn) },
+            new() { Title = "Active reading", Icon = "bi-book", Lesson = typeof(ActiveReading) },
+            new() { Title = "Spaced repetition", Icon = "bi-clock-history", Lesson = typeof(SpacedRepetition) },
+        ] }
+    ];
+
+    public static readonly Dictionary<Type, int> CourseMap = CourseMenu.MenuStructure
+        .SelectMany(c => (c.Children ?? []).Prepend(c)) // Include parents too
+        .Where(item => item.Lesson != null)
+        .Select(item => item.Lesson!)
+        .Distinct()
+        .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+        .Select((t, i) => new { t, i })
+        .ToDictionary(x => x.t, x => x.i);
+
+    public static readonly Dictionary<Type, Type> ParentMap = new();
+
+    static CourseMenu()
+    {
+        foreach (var course in CourseMenu.MenuStructure)
+        {
+            if (course.Lesson == null) continue;
+            foreach (var lesson in course.Children ?? [])
+            {
+                if (lesson.Lesson != null)
+                    ParentMap[lesson.Lesson] = course.Lesson;
+            }
+        }
+
+    }
+
+}

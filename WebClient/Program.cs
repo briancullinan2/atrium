@@ -1,0 +1,53 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.JSInterop;
+using FlashCard.Services;
+using WebClient.Services;
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+// Add device-specific services used by the FlashCard project
+builder.Services.AddSingleton<IFormFactor, FormFactor>();
+builder.Services.AddSingleton<ILocalServer, LocalServer>();
+builder.Services.AddSingleton<ITitleService, TitleService>();
+builder.Services.AddSingleton<IMenuService, MenuService>();
+builder.Services.AddSingleton<IStudyService, StudyService>();
+builder.Services.AddSingleton<ILoginService, LoginService>();
+builder.Services.AddSingleton<ICourseService, CourseService>();
+builder.Services.AddSingleton<IJsonService, StateService>();
+builder.Services.AddSingleton<IStatusService, StatusService>();
+builder.Services.AddScoped<HttpClient>(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
+builder.Services.AddSingleton<IFileManager, FileManager>();
+builder.Services.AddSingleton<IAnkiService, AnkiService>();
+/*builder.Services.AddDbContext<TranslationContext>((sp, options) =>
+{
+    options.UseInMemoryDatabase("RemoteShell");
+
+    options.ReplaceService<IQueryCompiler, RemoteQuery>();
+});*/
+builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
+{
+    options.UseInMemoryDatabase("RemoteShell");
+
+    options.ReplaceService<IQueryCompiler, RemoteQuery>();
+});
+
+var app = builder.Build();
+// FUCK DI
+RemoteQuery._service = app.Services;
+FileManager._service = app.Services;
+AnkiService._service = app.Services;
+StatusService._service = app.Services;
+
+var runtime = app.Services.GetRequiredService<IJSRuntime>();
+var navigation = app.Services.GetRequiredService<NavigationManager>();
+var localServer = (LocalServer)app.Services.GetRequiredService<ILocalServer>();
+
+
+localServer.Initialize(app, runtime, navigation);
+
+await app.RunAsync();

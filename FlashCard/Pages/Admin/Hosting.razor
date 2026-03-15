@@ -1,0 +1,222 @@
+@page "/hosting"
+@using FlashCard.Controls
+@using FlashCard.Services
+@inject IMenuService MenuService
+@inject HttpClient HttpClient
+@inject IStatusService StatusService
+
+<SyncedTitle Title="Hosting"></SyncedTitle>
+
+<div class="flash-card hosting">
+
+    <div class="form-row">
+        <label>Enable HTTP hosting</label>
+        <input type="checkbox" />
+    </div>
+
+    <AccordionSection IsExpanded="IsWorking != true" Title="Become A Host">
+        <p>The easiest pipeline to monitored hosting is to enable the Atrium web service.</p>
+        <p>Then use cloud-flared reverse tunnel to secure your domain past any firewall restrictions.</p>
+        <p>Disclaimer - This requires administrator privileges, so probably don't try it at work.</p>
+    </AccordionSection>
+
+    <AccordionSection IsExpanded="IsWorking != true" Title="Install Prerequisites">
+        <a href="https://github.com/cloudflare/cloudflared/releases">Cloud Flared download page</a>
+        <h3>Create a tunnel</h3>
+        <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/">Set up a tunnel</a>
+        <h3>Create a read all token</h3>
+        <a href="https://developers.cloudflare.com/fundamentals/api/get-started/create-token/">Create token instructions</a>
+        <h3>Install Atrium service</h3>
+        @if (!OperatingSystem.IsWindows())
+        {
+            <p>Click here to run Atrium service install</p>
+        }
+        else
+        {
+            <p>Run Atrium desktop to use your own hosted service</p>
+        }
+    </AccordionSection>
+
+    <AccordionSection IsExpanded="IsWorking != true" Title="Account Settings">
+        <label>Tunnel Name</label>
+        <input @bind="TunnelName" type="text" />
+
+        <label>API Token</label>
+        <input @bind="ApiToken" type="password" />
+
+        <label>Account ID</label>
+        <input @bind="AccountId" type="text" />
+
+        <label>Domain Name</label>
+        <input @bind="Domain" type="text" />
+    </AccordionSection>
+
+    <heading class="flex-row">
+        <label></label>
+        <label>Service</label>
+        <label>Status</label>
+        <label>Last Checked</label>
+        <label>Actions</label>
+    </heading>
+    
+    <div class="flex-row">
+        <span></span>
+        <span>Cloud Flare Service</span>
+        <span>@serviceStatus</span>
+        <span>@serviceChecked</span>
+        <span><span class="bi @(IsServicing == true ? "bi-check-circle" : IsServicing == false ? "bi-x-circle" : "bi-clock")"></span></span>
+    </div>
+    <div class="flex-row">
+        <span></span>
+        <span>Cloud Flare Api</span>
+        <span>@tunnelStatus</span>
+        <span>@lastChecked</span>
+        <span><span class="bi @(IsTunneling == true ? "bi-check-circle" : IsTunneling == false ? "bi-x-circle" : "bi-clock")"></span></span>
+    </div>
+    <div class="flex-row">
+        <span></span>
+        <span>Atrium</span>
+        <span>@((MarkupString)(hostStatus ?? ""))</span>
+        <span>@hostChecked</span>
+        <span><span class="bi @(IsWorking == true ? "bi-check-circle" : IsWorking == false ? "bi-x-circle" : "bi-clock")"></span></span>
+    </div>
+</div>
+
+
+@code
+{
+
+    protected override void OnInitialized()
+    {
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Hosting />);
+        _ = PollTunnelStatusAsync();
+    }
+
+    private string? _apiToken;
+    private string? ApiToken {
+        get => _apiToken;
+        set
+        {
+            _apiToken = value;
+            _ = PollTunnelStatusAsync();
+        }
+    }
+    private string? _tunnelName;
+    private string? TunnelName
+    {
+        get => _tunnelName;
+        set
+        {
+            _tunnelName = value;
+            _ = PollTunnelStatusAsync();
+        }
+    }
+    private string? _accountId;
+    private string? AccountId
+    {
+        get => _accountId;
+        set
+        {
+            _accountId = value;
+            _ = PollTunnelStatusAsync();
+        }
+    }
+    private string? _domain;
+    private string? Domain
+    {
+        get => _domain;
+        set
+        {
+            _domain = value;
+            _ = PollTunnelStatusAsync();
+        }
+    }
+
+    private string? tunnelStatus = "Checking Cloud Flare...";
+    private string lastChecked = "Never"; 
+    private string? hostStatus = "Checking Public Access...";
+    private string hostChecked = "Never";
+    private string? serviceStatus = "Checking Services...";
+    private string serviceChecked = "Never";
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource _cts = new();
+    private bool? IsWorking { get; set; } = null;
+    private bool? IsTunneling { get; set; } = null;
+    private bool? IsServicing { get; set; } = null;
+
+    private async Task PollTunnelStatusAsync()
+    {
+
+        if(_timer != null)
+        {
+            return;
+        }
+
+        await CheckStatus();
+        _timer = new PeriodicTimer(TimeSpan.FromMinutes(3));
+
+        try
+        {
+            // The loop waits here every 300 seconds
+            while (await _timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await CheckStatus();
+            }
+        }
+        catch (OperationCanceledException) { /* Component was disposed */ }
+    }
+    
+
+    private async Task CheckStatus()
+    {
+        try
+        {
+
+            var token = await StatusService.GetToken();
+            var host = await StatusService.GetHost();
+
+
+            tunnelStatus = await StatusService.CheckTunnel(AccountId, TunnelName, ApiToken);
+            IsTunneling = tunnelStatus == "healthy";
+            lastChecked = DateTime.Now.ToLongTimeString();
+
+
+            IsServicing = await StatusService.CheckInstalled();
+            serviceStatus = IsServicing == true ? "Service is installed" : "Service is not installed";
+            serviceChecked = DateTime.Now.ToLongTimeString();
+
+            if(string.IsNullOrWhiteSpace(Domain))
+            {
+                Domain = host;
+            }
+
+            if (string.IsNullOrWhiteSpace(Domain))
+            {
+                hostStatus = "Domain name not set.";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var cancellation = new CancellationToken();
+            var response = await HttpClient.PostAsJsonAsync($"https://{Domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
+            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+
+            if (result?.ItWorks?[0] == token)
+            {
+                hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
+                IsWorking = true;
+            } else
+            {
+                hostStatus = "Token mismatch, site is not accessible.";
+            }
+            hostChecked = DateTime.Now.ToLongTimeString();
+
+            // Required to tell Blazor the data changed outside of a UI event
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            hostStatus = "Error: " + ex.Message;
+        }
+    }
+}

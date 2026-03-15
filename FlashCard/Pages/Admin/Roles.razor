@@ -1,0 +1,129 @@
+@page "/roles"
+@page "/roles/add"
+@page "/roles/list"
+@page "/roles/{Id:int}"
+@page "/roles/{Id:int}/view"
+@page "/roles/{Id:int}/edit"
+
+
+@using FlashCard.Controls
+@using FlashCard.Services
+@using System.ComponentModel
+@inject IMenuService MenuService
+@inject NavigationManager Nav
+
+
+<SyncedTitle Title="Roles Management"></SyncedTitle>
+<div class="flash-card animate-in roles-container">
+
+    <h2>Manage Roles</h2>
+    <heading class="flex-row">
+        <label></label>
+        <label>Role Name</label>
+        <label>Description</label>
+        <label># of Groups</label>
+        <label># of Users</label>
+        <label>Actions</label>
+    </heading>
+    <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@CurrentRoles"></MetadataControl>
+    @if(ControlMode == DataLayer.Customization.ControlMode.Add)
+    {
+        <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@([new Controls.RolesControl.ControlRole() {Mode = DataLayer.Customization.ControlMode.Edit}])"></MetadataControl>
+    }
+
+    <h2>Roles Controls</h2>
+    <div class="link-list">
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add Role</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i> Role Activity</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i> Manage Permissions</a>
+    </div>
+</div>
+
+@code {
+
+    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Roles));
+    [Category("Display")]
+    public IEnumerable<Controls.RolesControl.ControlRole>? CurrentRoles { get; set; }
+    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public IEnumerable<PropertyMetadata>? RolesLayout { get; set; }
+    [Parameter] public int? Id { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        // Define the contextual menu for THIS page
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        RolesLayout = Pages.Admin.Roles.Metadata.Categories["Display"]?.ToList();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        if (segments.Count() == 2 && Id != null)
+        {
+            newStep = DataLayer.Customization.ControlMode.View;
+        }
+        else if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+        }
+
+        if (ControlMode == DataLayer.Customization.ControlMode.View
+            || ControlMode == DataLayer.Customization.ControlMode.List)
+        {
+            // TODO: set all controls back to view
+            foreach (var role in CurrentRoles ?? [])
+            {
+                role.Mode = DataLayer.Customization.ControlMode.View;
+            }
+            StateHasChanged();
+        }
+
+        if (ControlMode == DataLayer.Customization.ControlMode.Edit)
+        {
+            var role = CurrentRoles?.ElementAt(Id ?? 0);
+            role.Mode = DataLayer.Customization.ControlMode.Edit;
+            StateHasChanged();
+        }
+
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            StateHasChanged();
+        }
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
+    }
+
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    {
+        if (ControlMode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        CurrentRoles = DataLayer.Generators.Roles.Generate().Select((r, i) => new Controls.RolesControl.ControlRole() { Index = i, Role = r }).ToList();
+        SetControlMode();
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

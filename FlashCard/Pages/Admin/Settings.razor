@@ -1,0 +1,522 @@
+@page "/settings"
+@page "/settings/edit"
+@page "/settings/add"
+@page "/settings/list"
+
+@implements IDisposable
+@using FlashCard.Controls
+@using FlashCard.Services
+@using System.ComponentModel
+@using System.Reflection
+@using System.ComponentModel.DataAnnotations
+@inject IMenuService MenuService
+@inject ITitleService TitleService
+@inject IFileManager FileManager
+@inject NavigationManager Nav
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<SyncedTitle Title="Application Settings"></SyncedTitle>
+
+<div class="flash-card app-settings @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <h2>Display Settings</h2>
+    <div class="form-row">
+        <span>Show animated background from packs</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Match dark/light mode to OS</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Dark mode</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>High contrast theme</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Start when computer starts</span>
+        <input type="checkbox" />
+    </div>
+
+
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Background", Value = Background.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Theme", Value = Application.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Sidebar", Value = Sidebar.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+
+    <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
+
+    <h2>Parental Controls</h2>
+    <div class="form-row">
+        <span>Allow child accounts to subscribe to new content</span>
+        <input type="checkbox" />
+    </div>
+
+
+    <h2>Telemetry</h2>
+    <div class="form-row">
+        <span>Enable non-specific usage statistics sharing with content creators</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Enable non-specific usage statistics sharing with hosts</span>
+        <input type="checkbox" />
+    </div>
+
+    <h2><a href="@(NavigationExtensions.GetUri<Pages.Admin.Hosting>())">Hosting</a></h2>
+    <div>
+        <span><a href="@(NavigationExtensions.GetUri<Pages.Admin.Hosting>())">Enable hosting</a> to access your own study system from the web.</span>
+    </div>
+</div>
+
+
+<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+    <div class="settings-page">
+        <label>Theme Name</label>
+        <label>Background</label>
+        <label>Surface</label>
+        <label>Card</label>
+        <label>Border</label>
+        <label>Emerald</label>
+        <label>Bolt</label>
+        <label>Amber</label>
+        <label>Compliment</label>
+        <label>Text</label>
+        <label>Muted</label>
+        <label>Sidebar</label>
+        <label>Stone</label>
+        <label>Nature</label>
+        <label>Electric</label>
+        <label>Gold</label>
+        <label>Actions</label>
+        @foreach (var theme in extractedThemes ?? [])
+        {
+            <span class="sticky-left">@theme.ClassName.Replace("theme-", "")</span>
+            @foreach(var variableKey in ThemeVariableKeys)
+            {
+                <span><span class="sensor" style="@(GetStyle(theme, variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
+            }
+            <span></span>
+        }
+    </div>
+
+    <button class="cta" @onclick="() => CopyToCSV()">Copy to CSV</button>
+</div>
+
+@code
+{
+    public DataLayer.Customization.ControlMode? Mode { get; set; } = DataLayer.Customization.ControlMode.Edit;
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public List<Retheme.ThemeData>? extractedThemes { get; set;  } 
+
+    private async Task CopyToCSV()
+    {
+        var csvBuilder = new System.Text.StringBuilder();
+
+        // 1. Add Headers
+        csvBuilder.AppendLine(string.Join("\t", themeLabels));
+
+        // 2. Add Rows
+        foreach (var theme in extractedThemes ?? [])
+        {
+            // Note: If data contains commas, you'd wrap values in quotes: "{item.Name}"
+            csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
+        }
+
+        // 3. Send to Clipboard via JS Interop
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", csvBuilder.ToString());
+    }
+
+
+    public string GetStyle(Retheme.ThemeData theme, string key)
+    {
+        return "background-color: " + theme.Variables.GetValueOrDefault(key);
+    }
+
+    public static readonly List<string> themeLabels = new List<string>
+    {
+        "Theme Name",
+        "Background",
+        "Surface",
+        "Card",
+        "Border",
+        "Emerald",
+        "Bolt",
+        "Amber",
+        "Compliment",
+        "Text",
+        "Muted",
+        "Sidebar",
+        "Stone",
+        "Nature",
+        "Electric",
+        "Gold"
+    };
+
+    public static readonly List<string> ThemeVariableKeys = new()
+    {
+        "--slate-bg",
+        "--slate-surface",
+        "--slate-card",
+        "--slate-border",
+        "--emerald-glow",
+        "--cyan-bolt",
+        "--amber-locus",
+        "--amber-compliment",
+        "--text-main",
+        "--text-muted",
+        "--text-sidebar",
+        "--atrium-stone",
+        "--atrium-nature",
+        "--atrium-electric",
+        "--atrium-gold"
+    };
+
+    private string? themeContent;
+
+    protected async Task InitializeTheme()
+    {
+        // Path is relative to wwwroot
+        //using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/_content/FlashCard/css/theme.css");
+        //using var reader = new StreamReader(stream);
+        //themeContent = await reader.ReadToEndAsync();
+        themeContent = await FileManager.OpenFile("_content/FlashCard/css/theme.css");
+        extractedThemes = Retheme.Theme.ExtractThemes(themeContent ?? "");
+        StateHasChanged();
+    }
+
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+        if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+        }
+
+
+        if (newStep != Mode)
+        {
+            PreviousMode = Mode;
+            Mode = newStep;
+            StateHasChanged();
+        }
+
+        if(Mode == DataLayer.Customization.ControlMode.List)
+        {
+            TitleService?.UpdateTitle("Edit Theme");
+        }
+        else if (Mode == DataLayer.Customization.ControlMode.Edit)
+        {
+            TitleService?.UpdateTitle("Application Settings");
+        }
+
+    }
+    
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    {
+        if (Mode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+    public ApplicationTheme? _app;
+    [Display(GroupName = "Themes", Order = 1)]
+    public ApplicationTheme? Application
+    {
+        get
+        {
+            return _app;
+        }
+        set
+        {
+            _app = value;
+            MenuService.SetApplication(_app);
+        }
+    }
+
+    public SidebarTheme? _theme;
+    [Display(GroupName = "Themes", Order = 2)]
+    public SidebarTheme? Sidebar
+    {
+        get
+        {
+            return _theme;
+        }
+        set
+        {
+            _theme = value;
+            MenuService.SetSidebar(_theme);
+        }
+    }
+
+    static EntityMetadata Metadata = new EntityMetadata(typeof(Pages.Admin.Settings));
+    IEnumerable<PropertyMetadata>? ThemeLayout { get; set; }
+
+
+    public AnimationMode? _background;
+    [Display(GroupName = "Themes", Order = 0)]
+    public AnimationMode? Background
+    {
+        get
+        {
+            return _background;
+        }
+        set
+        {
+            _background = value;
+            MenuService.SetBackground(_background);
+        }
+    }
+
+
+    protected void RandomizeTheme()
+    {
+        var animationValues = Enum.GetValues<AnimationMode>();
+        int randomAnimation = Random.Shared.Next(1, animationValues.Length);
+        Background = animationValues[randomAnimation];
+
+        var themeValues = Enum.GetValues<ApplicationTheme>();
+        int randomTheme = Random.Shared.Next(1, themeValues.Length);
+        Application = themeValues[randomTheme];
+
+        // TODO: always make random sidebar and application match?
+        var sidebarValues = Enum.GetValues<SidebarTheme>();
+        //int randomSidebar = Random.Shared.Next(1, sidebarValues.Length);
+        Sidebar = sidebarValues[randomTheme];
+    }
+
+    private async Task HandleTheme(Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?> selectedValue)
+    {
+        var baseType = Nullable.GetUnderlyingType(selectedValue.Item1.PropertyType) ?? selectedValue.Item1.PropertyType;
+        if (baseType == typeof(ApplicationTheme))
+        {
+            Application = selectedValue.Item3 as ApplicationTheme?;
+        }
+        else if(baseType == typeof(SidebarTheme))
+        {
+            Sidebar = selectedValue.Item3 as SidebarTheme?;
+        }
+        else if (baseType == typeof(AnimationMode))
+        {
+            Background = selectedValue.Item3 as AnimationMode?;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
+        ThemeLayout = Pages.Admin.Settings.Metadata.Groups["Themes"]?.ToList();
+        Nav.LocationChanged += OnLocationChanged;
+        _ = InitializeTheme();
+    }
+    
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
+    }
+
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        SetControlMode();
+    }
+    
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum ApplicationTheme
+    {
+        [Description("Atrium Ivory (vs Default Purple)")]
+        Ivory = 0,
+
+        [Description("Dark Slate (vs Shale Life)")]
+        DarkSlate = 13,
+
+        [Description("Midnight Void (vs Daybreak)")]
+        MidnightVoid = 14,
+
+        [Description("Arctic Thaw (vs Desert Sunset)")]
+        ArcticThaw = 15,
+
+        [Description("Abyssal Trench (vs Ocean Ripple)")]
+        AbyssalTrench = 16,
+
+        [Description("Oxidized Iron (vs Silver Chrome)")]
+        OxidizedIron = 17,
+
+        [Description("Deep Sea Kelp (vs Coral Reef)")]
+        DeepSeaKelp = 18,
+
+        [Description("Solar Flare (vs Dusk)")]
+        SolarFlare = 19,
+
+        [Description("Monochrome Matrix (vs Rainbow)")]
+        MonochromeMatrix = 20,
+
+        [Description("Lead Fortress (vs Golden Gate)")]
+        LeadFortress = 21,
+
+        [Description("Ashen Wastes (vs Emerald Forest)")]
+        AshenWastes = 22,
+
+        [Description("Inverted Neon (vs Night Vision)")]
+        InvertedNeon = 23,
+
+        [Description("Sour Lime (vs Berry Blast)")]
+        SourLime = 24,
+
+        [Description("Obsidian Ledger (vs Parchment)")]
+        ObsidianLedger = 25,
+
+        [Description("Daybreak (Classic Sunrise)")]
+        Daybreak = 1,
+
+        [Description("Desert Sunset (Banded Gold)")]
+        DesertSunset = 2,
+
+        [Description("Ocean Ripple (Deep Reflective)")]
+        OceanRipple = 3,
+
+        [Description("Silver Chrome (Metallic)")]
+        SilverChrome = 4,
+
+        [Description("Coral Reef (Tropical Cyan)")]
+        CoralReef = 5,
+
+        [Description("Dusk (Atmospheric Night)")]
+        Dusk = 6,
+
+        [Description("Rainbow Peak (Full Spectrum)")]
+        RainbowPeak = 7,
+
+        [Description("Golden Gate (Polished Gold)")]
+        GoldenGate = 8,
+
+        [Description("Emerald Forest (Vibrant Green)")]
+        EmeraldForest = 9,
+
+        [Description("Night Vision (Matrix Green)")]
+        NightVision = 10,
+
+        [Description("Berry Blast (Candy Red/Blue)")]
+        BerryBlast = 11,
+
+        [Description("Parchment (Academic Beige)")]
+        Parchment = 12
+    }
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum SidebarTheme
+    {
+
+        [Description("Default (Blazor Purple)")]
+        Default = 0,
+
+        [Description("Midnight Void (vs Daybreak)")]
+        MidnightVoid = 14,
+
+        [Description("Arctic Thaw (vs Desert Sunset)")]
+        ArcticThaw = 15,
+
+        [Description("Abyssal Trench (vs Ocean Ripple)")]
+        AbyssalTrench = 16,
+
+        [Description("Oxidized Iron (vs Silver Chrome)")]
+        OxidizedIron = 17,
+
+        [Description("Deep Sea Kelp (vs Coral Reef)")]
+        DeepSeaKelp = 18,
+
+        [Description("Solar Flare (vs Dusk)")]
+        SolarFlare = 19,
+
+        [Description("Monochrome Matrix (vs Rainbow)")]
+        MonochromeMatrix = 20,
+
+        [Description("Lead Fortress (vs Golden Gate)")]
+        LeadFortress = 21,
+
+        [Description("Ashen Wastes (vs Emerald Forest)")]
+        AshenWastes = 22,
+
+        [Description("Inverted Neon (vs Night Vision)")]
+        InvertedNeon = 23,
+
+        [Description("Sour Lime (vs Berry Blast)")]
+        SourLime = 24,
+
+        [Description("Obsidian Ledger (vs Parchment)")]
+        ObsidianLedger = 25,
+
+        [Description("Shale Life (Default Dark Mode)")]
+        ShaleLife = 13,
+
+        [Description("Daybreak (Classic Sunrise)")]
+        Daybreak = 1,
+
+        [Description("Desert Sunset (Banded Gold)")]
+        DesertSunset = 2,
+
+        [Description("Ocean Ripple (Deep Reflective)")]
+        OceanRipple = 3,
+
+        [Description("Silver Chrome (Metallic)")]
+        SilverChrome = 4,
+
+        [Description("Coral Reef (Tropical Cyan)")]
+        CoralReef = 5,
+
+        [Description("Dusk (Atmospheric Night)")]
+        Dusk = 6,
+
+        [Description("Rainbow Peak (Full Spectrum)")]
+        RainbowPeak = 7,
+
+        [Description("Golden Gate (Polished Gold)")]
+        GoldenGate = 8,
+
+        [Description("Emerald Forest (Vibrant Green)")]
+        EmeraldForest = 9,
+
+        [Description("Night Vision (Matrix Green)")]
+        NightVision = 10,
+
+        [Description("Berry Blast (Candy Red/Blue)")]
+        BerryBlast = 11,
+
+        [Description("Parchment (Academic Beige)")]
+        Parchment = 12
+    }
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum AnimationMode
+    {
+        [Description("None (Turn Off)")]
+        None = 0,
+
+        [Description("Lichtenberg Cube")]
+        lichtenberg = 1,
+
+        [Description("Lichtenberg Light")]
+        lichtenlight = 2,
+
+        [Description("Lichten Birds")]
+        lichtenbird = 3,
+
+        [Description("Lichten Atrium")]
+        lichtenatrium = 4
+    }
+}
