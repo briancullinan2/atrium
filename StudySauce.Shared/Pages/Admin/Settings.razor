@@ -324,6 +324,11 @@
     }
 
     
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        SetControlMode();
+    }
     
     public void Dispose()
     {

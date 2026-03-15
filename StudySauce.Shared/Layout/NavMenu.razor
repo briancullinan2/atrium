@@ -3,33 +3,15 @@
 @inject IStudyService StudyService
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-logo">
-        <img width="48" height="48" @onclick="() => ToggleStudy()" src="_content/StudySauce.Shared/logo_4_trans_2.png" alt="LOGO" />
-        <a class="navbar-brand" href="">Study Sauce</a>
+    <div class="container-logo" @onclick="() => ToggleStudy()">
+        <img width="48" height="48" src="_content/StudySauce.Shared/logo_4_trans_2.png" alt="LOGO" />
+        <a class="navbar-brand">Study Sauce</a>
     </div>
 </div>
 
 <input type="checkbox" @bind="menuMode" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable">
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-            <span class="bi bi-house-door-fill" aria-hidden="true"></span> Home
-        </NavLink>
-    </div>
-
-    @* <div class="nav-item px-3">
-        <NavLink class="nav-link" href="counter">
-            <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-        </NavLink>
-    </div>
-
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="weather">
-            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-        </NavLink>
-    </div> *@
-
     @foreach (var item in GetVisibleItems())
     {
         @RenderNavItem(item)
@@ -114,6 +96,7 @@
     // This is your Iterator/List
     public static IEnumerable<INavMenuItem> MenuStructure = 
     [
+        new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "bi-house-door-fill" },
         new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "bi-card-list" },
         new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
         new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "bi-cart" },

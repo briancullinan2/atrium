@@ -60,6 +60,15 @@
 
 .page.study-mode .navbar-brand {
     color: transparent;
+    text-shadow:none;
+}
+
+@media (min-width: 640px)
+{
+    .page
+    {
+        transition: padding-left ease-in-out 0.6s;
+    }
 }
 
 @media (max-width: 640px) {

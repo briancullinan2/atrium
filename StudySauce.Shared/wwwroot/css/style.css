@@ -99,8 +99,6 @@ button.deemphasize:hover {
 .accordion-item h4 {
     display: flex;
     justify-content: space-between;
-    color: #212529; /* --bs-accordion-color */
-    background-color: #fff; /* --bs-accordion-bg */
     border-bottom: 1px solid rgba(0, 0, 0, 0.125); /* --bs-accordion-border-width / --bs-accordion-border-color */
 }
 
@@ -154,6 +152,7 @@ h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {
     background-size: 50px 50px;
     background-repeat: no-repeat;
     background-position: 0 50%;
+    cursor: pointer;
 }
 
 .container-logo > * {
@@ -173,6 +172,7 @@ h4.header-active ~ *:not(h4) ~ .h4.inactive ~ *:not(h4) {
     color: white;
     font-weight: bolder;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .navbar-brand:hover {
