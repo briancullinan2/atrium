@@ -24,12 +24,40 @@
     height: 12px;
     display: inline-block;
     border: 1px solid black;
+    margin-right: 0.5rem;
 }
 
-.theme-settings .flex-row > *
+.settings-page label
 {
-    flex-shrink: 0;
+    position: sticky;
+    z-index: 100;
+    top: -2rem;
+    left: auto;
+    background-color: var(--slate-card);
 }
+
+.settings-page
+{
+    display:grid;
+    grid-template-columns: 180px repeat(16, 1fr);
+    white-space: nowrap;
+}
+
+.settings-page > label,
+.settings-page > span
+{
+    padding: 10px;
+}
+
+.settings-page .sticky-left {
+    position: sticky;
+    z-index: 99;
+    top: auto;
+    left: -2rem;
+    padding-left: 2rem;
+    background-color: var(--slate-card);
+}
+
 
 #theme-sensor
 {
@@ -631,60 +659,32 @@ sidebar.theme-darkslate {
     background-size: 400% 400%;
 }
 
-/* 1. Midnight Void */
-.theme-midnightvoid { --amber-compliment: #38bdf8; }
-/* 2. Arctic Thaw */
-.theme-arcticthaw { --amber-compliment: #0ea5e9; }
-/* 3. Abyssal Trench */
-.theme-abyssaltrench { --amber-compliment: #06b6d4; }
-/* 4. Oxidized Iron */
-.theme-oxidizediron { --amber-compliment: #44403c; }
-/* 5. Deep Sea Kelp */
-.theme-deepseakelp { --amber-compliment: #f43f5e; }
-/* 6. Solar Flare */
-.theme-solarflare { --amber-compliment: #451a03; }
-/* 7. Monochrome Matrix */
-.theme-monochromematrix { --amber-compliment: #ffffff; }
-/* 8. Lead Fortress */
-.theme-leadfortress { --amber-compliment: #0f172a; }
-/* 9. Ashen Wastes */
-.theme-ashenwastes { --amber-compliment: #991b1b; }
-/* 10. Inverted Neon */
-.theme-invertedneon { --amber-compliment: #000000; }
-/* 11. Sour Lime */
-.theme-sourlime { --amber-compliment: #365314; }
-/* 12. Obsidian Ledger */
-.theme-obsidianledger { --amber-compliment: #171717; }
-
-/* Default */
-.theme-ivory { --amber-compliment: #e9d5ff; }
-/* Darkslate */
-.theme-darkslate { --amber-compliment: #083344; }
-/* 1. Daybreak */
-.theme-daybreak { --amber-compliment: #701a75; }
-/* 2. Desert Sunset */
-.theme-desertsunset { --amber-compliment: #4c1d95; }
-/* 3. Ocean Ripple */
-.theme-oceanripple { --amber-compliment: #082f49; }
-/* 4. Silver Chrome */
-.theme-silverchrome { --amber-compliment: #404040; }
-/* 5. Coral Reef */
-.theme-coralreef { --amber-compliment: #831843; }
-/* 6. Dusk */
-.theme-dusk { --amber-compliment: #1e1b4b; }
-/* 7. Rainbow Peak */
-.theme-rainbowpeak { --amber-compliment: #171717; }
-/* 8. Golden Gate */
-.theme-goldengate { --amber-compliment: #713f12; }
-/* 9. Emerald Forest */
+.page, .theme-ivory { --amber-compliment: #2d1a00; }
+.theme-darkslate { --amber-compliment: #0f172a; }
+.theme-midnightvoid { --amber-compliment: #ffffff; }
+.theme-arcticthaw { --amber-compliment: #0f172a; }
+.theme-abyssaltrench { --amber-compliment: #e0f2fe; }
+.theme-oxidizediron { --amber-compliment: #ffedd5; }
+.theme-deepseakelp { --amber-compliment: #fff1f2; }
+.theme-solarflare { --amber-compliment: #b45309; }
+.theme-monochromematrix { --amber-compliment: #f8fafc; }
+.theme-leadfortress { --amber-compliment: #cbd5e1; }
+.theme-ashenwastes { --amber-compliment: #fef2f2; }
+.theme-invertedneon { --amber-compliment: #38bdf8; }
+.theme-sourlime { --amber-compliment: #ecfccb; }
+.theme-obsidianledger { --amber-compliment: #f3f4f6; }
+.theme-daybreak { --amber-compliment: #fdf4ff; }
+.theme-desertsunset { --amber-compliment: #e0e7ff; }
+.theme-oceanripple { --amber-compliment: #ffffff; }
+.theme-silverchrome { --amber-compliment: #e5e7eb; }
+.theme-coralreef { --amber-compliment: #2d0c00; }
+.theme-dusk { --amber-compliment: #f5f3ff; }
+.theme-rainbowpeak { --amber-compliment: #ffffff; }
+.theme-goldengate { --amber-compliment: #fef3c7; }
 .theme-emeraldforest { --amber-compliment: #064e3b; }
-/* 10. Night Vision */
 .theme-nightvision { --amber-compliment: #052e16; }
-/* 11. Berry Blast */
-.theme-berryblast { --amber-compliment: #1e1b4b; }
-/* 12. Parchment */
-.theme-parchment { --amber-compliment: #451a03; }
-
+.theme-berryblast { --amber-compliment: #ffffff; }
+.theme-parchment { --amber-compliment: #422006; }
 
 .sidebar {
 }
@@ -743,12 +743,12 @@ a:hover, .btn-link:hover
     background-color: var(--amber-locus);
     border: 2px solid var(--slate-border);
     color: var(--amber-compliment);
-    text-shadow: 0px 1px 5px var(--text-muted);
+    text-shadow: 0px 1px 5px var(--text-main);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus, button.cta:hover
 {
-    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--cyan-bolt);
+    box-shadow: 0 0 0 0.1rem var(--amber-locus), 0 0 0 0.25rem var(--cyan-bolt);
 }
 
 

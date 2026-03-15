@@ -14,6 +14,7 @@
 @inject IFileManager FileManager
 @inject NavigationManager Nav
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
@@ -71,11 +72,11 @@
 </div>
 
 
-<div class="flash-card theme-settings @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
-    <heading class="flex-row">
-        <label></label>
+<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+    <div class="settings-page">
         <label>Theme Name</label>
         <label>Background</label>
+        <label>Surface</label>
         <label>Card</label>
         <label>Border</label>
         <label>Emerald</label>
@@ -90,19 +91,18 @@
         <label>Electric</label>
         <label>Gold</label>
         <label>Actions</label>
-    </heading>
-    @foreach (var theme in extractedThemes ?? [])
-    {
-        <div class="flex-row">
-            <span></span>
-            <span>@theme.ClassName.Replace("theme-", "")</span>
+        @foreach (var theme in extractedThemes ?? [])
+        {
+            <span class="sticky-left">@theme.ClassName.Replace("theme-", "")</span>
             @foreach(var variableKey in ThemeVariableKeys)
             {
-                <span><span class="sensor" style="background-color: @(@theme.Variables.GetValueOrDefault(variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
+                <span><span class="sensor" style="@(GetStyle(theme, variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
             }
             <span></span>
-        </div>
-    }
+        }
+    </div>
+
+    <button class="cta" @onclick="() => CopyToCSV()">Copy to CSV</button>
 </div>
 
 @code
@@ -110,6 +110,50 @@
     public DataLayer.Customization.ControlMode? Mode { get; set; } = DataLayer.Customization.ControlMode.Edit;
     public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
     public List<Retheme.ThemeData>? extractedThemes { get; set;  } 
+
+    private async Task CopyToCSV()
+    {
+        var csvBuilder = new System.Text.StringBuilder();
+
+        // 1. Add Headers
+        csvBuilder.AppendLine(string.Join("\t", themeLabels));
+
+        // 2. Add Rows
+        foreach (var theme in extractedThemes ?? [])
+        {
+            // Note: If data contains commas, you'd wrap values in quotes: "{item.Name}"
+            csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
+        }
+
+        // 3. Send to Clipboard via JS Interop
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", csvBuilder.ToString());
+    }
+
+
+    public string GetStyle(Retheme.ThemeData theme, string key)
+    {
+        return "background-color: " + theme.Variables.GetValueOrDefault(key);
+    }
+
+    public static readonly List<string> themeLabels = new List<string>
+    {
+        "Theme Name",
+        "Background",
+        "Surface",
+        "Card",
+        "Border",
+        "Emerald",
+        "Bolt",
+        "Amber",
+        "Compliment",
+        "Text",
+        "Muted",
+        "Sidebar",
+        "Stone",
+        "Nature",
+        "Electric",
+        "Gold"
+    };
 
     public static readonly List<string> ThemeVariableKeys = new()
     {
