@@ -1,6 +1,10 @@
-﻿@using Microsoft.Extensions.DependencyInjection
+﻿@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.HtmlRendering
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using FlashCard.Services
+@using FlashCard.Controls
 @inherits LayoutComponentBase
 @implements IDisposable
 @implements IAsyncDisposable
@@ -11,6 +15,7 @@
 @inject ITitleService TitleService
 @inject IServiceProvider ServiceProvider
 @inject IJsonService JsonService
+@inject ILoggerFactory LoggerFactory
 @inject NavigationManager Nav
 
 <div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
@@ -71,8 +76,14 @@
     <main>
 
         <article class="content course-container">
+            @if(_previousBody != null)
+            {
+                <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
+                    @(_previousBody)
+                </div>
+            }
             @* We pass the Layout instance to the Body so pages can set the HeaderMenu *@
-            @Body
+            @_activeBody
         </article>
 
 
@@ -117,6 +128,71 @@
         .Any(r => r.Template.Equals("/" + relativeUri, StringComparison.OrdinalIgnoreCase)));
         }
     */
+    private MarkupString? _previousBody;
+    private RenderFragment? _activeBody;
+    private bool _isTransitioning;
+
+    private IDisposable? _registration;
+
+
+    protected async Task UnvaluedTask()
+    {
+        StateHasChanged();
+        await Task.Delay(100);
+
+        _isTransitioning = true;
+        StateHasChanged(); // Now _previousBody is "locked" to the old content
+
+        await Task.Delay(400);
+
+        // Now update the active view to the new Router-provided Body
+        //_activeBody = Body; 
+        _isTransitioning = false;
+        _previousBody = null;
+
+        StateHasChanged();
+    }
+
+    private async ValueTask HandleLocationChanging(LocationChangingContext context)
+    {
+        var currentUri = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery.TrimEnd('/');
+        var targetUri = Nav.ToAbsoluteUri(context.TargetLocation).PathAndQuery.TrimEnd('/');
+
+        if (currentUri == targetUri)
+        {
+            return; // Exact same page, do nothing and let Blazor handle it
+        }
+
+
+        var (targetType, targetParams) = NavigationExtensions.IdentifyNavigation(targetUri);
+        var (currentType, currentParams) = NavigationExtensions.IdentifyNavigation(currentUri);
+
+        if (targetType == currentType)
+        {
+            return; 
+        }
+        // never wrap study-now
+        if(currentType == typeof(Pages.Landing.Home))
+        {
+            return;
+        }
+
+        var fragment = _activeBody;
+        using var htmlRenderer = new HtmlRenderer(ServiceProvider, LoggerFactory);
+
+        // 2. Render the current Body to a string inside the Dispatcher
+        var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var output = await htmlRenderer.RenderComponentAsync<ContentWrapper>(
+                ParameterView.FromDictionary(new Dictionary<string, object?>
+                {
+                    { "ChildContent", fragment }
+                }));
+            return output.ToHtmlString();
+        });
+        _previousBody = new MarkupString(html);
+
+    }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
@@ -133,6 +209,7 @@
     protected override void OnInitialized()
     {
         // Subscribe to the push event
+        _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
         Nav.LocationChanged += OnLocationChanged;
         TitleService.OnTitleChanged += SetTitle;
         MenuService.OnMenuChanged += SetHeaderMenu;
@@ -270,11 +347,17 @@
         //Tag = null;
         //this.StateHasChanged();
         //SetPageClass();
+        if (!_isTransitioning)
+        {
+            _activeBody = Body;
+        }
+        _ = UnvaluedTask();
     }
 
     public void Dispose()
     {
         // Unsubscribe to prevent memory leaks
+        _registration?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;
         TitleService.OnTitleChanged -= SetTitle;
         MenuService.OnMenuChanged -= SetHeaderMenu;

@@ -84,7 +84,20 @@
     min-height: calc(50vh);
     max-height: calc(100vh - 5.7rem);
     overflow: auto;
-    transition: max-height ease-in-out 0.4s, padding ease-in-out 0.3s;
+    transition: min-height ease-in-out 0.2s, max-height ease-in-out 0.4s, padding ease-in-out 0.3s;
+    opacity: 1.0;
+    transform: rotate(0), translate(0), scale(0);
+}
+
+.flash-card .flash-card
+{
+    box-shadow:none;
+    padding: 0;
+    background: none;
+    min-height: 0;
+    max-height: none;
+    transition: none;
+    animation: none;
 }
 
 .page.login-mode .flash-card
@@ -101,6 +114,11 @@
     padding: 0;
     max-height: 0;
     min-height: 0;
+    overflow: hidden;
+}
+
+.flash-card.animate-out *
+{
     overflow: hidden;
 }
 

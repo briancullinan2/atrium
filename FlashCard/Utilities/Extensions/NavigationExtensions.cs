@@ -19,6 +19,18 @@ namespace FlashCard.Utilities.Extensions
         }
         */
 
+        static NavigationExtensions()
+        {
+            var routeableTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());
+
+            foreach (var type in routeableTypes)
+            {
+                // This triggers your existing GetRoutes logic to fill the _routeCache
+                _ = GetRoutes(type);
+            }
+        }
+
         private static Dictionary<string, string?> ToDictionary(this MemberInitExpression expression)
         {
             var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -207,6 +219,96 @@ namespace FlashCard.Utilities.Extensions
             }
 
             return finalUri;
+        }
+
+        public static (Type ComponentType, Dictionary<string, object?> Parameters) IdentifyNavigation(this Uri uri)
+        {
+            return IdentifyNavigation(uri.AbsolutePath);
+        }
+
+        public static (Type ComponentType, Dictionary<string, object?> Parameters) IdentifyNavigation(string uri)
+        {
+            var urlParts = uri.Split('?');
+            var path = urlParts[0].Trim('/');
+            var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            var candidates = new List<(Type Type, ParsedRoute Route, Dictionary<string, object?> Params, int LiteralMatches)>();
+
+            foreach (var entry in _routeCache)
+            {
+                foreach (var route in entry.Value)
+                {
+                    var templateSegments = route.Template?.Trim('/').Split('/') ?? Array.Empty<string>();
+
+                    // 1. Structural Validation
+                    if (!route.Wildcard && templateSegments.Length != pathSegments.Length) continue;
+                    if (route.Wildcard && pathSegments.Length < templateSegments.Length - 1) continue;
+
+                    var extractedParams = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    bool isMatch = true;
+                    int literalMatches = 0;
+
+                    for (int i = 0; i < templateSegments.Length; i++)
+                    {
+                        var tSeg = templateSegments[i];
+                        bool isParam = tSeg.StartsWith('{') && tSeg.EndsWith('}');
+
+                        if (isParam)
+                        {
+                            var paramName = tSeg.Trim('{', '}').Split(':')[0];
+                            if (paramName.StartsWith('*'))
+                            {
+                                extractedParams[paramName.TrimStart('*')] = string.Join('/', pathSegments.Skip(i));
+                                break;
+                            }
+                            if (i < pathSegments.Length)
+                                extractedParams[paramName] = pathSegments[i];
+                        }
+                        else
+                        {
+                            if (i < pathSegments.Length && string.Equals(tSeg, pathSegments[i], StringComparison.OrdinalIgnoreCase))
+                            {
+                                literalMatches++;
+                            }
+                            else
+                            {
+                                isMatch = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isMatch)
+                    {
+                        candidates.Add((entry.Key, route, extractedParams, literalMatches));
+                    }
+                }
+            }
+
+            // 2. Prioritize: Most literal matches first, then shortest template (least greedy)
+            var bestMatch = candidates
+                .OrderByDescending(c => c.LiteralMatches)
+                .ThenBy(c => c.Route.Template?.Length)
+                .FirstOrDefault();
+
+            if (bestMatch.Type == null)
+                throw new InvalidOperationException($"No registered [Route] matches: {uri}");
+
+            // 3. Append Query Parameters to the best match
+            if (urlParts.Length > 1)
+            {
+                var queryPairs = urlParts[1].Split('&', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var pair in queryPairs)
+                {
+                    var kvp = pair.Split('=', 2);
+                    if (kvp.Length == 2)
+                    {
+                        bestMatch.Params[Uri.UnescapeDataString(kvp[0])] = Uri.UnescapeDataString(kvp[1]);
+                    }
+                }
+            }
+
+            return (bestMatch.Type, bestMatch.Params);
         }
     }
 }

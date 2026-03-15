@@ -323,7 +323,7 @@
     public static IEnumerable<DataLayer.Entities.Course> Generate()
     {
         var ss = new DataLayer.Entities.Course() { 
-            Title = "Atrium",
+            Title = "Study Sauce",
             LogoHosted = "/_content/FlashCard/studysauce-icon-76x76.png",
             Subject = "Studying",
             Description = "Course topics:\nStudying\nTaking tests\nSpaced repetition"
@@ -332,7 +332,7 @@
             .Select(mi => new DataLayer.Entities.Course()
                 {
                     Parent = ss,
-                    Title = "Atrium: " + mi?.Title,
+                    Title = "Study Sauce: " + mi?.Title,
                     LogoHosted = "/_content/FlashCard/studysauce-icon-76x76.png",
                     Subject = "Studying",
                     Description = "Course topics:\n* " + string.Join("\n* ", mi?.Children.Select(ci => ci.Title) ?? [])

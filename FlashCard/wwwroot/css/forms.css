@@ -157,6 +157,11 @@ heading.flex-row > * {
 }
 
 
+fieldset
+{
+    border-width: 2px;
+}
+
 
 .cards-edit .flex-row > *:nth-child(4) {
     flex-basis: 15%;
