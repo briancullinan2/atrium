@@ -5,7 +5,7 @@
     --slate-bg: #fdfdf2;
     --slate-surface: #ffffff;
     --slate-card: #ffffff;
-    --slate-border: #e2e8f0;
+    --slate-border: #64748b;
     --emerald-glow: #10b981;
     --cyan-bolt: #06b6d4;
     --amber-locus: #fbbf24;
@@ -750,16 +750,10 @@ a:hover, .btn-link:hover
 }
 
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus, button.cta:hover
-{
-    box-shadow: 0 0 0 0.1rem var(--amber-locus), 0 0 0 0.25rem var(--cyan-bolt);
-}
-
-
-.card-container, .flash-card, .card-inner, .user-account, .pack-edit {
+.flash-card {
     background-color: var(--slate-card);
     color: var(--text-main);
-    box-shadow: 0 10px 15px -3px var(--slate-card);
+    box-shadow: 0 10px 20px var(--slate-card), 5px 5px 10px var(--emerald-glow);
 }
 
 .study-now
@@ -799,7 +793,13 @@ select, textarea, .flash-card input[type] {
     box-shadow: 1px 2px 5px rgb(from var(--slate-bg) r g b / 50%);
 }
 
+fieldset
+{
+    border-color: rgb(from var(--slate-border) r g b / 50%);
+}
 
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, 
+.form-control:focus, .form-check-input:focus, button.cta:hover,
 select:active, textarea:active, input:active, input[type]:active,
 select:focus, textarea:focus, input:focus, input[type]:focus {
     border-color: var(--amber-locus);
@@ -812,7 +812,6 @@ button.btn-more, .btn-primary,
     background-color: var(--amber-locus);
     border: 2px solid var(--slate-border);
     color: var(--amber-compliment);
-    text-shadow: 0px 1px 5px var(--text-main);
 }
 
 .flash-card input[type="checkbox"] 
@@ -826,6 +825,16 @@ button.btn-more, .btn-primary,
 {
     background-color: var(--amber-locus);
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
+}
+
+.flash-card input[type="checkbox"]::after
+{
+    color: var(--slate-bg);
+}
+
+.flash-card input[type="checkbox"]:checked::after
+{
+    color: var(--text-main);
 }
 
 .flash-card input[type="checkbox"]:checked {
@@ -879,8 +888,29 @@ a.deemphasize, button.deemphasize {
     border: 1px solid var(--cyan-bolt);
 }
 
+.preview-count,
+.tab-tracker
+{
+    color: var(--text-muted);
+}
+
+.preview-prompt
+{
+    background: var(--slate-bg);
+    border-left-color: var(--amber-locus);
+}
+
+.text-amber-500
+{
+    color: var(--amber-locus);
+}
 
 ::selection {
     background: var(--cyan-bolt);
     color: #000;
+}
+
+.cards-edit .flex-row > span:first-child .bi
+{
+    color: var(--text-muted);
 }

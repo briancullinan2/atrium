@@ -11,7 +11,6 @@
 .page .bi-chevron-down,
 .page .bi-chevron-left,
 .page .bi-chevron-right {
-    transition: color ease-in-out 0.6s;
 }
 
 a.deemphasize,
@@ -79,7 +78,6 @@ button.cta {
     padding: 4px;
     background: darkorange;
     color: black;
-    text-shadow: 0px 1px 5px white;
     margin: 5px 5px 5px auto;
     cursor: pointer;
     border-radius: 5px;
@@ -102,7 +100,7 @@ button.deemphasize:hover {
 .accordion-item h4 {
     display: flex;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.125); /* --bs-accordion-border-width / --bs-accordion-border-color */
+    border-bottom: 2px solid rgba(0, 0, 0, 0.125); /* --bs-accordion-border-width / --bs-accordion-border-color */
 }
 
 h4.inactive ~ *:not(h4) {

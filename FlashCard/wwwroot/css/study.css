@@ -14,6 +14,7 @@
 .page.study-mode .nav-scrollable {
     color: transparent;
     overflow: hidden;
+    display: inline;
 }
 
 .page.study-mode .nav-scrollable > .nav {
@@ -44,6 +45,12 @@
 
 .page.study-mode .top-row > a {
     color: transparent;
+}
+
+.page.study-mode header.top-row
+{
+    background: transparent;
+    backdrop-filter: none;
 }
 
 .page.study-mode .contextual-menu {

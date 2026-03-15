@@ -85,7 +85,7 @@ header.top-row a:first-child {
     text-decoration: none;
     transition: all 0.2s ease-in-out;
     border: 2px solid transparent;
-    margin-left: 8px;
+    margin-left: 10px;
 }
 
 /* The "Highlight" state for the current page */

@@ -272,6 +272,7 @@ heading.flex-row > * {
     background: transparent;
     color: grey;
     padding: 10px;
+    border: none;
 }
 
 .cards-edit .flex-row.Edit > *:nth-child(5) > span {
@@ -334,9 +335,9 @@ heading.flex-row > * {
     cursor: pointer;
 }
 
-    .user-avatar > a:first-child:hover {
-        text-decoration: underline;
-    }
+.user-avatar > a:first-child:hover {
+    text-decoration: underline;
+}
 
 
 .user-avatar img {

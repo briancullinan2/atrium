@@ -38,7 +38,7 @@
         <div class="highlighted-link">
             @if (QuizStep > 0)
             {
-                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span> Back</button>
+                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span>Back</button>
             }
 
             @if (card?.ResponseType == CardType.FlashCard)
@@ -64,7 +64,7 @@
         <div class="link-list">
             @if (QuizStep > 0)
             {
-                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span> Back</button>
+                <button class="deemphasize back" @onclick="() => LastStep()"><span class="bi bi-chevron-left"></span>Back</button>
             }
             <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => NextStep()">Tap or Swipe for next card</a>
         </div>
@@ -219,7 +219,7 @@
         base.OnInitialized();
         CardLayout = Pages.Landing.Pack.Metadata.Categories["Display"]?.ToList();
         ResultLayout = Pages.Landing.Pack.Metadata.Categories["Results"]?.ToList();
-        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-study"></span> Study Mode</a>);
+        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-study"></span>Study Mode</a>);
     }
 
     protected string? GetDisplayClass(int? step)

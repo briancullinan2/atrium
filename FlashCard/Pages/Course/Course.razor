@@ -45,7 +45,7 @@
 <div class="flash-card @GetCurrentClass(StepMode.Video)">
     <div class="video-placeholder">Video content for @Lesson</div>
     <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="() => Next(StepMode.Intro)"><span class="bi bi-chevron-left"></span> Back</button>
+        <button class="deemphasize back" @onclick="() => Next(StepMode.Intro)"><span class="bi bi-chevron-left"></span>Back</button>
         <button class="cta" @onclick="() => Next(StepMode.Quiz)">Take Quiz</button>
     </div>
 </div>
@@ -63,7 +63,7 @@
                 }
                 else
                     Next(StepMode.Video);
-            }"><span class="bi bi-chevron-left"></span> Back</button>
+            }"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentQuiz?.ElementAt(i).ResponseType == CardType.FlashCard)
             {
                 <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => { QuizStep++; StateHasChanged(); }">Tap or Swipe for answer</a>
@@ -84,7 +84,7 @@
     <h2>Quiz Results:</h2>
     <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.ResultsCardControl.ResultCard() {Card = card, Response = Responses.FirstOrDefault(r => r.Card == card)}).ToList()"></MetadataControl>
     <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span> Back</button>
+        <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span>Back</button>
         @if (Responses.Count() == CurrentQuiz?.Count())
         {
             <button class="cta" @onclick="() => Next(StepMode.Reward)">See Reward</button>
@@ -111,7 +111,7 @@
     </div>
     <div class="highlighted-link">
         @*TODO: back to last quiz question?*@
-        <button class="deemphasize back" @onclick="() => Next(StepMode.Quiz)"><span class="bi bi-chevron-left"></span> Back</button>
+        <button class="deemphasize back" @onclick="() => Next(StepMode.Quiz)"><span class="bi bi-chevron-left"></span>Back</button>
         <button class="cta" @onclick="() => Next(StepMode.Investment)">See Activity</button>
     </div>
 </div>
