@@ -197,9 +197,7 @@
                 return;
             }
 
-            var cancellation = new CancellationToken();
-            var response = await HttpClient.PostAsJsonAsync($"https://{Domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
-            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+            var result = await StatusService.CheckStatus(Domain);
 
             if (result?.ItWorks?[0] == token)
             {

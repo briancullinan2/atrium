@@ -219,7 +219,7 @@
         base.OnInitialized();
         CardLayout = Pages.Landing.Pack.Metadata.Categories["Display"]?.ToList();
         ResultLayout = Pages.Landing.Pack.Metadata.Categories["Results"]?.ToList();
-        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-study"></span>Study Mode</a>);
+        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-pinpoint"></span>Study Mode</a>);
     }
 
     protected string? GetDisplayClass(int? step)

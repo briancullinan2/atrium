@@ -17,9 +17,10 @@
 @inject IServiceProvider ServiceProvider
 @inject IJsonService JsonService
 @inject ILoggerFactory LoggerFactory
+@inject IChatService ChatService
 @inject NavigationManager Nav
 
-<div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
+<div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
     <div id="theme-sensor" style="display:none;">
         <span class="sensor-bg"></span>
         <span class="sensor-surface"></span>
@@ -91,6 +92,12 @@
     @* Connected to @server.BaseUrl *@
     </main>
 
+    @if (ShowChat == true)
+    {
+        <div class="chat-box">
+            <input @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="() => SendMessage()">Send</button>
+        </div>
+    }
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -108,6 +115,8 @@
     public bool? Study { get; set; }
     public string? PageClass { get; set; }
     public bool? ShowHeader { get; set; }
+    public bool? ShowChat { get; set; }
+    public string? ChatMessage { get; set; }
 
     /*
      * This is so fucking dumb this isn't more obvious like Nav.GetComponent(route);
@@ -135,6 +144,17 @@
 
     private IDisposable? _registration;
 
+    protected void SendMessage()
+    {
+        if(string.IsNullOrWhiteSpace(ChatMessage))
+        {
+            ChatMessage = "";
+            return;
+        }
+        _ = ChatService.SendMessage(ChatMessage ?? ""); 
+        ChatMessage = "";
+    }
+
 
     protected async Task UnvaluedTask()
     {
@@ -148,6 +168,8 @@
 
         // Now update the active view to the new Router-provided Body
         //_activeBody = Body; 
+        
+        
         _isTransitioning = false;
         _previousBody = null;
 
@@ -222,7 +244,9 @@
         LoginService.OnLoginChanged += SetLoginMode;
         LoginService.OnUserChanged += SetUser;
         JsonService.OnStateChanged += SetState;
+        ChatService.OnChatWorking += SetChat;
         SetPageClass();
+        _ = ChatService.IsWorking();
     }
 
     public Dictionary<string, string?> State { get; set; } = new();
@@ -303,6 +327,15 @@
         }
     }
 
+    
+    private void SetChat(bool? chat)
+    {
+        if (chat != ShowChat)
+        {
+            ShowChat = chat;
+            this.StateHasChanged();
+        }
+    }
 
 
     private void SetHeader(bool? show)
@@ -370,6 +403,7 @@
         LoginService.OnUserChanged -= SetUser;
         MenuService.OnHeaderChanged -= SetHeader;
         JsonService.OnStateChanged -= SetState;
+        ChatService.OnChatWorking -= SetChat;
     }
 
     /*

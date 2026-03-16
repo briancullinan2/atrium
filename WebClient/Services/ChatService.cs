@@ -12,14 +12,27 @@ namespace WebClient.Services
         private DateTime? recentChecked;
         private string? recentMessage;
         private DateTime? recentMessaged;
-        private bool? recentPing;
+        private Tuple<bool?, string?>? recentPing;
         private DateTime? recentPinged;
+        public Dictionary<DateTime, Tuple<bool, string>>? Recents { get; set; } = new();
+        public bool Chat { get; set; } = false;
 
+        public event Action<bool?>? OnChatWorking;
+        public event Action<bool>? OnChatChanged;
+        public event Action? OnChatMessage;
+
+        public async Task<bool?> IsWorking() => recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
 
         public ChatService()
         {
             _httpClient = _service?.GetRequiredService<HttpClient>();
-            _ = PingService("", "", "", []);
+            _ = PingService("", "", "", "", []);
+        }
+
+        static ChatService()
+        {
+            var _chat = _service?.GetRequiredService<ChatService>();
+            _ = _chat?.IsWorking();
         }
 
         public async Task<List<ServicePreset>> ListPresets()
@@ -38,7 +51,7 @@ namespace WebClient.Services
             return recentResult;
         }
 
-        public async Task<bool?> PingService(string ServiceUrl, string ModelName, string ApiKey, List<DynamicParam> Parameters)
+        public async Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters)
         {
             if (recentPing != null && recentPinged + TimeSpan.FromSeconds(10) > DateTime.Now)
             {
@@ -51,13 +64,15 @@ namespace WebClient.Services
                 ApiKey = ApiKey,
                 DefaultModel = ModelName,
                 Url = ServiceUrl,
-                Params = Parameters
+                Params = Parameters,
+                ResponsePath = Response
             }), System.Text.Encoding.UTF8, "application/json")).Result;
-            if (response == null) return null;
-            var result = await response.Content.ReadFromJsonAsync<bool>();
+            if (response == null) return new Tuple<bool?, string?>(null, null);
+            var result = await response.Content.ReadFromJsonAsync<Tuple<bool?, string?>>();
             recentPing = result;
             recentPinged = DateTime.Now;
-            return recentPing;
+            OnChatWorking?.Invoke(recentPing?.Item1);
+            return recentPing ?? new Tuple<bool?, string?>(null, null);
 
         }
 
@@ -68,6 +83,8 @@ namespace WebClient.Services
                 return recentMessage;
             }
 
+            Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
+            OnChatMessage?.Invoke();
 
             var response = _httpClient?.PostAsJsonAsync("/api/chat", new StringContent(JsonSerializer.Serialize(message), System.Text.Encoding.UTF8, "application/json")).Result;
             if (response == null) return null;
@@ -75,7 +92,15 @@ namespace WebClient.Services
             if (result == null) return null;
             recentMessage = result;
             recentMessaged = DateTime.Now;
+            Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, result));
+            OnChatMessage?.Invoke();
             return recentMessage;
+        }
+
+        public async Task SetChatMode(bool chat)
+        {
+            Chat = chat;
+            OnChatChanged?.Invoke(chat);
         }
     }
 }

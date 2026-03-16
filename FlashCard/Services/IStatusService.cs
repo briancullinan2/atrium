@@ -8,6 +8,9 @@ namespace FlashCard.Services
         Task<string?> GetHost();
         Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null);
         Task<bool?> CheckInstalled();
+        Task<bool?> IsWorking();
+        Task<StatusResponse?> CheckStatus(string? domain);
+        event Action<bool?>? OnHttpWorking;
     }
 
 

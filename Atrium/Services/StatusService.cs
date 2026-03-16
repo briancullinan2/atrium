@@ -17,11 +17,18 @@ namespace Atrium.Services
 
         static StatusService()
         {
-            var savedSettings = Path.Combine(homeDirectory, ".credentials", "study-sauce-hosting.json");
+            var savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-hosting.json");
             if (File.Exists(savedSettings))
             {
-                Settings = JsonSerializer.Deserialize<HostingSettings>(File.ReadAllText(savedSettings));
+                try
+                {
+                    Settings = JsonSerializer.Deserialize<HostingSettings>(File.ReadAllText(savedSettings));
+                }
+                catch (Exception) { }
             }
+
+            var _status = _services?.GetRequiredService<StatusService>();
+            _ = _status?.IsWorking();
         }
 
         protected static HttpClient? _httpClient;
@@ -111,11 +118,13 @@ namespace Atrium.Services
         private static DateTime? lastChecked;
         private static string? lastStatus;
 
+        public event Action<bool?>? OnHttpWorking;
+
         public static async Task<string?> CheckTunnelStatus(string? _account = null, string? _tunnel = null, string? _api = null)
         {
-            var AccountId = _account ?? Settings?.AccountId;
-            var TunnelName = _tunnel ?? Settings?.TunnelName;
-            var ApiToken = _api ?? Settings?.ApiToken;
+            var AccountId = string.IsNullOrWhiteSpace(_account) ? Settings?.AccountId : _account;
+            var TunnelName = string.IsNullOrWhiteSpace(_tunnel) ? Settings?.TunnelName : _tunnel;
+            var ApiToken = string.IsNullOrWhiteSpace(_api) ? Settings?.ApiToken : _api;
 
 
             if (string.IsNullOrWhiteSpace(AccountId)
@@ -154,6 +163,39 @@ namespace Atrium.Services
             {
                 return "Error: " + ex.Message;
             }
+        }
+
+        private StatusResponse? statusResult;
+        private DateTime? statusChecked;
+
+        public async Task<bool?> IsWorking()
+        {
+            var token = await GetToken();
+            if (statusResult != null)
+            {
+                return token == statusResult.ItWorks?[0];
+            }
+            var host = await GetHost();
+            var result = await CheckStatus(host);
+            OnHttpWorking?.Invoke(result?.ItWorks?[0] == token);
+            return result?.ItWorks?[0] == token;
+        }
+
+        public async Task<StatusResponse?> CheckStatus(string? domain)
+        {
+            if (statusResult != null && statusChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return statusResult;
+            }
+
+            var cancellation = new CancellationToken();
+            var request = _httpClient?.PostAsJsonAsync($"https://{domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
+            if (request == null) return null;
+            var response = await request;
+            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+            statusResult = result;
+            statusChecked = DateTime.Now;
+            return statusResult;
         }
     }
 

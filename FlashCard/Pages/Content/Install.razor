@@ -8,7 +8,7 @@
 <SyncedTitle Title="Install AI"></SyncedTitle>
 
 
-<div class="flash-card">
+<div class="flash-card animate-in">
     Instructions for setting up <a href="https://github.com/lllyasviel/stable-diffusion-webui-forge">Automatic1111</a> and <a href="https://github.com/ggml-org/llama.cpp">llama.cpp/GGUF</a>.
 
     <h2>Parameter Builder</h2>
@@ -18,7 +18,7 @@
     <div class="row">
         <div>
             <label>Load Preset</label>
-            <select class="form-control" @onchange="ApplyPreset">
+            <select class="form-control" @bind="SelectedPreset">
                 <option value="">-- Select a Service --</option>
                 @foreach(var preset in Services) {
                     <option value="@preset.Name">@preset.Name</option>
@@ -36,6 +36,10 @@
         <div class="col-md-6">
             <label>API Key</label>
             <input type="text" @bind="ApiKey" class="form-control" placeholder="Api Key @(ApiKeySample)" />
+        </div>
+        <div class="col-md-6">
+            <label>Response Path</label>
+            <input type="text" @bind="ResponsePath" class="form-control" placeholder="response.path" />
         </div>
 
     </div>
@@ -95,16 +99,38 @@
     private string ModelName = "llama3";
     private string ApiKey = "";
     private string ApiKeySample = "";
+    private string ResponsePath = "response";
     private string ResponseJson = "Result will appear here...";
     private List<DynamicParam> Parameters = new() { new DynamicParam() };
     private List<ServicePreset> Services = new();
 
-    private void ApplyPreset(ChangeEventArgs e) {
-        var preset = Services.FirstOrDefault(p => p.Name == e.Value?.ToString());
+    protected string? _selectedPreset = null;
+    protected string? SelectedPreset
+    {
+        get
+        {
+            return _selectedPreset;
+        }
+        set
+        {
+            _selectedPreset = value;
+            ApplyPreset(value);
+        }
+    }
+
+    private void ApplyPreset(string? value) {
+        var preset = Services.FirstOrDefault(p => p.Name == value);
         if (preset != null) {
             ServiceUrl = preset.Url;
             ModelName = preset.DefaultModel;
-            ApiKeySample = "(" + preset.ApiKey + ")";
+            if(!string.IsNullOrWhiteSpace(preset.ApiKey))
+            {
+                ApiKeySample = "(" + preset.ApiKey + ")";
+            } 
+            else
+            {
+                ApiKeySample = "";
+            }
             Parameters = preset.Params.ToList(); // Clone the list
         }
     }
@@ -119,12 +145,17 @@
     protected async Task InitializePresets()
     {
         Services = await ChatService.ListPresets();
+        SelectedPreset = Services?.FirstOrDefault(s => s.IsDefault)?.Name
+            ?? Services?.FirstOrDefault(s => s.IsPrevious)?.Name;
         StateHasChanged();
     }
 
     private void AddParameter() => Parameters.Add(new DynamicParam());
 
     private async Task ExecutePost() {
-        IsWorking = await ChatService.PingService(ServiceUrl, ModelName, ApiKey, Parameters);
+        var result = await ChatService.PingService(ServiceUrl, ModelName, ApiKey, ResponsePath, Parameters);
+        IsWorking = result.Item1;
+        ResponseJson = result.Item2 ?? "No response...";
+        StateHasChanged();
     }
 }

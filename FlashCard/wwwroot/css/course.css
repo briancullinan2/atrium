@@ -86,7 +86,7 @@
     overflow: auto;
     transition: min-height ease-in-out 0.2s, max-height ease-in-out 0.4s, padding ease-in-out 0.3s;
     opacity: 1.0;
-    transform: rotate(0), translate(0), scale(0);
+    /*transform: rotate(0) translate(0) scale(0);*/
 }
 
 .flash-card .flash-card
@@ -96,7 +96,8 @@
     background: none;
     min-height: 0;
     max-height: none;
-    transition: none;
+    transform: none;
+    /*transition: none;*/
     animation: none;
 }
 

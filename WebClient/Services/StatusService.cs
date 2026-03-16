@@ -10,6 +10,10 @@ namespace WebClient.Services
         internal static IServiceProvider? _service;
         private StatusResponse? recentResult;
         private DateTime? recentChecked;
+        private StatusResponse? statusResult;
+        private DateTime? statusChecked;
+
+        public event Action<bool?>? OnHttpWorking;
 
         public StatusService()
         {
@@ -19,6 +23,12 @@ namespace WebClient.Services
         public async Task<string?> GetToken()
         {
             return await GetToken(null, null, null);
+        }
+
+        static StatusService()
+        {
+            var _status = _service?.GetRequiredService<StatusService>();
+            _ = _status?.IsWorking();
         }
 
         public async Task<string?> GetToken(string? _account = null, string? _tunnel = null, string? _api = null)
@@ -70,6 +80,36 @@ namespace WebClient.Services
             }
             await GetToken();
             return recentResult?.Installed;
+        }
+
+        public async Task<bool?> IsWorking()
+        {
+            if(recentResult != null && statusResult != null)
+            {
+                return recentResult.ItWorks?[0] == statusResult.ItWorks?[0];
+            }
+            var token = await GetToken();
+            var host = await GetHost();
+            var result = await CheckStatus(host);
+            OnHttpWorking?.Invoke(result?.ItWorks?[0] == token);
+            return result?.ItWorks?[0] == token;
+        }
+
+        public async Task<StatusResponse?> CheckStatus(string? domain)
+        {
+            if (statusResult != null && statusChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return statusResult;
+            }
+
+            var cancellation = new CancellationToken();
+            var request = _httpClient?.PostAsJsonAsync($"https://{domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
+            if (request == null) return null;
+            var response = await request;
+            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+            statusResult = result;
+            statusChecked = DateTime.Now;
+            return statusResult;
         }
     }
 }

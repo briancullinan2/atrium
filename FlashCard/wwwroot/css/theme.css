@@ -914,3 +914,13 @@ a.deemphasize, button.deemphasize {
 {
     color: var(--text-muted);
 }
+
+.chat-message
+{
+    color: var(--text-sidebar);
+}
+
+
+.chat-message.from *:nth-child(1) {
+    background: rgb(from var(--text-sidebar) r g b / 10%);
+}

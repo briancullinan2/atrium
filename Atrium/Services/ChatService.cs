@@ -1,5 +1,6 @@
 ﻿using FlashCard.Services;
 using Microsoft.AspNetCore.Http;
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -9,11 +10,12 @@ namespace Atrium.Services
     internal class ChatService : IChatService
     {
         static string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        static string savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-chat.json");
 
         internal static IServiceProvider? _services;
         //private readonly HttpClient? _httpClient;
 
-        protected static List<ServicePreset>? Settings { get; set; }
+        protected static List<ServicePreset>? Settings { get; set; } = new();
 
         public ChatService()
         {
@@ -22,31 +24,116 @@ namespace Atrium.Services
 
         static ChatService()
         {
-            var savedSettings = Path.Combine(homeDirectory, ".credentials", "study-sauce-chat.json");
             if (File.Exists(savedSettings))
             {
-                Settings = JsonSerializer.Deserialize<List<ServicePreset>>(File.ReadAllText(savedSettings));
+                try
+                {
+                    Settings = JsonSerializer.Deserialize<List<ServicePreset>>(File.ReadAllText(savedSettings));
+                }
+                catch (Exception) { }
             }
+            var _chat = _services?.GetRequiredService<ChatService>();
+            _ = _chat?.IsWorking();
         }
 
         const string PingMessage = "Please respond quickly and succinctly, you are learning tool with access to many functions. Please respond with the word Supercalifragilisticexpialidocious inside JSON format { \"response\" : \"...\" }. Only respond with the JSON and the word no other explanations needed. ";
-
-        public async Task<bool?> PingService(string ServiceUrl, string ModelName, string ApiKey, List<DynamicParam> Parameters)
-        {
-            // TODO: save service information
-
-
-            var json = await ExecutePost(ServiceUrl, ModelName, ApiKey, Parameters, PingMessage);
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(json ?? "");
-            return parsed?.TryGetValue("response", out var response) == true
-                && string.Equals(response, "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
+        private int recentHash;
+        private Tuple<bool?, string?>? recentPing;
+        private DateTime? recentPinged;
+        public static Dictionary<string, Dictionary<DateTime, Tuple<bool, string>>>? AllRecents { get; set; } = new();
+        public Dictionary<DateTime, Tuple<bool, string>>? Recents { 
+            get
+            {
+                if (AllRecents?.TryGetValue("", out var _recents) == true)  return _recents;
+                var newRecent = new Dictionary<DateTime, Tuple<bool, string>>();
+                AllRecents?[""] = newRecent;
+                return newRecent;
+            } 
         }
 
+        public bool Chat { get; set; } = false;
+
+        public async Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters)
+        {
+            var hash = HashCode.Combine(ServiceUrl, ModelName, ApiKey, Response, JsonSerializer.Serialize(Parameters));
+            if (recentPing != null && recentHash == hash && recentPinged + TimeSpan.FromSeconds(10) > DateTime.Now)
+            {
+                return recentPing;
+            }
+
+            var json = await ExecutePost("", ServiceUrl, ModelName, ApiKey, Response, Parameters, PingMessage);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, object?>>(json ?? "");
+            var result = parsed?.TryGetValue("response", out var response) == true
+                && string.Equals(response?.ToString(), "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
+
+            if(result == true && Settings != null && !string.IsNullOrWhiteSpace(ServiceUrl))
+            {
+                // TODO: save service information
+                var index = Settings.FindIndex(s => string.Equals(s.Url, ServiceUrl, StringComparison.InvariantCultureIgnoreCase));
+                var replacementPreset = new ServicePreset()
+                {
+                    ApiKey = ApiKey,
+                    Url = ServiceUrl,
+                    DefaultModel = ModelName,
+                    ResponsePath = Response,
+                    Params = Parameters,
+                    IsPrevious = true,
+                };
+
+                if(Settings.Count == 0 || Settings.FirstOrDefault(s => s.IsDefault) == null)
+                {
+                    replacementPreset.IsDefault = true;
+                }
+
+                if (index > -1)
+                {
+                    Settings[index] = replacementPreset;
+                }
+                else
+                {
+                    Settings.Add(replacementPreset);
+                }
+
+                var validSettings = JsonSerializer.Serialize(Settings, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
+                });
+                File.WriteAllText(savedSettings, validSettings);
+            }
+            recentPing = new Tuple<bool?, string?>(result, json);
+            recentPinged = DateTime.Now;
+            recentHash = hash;
+            OnChatWorking?.Invoke(result);
+            return recentPing;
+        }
+        
+
+        public class RecentModel
+        {
+            public DateTime Date { get; set; }
+            public string? Role { get; set; }
+            public string? Content { get; set; }
+        }
 
         public async Task<string?> SendMessage(string message)
         {
-            return "";
+            var previous = JsonSerializer.Serialize(Recents?.TakeLast(10).Select(r => new RecentModel () { 
+                Role = r.Value.Item1 ? "assistant" : "user",
+                Date = r.Key,
+                Content = r.Value.Item2
+            }));
+            Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
+            OnChatMessage?.Invoke();
+
+            var result = await ExecutePost("", "", "", "", "", [], "The user writes:\n" + message + "\n\nHistory for Context:\n" + previous);
+            Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, result ?? ""));
+            OnChatMessage?.Invoke();
+            return result;
         }
+
+
+        public async Task<bool?> IsWorking() => recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
 
 
         public static async Task OnPresets(HttpContext context)
@@ -75,6 +162,7 @@ namespace Atrium.Services
                 var jsonQuery = await reader.ReadToEndAsync();
                 var service = JsonSerializer.Deserialize<ServicePreset>(jsonQuery);
 
+
                 // TODO: save preset settings in json file
                 if (service == null)
                 {
@@ -88,12 +176,7 @@ namespace Atrium.Services
                     throw new InvalidOperationException("Chat Service failed to render.");
                 }
 
-                var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.Params);
-
-                if (result == true)
-                {
-                    // TODO: store service information in JSON
-                }
+                var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Params);
 
                 var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
                 {
@@ -142,7 +225,22 @@ namespace Atrium.Services
                     throw new InvalidOperationException("Chat Service failed to render.");
                 }
 
-                var result = await _chat.SendMessage(message);
+                string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+                Dictionary<DateTime, Tuple<bool, string>>? _recents = null;
+                if(AllRecents?.TryGetValue(clientId, out _recents) != true)
+                {
+                    AllRecents?[clientId] = _recents = new Dictionary<DateTime, Tuple<bool, string>>();
+                }
+                
+                var previous = JsonSerializer.Serialize(_recents?.TakeLast(10).Select(r => new RecentModel()
+                {
+                    Role = r.Value.Item1 ? "assistant" : "user",
+                    Date = r.Key,
+                    Content = r.Value.Item2
+                }));
+
+                var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message + "\n\nHistory for Context:\n" + previous);
+
                 var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
                 {
                     WriteIndented = true,
@@ -164,15 +262,40 @@ namespace Atrium.Services
             }
         }
 
+        private static readonly ConcurrentDictionary<string, CancellationTokenSource> _clientTokens = new();
 
-        public static async Task<string?> ExecutePost(string ServiceUrl, string ModelName, string ApiKey, List<DynamicParam> Parameters, string FirstMessage)
+
+        public static async Task<string?> ExecutePost(string _client, string _service, string _model, string _key, string _response, List<DynamicParam> _parameters, string FirstMessage)
         {
             if (_services == null) throw new InvalidOperationException("Assign services after app is created.");
             var Http = _services.GetRequiredService<HttpClient>();
 
+            // --- Cancellation Logic ---
+            // Cancel and dispose of any existing request for this client
+            if (_clientTokens.TryRemove(_client, out var oldCts))
+            {
+                oldCts.Cancel();
+                oldCts.Dispose();
+            }
+            
+            // Create a new token for this specific request
+            var cts = new CancellationTokenSource();
+            _clientTokens[_client] = cts;
+
+
+            var bestService = Settings?.FirstOrDefault(s => s.IsPrevious)
+                ?? Settings?.FirstOrDefault(s => s.IsDefault)
+                ?? Settings?.FirstOrDefault();
+
+            var ServiceUrl = string.IsNullOrWhiteSpace(_service) ? bestService?.Url : _service;
+            var ModelName = string.IsNullOrWhiteSpace(_model) ? bestService?.DefaultModel : _model;
+            var ApiKey = string.IsNullOrWhiteSpace(_key) ? bestService?.ApiKey : _key;
+            var Response = string.IsNullOrWhiteSpace(_response) ? bestService?.ResponsePath : _response;
+            var Parameters = _parameters?.Count() == 0 ? bestService?.Params : _parameters;
+
             var payload = new Dictionary<string, object>();
 
-            foreach (var p in Parameters)
+            foreach (var p in Parameters ?? [])
             {
                 // 1. Handle Placeholder Replacements for Strings
                 var processedValue = p.Value;
@@ -200,7 +323,7 @@ namespace Atrium.Services
                 if (!string.IsNullOrEmpty(ApiKey) && ApiKey != "not-needed")
                 {
                     // Anthropic uses a different header name, but standard is Bearer
-                    var authScheme = ServiceUrl.Contains("anthropic") ? "x-api-key" : "Bearer";
+                    var authScheme = ServiceUrl?.Contains("anthropic") == true ? "x-api-key" : "Bearer";
                     if (authScheme == "Bearer")
                         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiKey);
                     else
@@ -208,27 +331,91 @@ namespace Atrium.Services
                 }
 
                 request.Content = JsonContent.Create(payload);
-                var response = await Http.SendAsync(request);
-                return await response.Content.ReadAsStringAsync();
+                var response = await Http.SendAsync(request, cts.Token);
+                var result = await response.Content.ReadAsStringAsync();
+                return ExtractValue(result, Response);
+            }
+            catch (OperationCanceledException)
+            {
+                return "Request cancelled by new input.";
             }
             catch (Exception ex)
             {
                 return $"Error: {ex.Message}";
             }
+            finally
+            {
+                // Cleanup: remove the token if this specific task is the one that finished
+                if (_clientTokens.TryGetValue(_client, out var currentCts) && currentCts == cts)
+                {
+                    _clientTokens.TryRemove(_client, out _);
+                    cts.Dispose();
+                }
+            }
         }
 
+        public static string ExtractValue(string json, string? path)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var element = doc.RootElement;
+
+                foreach (var segment in path?.Split('.') ?? [])
+                {
+                    if (segment.Contains("[") && segment.Contains("]"))
+                    {
+                        // Handle Array Access: "choices[0]"
+                        var parts = segment.Split('[');
+                        var name = parts[0];
+                        var index = int.Parse(parts[1].Replace("]", ""));
+                        element = element.GetProperty(name)[index];
+                    }
+                    else
+                    {
+                        // Handle Property Access: "message"
+                        element = element.GetProperty(segment);
+                    }
+                }
+                return element.GetString() ?? element.GetRawText();
+            }
+            catch (Exception ex)
+            {
+                return $"[Extraction Error: {ex.Message}]";
+            }
+        }
 
         public async Task<List<ServicePreset>> ListPresets()
         {
             return GetPresets();
         }
 
+        public static List<ServicePreset> GetPresets()
+        {
+            return Settings?.Select(s => new ServicePreset() {
+                Url = s.Url,
+                IsDefault = s.IsDefault,
+                IsPrevious = s.IsPrevious,
+                ApiKey = PredefinedServices.FirstOrDefault(p => string.Equals(s.Url, p.Url))?.ApiKey ?? "",
+                DefaultModel = s.DefaultModel,
+                Params = s.Params,
+                ResponsePath = s.ResponsePath,
+                Name = string.IsNullOrWhiteSpace(s.Name) ? PredefinedServices.FirstOrDefault(p => string.Equals(s.Url, p.Url))?.Name ?? "" : s.Name
+            }).Concat(PredefinedServices.Where(p => Settings?.FirstOrDefault(s => string.Equals(s.Url, p.Url, StringComparison.InvariantCultureIgnoreCase)) == null)).ToList() ?? new();
+        }
 
-        public static List<ServicePreset> GetPresets() => new() {
+        public async Task SetChatMode(bool chat)
+        {
+            Chat = chat;
+            OnChatChanged?.Invoke(chat);
+        }
+
+        internal static List<ServicePreset> PredefinedServices = new() {
             new ServicePreset {
                 Name = "Ollama (Local /generate)",
                 Url = "http://localhost:11434/api/generate",
-                DefaultModel = "llama3",
+                DefaultModel = "qwen3.5:cloud",
+                ResponsePath = "response",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "prompt", Value = "{Message}", Type = "string" },
@@ -240,6 +427,7 @@ namespace Atrium.Services
                 Url = "https://api.openai.com/v1/chat/completions",
                 DefaultModel = "gpt-4o",
                 ApiKey = "sk-...",
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     // Note: OpenAI expects a 'messages' object, 
                     // but for a generic builder, we track the key/value
@@ -257,6 +445,7 @@ namespace Atrium.Services
                 Url = "https://api.groq.com/openai/v1/chat/completions",
                 DefaultModel = "llama-3.3-70b-versatile",
                 ApiKey = "gsk_...",
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
@@ -268,6 +457,7 @@ namespace Atrium.Services
                 Url = "https://api.anthropic.com/v1/messages",
                 DefaultModel = "claude-3-5-sonnet-20240620",
                 ApiKey = "sk-ant-api03-...",
+                ResponsePath = "content[0].text",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "max_tokens", Value = "1024", Type = "number" },
@@ -279,6 +469,7 @@ namespace Atrium.Services
                 Url = "https://api.deepseek.com/chat/completions",
                 DefaultModel = "deepseek-chat",
                 ApiKey = "sk-...", // DeepSeek uses standard sk- format
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
@@ -289,6 +480,7 @@ namespace Atrium.Services
                 Url = "https://openrouter.ai/api/v1/chat/completions",
                 DefaultModel = "google/gemini-2.0-flash-001",
                 ApiKey = "sk-or-v1-...", // OpenRouter keys start with sk-or-v1-
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
@@ -298,6 +490,7 @@ namespace Atrium.Services
                 Name = "Mistral AI",
                 Url = "https://api.mistral.ai/v1/chat/completions",
                 DefaultModel = "mistral-tiny",
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
@@ -306,9 +499,10 @@ namespace Atrium.Services
             },
 
             new ServicePreset {
-                Name = "Local LLM (OpenAI Format)",
+                Name = "LLM Studio (OpenAI Format)",
                 Url = "http://localhost:1234/v1/chat/completions",
                 DefaultModel = "local-model",
+                ResponsePath = "choices[0].message.content",
                 Params = new() {
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
@@ -317,7 +511,9 @@ namespace Atrium.Services
             }
         };
 
-
+        public event Action<bool?>? OnChatWorking;
+        public event Action<bool>? OnChatChanged;
+        public event Action? OnChatMessage;
     }
 
 
