@@ -144,6 +144,7 @@ main {
 
     main {
         overflow: visible;
+        min-height: calc(100vh - 7.5rem);
     }
 
     .top-row a, .top-row .btn-link {
@@ -159,6 +160,11 @@ main {
     .page {
         transition: none;
     }
+
+    .sidebar .top-row {
+        padding-right: 100px;
+    }
+
 }
 
 

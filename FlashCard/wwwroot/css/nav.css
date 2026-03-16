@@ -197,6 +197,14 @@ a .bi {
         z-index: 100;
         transition: height ease-in-out 0.6s;
     }
+
+    .page.chatting .nav-scrollable.chat {
+        display: inline-block;
+    }
+
+    .page.chatting .top-row .bi-list {
+        /*display:none;*/
+    }
 }
 
 @media (min-width: 640px) {

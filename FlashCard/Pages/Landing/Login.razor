@@ -49,9 +49,11 @@
         LoginService.SetLoginMode(false);
         NavigationExtensions.NavigateTo<Pages.Landing.Home>(Nav);
     }
-
+    [CascadingParameter(Name = "IsStaticRender")]
+    public bool IsStaticRender { get; set; }
     protected override void OnInitialized()
     {
+        if (IsStaticRender) return;
         // Equivalent to: Source={x:Static data:EntityMetadata.User.Categories[Login Info]}
         // We assign the specific "Login Info" object to the Model property
         //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();

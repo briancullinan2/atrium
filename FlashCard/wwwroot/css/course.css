@@ -202,7 +202,7 @@
 @media (max-width: 640px) {
 
     .course-container {
-        min-height: calc(100vh - 3.5rem);
+        min-height: calc(100vh - 7.5rem);
     }
 
     article

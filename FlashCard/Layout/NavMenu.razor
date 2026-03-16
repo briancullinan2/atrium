@@ -118,12 +118,20 @@
     }
 
 
+    protected async Task ScrollToBottom()
+    {
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("scrollToBottom", "Navlist");
+    }
+
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         ChatService.OnChatWorking += SetChat;
         ChatService.OnChatChanged += SetChatMode;
         ChatService.OnChatMessage += RefreshChat;
+        _ = ChatService.IsWorking();
     }
 
     private void SetChat(bool? chat)
@@ -141,6 +149,10 @@
         {
             Chat = chat;
             this.StateHasChanged();
+            if(Chat == true)
+            {
+                _ = ScrollToBottom();
+            }
         }
     }
 

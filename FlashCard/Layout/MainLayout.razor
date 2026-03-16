@@ -214,11 +214,21 @@
 
         // 2. Render the current Body to a string inside the Dispatcher
         var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
-        {
+{
+            // Wrap the fragment in a cascading value
+            RenderFragment wrappedFragment = builder =>
+            {
+                builder.OpenComponent<CascadingValue<bool>>(0);
+                builder.AddAttribute(1, "Name", "IsStaticRender");
+                builder.AddAttribute(2, "Value", true);
+                builder.AddAttribute(3, "ChildContent", fragment);
+                builder.CloseComponent();
+            };
+
             var output = await htmlRenderer.RenderComponentAsync<ContentWrapper>(
                 ParameterView.FromDictionary(new Dictionary<string, object?>
                 {
-                    { "ChildContent", fragment }
+                    { "ChildContent", wrappedFragment }
                 }));
             return output.ToHtmlString();
         });

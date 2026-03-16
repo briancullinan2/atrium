@@ -21,7 +21,14 @@ namespace WebClient.Services
         public event Action<bool>? OnChatChanged;
         public event Action? OnChatMessage;
 
-        public async Task<bool?> IsWorking() => recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
+
+        public async Task<bool?> IsWorking()
+        {
+            var working = recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
+            OnChatWorking?.Invoke(working);
+            return working;
+        }
+
 
         public ChatService()
         {
