@@ -95,7 +95,7 @@
     @if (ShowChat == true)
     {
         <div class="chat-box">
-            <input @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="() => SendMessage()">Send</button>
+            <input @onkeydown="HandleKeyDown" @bind:event="oninput" @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="() => SendMessage()">Send</button>
         </div>
     }
 </div>
@@ -143,6 +143,14 @@
     private bool _isTransitioning;
 
     private IDisposable? _registration;
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // If Enter is pressed without Shift
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            SendMessage();
+        }
+    }
 
     protected void SendMessage()
     {
@@ -153,6 +161,7 @@
         }
         _ = ChatService.SendMessage(ChatMessage ?? ""); 
         ChatMessage = "";
+        // No need to StateHasChanged() because the SendMessage event handler will invoke it
     }
 
 

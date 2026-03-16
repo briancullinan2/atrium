@@ -3,18 +3,22 @@
 @inject NavigationManager Nav
 @inject IStudyService StudyService
 @inject IChatService ChatService
+@inject IJSRuntime JS
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-logo" @onclick="() => ToggleStudy()">
         <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
         <a class="navbar-brand">Atrium</a>
     </div>
-    <a @onclick="() => ToggleChat()"><span class="bi @(Chat ? "bi-list" : "bi-chat")"></span></a>
+    @if (ShowChat == true)
+    {
+        <a @onclick="() => ToggleChat()"><span class="bi @(Chat ? "bi-list" : "bi-chat")"></span></a>
+    }
 </div>
 
 <input type="checkbox" @bind="menuMode" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable @(Chat ? "chat" : "menu")">
+<div id="Navlist" class="nav-scrollable @(Chat ? "chat" : "menu")" @onscroll="() => ToggleAutoScroll()">
     @if (!Chat)
     {
         @foreach (var item in GetVisibleItems())
@@ -43,12 +47,92 @@
     public bool _chatMode = false;
     public bool _studyMode = false;
     public bool menuMode = false;
+    public bool AutoScroll = true;
+    public bool? ShowChat = null;
+    private CancellationTokenSource? _scrollDebounceCts;
+
+    protected async Task ToggleAutoScroll()
+    {
+        // 1. Cancel the previous pending timeout
+        _scrollDebounceCts?.Cancel();
+        _scrollDebounceCts?.Dispose();
+
+        // 2. Create a new token for the current 100ms window
+        _scrollDebounceCts = new CancellationTokenSource();
+        var token = _scrollDebounceCts.Token;
+
+        try
+        {
+            // 3. Wait for 100ms of "silence"
+            await Task.Delay(100, token);
+
+            // 4. If we weren't cancelled, execute the logic
+            if (!Chat) return;
+
+            var bottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
+            AutoScroll = bottom == true;
+        }
+        catch (TaskCanceledException)
+        {
+            // This is expected when a new event bumps the timer
+        }
+    }
+
+    private CancellationTokenSource? _autoScrollLoopCts;
+
+    protected async Task LaunchAutoScrollLoop()
+    {
+        // 1. Cancel any existing loop so they don't fight
+        _autoScrollLoopCts?.Cancel();
+        _autoScrollLoopCts?.Dispose();
+        _autoScrollLoopCts = new CancellationTokenSource();
+        var token = _autoScrollLoopCts.Token;
+
+        try
+        {
+            int attempts = 0;
+            bool isBottom = false;
+
+            // Loop up to 30 times (~1.5 seconds of total scroll time)
+            while (!isBottom && attempts < 300)
+            {
+                token.ThrowIfCancellationRequested();
+
+                // 2. Nudge the scrollbar down
+                await JS.InvokeVoidAsync("scrollSlightly", "Navlist");
+
+                // 3. Small delay to let the browser render the scroll movement
+                await Task.Delay(50, token);
+
+                // 4. Check if we've arrived
+                var result = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
+                isBottom = result == true;
+
+                attempts++;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // New message arrived or user scrolled away, loop stopped gracefully
+        }
+    }
+
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        ChatService.OnChatWorking += SetChat;
         ChatService.OnChatChanged += SetChatMode;
         ChatService.OnChatMessage += RefreshChat;
+    }
+
+    private void SetChat(bool? chat)
+    {
+        if (chat != ShowChat)
+        {
+            ShowChat = chat;
+            this.StateHasChanged();
+        }
     }
 
     public void SetChatMode(bool chat)
@@ -59,17 +143,19 @@
             this.StateHasChanged();
         }
     }
-    
+
     public void RefreshChat()
     {
         if (Chat)
         {
             this.StateHasChanged();
+            _ = LaunchAutoScrollLoop();
         }
     }
 
     public void Dispose()
     {
+        ChatService.OnChatWorking -= SetChat;
         ChatService.OnChatChanged -= SetChatMode;
         ChatService.OnChatMessage -= RefreshChat;
     }

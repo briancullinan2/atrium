@@ -54,18 +54,18 @@ namespace DataLayer.Entities
             object proxy = createMethod.Invoke(null, null);
 
             // 4. Set your fields (make sure they are public or use GetField with BindingFlags)
-            var targetField = proxy.GetType().GetField("_target", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var targetField = proxy.GetType().GetField(nameof(ProxyEntity<>._target), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             targetField?.SetValue(proxy, target);
 
             if (service != null)
             {
-                var serviceField = proxy.GetType().GetField("_service", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var serviceField = proxy.GetType().GetField(nameof(ProxyEntity<>._service), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 serviceField?.SetValue(proxy, service);
             }
 
             if (context != null)
             {
-                var contextField = proxy.GetType().GetField("_context", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var contextField = proxy.GetType().GetField(nameof(ProxyEntity<>._context), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 contextField?.SetValue(proxy, context);
             }
 

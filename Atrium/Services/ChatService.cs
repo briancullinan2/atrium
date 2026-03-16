@@ -335,9 +335,13 @@ namespace Atrium.Services
                 var result = await response.Content.ReadAsStringAsync();
                 return ExtractValue(result, Response);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                return "Request cancelled by new input.";
+                if(cts.Token.IsCancellationRequested)
+                {
+                    return "Request cancelled by new input.";
+                }
+                return "Request timed out.";
             }
             catch (Exception ex)
             {
