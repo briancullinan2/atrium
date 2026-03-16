@@ -133,11 +133,52 @@ namespace Atrium.Services
             return result;
         }
 
+        private Task<bool?>? _pingTask;
+        private readonly SemaphoreSlim _gate = new(1, 1);
 
-        public async Task<bool?> IsWorking() {
-            var working = recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
-            OnChatWorking?.Invoke(working);
-            return working;
+        public async Task<bool?> IsWorking()
+        {
+            // 1. If a task is already in progress, everyone just awaits the same one
+            if (_pingTask != null)
+            {
+                return await _pingTask;
+            }
+
+            await _gate.WaitAsync();
+            try
+            {
+                // 2. Double-check inside the lock to prevent race conditions
+                if (_pingTask == null)
+                {
+                    // Start the task but don't await it here yet
+                    _pingTask = ExecutePingAndClear();
+                }
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            return await _pingTask;
+        }
+
+        private async Task<bool?> ExecutePingAndClear()
+        {
+            try
+            {
+                // 3. Actually run the expensive service interrogation
+                var result = await PingService("", "", "", "", []);
+                var working = result?.Item1;
+
+                OnChatWorking?.Invoke(working);
+                return working;
+            }
+            finally
+            {
+                // 4. Clear the task so the next call (after completion) 
+                // can decide to trigger a fresh check if needed.
+                _pingTask = null;
+            }
         }
 
 
@@ -224,8 +265,9 @@ namespace Atrium.Services
 
             var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message
                 + "\n\nIf it's directly related to a command, respond with JSON only like "
-                + "{\"Function\": \"...\", \"Param1\" : \"...\"}:\n"
-                + CommandString + "\n\nHistory for Context:\n" + previous);
+                + "{\"Function\": \"...\", \"Param1\" : \"...\"}. If you need to chain informational "
+                + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n" 
+                + previous);
 
             return result;
         }

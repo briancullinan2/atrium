@@ -21,12 +21,52 @@ namespace WebClient.Services
         public event Action<bool>? OnChatChanged;
         public event Action? OnChatMessage;
 
+        private Task<bool?>? _pingTask;
+        private readonly SemaphoreSlim _gate = new(1, 1);
 
         public async Task<bool?> IsWorking()
         {
-            var working = recentPing?.Item1 ?? (await PingService("", "", "", "", []))?.Item1;
-            OnChatWorking?.Invoke(working);
-            return working;
+            // 1. If a task is already in progress, everyone just awaits the same one
+            if (_pingTask != null)
+            {
+                return await _pingTask;
+            }
+
+            await _gate.WaitAsync();
+            try
+            {
+                // 2. Double-check inside the lock to prevent race conditions
+                if (_pingTask == null)
+                {
+                    // Start the task but don't await it here yet
+                    _pingTask = ExecutePingAndClear();
+                }
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            return await _pingTask;
+        }
+
+        private async Task<bool?> ExecutePingAndClear()
+        {
+            try
+            {
+                // 3. Actually run the expensive service interrogation
+                var result = await PingService("", "", "", "", []);
+                var working = result?.Item1;
+
+                OnChatWorking?.Invoke(working);
+                return working;
+            }
+            finally
+            {
+                // 4. Clear the task so the next call (after completion) 
+                // can decide to trigger a fresh check if needed.
+                _pingTask = null;
+            }
         }
 
 

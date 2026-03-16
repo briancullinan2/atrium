@@ -1,0 +1,154 @@
+@using FlashCard.Services
+@inject IChatService ChatService
+@inject IJSRuntime JS
+
+<div id="Navlist" class="nav-scrollable chat" @onscroll="() => ToggleAutoScroll()">
+
+    <div class="chat-message from">
+        <span>Your chat will appear here...</span>
+        <span>@(DateTime.Now.ToLongTimeString())</span>
+    </div>
+    @foreach (var item in ChatService.Recents ?? new())
+    {
+        <div class="chat-message @(item.Value.Item1 == true ? "from" : "to")">
+            <span>@(item.Value.Item2)</span>
+            <span>@(item.Key.ToLongTimeString())</span>
+        </div>
+    }
+
+</div>
+
+@code
+{
+    public bool Chat = false;
+    public bool _chatMode = false;
+    public bool? ShowChat = null;
+
+    public bool AutoScroll = true;
+    private CancellationTokenSource? _scrollDebounceCts;
+
+
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ChatService.OnChatWorking += SetChat;
+        ChatService.OnChatChanged += SetChatMode;
+        ChatService.OnChatMessage += RefreshChat;
+        _ = ChatService.IsWorking();
+    }
+
+    private void SetChat(bool? chat)
+    {
+        if (chat != ShowChat)
+        {
+            ShowChat = chat;
+            this.StateHasChanged();
+        }
+    }
+
+    public void SetChatMode(bool chat)
+    {
+        if (Chat != chat)
+        {
+            Chat = chat;
+            this.StateHasChanged();
+            if (Chat == true)
+            {
+                _ = ScrollToBottom();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        ChatService.OnChatWorking -= SetChat;
+        ChatService.OnChatChanged -= SetChatMode;
+        ChatService.OnChatMessage -= RefreshChat;
+    }
+
+
+    protected async Task ToggleAutoScroll()
+    {
+        // 1. Cancel the previous pending timeout
+        _scrollDebounceCts?.Cancel();
+        _scrollDebounceCts?.Dispose();
+
+        // 2. Create a new token for the current 100ms window
+        _scrollDebounceCts = new CancellationTokenSource();
+        var token = _scrollDebounceCts.Token;
+
+        try
+        {
+            // 3. Wait for 100ms of "silence"
+            await Task.Delay(100, token);
+
+            // 4. If we weren't cancelled, execute the logic
+            if (!Chat) return;
+
+            var bottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
+            AutoScroll = bottom == true;
+        }
+        catch (TaskCanceledException)
+        {
+            // This is expected when a new event bumps the timer
+        }
+    }
+
+    private CancellationTokenSource? _autoScrollLoopCts;
+
+    protected async Task LaunchAutoScrollLoop()
+    {
+        // 1. Cancel any existing loop so they don't fight
+        _autoScrollLoopCts?.Cancel();
+        _autoScrollLoopCts?.Dispose();
+        _autoScrollLoopCts = new CancellationTokenSource();
+        var token = _autoScrollLoopCts.Token;
+
+        try
+        {
+            int attempts = 0;
+            bool isBottom = false;
+
+            // Loop up to 30 times (~1.5 seconds of total scroll time)
+            while (!isBottom && attempts < 300)
+            {
+                token.ThrowIfCancellationRequested();
+
+                // 2. Nudge the scrollbar down
+                await JS.InvokeVoidAsync("scrollSlightly", "Navlist");
+
+                // 3. Small delay to let the browser render the scroll movement
+                await Task.Delay(50, token);
+
+                // 4. Check if we've arrived
+                var result = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
+                isBottom = result == true;
+
+                attempts++;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // New message arrived or user scrolled away, loop stopped gracefully
+        }
+    }
+
+
+    protected async Task ScrollToBottom()
+    {
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("scrollToBottom", "Navlist");
+    }
+    
+    public void RefreshChat()
+    {
+        if (Chat)
+        {
+            this.StateHasChanged();
+            _ = LaunchAutoScrollLoop();
+        }
+    }
+
+}

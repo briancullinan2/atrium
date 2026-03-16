@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace FlashCard.Layout
 {
-    public interface INavMenuItem<TChildren> where TChildren : class
+    public interface INavMenuItem
     {
         string Title { get; set; }
         string Href { get; }
@@ -12,13 +12,10 @@ namespace FlashCard.Layout
         string? RoleRequired { get; set; }
         bool IsBeta { get; set; }
         bool IsCollapsed { get; set; }
-        IEnumerable<TChildren> Children { get; set; }
+        IEnumerable<INavMenuItem> Children { get; set; }
 
     }
 
-    public interface INavMenuItem : INavMenuItem<INavMenuItem>
-    {
-    }
 
     public class NavMenuItem<TComponent> : INavMenuItem
         where TComponent : IComponent, new()
@@ -35,8 +32,9 @@ namespace FlashCard.Layout
     }
 
 
-    public interface ICourseMenuItem : INavMenuItem<ICourseMenuItem>
+    public interface ICourseMenuItem : INavMenuItem
     {
+        new IEnumerable<CourseMenuItem> Children { get; set; }
         Type? Lesson { get; set; }
         int? Level { get; set; }
         Type? Course { get; }
@@ -82,7 +80,7 @@ namespace FlashCard.Layout
 
         public new IEnumerable<CourseMenuItem> Children { get => base.Children.OfType<CourseMenuItem>(); set => base.Children = value; }
 
-        IEnumerable<ICourseMenuItem> INavMenuItem<ICourseMenuItem>.Children { get => Children.OfType<ICourseMenuItem>(); set => Children = value.OfType<CourseMenuItem>(); }
+        //IEnumerable<ICourseMenuItem> INavMenuItem<ICourseMenuItem>.Children { get => Children.OfType<ICourseMenuItem>(); set => Children = value.OfType<CourseMenuItem>(); }
     }
 
 }

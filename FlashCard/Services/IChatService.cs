@@ -36,6 +36,11 @@
                 Parameters = "(query, category_hint)",
                 Description = "Filters the current view or searches global content (Packs, Courses, or Notes)."
             },
+            new() {
+                Function = "StudySession",
+                Parameters = "(query, category_hint)",
+                Description = "Start a study session from matches from your library using a search query."
+            },
 
             // --- Content Management (StudySauce Core) ---
             new() {
@@ -45,7 +50,7 @@
             },
             new() {
                 Function = "ImportData",
-                Parameters = "(source_type [csv|json|pdf], target_page)",
+                Parameters = "(source_type [csv|json|pdf|anki], target_page)",
                 Description = "Triggers the import workflow for users or content packs."
             },
             new() {
