@@ -7,8 +7,8 @@ namespace DataLayer.Entities
     public class Permission : Entity<Permission>
     {
         [Key]
-        public string Name { get; set; }
-        public string Description { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
         public bool IsActionable { get; set; }
         [NotMapped]
         public bool IsPageAccess { get; set; } = false;
@@ -29,6 +29,6 @@ namespace DataLayer.Entities
         [NotMapped]
         public string? Baml { get; set; }
         [NotMapped]
-        public System.Reflection.Assembly Assembly { get; set; }
+        public System.Reflection.Assembly? Assembly { get; set; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using FlashCard.Services;
+﻿#if WINDOWS
+using FlashCard.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -13,7 +14,6 @@ namespace Atrium.Services
 
         public static async Task StartWebServer(string[] args)
         {
-#if WINDOWS
             var webBuilder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 Args = args,
@@ -84,6 +84,7 @@ namespace Atrium.Services
                 var conn = memoryContext.Database.GetDbConnection();
                 if (conn.State != System.Data.ConnectionState.Open) conn.Open();
                 memoryContext.Database.EnsureCreated();
+                memoryContext.SaveChanges();
 
                 var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
                 using var persistentContext = persistentStore.CreateDbContext();
@@ -172,7 +173,7 @@ namespace Atrium.Services
                     System.Diagnostics.Debug.WriteLine($"!!! Kestrel Crash: {ex.Message}");
                 }
             });
-#endif
         }
     }
 }
+#endif

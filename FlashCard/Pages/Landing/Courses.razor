@@ -1,4 +1,9 @@
 @page "/courses"
+@page "/courses/add"
+@page "/courses/list"
+@page "/courses/{Id:int}"
+@page "/courses/{Id:int}/view"
+@page "/courses/{Id:int}/edit"
 
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -7,7 +12,7 @@
 
 <SyncedTitle Title="Courses"></SyncedTitle>
 
-<div class="flash-card animate-in">
+<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>Course Name</label>
@@ -20,11 +25,27 @@
 
 </div>
 
+
+
+
 @code {
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Courses));
     [Category("Recent")]
     public List<DataLayer.Entities.Course> Recent { get; set; } = new();
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
+    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
+    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    [Parameter] public int? Id { get; set; }
+    
+    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    {
+        if (ControlMode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        // TODO: check what happens when switching from new mode to edit mode
+        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
+        return "hidden";
+    }
 
     protected override void OnInitialized()
     {

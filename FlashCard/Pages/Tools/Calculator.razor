@@ -73,7 +73,7 @@
         {
             var courseScore = course.Grades
                 .Where(g => g.Percent.HasValue && g.Score.HasValue)
-                .Sum(g => (g.Score.Value * (g.Percent.Value / 100.0)));
+                .Sum(g => (g.Score * (g.Percent / 100.0)));
 
             var gradePoint = GradeScale
                 .FirstOrDefault(s => courseScore >= s.Min && courseScore <= s.Max)?.Point ?? 0;

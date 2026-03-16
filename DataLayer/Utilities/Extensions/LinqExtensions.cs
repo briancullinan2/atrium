@@ -487,6 +487,10 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("Could not resolve extension type on: " + el);
             }
             var entityType = Type.GetType(typeName);
+            if(entityType == null)
+            {
+                throw new InvalidOperationException("Could not resolve type on: " + el);
+            }
 
             // Reflection Sparkle: Find the DbSet<T> property on TranslationContext 
             // where T is our entityType.
@@ -588,7 +592,7 @@ namespace DataLayer.Utilities.Extensions
                 }
                 else
                 {
-                    return set.Provider.Execute(finalExpression);
+                    return set?.Provider.Execute(finalExpression);
                 }
 
             }

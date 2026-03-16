@@ -38,7 +38,7 @@
         }
 
         // Token: 0x060002F8 RID: 760 RVA: 0x00019278 File Offset: 0x00017478
-        public static Type GenericExtendsType(this Type type, Type ofType)
+        public static Type? GenericExtendsType(this Type type, Type ofType)
         {
             foreach (Type type2 in type.GetBaseTypes())
             {
@@ -54,7 +54,7 @@
         }
 
         // Token: 0x060002F9 RID: 761 RVA: 0x000192F8 File Offset: 0x000174F8
-        public static Type GenericImplementsType(this Type type, Type ofType)
+        public static Type? GenericImplementsType(this Type type, Type ofType)
         {
             foreach (Type type2 in type.GetInterfaces())
             {

@@ -6,7 +6,9 @@ using System.Net.Http.Json;
 
 namespace WebClient.Services
 {
+#pragma warning disable EF1001 // Internal EF Core API usage.
     public class RemoteQuery : IQueryCompiler
+#pragma warning restore EF1001 // Internal EF Core API usage.
     {
         private readonly HttpClient? _httpClient;
         internal static IServiceProvider? _service;
@@ -19,6 +21,11 @@ namespace WebClient.Services
 
         public TResult Execute<TResult>(Expression query)
         {
+            if(_httpClient == null)
+            {
+                throw new InvalidOperationException("No Http client.");
+            }
+
             Console.WriteLine("Executing: " + query.ToString());
             // This is exactly where you use your Expression Tree Converter
             var serialized = query.ToXDocument().ToString();
@@ -27,7 +34,7 @@ namespace WebClient.Services
             // Send to your remote endpoint
             var response = _httpClient.PostAsJsonAsync("/api/query", serialized).Result;
 
-            return response.Content.ReadFromJsonAsync<TResult>().Result;
+            return response.Content.ReadFromJsonAsync<TResult>().Result!;
         }
 
         // You must also implement ExecuteAsync for ToListAsync() support
@@ -42,20 +49,33 @@ namespace WebClient.Services
 
                 // Use reflection to call ExecuteRemoteAsync<List<File>>
                 var listType = typeof(List<>).MakeGenericType(itemType);
-                var task = (Task)typeof(RemoteQuery)
+                
+                Task? task2 = typeof(RemoteQuery)
                     .GetMethod(nameof(ExecuteRemoteAsync))
-                    .MakeGenericMethod(listType) // THIS IS THE KEY: Ask for the List
-                    .Invoke(this, new object[] { query, cancellationToken });
+                    ?.MakeGenericMethod(listType) // THIS IS THE KEY: Ask for the List
+                    .Invoke(this, new object[] { query, cancellationToken }) as Task;
+
+                if(task2 == null)
+                {
+                    throw new InvalidOperationException("Couldn't resolve task type.");
+                }
 
                 // Bridge the Task<List<File>> to IAsyncEnumerable<File>
-                return (TResult)CreateAsyncEnumerableFromTask(task, itemType);
+                return (TResult)CreateAsyncEnumerableFromTask(task2, itemType);
             }
 
             // Fallback for scalars (Count, Any, etc.)
-            return (TResult)typeof(RemoteQuery)
+            Task? task = typeof(RemoteQuery)
                 .GetMethod(nameof(ExecuteRemoteAsync))
-                .MakeGenericMethod(typeT)
-                .Invoke(this, new object[] { query, cancellationToken });
+                ?.MakeGenericMethod(typeT)
+                .Invoke(this, new object[] { query, cancellationToken }) as Task;
+
+            if (task == null)
+            {
+                throw new InvalidOperationException("Couldn't resolve task type.");
+            }
+
+            return (TResult)CreateAsyncEnumerableFromTask(task, typeT);
         }
 
         // Helper to wrap the Task into a stream EF Core can read
@@ -63,9 +83,14 @@ namespace WebClient.Services
         {
             var method = typeof(RemoteQuery)
                 .GetMethod(nameof(ToAsyncEnumerableInternal), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .MakeGenericMethod(itemType);
+                ?.MakeGenericMethod(itemType);
 
-            return method.Invoke(this, new object[] { task });
+            if (method == null)
+            {
+                throw new InvalidOperationException("Couldn't resolve method type.");
+            }
+
+            return method.Invoke(this, new object[] { task })!;
         }
 
         private async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task task)
@@ -80,6 +105,11 @@ namespace WebClient.Services
 
         public async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken cancellationToken = default)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("No Http client.");
+            }
+
             var serialized = query.ToXDocument().ToString();
             var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -103,10 +133,12 @@ namespace WebClient.Services
                     .First(m => m.Name == "ToAsyncEnumerable" && m.IsGenericMethod)
                     .MakeGenericMethod(itemType);
 
-                return (T)toAsyncMethod.Invoke(null, new[] { list });
+                var result2 = toAsyncMethod.Invoke(null, new[] { list });
+                return (T)result2!;
             }
 
-            return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+            return result!;
         }
 
         public Func<QueryContext, TResult> CreateCompiledAsyncQuery<TResult>(Expression query)

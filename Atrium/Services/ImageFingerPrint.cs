@@ -1,4 +1,8 @@
 ﻿
+
+#if WINDOWS
+
+
 using OpenCvSharp;
 using OpenCvSharp.Dnn;
 using OpenCvSharp.ImgHash;
@@ -120,3 +124,5 @@ namespace Atrium.Services
 
     }
 }
+
+#endif

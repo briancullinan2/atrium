@@ -110,7 +110,12 @@ namespace DataLayer
             if (instance is IEntity entity)
             {
                 var serviceProvider = materializationData.Context.GetService<IServiceProvider>();
-                return Entity.Wrap(entity, serviceProvider);
+                var result = Entity.Wrap(entity, serviceProvider);
+                if(result == null)
+                {
+                    throw new InvalidOperationException("Failed to wrap object: " + instance);
+                }
+                return result;
             }
             return instance;
         }

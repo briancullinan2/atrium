@@ -12,6 +12,8 @@ namespace FlashCard.Services
 
     public class JsonService : IJsonService
     {
+        public bool IsWebClient { get; } = false;
+
         public JsonService()
         {
         }

@@ -36,26 +36,30 @@
 </div>
 
 
+@if (CurrentGroup != null)
+{
 
-<div class="group-add flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Add)">
-    <div>
-        <fieldset>
-            <legend>Group Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.Group" Model="@InfoLayout" Data="[new DataLayer.Entities.Group()]"></MetadataControl>
-        </fieldset>
-    </div>
-    <div>
-        <fieldset>
-            <legend>Extended Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.Group" Model="@ExtendedLayout" Data="[new DataLayer.Entities.Group()]"></MetadataControl>
-        </fieldset>
-    </div>
-    <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
-        <button class="cta" @onclick="() => CreateGroup()">Save</button>
+    <div class="group-add flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+        <div>
+            <fieldset>
+                <legend>Group Info</legend>
+                <MetadataControl TModel="DataLayer.Entities.Group" Model="@InfoLayout" Data="[CurrentGroup]"></MetadataControl>
+            </fieldset>
+        </div>
+        <div>
+            <fieldset>
+                <legend>Extended Info</legend>
+                <MetadataControl TModel="DataLayer.Entities.Group" Model="@ExtendedLayout" Data="[CurrentGroup]"></MetadataControl>
+            </fieldset>
+        </div>
+        <div class="highlighted-link">
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="cta" @onclick="() => CreateGroup()">Save</button>
+        </div>
+
     </div>
 
-</div>
+}
 
 
 @code {
@@ -69,6 +73,7 @@
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
+    public DataLayer.Entities.Group? CurrentGroup { get; set; }
 
     protected void CreateGroup()
     {
@@ -107,6 +112,8 @@
             ControlMode = newStep;
             InvokeAsync(StateHasChanged);
         }
+
+
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
@@ -118,6 +125,9 @@
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
+        // TODO: check what happens when switching from new mode to edit mode
+        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
         return "hidden";
     }
 

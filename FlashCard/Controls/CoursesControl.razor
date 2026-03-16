@@ -13,36 +13,36 @@
 }
 
 
-@foreach (var pack in Data ?? [])
+@foreach (var course in Data ?? [])
 {
     <div class="flex-row">
-        <span><img src="@(pack.LogoHosted ?? pack.Logo?.Url)" /></span>
+        <span><img src="@(course.LogoHosted ?? course.Logo?.Url)" /></span>
         <span>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) != null)
+            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.Customization.PackMode.Card }))">@pack.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = DataLayer.Customization.PackMode.Card }))">@course.Title</a>
             }
             else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.Customization.PackMode.Demo }))">@pack.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = DataLayer.Customization.PackMode.Demo }))">@course.Title</a>
             }
         </span>
         <span>
-            @pack.Category
-            @if (!string.IsNullOrWhiteSpace(pack.Subject))
+            @course.Category
+            @if (!string.IsNullOrWhiteSpace(course.Subject))
             {
-                <span>(@pack.Subject)</span>
+                <span>(@course.Subject)</span>
             }
         </span>
-        <span>@pack.Lessons.Count()</span>
-        <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
+        <span>@course.Lessons.Count()</span>
+        <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
-            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new() { ControlMode = DataLayer.Customization.ControlMode.Edit, Id = pack.Id }))">
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(p => new() { ControlMode = DataLayer.Customization.ControlMode.Edit, Id = course.Id }))">
                 <span class="bi bi-pencil"></span>
             </a>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) == null)
+            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) == null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { ControlMode = DataLayer.Customization.ControlMode.Add, Id = pack.Id }))">
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { ControlMode = DataLayer.Customization.ControlMode.Add, Id = course.Id }))">
                     <span class="bi bi-check-circle-fill"></span>
                 </a>
             }

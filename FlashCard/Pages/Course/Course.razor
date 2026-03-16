@@ -218,7 +218,6 @@
     }
 
 
-    private PersistingComponentStateSubscription _subscription;
     protected override async Task OnInitializedAsync()
     {
         //Context.Packs.Where(p => p.Id == 0).ToListAsync();
@@ -313,7 +312,6 @@
         Nav.LocationChanged -= OnLocationChanged;
         CourseService.OnStepChanged -= OnStepChanged;
         CourseService.OnCourseChanged -= OnCourseChanged;
-        _subscription.Dispose();
     }
 
     private void Next(StepMode nextStep) => Nav.NavigateTo<Pages.Course.Course>(c => new() { Level = ActiveItem != null ? ActiveItem.Level : 1, Lesson = ActiveItem != null && ActiveItem.Lesson != null ? ActiveItem.Lesson.Name.ToSafe() : "", Step = nextStep });

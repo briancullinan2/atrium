@@ -16,7 +16,7 @@
             return DataLayer.Customization.ControlMode.View;
         }
     }
-    private IEnumerable<PropertyMetadata>? CardLayout;
+
     protected override void OnInitialized()
     {
         Answers = Data?.ElementAt(0).Answers.ToList() ?? [];

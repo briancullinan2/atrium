@@ -6,15 +6,13 @@ namespace Atrium.Services
 {
     internal static class QueryService
     {
+
+#if WINDOWS
         public async static Task RespondQuery(HttpContext context, IServiceProvider _service)
         {
             try
             {
-                // 1. Read the serialized query from the request body
                 context.Response.ContentType = "application/json";
-                //using var scope = _service.CreateScope();
-                //var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-                //using var dbContext = ephemeralStore.CreateDbContext();
 
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
@@ -28,6 +26,7 @@ namespace Atrium.Services
                 }
 
                 // TODO: add marshalling rules here
+
                 var results = DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml, _service);
 
                 var json = JsonSerializer.Serialize(results, new JsonSerializerOptions
@@ -63,5 +62,10 @@ namespace Atrium.Services
                 }
             }
         }
+#endif
+
+
+
     }
+
 }

@@ -124,7 +124,7 @@ namespace DataLayer.Utilities.Extensions
                     // Arizona Compliance: Roll back to prevent data corruption
                     transaction.Rollback();
                     //Log.Error($"Transaction Aborted: {ex.Message}");
-                    throw; // Rethrow so the parent catch can handle the fallback
+                    throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
                 }
                 finally
                 {

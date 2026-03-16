@@ -1,5 +1,6 @@
 ﻿using FlashCard.Services;
 using System.Net;
+using System.Net.Http.Json;
 
 namespace WebClient.Services
 {
@@ -17,14 +18,19 @@ namespace WebClient.Services
             _httpClient = _service?.GetRequiredService<HttpClient>();
         }
 
-        public async Task UploadFile(string localPath)
+        public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
         {
             using var fileStream = System.IO.File.OpenRead(localPath);
-            await UploadFile(fileStream, localPath);
+            return await UploadFile(fileStream, localPath);
         }
 
-        public async Task UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
+        public async Task<DataLayer.Entities.File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
         {
+            if(_httpClient == null)
+            {
+                throw new InvalidOperationException("No Http client.");
+            }
+
             var content = new MultipartFormDataContent();
 
             var streamContent = new ProgressableStreamContent(fileStream, 4096, (sent) =>
@@ -36,9 +42,10 @@ namespace WebClient.Services
 
             content.Add(streamContent, "file", Path.GetFileName(localPath));
 
-            var result = _httpClient?.PostAsync("/api/upload", content);
-            if (result == null) return;
-            var response = await result;
+            var response = await _httpClient.PostAsync("/api/upload", content);
+            var result = await response.Content.ReadFromJsonAsync<DataLayer.Entities.File>();
+            OnFileUploaded?.Invoke(result);
+            return result;
             // TODO: update file list wasn't implemented until after saving
 
         }

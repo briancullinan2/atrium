@@ -103,9 +103,9 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
-        public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>> initializer) where TComponent : IComponent
+        public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>>? initializer) where TComponent : IComponent
         {
-            var values = initializer.ToDictionary();
+            var values = initializer?.ToDictionary();
             return GetUri<TComponent>(values);
         }
 

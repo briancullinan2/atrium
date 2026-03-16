@@ -35,8 +35,8 @@ namespace Atrium
 
     public static class MauiProgram
     {
-        private static KeepAlive _keepAliveConnection;
-        private static Pack? _pack;
+        private static KeepAlive? _keepAliveConnection;
+
 #if WINDOWS
         public static Microsoft.AspNetCore.Builder.WebApplication? ServerInstance { get; set; }
 #endif

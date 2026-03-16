@@ -1,5 +1,7 @@
 ﻿using FlashCard.Services;
+#if WINDOWS
 using Microsoft.AspNetCore.Http;
+#endif
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -56,7 +58,7 @@ namespace Atrium.Services
         public async Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters)
         {
             var hash = HashCode.Combine(ServiceUrl, ModelName, ApiKey, Response, JsonSerializer.Serialize(Parameters));
-            if (recentPing != null && recentHash == hash && recentPinged + TimeSpan.FromSeconds(10) > DateTime.Now)
+            if (recentPing != null && recentHash == hash && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return recentPing;
             }
@@ -138,6 +140,11 @@ namespace Atrium.Services
 
         public async Task<bool?> IsWorking()
         {
+            if (recentPing != null && recentPinged != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return recentPing.Item1;
+            }
+
             // 1. If a task is already in progress, everyone just awaits the same one
             if (_pingTask != null)
             {
@@ -182,6 +189,7 @@ namespace Atrium.Services
         }
 
 
+#if WINDOWS
         public static async Task OnPresets(HttpContext context)
         {
             context.Response.ContentType = "application/json";
@@ -247,34 +255,6 @@ namespace Atrium.Services
         }
 
 
-        public static async Task<string?> StandardResponse(string clientId, string message)
-        {
-
-            Dictionary<DateTime, Tuple<bool, string>>? _recents = null;
-            if (AllRecents?.TryGetValue(clientId, out _recents) != true)
-            {
-                AllRecents?[clientId] = _recents = new Dictionary<DateTime, Tuple<bool, string>>();
-            }
-
-            var previous = JsonSerializer.Serialize(_recents?.TakeLast(10).Select(r => new RecentModel()
-            {
-                Role = r.Value.Item1 ? "assistant" : "user",
-                Date = r.Key,
-                Content = r.Value.Item2
-            }));
-
-            var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message
-                + "\n\nIf it's directly related to a command, respond with JSON only like "
-                + "{\"Function\": \"...\", \"Param1\" : \"...\"}. If you need to chain informational "
-                + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n" 
-                + previous);
-
-            return result;
-        }
-
-
-        public static string CommandString { get => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description));  }
-
         public static async Task OnChat(HttpContext context)
         {
 
@@ -301,6 +281,9 @@ namespace Atrium.Services
                 }
 
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+
+
+
                 var result = await StandardResponse(clientId, message);
 
                 var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
@@ -323,6 +306,43 @@ namespace Atrium.Services
                 await context.Response.WriteAsync(json);
             }
         }
+
+#endif
+        public static async Task<string?> StandardResponse(string clientId, string message)
+        {
+
+            Dictionary<DateTime, Tuple<bool, string>>? _recents = null;
+            if (AllRecents?.TryGetValue(clientId, out _recents) != true)
+            {
+                AllRecents?[clientId] = _recents = new Dictionary<DateTime, Tuple<bool, string>>();
+            }
+
+
+            if (_recents?.LastOrDefault().Key != null && _recents?.Last().Key + TimeSpan.FromSeconds(10) > DateTime.Now)
+            {
+                _recents?.Add(DateTime.Now + TimeSpan.FromSeconds(1), new Tuple<bool, string>(true, "You're sending messages too quickly."));
+                return null;
+            }
+
+
+            var previous = JsonSerializer.Serialize(_recents?.TakeLast(10).Select(r => new RecentModel()
+            {
+                Role = r.Value.Item1 ? "assistant" : "user",
+                Date = r.Key,
+                Content = r.Value.Item2
+            }));
+
+            var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message
+                + "\n\nIf it's directly related to a command, respond with JSON only like "
+                + "{\"Function\": \"...\", \"Param1\" : \"...\"}. If you need to chain informational "
+                + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n" 
+                + previous);
+
+            return result;
+        }
+
+
+        public static string CommandString { get => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description));  }
 
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _clientTokens = new();
 
@@ -397,7 +417,7 @@ namespace Atrium.Services
                 var result = await response.Content.ReadAsStringAsync();
                 return ExtractValue(result, Response);
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException)
             {
                 if(cts.Token.IsCancellationRequested)
                 {

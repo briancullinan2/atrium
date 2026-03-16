@@ -25,17 +25,14 @@ builder.Services.AddScoped<HttpClient>(sp => new HttpClient
 });
 builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
-/*builder.Services.AddDbContext<TranslationContext>((sp, options) =>
-{
-    options.UseInMemoryDatabase("RemoteShell");
 
-    options.ReplaceService<IQueryCompiler, RemoteQuery>();
-});*/
 builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
 {
     options.UseInMemoryDatabase("RemoteShell");
 
+#pragma warning disable EF1001 // Internal EF Core API usage.
     options.ReplaceService<IQueryCompiler, RemoteQuery>();
+#pragma warning restore EF1001 // Internal EF Core API usage.
 });
 
 var app = builder.Build();

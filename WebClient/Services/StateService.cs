@@ -10,6 +10,7 @@ namespace WebClient.Services
     {
         private IJSRuntime _runtime;
         public event Action<IComponent?>? OnStateChanged;
+        public bool IsWebClient { get; } = true;
 
         public StateService(IJSRuntime JS) : base()
         {
@@ -18,7 +19,8 @@ namespace WebClient.Services
 
         public async Task SetState(IComponent? state)
         {
-
+            OnStateChanged?.Invoke(state);
+            throw new InvalidOperationException("This probably wont work from the web client.");
         }
 
         public async Task RestoreState(IComponent component)

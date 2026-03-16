@@ -26,6 +26,11 @@ namespace WebClient.Services
 
         public async Task<bool?> IsWorking()
         {
+            if(recentPing != null && recentPinged != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return recentPing.Item1;
+            }
+
             // 1. If a task is already in progress, everyone just awaits the same one
             if (_pingTask != null)
             {
@@ -100,7 +105,7 @@ namespace WebClient.Services
 
         public async Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters)
         {
-            if (recentPing != null && recentPinged + TimeSpan.FromSeconds(10) > DateTime.Now)
+            if (recentPing != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return recentPing;
             }
@@ -125,20 +130,24 @@ namespace WebClient.Services
 
         public async Task<string?> SendMessage(string message)
         {
-            if (recentMessage != null && recentMessaged + TimeSpan.FromSeconds(10) > DateTime.Now)
-            {
-                return recentMessage;
-            }
 
             Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
             OnChatMessage?.Invoke();
+
+            if (recentMessage != null && recentMessaged + TimeSpan.FromSeconds(10) > DateTime.Now)
+            {
+                recentMessaged = DateTime.Now; // prevent them from flooding
+                Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, "You're sending messages too quickly."));
+                OnChatMessage?.Invoke();
+                return null;
+            }
+            recentMessaged = DateTime.Now;
 
             var response = _httpClient?.PostAsJsonAsync("/api/chat", new StringContent(JsonSerializer.Serialize(message), System.Text.Encoding.UTF8, "application/json")).Result;
             if (response == null) return null;
             var result = await response.Content.ReadFromJsonAsync<string>();
             if (result == null) return null;
             recentMessage = result;
-            recentMessaged = DateTime.Now;
             Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, result));
             OnChatMessage?.Invoke();
             return recentMessage;

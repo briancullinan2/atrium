@@ -57,6 +57,8 @@ namespace Atrium.Services
 #endif
         }
 
+
+#if WINDOWS
         public static async Task OnStatusCheck(HttpContext context)
         {
             string? tunnel = null;
@@ -98,6 +100,8 @@ namespace Atrium.Services
             await context.Response.WriteAsync(json);
 
         }
+
+#endif
 
         public async Task<string?> GetToken()
         {

@@ -94,7 +94,7 @@
         <label>Actions</label>
         @foreach (var theme in extractedThemes ?? [])
         {
-            <span class="sticky-left">@theme.ClassName.Replace("theme-", "")</span>
+            <span class="sticky-left">@theme.ClassName?.Replace("theme-", "")</span>
             @foreach(var variableKey in ThemeVariableKeys)
             {
                 <span><span class="sensor" style="@(GetStyle(theme, variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
@@ -123,7 +123,7 @@
         foreach (var theme in extractedThemes ?? [])
         {
             // Note: If data contains commas, you'd wrap values in quotes: "{item.Name}"
-            csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
+            csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string?>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
         }
 
         // 3. Send to Clipboard via JS Interop

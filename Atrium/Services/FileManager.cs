@@ -18,29 +18,37 @@ namespace Atrium.Services
         public event Action<bool>? OnFileDragging;
         internal static IServiceProvider? _services;
 
-        public async Task UploadFile(string localPath)
+        public static string UploadDirectory = Path.Combine(AppContext.BaseDirectory, "Uploads");
+
+        static FileManager()
+        {
+
+            if (!Directory.Exists(UploadDirectory))
+            {
+                Directory.CreateDirectory(UploadDirectory);
+            }
+        }
+
+
+        public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
         {
             using var localStream = System.IO.File.OpenRead(localPath);
-            await UploadFile(localStream, localPath);
+            return await UploadFile(localStream, localPath);
         }
 
 
         // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
         //   so any implementer can designate themselves as the source of the data
 
-        public async Task UploadFile(Stream localStream, string localPath, string? source = "Uploads")
+        public async Task<DataLayer.Entities.File?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
         {
 
             if (_services == null)
             {
-                return;
+                throw new InvalidOperationException("No service provider.");
             }
 
-            if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "Uploads")))
-            {
-                Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Uploads"));
-            }
-            var savePath = Path.Combine(AppContext.BaseDirectory, "Uploads", Path.GetFileName(localPath).ToSafe());
+            var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
             using var fileStream = System.IO.File.Create(savePath);
             await localStream.CopyToAsync(fileStream);
             // TODO: store in database and return File entity?
@@ -59,36 +67,56 @@ namespace Atrium.Services
                 }, _services);
                 file.Save();
 
+                OnFileUploaded?.Invoke(file._target);
+                return file._target;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+                throw new Exception("throwing up", ex);
             }
         }
 
-
+#if WINDOWS
         //[HttpPost("upload")]
         public static async Task OnUploadFile(HttpContext context)
         {
             try
             {
-                // 1. Check if this is a file upload (Multipart)
-                if (context.Request.HasFormContentType && context.Request.Form.Files.Any())
+                if(_services == null)
                 {
-                    foreach (var file in context.Request.Form.Files)
+                    throw new InvalidOperationException("No service provider.");
+                }
+
+                if (!context.Request.HasFormContentType || !context.Request.Form.Files.Any())
+                {
+                    throw new InvalidOperationException("No files provided.");
+                }
+
+                var first = true;
+                foreach (var file in context.Request.Form.Files)
+                {
+                    // Accessing the stream directly from the request
+                    using var stream = file.OpenReadStream();
+
+                    // Example: Save to disk in Arizona-based storage
+                    using (var scope = _services.CreateScope())
                     {
-                        // Accessing the stream directly from the request
-                        using var stream = file.OpenReadStream();
+                        var manager = scope.ServiceProvider.GetRequiredService<IFileManager>();
+                        var databaseFile = await manager.UploadFile(stream, file.FileName);
 
-                        // Example: Save to disk in Arizona-based storage
-                        using (var scope = _services?.CreateScope())
+                        if (!first) continue;
+                        first = false;
+
+                        context.Response.ContentType = "application/json";
+                        var json = JsonSerializer.Serialize(databaseFile, new JsonSerializerOptions
                         {
-                            var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                            await (manager?.UploadFile(stream, file.FileName) ?? Task.CompletedTask);
-                        }
-
-                        // Now you can log the file entry into your TranslationContext 
-                        // using the 'file.FileName' or 'file.Length'
+                            WriteIndented = true,
+                            ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
+                        });
+                        await context.Response.WriteAsync(json);
+                        await context.Response.Body.FlushAsync();
+                        await context.Response.CompleteAsync();
                     }
 
                 }
@@ -105,6 +133,7 @@ namespace Atrium.Services
             }
         }
 
+#endif
 
         public async Task OpenFileDialog()
         {

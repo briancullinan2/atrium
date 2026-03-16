@@ -7,7 +7,7 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
-    private IEnumerable<PropertyMetadata>? CardLayout;
+
     protected override void OnInitialized()
     {
         AnswerLayout = DataLayer.EntityMetadata.Card.Categories["Answers"]?.ToList();
@@ -58,19 +58,9 @@
 
 @code {
 
-    private bool isFlipped = false;
-    private string flashClass = "";
-
-    private void Flip() => isFlipped = true;
-
     private async Task HandleAnswer(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> selectedValue)
     {
         ValueChanged?.InvokeAsync(selectedValue.Item3);
     }
 
-    private async Task Next(bool wasCorrect)
-    {
-        //isFlipped = false;
-        //await (ValueChanged?.InvokeAsync(wasCorrect) ?? Task.CompletedTask);
-    }
 }

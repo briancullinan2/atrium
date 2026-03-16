@@ -27,17 +27,27 @@ namespace DataLayer.Entities
         protected abstract override object? Invoke(MethodInfo? targetMethod, object?[]? args);
         public abstract event PropertyChangedEventHandler? PropertyChanged;
 
-        public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider service, Type? context = null) where T : class, IEntity<T>
+        public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider? service, Type? context = null) where T : class, IEntity<T>
         {
-            return Wrap((IEntity)target, service, context) as ProxyEntity<T>;
+            var result = Wrap((IEntity)target, service, context) as ProxyEntity<T>;
+            if(result == null)
+            {
+                throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
+            }
+            return result;
         }
 
-        public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider service) where T : class, IEntity<T>
+        public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider? service) where T : class, IEntity<T>
         {
-            return Wrap((IEntity)target, service) as ProxyEntity<T>;
+            var result = Wrap((IEntity)target, service) as ProxyEntity<T>;
+            if (result == null)
+            {
+                throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
+            }
+            return result;
         }
 
-        public static IEntity Wrap(IEntity target, IServiceProvider? service = null, Type? context = null)
+        public static IEntity? Wrap(IEntity target, IServiceProvider? service = null, Type? context = null)
         {
             // 1. Create the specific interface type: IEntity<MyEntity>
             Type interfaceType = typeof(IEntity<>).MakeGenericType(target.GetType());
@@ -49,9 +59,11 @@ namespace DataLayer.Entities
             // 3. Since DispatchProxy.Create<T, TProxy> is generic, invoke it via reflection
             var createMethod = typeof(DispatchProxy)
                 .GetMethod(nameof(DispatchProxy.Create), 2, [])
-                .MakeGenericMethod(interfaceType, proxyType);
+                ?.MakeGenericMethod(interfaceType, proxyType);
 
-            object proxy = createMethod.Invoke(null, null);
+            object? proxy = createMethod?.Invoke(null, null);
+
+            if (proxy == null) return default;
 
             // 4. Set your fields (make sure they are public or use GetField with BindingFlags)
             var targetField = proxy.GetType().GetField(nameof(ProxyEntity<>._target), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -81,7 +93,7 @@ namespace DataLayer.Entities
             return Entity.Wrap(this, service, persist ? typeof(IDbContextFactory<DataLayer.PersistentStorage>) : typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
         }
 
-        public ProxyEntity<T> Wrap(IServiceProvider service, Type context)
+        public ProxyEntity<T> Wrap(IServiceProvider? service, Type? context)
         {
             return Entity.Wrap(this, service, context);
         }
@@ -264,9 +276,9 @@ namespace DataLayer.Entities
         //    return (T)Wrap((IEntity)target, service);
         //}
 
-        protected void SetValue<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
+        protected void SetValue<TValue>(ref TValue field, TValue value, [CallerMemberName] string propertyName = "")
         {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return;
+            if (EqualityComparer<TValue>.Default.Equals(field, value)) return;
 
             field = value;
 
@@ -289,6 +301,11 @@ namespace DataLayer.Entities
         {
             var result = targetMethod?.Invoke(_target, args);
 
+            if(_service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+
             if (targetMethod?.Name.StartsWith("set_") == true)
             {
                 var propName = targetMethod.Name.Substring(4);
@@ -299,6 +316,12 @@ namespace DataLayer.Entities
             if (targetMethod?.Name.StartsWith("get_") == true && result == null)
             {
                 var prop = _target.GetType().GetProperty(targetMethod.Name.Substring(4));
+
+                if (prop == null)
+                {
+                    throw new InvalidOperationException("Property does not exist: " + targetMethod.Name.Substring(4) + " on entity type " + typeof (T));
+                }
+
                 using var scope = _service.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<TranslationContext>();
 
@@ -320,7 +343,7 @@ namespace DataLayer.Entities
 
                     // 2. Collections are slightly different; we want the proxy to 
                     // track the collection itself or wrap the items.
-                    result = (prop.GetValue(_target) as IEnumerable<IEntity>).Select(e => Entity.Wrap(e, _service));
+                    result = (prop.GetValue(_target) as IEnumerable<IEntity>)?.Select(e => Entity.Wrap(e, _service));
                 }
             }
             return result;

@@ -27,15 +27,15 @@ namespace DataLayer.Entities
         public int? AnswerId { get; set; }
 
         [ForeignKey(nameof(AnswerId))]
-        public virtual Answer Answer { get; set; }
+        public virtual Answer? Answer { get; set; }
 
         // Foreign Key for User
         [Required]
         [Column("user_id")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; }
+        public virtual User? User { get; set; }
 
         // One-to-One relationship with File
         //[Column("file_id")]
@@ -46,7 +46,7 @@ namespace DataLayer.Entities
         //public virtual DataLayer.Entities.File Attachment { get; set; }
 
         [Column("value")]
-        public string Value { get; set; }
+        public string? Value { get; set; }
 
         [Required]
         [Column("correct")]

@@ -11,12 +11,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.3.9" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FlashCard\FlashCard.csproj" />
   </ItemGroup>
-
+	
+	<ItemGroup>
+		<PackageReference Include="sqlitepclraw.lib.e_sqlite3" Version="2.1.11">
+			<ExcludeAssets>all</ExcludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+	</ItemGroup>
+	
 </Project>

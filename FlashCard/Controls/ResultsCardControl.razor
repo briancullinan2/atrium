@@ -24,7 +24,7 @@
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
     //private IEnumerable<PropertyMetadata>? AnswerLayout;
-    private IEnumerable<PropertyMetadata>? CardLayout;
+    //private IEnumerable<PropertyMetadata>? CardLayout;
 
     protected override void OnInitialized()
     {
@@ -91,28 +91,11 @@
             }
         </div>
 
-        @*@if (result.Card?.ResponseType == null || result.Card?.ResponseType == DataLayer.Customization.CardType.FlashCard)
-        {
-            <div class="preview-footer">
-                <button class="preview-wrong" @onclick="() => Next(false)">✘</button>
-                <div class="preview-guess">Did you get it right?</div>
-                <button class="preview-right" @onclick="() => Next(true)">✔</button>
-            </div>
-        }*@
     </div>
 }
 
 
 @code {
 
-    private bool isFlipped = false;
-    private string flashClass = "";
 
-    private void Flip() => isFlipped = true;
-
-    private async Task Next(bool wasCorrect)
-    {
-        //isFlipped = false;
-        //await (ValueChanged?.InvokeAsync(wasCorrect) ?? Task.CompletedTask);
-    }
 }

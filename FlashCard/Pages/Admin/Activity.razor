@@ -66,7 +66,7 @@
     private ElementReference timelineRef;
     private double ViewportOffset = 0; // The "Scroll" position in pixels
     private bool Dragging = false;
-    private ElementReference scrollContainer;
+
     private double ZoomLevel = 1.0; // 1.0 = 1 day per 200px
     private int TotalWidth => (int)(PixelsPerDay * 7); // 60 days of buffer
     private double PixelsPerDay => ZoomLevel * 150;
@@ -92,7 +92,7 @@
 
     protected async Task HandleMove(MouseEventArgs e)
     {
-        if ((e.Buttons & 1) > 0)
+        if (Dragging)
         {
             // Removed the "/ ZoomLevel" here to keep the 1:1 feel of dragging
             // If it feels too slow, you can add a multiplier

@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿#if WINDOWS
+using Microsoft.AspNetCore.Builder;
+#endif
+
 using FlashCard.Services;
 
 namespace Atrium.Services
@@ -7,10 +10,10 @@ namespace Atrium.Services
     public class LocalServer : ILocalServer
     {
 #if WINDOWS
-        private WebApplication app;
+        private WebApplication? app;
 
-        public string BaseUrl => app.Urls.FirstOrDefault() ?? "http://localhost:8080";
-        public Task StopAsync() => app.StopAsync();
+        public string BaseUrl => app?.Urls.FirstOrDefault() ?? "http://localhost:8080";
+        public async Task StopAsync() => app?.StopAsync();
 
         internal void Initialize(WebApplication _app)
         {

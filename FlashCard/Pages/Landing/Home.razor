@@ -53,22 +53,14 @@
 <br />
 <br />
 
-@*Welcome to your new app running on <em>@factor</em> using <em>@platform</em>.*@
-
-@*<MetadataControl TModel="PropertyMetadata" Model="@CurrentCategory"></MetadataControl>*@
 
 @code {
     private string factor => FormFactor.GetFormFactor();
     private string platform => FormFactor.GetPlatform();
     [Parameter] public string? notFound { get; set; }
 
-    private IEnumerable<PropertyMetadata>? CurrentCategory;
-
     protected override void OnInitialized()
     {
-        // Equivalent to: Source={x:Static data:EntityMetadata.User.Categories[Login Info]}
-        // We assign the specific "Login Info" object to the Model property
-        //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
         MenuService.SetMenu(null);
         MenuService.SetHeader(false);
     }

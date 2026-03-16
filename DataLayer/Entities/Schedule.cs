@@ -13,10 +13,10 @@ namespace DataLayer.Entities
         public int Id { get; set; }
 
         [Column("user_id")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; } = null!;
+        public virtual User? User { get; set; } = null!;
 
         [MaxLength(256)]
         [Column("university")]
@@ -94,7 +94,7 @@ namespace DataLayer.Entities
 
         public class ScaleEntry
         {
-            public string Letter { get; set; } = string.Empty;
+            public string? Letter { get; set; }
             public int Max { get; set; }
             public int Min { get; set; }
             public double Point { get; set; }
@@ -147,7 +147,7 @@ namespace DataLayer.Entities
             {
                 // Case 1: Input is a letter grade (e.g., "B+")
                 string letter => activeScale
-                    .Where(s => s.Letter.Equals(letter, StringComparison.OrdinalIgnoreCase))
+                    .Where(s => s.Letter?.Equals(letter, StringComparison.OrdinalIgnoreCase) == true)
                     .Select(s => (s.Letter, (double?)s.Point))
                     .FirstOrDefault((null, null)),
 

@@ -24,6 +24,39 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 3/16/2026
+
+I've designed this storage mechanism and testing suite I want to write down before I forget, and then I can compare if it came out
+true to the original ideas. In Study Sauce I made a validation page that showed th result of all the "integration tests".
+I didn't write full unit tests, but I wrote integration tests that tested the overall functionality of every page through selenium.
+Here I'd combine my on going experience and integrate the code coverage from node istanbul, don't know why it's called that.
+And I'd write attributes to control the integration test entirely instead of listing conditions in seperate test files.
+The suite would be a status report builder basically building the result at runtime.
+
+For storage, in the previous version we had an iOS app that would start synching content as soon as you log in. Instead of
+risking locking up the UX, I'm synching between disk and memory in a separate thread to support UX functions, then synching between 
+clients and UX and backend and storage. All these different contexts basically extend the same DataLayer.TranslationContext
+The point is to be descriptive at the moment the interface is interacting with the data. For example, if I'm working on Anki imported 
+data, I can show the UI and start saving rows to disk in the background in two separate actions. But in the web client, I'd have
+to wait on the server response to save all the data I just extracted and then transition the UX to the card editor. Or I'd have
+to move all the potentially temporary data from the importer into the permanent storage and update the UI from remote. In this 
+scenario, I'm giving up on clien C# processing power almost entirely. 
+
+But with my design to synchronize data and change the context based on the service, I don't actually really have to make those decisions.
+I can assume data integrity by negotiating a few pathways to the data, and then my client/page views don't have to make all the synching
+decisions. Right now I have EphemeralStorage and PersistentStorage, i'll probably add remote, testing ephemeral and testing persistent.
+I'm going to add a priority queue where UX lists can request data ahead of say background synching content downloads.
+Another example this is useful, in the iOS app the synch would start right away, on web the synch had to happen up front on page request.
+With Blazor that sort of solves both the UX threading and the piece-wise data, and matching that same functionality on the client.
+
+The process I will show the pack list of Due cards based on Response table, doesn't require full card structure. Then background synch all
+the users packs from disk into the memory, or remote into memory for web clients. On web clients, subsequent queries will act on loaded 
+data instead of referring to SQL configuration.
+
+
+
+
+
 #### 3/15/2026
 
 I am adding this theme editor for the app and I thought it looked cool enough to share.

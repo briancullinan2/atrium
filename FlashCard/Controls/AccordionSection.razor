@@ -15,17 +15,9 @@
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    
-    // We use a static dictionary to persist state across the session 
-    // or instance-based if you want it to reset on every visit.
-    private static Dictionary<string, bool> _states = new();
 
     [Parameter]
-    public bool IsExpanded
-    {
-        get => _states.TryGetValue(Title, out var expanded) && expanded;
-        set => _states[Title] = value;
-    }
+    public bool IsExpanded { get; set; }
 
     public void Toggle() => IsExpanded = !IsExpanded;
 

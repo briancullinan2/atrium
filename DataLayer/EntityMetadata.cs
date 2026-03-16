@@ -62,10 +62,11 @@ namespace DataLayer
             _selector = selector;
         }
 
-        public TValue? this[string propertyName]
+        public TValue? this[string? propertyName]
         {
             get
             {
+                if (propertyName == null) return default;
                 if (_cache.TryGetValue(propertyName, out var value)) return value;
 
                 var prop = _source.FirstOrDefault(p => p.Name == propertyName);
@@ -127,7 +128,7 @@ namespace DataLayer
         }
     }
 
-    public partial class EntityMetadata : INotifyPropertyChanged
+    public partial class EntityMetadata //: INotifyPropertyChanged
     {
         public EntityMetadata? this[string key] => typeof(EntityMetadata).GetProperty(key, BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as EntityMetadata;
 
@@ -165,7 +166,7 @@ namespace DataLayer
         }
 
         // TODO: ? i guess update if the attribute in the change?
-        public event PropertyChangedEventHandler? PropertyChanged;
+        //public event PropertyChangedEventHandler? PropertyChanged;
     }
 
     // TODO: syntax sugar to allow for EntityMetadata.User.MaxLength[x => x.Name]
@@ -174,9 +175,9 @@ namespace DataLayer
     {
         private readonly EntityMetadata<TModel> _model;
         // TODO: this is kind of single purpose
-        private Func<EntityMetadata<TModel>, string, TReturn> _selector;
+        private Func<EntityMetadata<TModel>, string?, TReturn?> _selector;
 
-        public ModelAccessor(EntityMetadata<TModel> model, Func<EntityMetadata<TModel>, string, TReturn> selector)
+        public ModelAccessor(EntityMetadata<TModel> model, Func<EntityMetadata<TModel>, string?, TReturn?> selector)
         {
             _model = model;
             _selector = selector;
@@ -184,7 +185,7 @@ namespace DataLayer
 
         // TODO: this is kind of single purpose
         // Indexer taking a function/delegate
-        public TReturn this[Expression<Func<TModel, dynamic>> property]
+        public TReturn? this[Expression<Func<TModel, dynamic>> property]
         {
             get
             {
@@ -193,7 +194,7 @@ namespace DataLayer
         }
 
         // Indexer taking a function/delegate
-        public TReturn? this[string property]
+        public TReturn? this[string? property]
         {
             get
             {
@@ -208,7 +209,7 @@ namespace DataLayer
         public EntityMetadata() : base(typeof(T))
         {
             // TODO: this is kind of single purpose
-            MaxLength = new ModelAccessor<T, int>(this, (md, property) => (int)base.MaxLength[property]);
+            MaxLength = new ModelAccessor<T, int>(this, (md, property) => base.MaxLength[property]);
         }
     }
 

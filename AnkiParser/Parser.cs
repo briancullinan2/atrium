@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO.Compression;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -12,7 +13,7 @@ namespace AnkiParser
     public static class Parser
     {
 
-        public static List<DataLayer.Entities.File> ListFiles(string ankiPackage, IServiceProvider _services)
+        public static List<DataLayer.Entities.File> ListFiles(string? ankiPackage, IServiceProvider _services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -25,9 +26,9 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = _services?.CreateScope();
-            var persistentStore = scope?.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-            using var context = persistentStore?.CreateDbContext();
+            using var scope = _services.CreateScope();
+            var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
+            using var context = persistentStore.CreateDbContext();
             if (context.Files.Any(f => f.Created == fileTime && f.Filename == ankiPackage))
             {
                 results = context.Files.Where(f => f.Source == simpleName).ToList();
@@ -60,7 +61,7 @@ namespace AnkiParser
             return results;
         }
 
-        public static List<DataLayer.Entities.Card> ParseCards(string ankiPackage, IServiceProvider _services)
+        public static List<DataLayer.Entities.Card> ParseCards(string? ankiPackage, IServiceProvider _services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -71,11 +72,11 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = _services?.CreateScope();
-            var persistentStore = scope?.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-            using var context = persistentStore?.CreateDbContext();
-            var results = context?.Cards.Where(f => f.Source == simpleName).ToList();
-            if (results?.Any() == true)
+            using var scope = _services.CreateScope();
+            var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
+            using var context = persistentStore.CreateDbContext();
+            var results = context.Cards.Where(f => f.Source == simpleName).ToList();
+            if (results.Any() == true)
             {
                 return results;
             }
@@ -140,20 +141,20 @@ namespace AnkiParser
                 // card.Note.ModelId is 'mid' in the notes table
                 if (models?.TryGetValue(card.Note.ModelId, out var model) != true || model == null) continue;
 
-                var template = model.Tmpls.FirstOrDefault(t => t.Ord == card.Ordinal);
+                var template = model.Tmpls?.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
                 var newCard = new DataLayer.Entities.Card()
                 {
                     // Inject the field values into the Mustache brackets
-                    Content = ReplaceAnkiTags(template.QFmt, model.Flds, fieldValues),
-                    ResponseContent = ReplaceAnkiTags(template.AFmt, model.Flds, fieldValues),
-                    Tag = GetDiskFilename(ReplaceAnkiTags(template.QFmt, model.Flds, fieldValues)),
+                    Content = ReplaceAnkiTags(template.QFmt ?? "", model.Flds ?? [], fieldValues),
+                    ResponseContent = ReplaceAnkiTags(template.AFmt ?? "", model.Flds ?? [], fieldValues),
+                    Tag = GetDiskFilename(ReplaceAnkiTags(template.QFmt ?? "", model.Flds ?? [], fieldValues)),
                     Recurrence = $"{card.Interval} days",
                     Modified = DateTimeOffset.FromUnixTimeSeconds(card.ModifiedTimestamp).UtcDateTime,
                     Source = source,
                     //PackId = (int)card.DeckId, // Mapping Anki Deck to Sauce Pack
-                    ContentType = template.QFmt.Contains("{{Image}}") ? DisplayType.Image : DisplayType.Text
+                    ContentType = template.QFmt?.Contains("{{Image}}") == true ? DisplayType.Image : DisplayType.Text
                 };
                 results.Add(newCard);
                 // idempotence
@@ -182,7 +183,7 @@ namespace AnkiParser
 
 
         // Key: Original Name (from flds), Value: Disk Name (the number)
-        public static Dictionary<string, string> NameToDiskMap { get; private set; }
+        public static Dictionary<string, string>? NameToDiskMap { get; private set; }
 
         public static void ParseMediaFile(Stream fileStream)
         {
@@ -201,13 +202,13 @@ namespace AnkiParser
             }
         }
 
-        public static string GetDiskFilename(string fldsImageSrc)
+        public static string? GetDiskFilename(string fldsImageSrc)
         {
             // Clean the string in case it has HTML tags or leading pathing
             // Example input: <img src="Screen Shot 2021-06-18 at 11.34.0.png">
             string cleanName = ExtractFilename(fldsImageSrc);
 
-            if (NameToDiskMap.TryGetValue(cleanName, out string diskId))
+            if (NameToDiskMap?.TryGetValue(cleanName, out string? diskId) == true)
             {
                 return diskId;
             }
@@ -226,23 +227,27 @@ namespace AnkiParser
             return input;
         }
     }
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
     public class AnkiModel
     {
-        public List<AnkiField> Flds { get; set; }
-        public List<AnkiTemplate> Tmpls { get; set; }
+        public List<AnkiField>? Flds { get; set; }
+        public List<AnkiTemplate>? Tmpls { get; set; }
     }
 
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
     public class AnkiField
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int Ord { get; set; }
     }
 
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
     public class AnkiTemplate
     {
-        public string Name { get; set; }
-        public string QFmt { get; set; } // Question Format (Front)
-        public string AFmt { get; set; } // Answer Format (Back)
+        public string? Name { get; set; }
+        public string? QFmt { get; set; } // Question Format (Front)
+        public string? AFmt { get; set; } // Answer Format (Back)
         public int Ord { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 @implements IDisposable
 @page "/users"
 @page "/users/add"
+@page "/users/edit"
 @page "/users/list"
 @page "/users/{Id}"
 @page "/users/{Id}/view"
@@ -36,27 +37,6 @@
     </div>
 </div>
 
-<div class="user-add flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Add)">
-    <div>
-        <fieldset>
-            <legend>Login Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.User" Model="@LoginLayout" Data="[new DataLayer.Entities.User()]"></MetadataControl>
-        </fieldset>
-    </div>
-    <div>
-        <fieldset>
-            <legend>General Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.User" Model="@GeneralLayout" Data="[new DataLayer.Entities.User()]"></MetadataControl>
-        </fieldset>
-    </div>
-    <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
-        <button class="cta" @onclick="() => CreateUser()">Save</button>
-    </div>
-
-</div>
-
-
 @if(CurrentUser != null)
 {
     <div class="user-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
@@ -74,8 +54,11 @@
         </div>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
-            <a href="">User Membership</a>
-            <a href="">User Packs</a>
+            @(CurrentUser.CanonicalFingerprint != null)
+            {
+                <a href="">User Membership</a>
+                <a href="">User Packs</a>
+            }
             <button class="cta" @onclick="() => UpdateUser()">Save</button>
         </div>
     </div>
@@ -107,6 +90,9 @@
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
+        // TODO: check what happens when switching from new mode to edit mode
+        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
@@ -159,13 +145,6 @@
             ControlMode = newStep;
             StateHasChanged();
         }
-        if(Id != null)
-        {
-            if(CurrentUser == null || CurrentUser.Guid != Id)
-            {
-                _ = SetCurrentUser();
-            }
-        }
 
         if(ControlMode == DataLayer.Customization.ControlMode.List)
         {
@@ -173,11 +152,22 @@
         }
         else if (ControlMode == DataLayer.Customization.ControlMode.Add)
         {
+            if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
+            {
+                CurrentUser = new DataLayer.Entities.User();
+            }
             TitleService?.UpdateTitle("New User");
         }
         else if (ControlMode == DataLayer.Customization.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit User");
+            if (Id != null)
+            {
+                if (CurrentUser == null || CurrentUser.Guid != Id)
+                {
+                    _ = SetCurrentUser();
+                }
+            }
 
         }
     }

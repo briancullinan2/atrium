@@ -29,11 +29,16 @@ namespace Atrium.Platforms
     {
         public void OpenPortViaNativeCom(int port, string appName)
         {
-            Type policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
-            dynamic fwPolicy2 = Activator.CreateInstance(policyType);
+            Type? policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
+            if (policyType == null) return;
+            dynamic? fwPolicy2 = Activator.CreateInstance(policyType);
 
-            Type ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule");
-            INetFwRule newRule = (INetFwRule)Activator.CreateInstance(ruleType);
+            Type? ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule");
+            if (ruleType == null) return;
+            INetFwRule? newRule = Activator.CreateInstance(ruleType) as INetFwRule;
+
+            if (newRule == null) return;
+            if (fwPolicy2 == null) return;
 
             newRule.Name = $"{appName} Web Host";
             newRule.Protocol = 6; // TCP

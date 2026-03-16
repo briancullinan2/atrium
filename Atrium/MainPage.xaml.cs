@@ -7,7 +7,7 @@ namespace Atrium
     public partial class MainPage : ContentPage
     {
         internal static IServiceProvider? _services;
-        private bool _isFileDragging;
+
         public MainPage()
         {
             InitializeComponent();
@@ -26,7 +26,7 @@ namespace Atrium
 
                     // 3. Optional: Prevent the browser from actually opening the file if dropped
                     core.Settings.IsWebMessageEnabled = true;
-                    core.AddScriptToExecuteOnDocumentCreatedAsync(
+                    _ = core.AddScriptToExecuteOnDocumentCreatedAsync(
                         "window.addEventListener('dragover', e => e.preventDefault()); " +
                         "window.addEventListener('drop', e => e.preventDefault());");
                 };
@@ -41,7 +41,6 @@ namespace Atrium
                         e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
                 
                         MainThread.BeginInvokeOnMainThread(() => {
-                            _isFileDragging = true;
                             using(var scope = _services?.CreateScope())
                             {
                                 var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
@@ -54,7 +53,6 @@ namespace Atrium
                 webView.DragLeave += (s, e) =>
                 {
                     MainThread.BeginInvokeOnMainThread(() => {
-                        _isFileDragging = false;
                         using(var scope = _services?.CreateScope())
                         {
                             var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();

@@ -287,14 +287,14 @@ fieldset
 
 .user-account,
 .pack-edit,
-.user-add {
+.user-edit {
     display: flex;
     flex-wrap: wrap;
 }
 
 .user-account > *,
 .pack-edit > *,
-.user-add > * {
+.user-edit > * {
     flex-basis: 50%;
     margin: 0;
     padding: 10px;
@@ -302,17 +302,17 @@ fieldset
 
 .pack-edit .link-list,
 .pack-edit .highlighted-link,
-.user-add .highlighted-link {
+.user-edit .highlighted-link {
     flex-basis: 100%;
 }
 
 .pack-edit > h2,
-.user-add > h2 {
+.user-edit > h2 {
     flex-basis: 100%;
 }
 
 .pack-edit .form-field,
-.user-add .form-field {
+.user-edit .form-field {
     display: flex;
     flex-direction: column;
 }
@@ -374,13 +374,13 @@ fieldset
 
     .user-account,
     .pack-edit,
-    .user-add {
+    .user-edit {
         flex-direction:column;
         flex-wrap:nowrap;
     }
     .user-account > *,
     .pack-edit > *,
-    .user-add > * {
+    .user-edit > * {
         flex-basis: unset;
     }
 }
@@ -390,14 +390,14 @@ fieldset
 
     .user-account,
     .pack-edit,
-    .user-add {
+    .user-edit {
         flex-direction: row;
         flex-wrap: wrap;
     }
 
     .user-account > *,
     .pack-edit > *,
-    .user-add > * {
+    .user-edit > * {
         flex-basis: 50%;
     }
 }
@@ -407,14 +407,14 @@ fieldset
 
     .user-account,
     .pack-edit,
-    .user-add {
+    .user-edit {
         flex-direction: column;
         flex-wrap: nowrap;
     }
 
     .user-account > *,
     .pack-edit > *,
-    .user-add > * {
+    .user-edit > * {
         flex-basis: unset;
     }
 }

@@ -2,14 +2,14 @@
 
 namespace Retheme
 {
-
+    [CLSCompliant(false)]
     public class ThemeListener : css3ParserBaseListener
     {
         public Dictionary<string, ThemeData> Themes { get; } = new();
         private ThemeData? _currentTheme;
 
         // Triggered when a selector like .theme-deepseakelp is found
-        public override void EnterClassName(css3Parser.ClassNameContext context)
+        public override void EnterClassName( css3Parser.ClassNameContext context)
         {
             var className = context.GetText().TrimStart('.');
             if (className.StartsWith("theme-"))
@@ -48,7 +48,7 @@ namespace Retheme
 
     public class ThemeData
     {
-        public string ClassName { get; set; }
+        public string? ClassName { get; set; }
         public Dictionary<string, string> Variables { get; set; } = new();
     }
 }

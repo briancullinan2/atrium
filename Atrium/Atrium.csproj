@@ -46,8 +46,8 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
-    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
 
 	  <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
 		<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
@@ -97,25 +97,36 @@
 
     <ItemGroup>
     <PackageReference Include="EntityFramework" Version="6.5.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.3.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
-    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260302" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AnkiParser\AnkiParser.csproj" />
-    <ProjectReference Include="..\DataLayer\DataLayer.csproj" />
-    <ProjectReference Include="..\Retheme\Retheme.csproj" />
-    <ProjectReference Include="..\FlashCard\FlashCard.csproj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </ProjectReference>
+	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </ProjectReference>
+	  <ProjectReference Include="..\DataLayer\DataLayer.csproj">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </ProjectReference>
+	  <ProjectReference Include="..\Retheme\Retheme.csproj">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </ProjectReference>
+      <ProjectReference Include="..\FlashCard\FlashCard.csproj">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </ProjectReference>
   </ItemGroup>
 
 
+
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
+	</ItemGroup>
+		
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260302" />
+		<PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.3.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
 		<PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.5" />
 		<ProjectReference Include="..\WebClient\WebClient.csproj">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
