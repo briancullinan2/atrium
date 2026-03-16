@@ -13,37 +13,44 @@
 @inject ITitleService TitleService
 @inject NavigationManager Nav
 
-<div class="pack-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
-    <h2>
-        <MetadataControl TModel="DataLayer.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
-    </h2>
+@if (CurrentPack != null)
+{
 
-    <div>
-        <fieldset>
-            <legend>Pack Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
-        </fieldset>
+    <div class="pack-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+        <h2>
+            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
+        </h2>
+
+        <div>
+            <fieldset>
+                <legend>Pack Info</legend>
+                <MetadataControl TModel="DataLayer.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
+            </fieldset>
+        </div>
+
+
+        <div>
+            <fieldset>
+                <legend>Pack Status</legend>
+                <MetadataControl TModel="DataLayer.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
+            </fieldset>
+        </div>
+
+
+        <h2>Cards Tools</h2>
+
+        <div class="link-list">
+            @if (CurrentPack?.CanonicalFingerprint != null)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = 0 }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Edit @(CurrentCards?.Count()) Cards</a>
+            }
+            <a href="@(NavigationExtensions.GetUri<Pages.Content.Upload>())"><i class="bi bi-activity" aria-hidden="true"></i> Import Cards</a>
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i> Delete Pack</a>
+        </div>
+
     </div>
 
-
-    <div>
-        <fieldset>
-            <legend>Pack Status</legend>
-            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
-        </fieldset>
-    </div>
-
-
-    <h2>Cards Tools</h2>
-
-    <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Add, Page = 0 }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Edit @(CurrentCards?.Count()) Cards</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Content.Upload>())"><i class="bi bi-activity" aria-hidden="true"></i> Import Cards</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.Customization.ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i> Delete Pack</a>
-    </div>
-
-</div>
-
+}
 
 @for (var page = 0; page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take); page++)
 {
@@ -167,7 +174,7 @@
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.ElementAt(2).TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+            newStep = segments.ElementAt(segments.Count() == 2 ? 1 : 2).TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
         }
 
         if (newStep != ControlMode)
@@ -176,6 +183,9 @@
             ControlMode = newStep;
             StateHasChanged();
         }
+
+        // TODO: set CurrentPack
+
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)

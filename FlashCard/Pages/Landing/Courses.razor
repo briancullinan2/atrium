@@ -1,14 +1,21 @@
+@implements IDisposable
+
 @page "/courses"
 @page "/courses/add"
+@page "/courses/edit"
 @page "/courses/list"
 @page "/courses/{Id:int}"
 @page "/courses/{Id:int}/view"
 @page "/courses/{Id:int}/edit"
+@page "/courses/{Id:int}/group"
+@page "/courses/{Id:int}/owner"
 
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
 @inject IMenuService MenuService
+@inject ITitleService TitleService
+@inject NavigationManager Nav
 
 <SyncedTitle Title="Courses"></SyncedTitle>
 
@@ -27,6 +34,43 @@
 
 
 
+@if (CurrentCourse != null)
+{
+
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+        <div>
+            <fieldset>
+                <legend>Course Info</legend>
+                <MetadataControl TModel="DataLayer.Entities.Course" Model="@InfoLayout" Data="[CurrentCourse]"></MetadataControl>
+            </fieldset>
+        </div>
+        <div>
+            <fieldset>
+                <legend>Extended Info</legend>
+                <MetadataControl TModel="DataLayer.Entities.Course" Model="@ExtendedLayout" Data="[CurrentCourse]"></MetadataControl>
+            </fieldset>
+        </div>
+        <div class="highlighted-link">
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            @if(CurrentCourse.CanonicalFingerprint != null)
+            {
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { ControlMode = DataLayer.Customization.ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { ControlMode = DataLayer.Customization.ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
+            }
+            <button class="cta" @onclick="() => UpdateCourse()">Save</button>
+        </div>
+
+    </div>
+    
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Group)">
+    </div>
+
+
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Owner)">
+    </div>
+}
+
+
 
 @code {
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Courses));
@@ -35,8 +79,16 @@
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     public DataLayer.Customization.ControlMode? ControlMode { get; set; }
     public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
+    public DataLayer.Entities.Course? CurrentCourse { get; set; }
     
+    protected void UpdateCourse()
+    {
+
+    }
+
     protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
@@ -52,6 +104,72 @@
         // Define the contextual menu for THIS page
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         RecentLayout = Pages.Landing.Courses.Metadata.Categories["Recent"]?.ToList();
+        InfoLayout = DataLayer.EntityMetadata.Group.Groups["Group Info"]?.ToList();
+        ExtendedLayout = DataLayer.EntityMetadata.Group.Groups["Extended Info"]?.ToList();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+    
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+    
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        if (segments.Count() == 2 && Id != null)
+        {
+            newStep = DataLayer.Customization.ControlMode.View;
+        }
+        else if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+        }
+
+
+        
+        if (newStep == DataLayer.Customization.ControlMode.List)
+        {
+            TitleService?.UpdateTitle("Courses");
+        }
+        else if (newStep == DataLayer.Customization.ControlMode.Add)
+        {
+            if (CurrentCourse == null || CurrentCourse.CanonicalFingerprint != null)
+            {
+                CurrentCourse = new DataLayer.Entities.Course();
+            }
+            TitleService?.UpdateTitle("New Course");
+        }
+        else if (newStep == DataLayer.Customization.ControlMode.Edit)
+        {
+            TitleService?.UpdateTitle("Edit Course");
+            if (Id != null)
+            {
+                if (CurrentCourse == null || CurrentCourse.Id != Id)
+                {
+                    //_ = SetCurrentUser();
+                }
+            }
+        }
+
+
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        SetControlMode();
     }
 
     protected override void OnParametersSet()
@@ -60,9 +178,10 @@
         Recent.Clear();
         foreach (var course in (Type[])([typeof(Pages.Course.Course)]))
         {
-            var packs = GetCourses(course);
-            Recent.AddRange(packs ?? []);
+            var courses = GetCourses(course);
+            Recent.AddRange(courses ?? []);
         }
+        SetControlMode();
         StateHasChanged();
     }
 

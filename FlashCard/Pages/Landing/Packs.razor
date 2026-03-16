@@ -1,5 +1,9 @@
 @page "/packs"
+@page "/packs/list"
+@page "/packs/owner"
 @page "/packs/{Id:int}/add"
+@page "/packs/{Filter}"
+
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -42,8 +46,8 @@
     public List<DataLayer.Entities.Pack> Store { get; set; } = new();
 
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
-    [Parameter]
-    public int? Id { get; set; } = null;
+    [Parameter] public string? Filter { get; set; } = null;
+    [Parameter] public int? Id { get; set; } = null;
     public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.List;
     [Inject] public IDbContextFactory<DataLayer.EphemeralStorage>? MemoryFactory { get; set; }
 
@@ -69,6 +73,7 @@
 
         ControlMode = firstSegment.TryParse<DataLayer.Customization.ControlMode>();
 
+        // add/assign the pack to the users account for study
         if(ControlMode == DataLayer.Customization.ControlMode.Add)
         {
             DataLayer.Entities.Pack? currentPack = null;

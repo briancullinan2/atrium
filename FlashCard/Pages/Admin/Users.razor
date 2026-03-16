@@ -1,4 +1,5 @@
 @implements IDisposable
+
 @page "/users"
 @page "/users/add"
 @page "/users/edit"
@@ -8,6 +9,7 @@
 @page "/users/{Id}/edit"
 @page "/users/{Id}/group"
 @page "/users/{Id}/owner"
+
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -30,10 +32,10 @@
 
     <h2>User Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add User</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i> User Activity</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge" aria-hidden="true"></i> Manage Roles</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i> Manage Permissions</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus"></i> Add User</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i> User Activity</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i> Manage Roles</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i> Manage Permissions</a>
     </div>
 </div>
 
@@ -54,7 +56,7 @@
         </div>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
-            @(CurrentUser.CanonicalFingerprint != null)
+            @if(CurrentUser.CanonicalFingerprint != null)
             {
                 <a href="">User Membership</a>
                 <a href="">User Packs</a>
@@ -89,9 +91,9 @@
     protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
-        if (PreviousMode == mode) return "animate-out";
         // TODO: check what happens when switching from new mode to edit mode
         if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
         if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
         return "hidden";
     }
@@ -105,11 +107,6 @@
         LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
         Nav.LocationChanged += OnLocationChanged;
 
-    }
-
-    protected void CreateUser()
-    {
-        
     }
 
     protected void UpdateUser()
@@ -139,18 +136,12 @@
         }
 
 
-        if (newStep != ControlMode)
-        {
-            PreviousMode = ControlMode;
-            ControlMode = newStep;
-            StateHasChanged();
-        }
 
-        if(ControlMode == DataLayer.Customization.ControlMode.List)
+        if (newStep == DataLayer.Customization.ControlMode.List)
         {
             TitleService?.UpdateTitle("Manage Users");
         }
-        else if (ControlMode == DataLayer.Customization.ControlMode.Add)
+        else if (newStep == DataLayer.Customization.ControlMode.Add)
         {
             if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
             {
@@ -158,7 +149,7 @@
             }
             TitleService?.UpdateTitle("New User");
         }
-        else if (ControlMode == DataLayer.Customization.ControlMode.Edit)
+        else if (newStep == DataLayer.Customization.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit User");
             if (Id != null)
@@ -168,7 +159,14 @@
                     _ = SetCurrentUser();
                 }
             }
+        }
 
+        
+        if (newStep != ControlMode)
+        {
+            PreviousMode = ControlMode;
+            ControlMode = newStep;
+            StateHasChanged();
         }
     }
 

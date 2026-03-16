@@ -1,17 +1,23 @@
+@implements IDisposable
+
 @page "/groups"
 @page "/groups/add"
+@page "/groups/edit"
 @page "/groups/list"
 @page "/groups/{Id:int}"
 @page "/groups/{Id:int}/view"
 @page "/groups/{Id:int}/edit"
+@page "/groups/{Id:int}/group"
+@page "/groups/{Id:int}/owner"
 
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
 @inject IMenuService MenuService
+@inject ITitleService TitleService
 @inject NavigationManager Nav
 
-<SyncedTitle Title="Group Management"></SyncedTitle>
+<SyncedTitle Title="Manage Groups"></SyncedTitle>
 <div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
 
     <h2>Manage Groups</h2>
@@ -39,7 +45,7 @@
 @if (CurrentGroup != null)
 {
 
-    <div class="group-add flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Group Info</legend>
@@ -54,11 +60,22 @@
         </div>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            @if(CurrentGroup.CanonicalFingerprint != null)
+            {
+                <a href="">Group Membership</a>
+                <a href="">Group Packs</a>
+            }
             <button class="cta" @onclick="() => CreateGroup()">Save</button>
         </div>
 
     </div>
+    
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Group)">
+    </div>
 
+
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Owner)">
+    </div>
 }
 
 
@@ -113,7 +130,31 @@
             InvokeAsync(StateHasChanged);
         }
 
+        
+        if (ControlMode == DataLayer.Customization.ControlMode.List)
+        {
+            TitleService?.UpdateTitle("Manage Groups");
+        }
+        else if (ControlMode == DataLayer.Customization.ControlMode.Add)
+        {
+            if (CurrentGroup == null || CurrentGroup.CanonicalFingerprint != null)
+            {
+                CurrentGroup = new DataLayer.Entities.Group();
+            }
+            TitleService?.UpdateTitle("New Group");
+        }
+        else if (ControlMode == DataLayer.Customization.ControlMode.Edit)
+        {
+            TitleService?.UpdateTitle("Edit Group");
+            if (Id != null)
+            {
+                if (CurrentGroup == null || CurrentGroup.Id != Id)
+                {
+                    //_ = SetCurrentUser();
+                }
+            }
 
+        }
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
