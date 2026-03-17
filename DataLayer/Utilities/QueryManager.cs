@@ -295,7 +295,7 @@ namespace DataLayer.Utilities
         }
 
 
-        public async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
+        public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
             {
@@ -331,7 +331,7 @@ namespace DataLayer.Utilities
             }, priority);
         }
 
-        public async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+        public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
             {
@@ -386,7 +386,7 @@ namespace DataLayer.Utilities
         {
             return await Query(false, query, priority);
         }
-        public async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
+        public virtual async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
             where TEntity : Entity<TEntity>
         {
             // Use the Enqueue handshake to wait for our turn in the PriorityQueue
@@ -518,7 +518,7 @@ namespace DataLayer.Utilities
 
 
 
-        public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        public virtual async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
@@ -557,7 +557,7 @@ namespace DataLayer.Utilities
 
 
 
-        public async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
+        public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
             where TEntity : Entity<TEntity>
 
         {
