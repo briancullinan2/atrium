@@ -1,5 +1,7 @@
-﻿using DataLayer.Customization;
-using DataLayer.Entities;
+﻿using DataLayer.Entities;
+using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
@@ -9,9 +11,9 @@ namespace DataLayer.Utilities
 
     public interface IQueryManager
     {
-        Task<IEnumerable<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
-        Task<IEnumerable<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
-        Task<IEnumerable<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
+        Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
+        Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
+        Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
 
         Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
@@ -46,174 +48,254 @@ namespace DataLayer.Utilities
     {
         protected static IServiceProvider? Service { get; set; } = null;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
-        protected virtual PriorityQueue<QueryTask, int> TaskQueue { get; } = new();
-        protected virtual bool IsProcessing  { get; set; } = false;
+        protected virtual PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
+        protected virtual bool IsProcessing { get; set; } = false;
+        private readonly SemaphoreSlim _gate = new(0);
+
+
 
         public QueryManager()
         {
 
         }
 
-        public class QueryTask
+
+        public static async Task<object?> DetypeTask<TReturn>(Task<TReturn> Callback)
         {
-            public string? XmlQuery { get; set; }
-            public Action<object>? OnSuccess { get; set; }
-            public bool IsSaveOperation { get; set; }
+            var result = await Callback;
+            return result;
         }
 
 
-        public void Enqueue(string xml, Action<object> callback, int priority = 5)
+
+        public async Task<TReturn> Enqueue<TReturn>(Func<Task<TReturn>> callback, int priority = 5)
         {
-            TaskQueue.Enqueue(new QueryTask { XmlQuery = xml, OnSuccess = callback }, priority);
-            _ = ProcessQueueAsync(); // Fire and forget worker
+            var myTurn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            lock (TaskQueue)
+            {
+                TaskQueue.Enqueue(myTurn, priority);
+            }
+
+            // Kick the worker
+            _ = ProcessQueueAsync();
+
+            // Wait for the background loop to tell us it's our turn
+            await myTurn.Task;
+
+            try
+            {
+                return await callback();
+            }
+            finally
+            {
+                // Tell the background loop we are done so it can release the next one
+                _gate.Release();
+            }
         }
-
-
 
         public virtual async Task ProcessQueueAsync()
         {
-            if (IsProcessing) return;
-            IsProcessing = true;
-            while (TaskQueue.TryDequeue(out _, out _))
+            lock (this)
             {
-                try
-                {
-                    // Throttling: prevent bombarding the server
-                    await Task.Delay(50);
-
-
-
-                }
-                catch (Exception)
-                {
-                    // TODO: log error, retry depending on type?
-                }
+                if (IsProcessing) return;
+                IsProcessing = true;
             }
 
-            IsProcessing = false;
+            while (true)
+            {
+                TaskCompletionSource? next;
+                lock (TaskQueue)
+                {
+                    if (!TaskQueue.TryDequeue(out next, out _)) break;
+                }
+
+                // Throttling
+                await Task.Delay(50);
+
+                // Trigger the caller's 'await myTurn.Task'
+                next.SetResult();
+
+                // Wait for the caller to finish their work (via the release in 'finally')
+                await _gate.WaitAsync();
+            }
+
+            lock (this) { IsProcessing = false; }
         }
 
 
 
-        public Task<IEnumerable<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+
+        public static Type GetStorageType(StorageType type) => type switch
         {
-            return Synchronize(true, false, qualifier, priority);
+            StorageType.Ephemeral => typeof(EphemeralStorage),
+            StorageType.Persistent => typeof(PersistentStorage),
+            StorageType.Remote => typeof(RemoteStorage),
+            StorageType.Test => typeof(TestStorage),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
+        };
+
+
+        public static Type GetContextType(StorageType type) => type switch
+        {
+            StorageType.Ephemeral => typeof(IDbContextFactory<EphemeralStorage>),
+            StorageType.Persistent => typeof(IDbContextFactory<PersistentStorage>),
+            StorageType.Remote => typeof(IDbContextFactory<RemoteStorage>),
+            StorageType.Test => typeof(IDbContextFactory<TestStorage>),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
+        };
+
+
+        public static IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext => 
+            Service?.GetService<IDbContextFactory<TContext>>();
+
+        public static IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext =>
+            Service?.GetService(contextType) as IDbContextFactory<TContext>;
+
+
+        public static TContext? GetContext<TContext>() where TContext : DbContext =>
+            GetContextFactory<TContext>()?.CreateDbContext();
+
+        public static TContext? GetContext<TContext>(Type contextType) where TContext : DbContext =>
+            GetContextFactory<TContext>(contextType)?.CreateDbContext();
+
+        public static TranslationContext? GetContext(Type contextType) =>
+            typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
+
+
+
+        public async Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+        {
+            return await Synchronize(true, false, qualifier, priority);
         }
 
-        public Task<IEnumerable<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+        public async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
         {
-            throw new NotImplementedException();
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFromType = GetContextType(From);
+                var contextToType = GetContextType(To);
+                var contextFrom = GetContext(contextFromType);
+                var contextTo = GetContext(contextToType);
+                if (contextFrom == null || contextTo == null)
+                {
+                    throw new InvalidOperationException("Database context failed.");
+                }
+                await contextFrom.Sync(contextTo, qualifier);
+                return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
+            }, priority);
         }
 
-        public Task<IEnumerable<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+        public async Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
         {
-            return Synchronize(
+            return await Synchronize(
                 FromPersistent ? StorageType.Persistent : StorageType.Ephemeral,
                 ToPersistent ? StorageType.Persistent : StorageType.Ephemeral,
                 qualifier, priority);
         }
 
 
-        public Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Save(false, expression, priority);
+            return await Save(false, expression, priority);
         }
 
-        public Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Save(false, entity, priority);
+            return await Save(false, entity, priority);
         }
 
 
 
-        public Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
             throw new NotImplementedException();
         }
 
-
-
-        public Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, expression, priority);
-        }
-
-        public Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
-        }
-
-
-
-
-        public Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return Query(false, query, priority);
-        }
-
-        public Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
             throw new NotImplementedException();
         }
 
-        public Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+
+
+        public async Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Query(persistent ? StorageType.Persistent : StorageType.Ephemeral, query, priority);
+            return await Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, expression, priority);
+        }
+
+        public async Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return await Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
 
 
 
 
-        public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Update(false, key, priority);
+            return await Query(false, query, priority);
         }
 
-        public Task<object?> Update(object key, int priority = 10)
+        public async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Update(false, key, priority);
+            throw new NotImplementedException();
         }
 
-        public Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10)
+        public async Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Update(false, entity, priority);
+            return await Query(persistent ? StorageType.Persistent : StorageType.Ephemeral, query, priority);
         }
 
 
 
-        public Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+
+        public async Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        {
+            return await Update(false, key, priority);
+        }
+
+        public async Task<object?> Update(object key, int priority = 10)
+        {
+            return await Update(false, key, priority);
+        }
+
+        public async Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10)
+        {
+            return await Update(false, entity, priority);
+        }
+
+
+
+        public async Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        {
+            return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
+        }
+
+        public async Task<object?> Update(bool persistent, object key, int priority = 10)
         {
             return Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
         }
 
-        public Task<object?> Update(bool persistent, object key, int priority = 10)
+        public async Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10)
         {
-            return Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
-        }
-
-        public Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10)
-        {
-            return Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
+            return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
 
 
 
-        public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
         {
             throw new NotImplementedException();
         }
 
-        public Task<object?> Update(StorageType storage, object key, int priority = 10)
+        public async Task<object?> Update(StorageType storage, object key, int priority = 10)
         {
             throw new NotImplementedException();
         }
 
-        public Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
+        public async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
         {
             throw new NotImplementedException();
         }
@@ -229,40 +311,7 @@ namespace DataLayer.Utilities
             _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
-        public override async Task ProcessQueueAsync()
-        {
-            if(_httpClient == null)
-            {
-                throw new InvalidOperationException("No http client.");
-            }
 
-
-            if (IsProcessing) return;
-            IsProcessing = true;
-
-            while (TaskQueue.TryDequeue(out var task, out var priority))
-            {
-                try
-                {
-                    // Throttling: prevent bombarding the server
-                    await Task.Delay(50);
-
-                    var response = await _httpClient.PostAsJsonAsync("api/query", task.XmlQuery);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var resultJson = await response.Content.ReadAsStringAsync();
-                        // You'll need a way to know the Type here for deserialization
-                        task.OnSuccess?.Invoke(resultJson);
-                    }
-                }
-                catch (Exception) {
-                    // TODO: log error, retry depending on type?
-
-                }
-            }
-
-            IsProcessing = false;
-        }
 
     }
 

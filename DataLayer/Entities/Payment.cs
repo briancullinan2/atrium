@@ -1,8 +1,7 @@
-﻿using DataLayer.Entities;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Atrium.Entities
+namespace DataLayer.Entities
 {
     [Table("payment")]
     public class Payment

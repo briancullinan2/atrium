@@ -171,7 +171,7 @@ namespace Atrium.Services
         private static string ExtractAnkiId(string segment)
         {
             // Look for a sequence of 8-12 digits in the binary segment
-            var match = MyRegex().Match(segment);
+            var match = AnkiIdRegex().Match(segment);
             return match.Success ? match.Value : "";
         }
 
@@ -304,6 +304,6 @@ namespace Atrium.Services
         }
 
         [System.Text.RegularExpressions.GeneratedRegex(@"\d{8,12}")]
-        private static partial System.Text.RegularExpressions.Regex MyRegex();
+        private static partial System.Text.RegularExpressions.Regex AnkiIdRegex();
     }
 }

@@ -1,5 +1,6 @@
 @page "/upload"
 @implements IDisposable
+@using DataLayer.Utilities
 @using DataLayer.Utilities.Extensions
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
@@ -9,6 +10,7 @@
 @inject IMenuService MenuService
 @inject IServiceProvider Services
 @inject IAnkiService AnkiService
+@inject IQueryManager QueryManager
 
 <SyncedTitle Title="Import Packs"></SyncedTitle>
 
@@ -120,6 +122,7 @@
         FilesLayout = Pages.Content.Upload.Metadata.Categories["Display"]?.ToList();
         CardsLayout = Pages.Content.Upload.Metadata.Categories["Content"]?.ToList();
         File.OnFileDragging += OnDragging;
+        _ = PopulateUploads();
     }
 
     protected void OnAnkiSelected(Tuple<PropertyMetadata, DataLayer.Entities.File, object?> callback)
@@ -132,45 +135,9 @@
     }
 
 
-    public IDbContextFactory<DataLayer.PersistentStorage>? PersistentFactory { get {
-            try {
-                return Services.GetService(typeof(IDbContextFactory<DataLayer.PersistentStorage>)) as IDbContextFactory<DataLayer.PersistentStorage>;
-            } catch (Exception)
-            {
-                return null;
-            }
-        }
-    }
-
-    [Inject] 
-    public IDbContextFactory<DataLayer.EphemeralStorage>? MemoryFactory { get; set; }
-
-    protected override async Task OnInitializedAsync()
+    protected async Task PopulateUploads()
     {
-        _ = base.OnInitializedAsync();
-
-        if(PersistentFactory == null || MemoryFactory == null)
-        {
-            await PopulateUploads();
-            return;
-        }
-        using var fileContext = PersistentFactory.CreateDbContext();
-        using var memoryContext = MemoryFactory.CreateDbContext();
-        await fileContext.Sync(memoryContext, (DataLayer.Entities.File f) => f.Source == "Upload" || f.Source == "AnkiDownloads");
-        await PopulateUploads(memoryContext);
-    }
-
-    protected async Task PopulateUploads(EphemeralStorage? memoryContext = null)
-    {
-        if (MemoryFactory == null)
-        {
-            return;
-        }
-        if (memoryContext == null)
-        {
-            memoryContext = MemoryFactory.CreateDbContext();
-        }
-        Uploads = await memoryContext.Files.Where(f => f.Source == "Upload" || f.Source == "AnkiDownloads").ToListAsync();
+        Uploads = await QueryManager.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
     }
 
 

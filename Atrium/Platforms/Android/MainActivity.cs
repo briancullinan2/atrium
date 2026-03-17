@@ -3,7 +3,7 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Views;
 
-namespace Atrium
+namespace Atrium.Platforms.Android
 {
     [Activity(
         Theme = "@style/MainTheme.NoActionBar", // Point to your new style here

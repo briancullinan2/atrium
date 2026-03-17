@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace Atrium
+namespace Atrium.Platforms.iOS
 {
     [Register("AppDelegate")]
     public class AppDelegate : MauiUIApplicationDelegate

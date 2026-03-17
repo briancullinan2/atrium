@@ -1,4 +1,4 @@
-﻿using DataLayer.Customization;
+﻿using DataLayer;
 using FlashCard.Layout;
 
 namespace FlashCard.Services

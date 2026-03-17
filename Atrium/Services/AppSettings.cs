@@ -1,4 +1,4 @@
-﻿namespace FlashCard.Services
+﻿namespace Atrium.Services
 {
     public class AppSettingsService
     {

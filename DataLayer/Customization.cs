@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
 
-namespace DataLayer.Customization
+namespace DataLayer
 {
 
 

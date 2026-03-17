@@ -1,4 +1,5 @@
-﻿using DataLayer.Entities;
+﻿using DataLayer;
+using DataLayer.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -45,14 +46,13 @@ namespace DataLayer
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
-            // This makes the conversion "implicit" for the database layer globally.
-            _ = configurationBuilder.Properties<Customization.DisplayType>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.ControlMode>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.Gender>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.PackMode>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.PackStatus>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.CardType>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Customization.GradeScale>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<DisplayType>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<ControlMode>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Gender>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<PackMode>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<PackStatus>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<CardType>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<GradeScale>().HaveConversion<int>();
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

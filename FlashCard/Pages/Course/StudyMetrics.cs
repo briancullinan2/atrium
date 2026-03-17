@@ -1,4 +1,4 @@
-﻿using DataLayer.Customization;
+﻿using DataLayer;
 using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course

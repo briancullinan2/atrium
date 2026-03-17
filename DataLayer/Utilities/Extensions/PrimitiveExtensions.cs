@@ -11,7 +11,7 @@ namespace DataLayer.Utilities.Extensions
         public static string ToSafe(this string url)
         {
             if (string.IsNullOrEmpty(url)) return string.Empty;
-            string[] words = MyRegex().Split(url);
+            string[] words = SafeRegex().Split(url);
             TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
 
             var titleCasedWords = words
@@ -59,6 +59,6 @@ namespace DataLayer.Utilities.Extensions
         }
 
         [GeneratedRegex(@"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase, "en-US")]
-        private static partial Regex MyRegex();
+        private static partial Regex SafeRegex();
     }
 }

@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace Atrium
+namespace Atrium.Platforms.MacCatalyst
 {
     [Register("AppDelegate")]
     public class AppDelegate : MauiUIApplicationDelegate

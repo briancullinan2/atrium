@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Atrium.Platforms
+namespace Atrium.Platforms.Windows
 {
 
     [ComImport]

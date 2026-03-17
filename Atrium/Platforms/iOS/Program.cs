@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace Atrium
+namespace Atrium.Platforms.iOS
 {
     public class Program
     {
