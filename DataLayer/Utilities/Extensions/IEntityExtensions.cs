@@ -2,8 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace DataLayer.Utilities.Extensions
 {
@@ -13,181 +15,33 @@ namespace DataLayer.Utilities.Extensions
         /// Rehydrates the entity by discarding local changes and fetching 
         /// the latest data from the database.
         /// </summary>
-        public static T Update<T>(this ProxyEntity<T> entity, bool? recurse = false) where T : class, IEntity<T>
+        public static async Task<T> Update<T>(this T entity) where T : Entity<T>
         {
-            ArgumentNullException.ThrowIfNull(entity);
-            entity._scope ??= entity._service?.CreateScope();
-            var persistentStore = entity._scope?.ServiceProvider.GetRequiredService(entity._context ?? typeof(IDbContextFactory<PersistentStorage>));
-            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<PersistentStorage>)?.CreateDbContext();
-            persistentContext ??= (persistentStore as IDbContextFactory<EphemeralStorage>)?.CreateDbContext();
-            if (persistentContext == null)
+            if (QueryManager.Service == null)
             {
-                throw new InvalidOperationException("Cannot determine database context.");
-            }
-            var entry = persistentContext.Entry(entity._target);
-
-            // If the entity isn't being tracked, we need to attach it first
-            if (entry.State == EntityState.Detached)
-            {
-                _ = persistentContext.Attach(entity._target);
+                throw new InvalidOperationException("No service provider.");
             }
 
-            // This executes the SQL SELECT and updates the object's properties
-            entry.Reload();
-
-            if (recurse == true)
-            {
-                LoadAllNavigations(persistentContext, entity._target);
-            }
-
-            return entity._target;
+            return await QueryManager.Service.GetRequiredService<QueryManager>().Update(false, entity);
         }
 
 
-        public static void LoadAllNavigations(DbContext context, object entity)
+
+
+
+        public static async Task<T?> Save<T>(this T? ent) where T : Entity<T>
         {
-            var entry = context.Entry(entity);
-
-            // 1. Get all Navigation properties defined in the EF Model for this type
-            var navigations = entry.Metadata.GetNavigations();
-
-            foreach (var navigation in navigations)
+            if(ent == null)
             {
-                if (navigation.IsCollection)
-                {
-                    // It's a Collection (like ICollection<Lesson>)
-                    var collectionEntry = entry.Collection(navigation.Name);
-                    if (!collectionEntry.IsLoaded)
-                    {
-                        collectionEntry.Load();
-                    }
-                }
-                else
-                {
-                    // It's a Reference (like ParentLesson)
-                    var referenceEntry = entry.Reference(navigation.Name);
-                    if (!referenceEntry.IsLoaded)
-                    {
-                        referenceEntry.Load();
-                    }
-                }
+                return default!;
             }
+            if (QueryManager.Service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+
+            return await QueryManager.Service.GetRequiredService<QueryManager>().Save(false, ent);
         }
-
-
-        public static T Save<T>(this ProxyEntity<T> ent, bool? recurse = false) where T : class, IEntity<T>
-        {
-            // Start the Transaction
-            ent._scope ??= ent._service?.CreateScope();
-            var persistentStore = ent._scope?.ServiceProvider.GetRequiredService(ent._context ?? typeof(IDbContextFactory<PersistentStorage>));
-            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<PersistentStorage>)?.CreateDbContext();
-            persistentContext ??= (persistentStore as IDbContextFactory<EphemeralStorage>)?.CreateDbContext();
-            if (persistentContext == null)
-            {
-                throw new InvalidOperationException("Cannot determine database context.");
-            }
-            using var transaction = persistentContext.Database.BeginTransaction();
-            try
-            {
-                // 1. Perform relational checks here (e.g., does the linked Facility exist?)
-                // if (!context.Facilities.Any(f => f.Id == messageEntity.FacilityId)) 
-                //    throw new Exception("Invalid Facility Link");
-                ent._target.CanonicalFingerprint = ent._target.GetHashCode();
-
-                // 2. Add the primary entity
-                if (recurse == false)
-                {
-                    ShallowSaveRecursive(persistentContext, ent._target, recurse == true);
-                }
-                else
-                {
-                    _ = persistentContext.Add(ent._target);
-                }
-
-                // 3. Commit the changes
-                _ = persistentContext.SaveChanges();
-
-                // 4. Finalize the transaction
-                transaction.Commit();
-
-                return Update(ent, true);
-            }
-            catch (Exception ex)
-            {
-                // Arizona Compliance: Roll back to prevent data corruption
-                transaction.Rollback();
-                //Log.Error($"Transaction Aborted: {ex.Message}");
-                throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
-            }
-            finally
-            {
-            }
-        }
-
-        public static void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
-        {
-
-            // 2. Find or Fetch the tracked version from the DB
-            var trackedEntity = persistentContext.Entry(updatedEntity);
-            if (trackedEntity == null)
-            {
-                // If it doesn't exist, we must Add it (Shallowly)
-                _ = persistentContext.Add(updatedEntity);
-                return;
-            }
-
-            // 3. Update only the scalar values (Title, Icon, etc.)
-            trackedEntity.CurrentValues.SetValues(updatedEntity);
-
-            // 4. If recursing, find child collections
-            if (recurse)
-            {
-                var navigations = persistentContext.Entry(trackedEntity).Metadata.GetNavigations();
-                foreach (var nav in navigations.Where(n => n.IsCollection))
-                {
-                    // Get the list of children from the updated object
-
-                    if (updatedEntity.GetType().GetProperty(nav.Name)?.GetValue(updatedEntity) is IEnumerable updatedChildren)
-                    {
-                        foreach (var child in updatedChildren)
-                        {
-                            // Use 'dynamic' or Reflection to call this method again for the child type
-                            ShallowSaveRecursive((dynamic)child, true);
-                        }
-                    }
-                }
-            }
-        }
-
-        public static int Update<T>(this T entity, IDbConnection conn, string keyName = "Id") where T : class, IEntity<T>
-        {
-            var type = typeof(T);
-            var props = type.GetProperties();
-            var tableName = type.Name; // Assumes Table Name = Class Name
-
-            // 1. Build the SET clause (skipping the Primary Key)
-            var setClauses = props
-                .Where(p => p.Name != keyName)
-                .Select(p => $"[{p.Name}] = @{p.Name}");
-
-            string sql = $"UPDATE [{tableName}] SET {string.Join(", ", setClauses)} WHERE [{keyName}] = @{keyName}";
-
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = sql;
-
-            // 2. Map values to Parameters (Prevents SQL Injection)
-            foreach (var prop in props)
-            {
-                var param = cmd.CreateParameter();
-                param.ParameterName = "@" + prop.Name;
-                param.Value = prop.GetValue(entity) ?? DBNull.Value;
-                _ = cmd.Parameters.Add(param);
-            }
-
-            if (conn.State != ConnectionState.Open) conn.Open();
-            return cmd.ExecuteNonQuery();
-        }
-
 
         //public static T Wrap<T>(this T target) where T : class, IEntity<T>
         //{
@@ -238,9 +92,9 @@ namespace DataLayer.Utilities.Extensions
             foreach (var entity in entities)
             {
                 // 2. Upsert logic: Check if it exists in the persistent store
-                var exists = await persistentContext.Set<TSet>().AnyAsync(qualifier);
+                var exists = persistentContext.EntryAsync(entity);
 
-                if (exists)
+                if (exists != null)
                 {
                     _ = persistentContext.Set<TSet>().Update(entity);
                 }
@@ -251,6 +105,139 @@ namespace DataLayer.Utilities.Extensions
             }
 
             _ = await persistentContext.SaveChangesAsync();
+        }
+
+
+
+        public static Expression<Func<TEntity, bool>> PredicateByFingerprint<TEntity>(this TEntity entity)
+            where TEntity : Entity<TEntity>
+        {
+            var type = typeof(TEntity);
+
+            // 1. Locate the Fingerprint property via Reflection
+            // We assume the property name is "CanonicalFingerprint" based on your Entity definition
+            var fingerprintProp = type.GetProperty("CanonicalFingerprint", BindingFlags.Public | BindingFlags.Instance) ?? throw new InvalidOperationException($"Entity type {type.Name} does not define a CanonicalFingerprint.");
+
+            // 2. Build the Expression: e => e.CanonicalFingerprint == entity.CanonicalFingerprint
+            var parameter = Expression.Parameter(type, "e");
+
+            // Left side: e.CanonicalFingerprint
+            var left = Expression.Property(parameter, fingerprintProp);
+
+            // Right side: the constant value from our current entity instance
+            var fingerprintValue = fingerprintProp.GetValue(entity);
+            var right = Expression.Constant(fingerprintValue, fingerprintProp.PropertyType);
+
+            // The comparison: e.CanonicalFingerprint == "..."
+            var comparison = Expression.Equal(left, right);
+
+            var lambda = Expression.Lambda<Func<TEntity, bool>>(comparison, parameter);
+
+            // 3. Execute against the ChangeTracker or the Database
+            return lambda;
+        }
+
+
+        public static Expression<Func<TEntity, bool>> Predicate<TEntity>(this TEntity entity)
+            where TEntity : Entity<TEntity>
+        {
+            var type = typeof(TEntity);
+
+            // 1. Find properties via Reflection that have the [Key] attribute
+            var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null)
+                .ToList();
+
+            // Fallback: If no [Key] attribute, check for "Id" or "{ClassName}Id" 
+            // to match EF's default convention
+            if (keyProperties.Count == 0)
+            {
+                var idProp = type.GetProperty("Id") ?? type.GetProperty($"{type.Name}Id");
+                if (idProp != null) keyProperties.Add(idProp);
+            }
+
+            if (keyProperties.Count == 0) return PredicateByFingerprint(entity);
+
+            var parameter = Expression.Parameter(type, "e");
+            Expression? predicate = null;
+
+            foreach (var prop in keyProperties)
+            {
+                // e.Id
+                var left = Expression.Property(parameter, prop);
+                // entity.Id (value)
+                var right = Expression.Constant(prop.GetValue(entity), prop.PropertyType);
+
+                var comparison = Expression.Equal(left, right);
+                predicate = predicate == null ? comparison : Expression.AndAlso(predicate, comparison);
+            }
+
+            var lambda = Expression.Lambda<Func<TEntity, bool>>(predicate!, parameter);
+            return lambda;
+        }
+
+
+
+        public static Expression<Func<TEntity, bool>> Predicate<TEntity>(this Expression<Func<TEntity, TEntity>> expression)
+            where TEntity : Entity<TEntity>
+        {
+            var type = typeof(TEntity);
+            var parameter = Expression.Parameter(type, "e");
+
+            // Get the keys (Reflection logic you already have)
+            var keyProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null).ToList();
+            if (keyProps.Count == 0)
+            {
+                var idProp = type.GetProperty("Id") ?? type.GetProperty($"{type.Name}Id");
+                if (idProp != null) keyProps.Add(idProp);
+            }
+
+            // Parse the MemberInitExpression
+            if (expression.Body is not MemberInitExpression mi)
+                throw new InvalidOperationException("Save expression must be a MemberInit (e.g., e => new Entity { ... })");
+
+            Expression? predicate = null;
+
+            foreach (var binding in mi.Bindings.OfType<MemberAssignment>())
+            {
+                if (keyProps.Any(k => k.Name == binding.Member.Name))
+                {
+                    var left = Expression.Property(parameter, binding.Member.Name);
+                    // Compile only the value part of the binding to get the ID
+                    var value = Expression.Lambda(binding.Expression).Compile().DynamicInvoke();
+                    var right = Expression.Constant(value, ((PropertyInfo)binding.Member).PropertyType);
+
+                    var comparison = Expression.Equal(left, right);
+                    predicate = predicate == null ? comparison : Expression.AndAlso(predicate, comparison);
+                }
+            }
+
+            // Fallback to fingerprint if no keys were found in the expression bindings
+            if (predicate == null)
+            {
+                // You would implement a similar loop for CanonicalFingerprint here
+                throw new InvalidOperationException("No primary key fields were initialized in the expression.");
+            }
+
+            return Expression.Lambda<Func<TEntity, bool>>(predicate, parameter);
+        }
+
+
+
+        public static async Task<TEntity?> EntryAsync<TEntity>(this DbContext context, TEntity entity)
+            where TEntity : Entity<TEntity>
+        {
+            var lambda = Predicate(entity);
+            return await context.Set<TEntity>().FirstOrDefaultAsync(lambda);
+        }
+
+
+
+        public static async Task<bool> ExistsAsync<TEntity>(this DbContext context, TEntity entity)
+            where TEntity : Entity<TEntity>
+        {
+            return (await EntryAsync(context, entity)) != null;
         }
 
     }

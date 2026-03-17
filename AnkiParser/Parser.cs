@@ -3,6 +3,7 @@ using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO.Compression;
 using System.Reflection;
@@ -14,7 +15,7 @@ namespace AnkiParser
     public static partial class Parser
     {
 
-        public static List<DataLayer.Entities.File> ListFiles(string? ankiPackage, IServiceProvider Services)
+        public static async Task<List<DataLayer.Entities.File>> ListFiles(string? ankiPackage, IServiceProvider Services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -27,12 +28,11 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = Services.CreateScope();
-            var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-            using var context = persistentStore.CreateDbContext();
-            if (context.Files.Any(f => f.Created == fileTime && f.Filename == ankiPackage))
+            var query = Services.GetRequiredService<QueryManager>();
+            var alreadyLoaded = await query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage);
+            if (alreadyLoaded.Any())
             {
-                results = [.. context.Files.Where(f => f.Source == simpleName)];
+                results = [.. await query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName))];
                 if (results.Count != 0)
                 {
                     return results;
@@ -47,22 +47,20 @@ namespace AnkiParser
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                var newFile = new DataLayer.Entities.File()
+                var newFile = await query.Save(new DataLayer.Entities.File()
                 {
                     Filename = entry.FullName,
                     Source = simpleName,
                     // Accessing the DateTime component of the DateTimeOffset
                     Created = entry.LastWriteTime.DateTime
-                };
+                });
                 results.Add(newFile);
-                var wrapped = DataLayer.Entities.Entity.Wrap(newFile, Services, typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
-                _ = wrapped.Save();
             }
 
             return results;
         }
 
-        public static List<DataLayer.Entities.Card> ParseCards(string? ankiPackage, IServiceProvider Services)
+        public static async Task<List<DataLayer.Entities.Card>> ParseCards(string? ankiPackage, IServiceProvider Services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -73,13 +71,11 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = Services.CreateScope();
-            var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-            using var context = persistentStore.CreateDbContext();
-            var results = context.Cards.Where(f => f.Source == simpleName).ToList();
-            if (results.Count != 0 == true)
+            var query = Services.GetRequiredService<QueryManager>();
+            var alreadyLoaded = await query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName);
+            if (alreadyLoaded.Any())
             {
-                return results;
+                return [.. alreadyLoaded];
             }
 
 
@@ -98,13 +94,13 @@ namespace AnkiParser
             {
                 if (entry.FullName.EndsWith(".anki2"))
                 {
-                    return ParseCards(entry.Open(), simpleName, Services);
+                    return await ParseCards(entry.Open(), simpleName, Services);
                 }
             }
             return [];
         }
 
-        private static List<DataLayer.Entities.Card> ParseCards(Stream anki2Database, string source, IServiceProvider _services)
+        private static async Task<List<DataLayer.Entities.Card>> ParseCards(Stream anki2Database, string source, IServiceProvider Services)
         {
             var tempPath = Path.GetTempFileName();
             using (var fs = File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
@@ -142,7 +138,8 @@ namespace AnkiParser
                 var template = model.Tmpls?.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
-                var newCard = new DataLayer.Entities.Card()
+                var query = Services.GetRequiredService<QueryManager>();
+                var newCard = await query.Save(new DataLayer.Entities.Card()
                 {
                     // Inject the field values into the Mustache brackets
                     Content = ReplaceAnkiTags(template.QFmt ?? "", model.Flds ?? [], fieldValues),
@@ -153,11 +150,9 @@ namespace AnkiParser
                     Source = source,
                     //PackId = (int)card.DeckId, // Mapping Anki Deck to Sauce Pack
                     ContentType = template.QFmt?.Contains("{{Image}}") == true ? DisplayType.Image : DisplayType.Text
-                };
-                results.Add(newCard);
+                });
                 // idempotence
-                var wrapped = DataLayer.Entities.Entity.Wrap(newCard, _services, typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
-                _ = wrapped.Save();
+                results.Add(newCard);
             }
             uploadConn.Close();
             SqliteConnection.ClearPool(uploadConn);

@@ -77,24 +77,7 @@ namespace Atrium.Services
                 webBuilder.Configuration);
 
             var webApp = webBuilder.Build();
-            using (var scope = webApp.Services.CreateScope())
-            {
-                var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-                using var memoryContext = ephemeralStore.CreateDbContext();
-                var conn = memoryContext.Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                memoryContext.Database.EnsureCreated();
-                memoryContext.SaveChanges();
-
-                var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-                using var persistentContext = persistentStore.CreateDbContext();
-                var conn2 = persistentContext.Database.GetDbConnection();
-                if (conn2.State != System.Data.ConnectionState.Open) conn.Open();
-                persistentContext.Database.EnsureCreated();
-                persistentContext.SaveChanges();
-
-            }
-
+            
             var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();
             localServer.Initialize(webApp);
 

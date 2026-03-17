@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Atrium
 {
-    public class KeepAlive(string conn) : SqliteConnection(conn)
+    public partial class KeepAlive(string conn) : SqliteConnection(conn)
     {
         public override void Close()
         {
@@ -97,25 +97,6 @@ namespace Atrium
             AnkiService._services = mauiApp.Services;
             StatusService._services = mauiApp.Services;
             ChatService._services = mauiApp.Services;
-
-            // 2. Now you can create a scope from the built app
-            using (var scope = mauiApp.Services.CreateScope())
-            {
-                var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-                using var memoryContext = ephemeralStore.CreateDbContext();
-                var conn = memoryContext.Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                memoryContext.Database.EnsureCreated();
-                //_pack = memoryContext.Packs.FirstOrDefault(p => p.Title == "something");
-
-                var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-                using var persistentContext = persistentStore.CreateDbContext();
-                var conn2 = persistentContext.Database.GetDbConnection();
-                if (conn2.State != System.Data.ConnectionState.Open) conn.Open();
-                persistentContext.Database.EnsureCreated();
-                // TODO: add version setting and upgrades
-                persistentContext.SaveChanges();
-            }
 
 
             // 3. Return the built app

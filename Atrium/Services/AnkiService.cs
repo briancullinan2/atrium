@@ -29,8 +29,8 @@ namespace Atrium.Services
 
             try
             {
-                var files = AnkiParser.Parser.ListFiles(ankiPackage, _services);
-                var cards = AnkiParser.Parser.ParseCards(ankiPackage, _services);
+                var files = await AnkiParser.Parser.ListFiles(ankiPackage, _services);
+                var cards = await AnkiParser.Parser.ParseCards(ankiPackage, _services);
                 return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>(files, cards);
             }
             catch (Exception ex)
@@ -228,8 +228,8 @@ namespace Atrium.Services
         {
             try
             {
-                var files = AnkiParser.Parser.ListFiles(context.Request.Query["anki"], Service);
-                var cards = AnkiParser.Parser.ParseCards(context.Request.Query["anki"], Service);
+                var files = await AnkiParser.Parser.ListFiles(context.Request.Query["anki"], Service);
+                var cards = await AnkiParser.Parser.ParseCards(context.Request.Query["anki"], Service);
                 context.Response.ContentType = "application/json";
                 var json = JsonSerializer.Serialize(new Inspection()
                 {
@@ -287,12 +287,8 @@ namespace Atrium.Services
             _ = await manager.UploadFile(remoteStream, fileName, "AnkiDownloads");
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
-            var PersistentFactory = _services.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-            var MemoryFactory = _services.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
-            using var fileContext = PersistentFactory.CreateDbContext();
-            using var memoryContext = MemoryFactory.CreateDbContext();
-            await fileContext.Sync(memoryContext, (DataLayer.Entities.File f) => f.Source == "Upload" || f.Source == "AnkiDownloads");
-            return await memoryContext.Files.Where(f => f.Source == "Upload" || f.Source == "AnkiDownloads").ToListAsync();
+            var query = _services.GetRequiredService<QueryManager>();
+            return await query.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
         }
 
 

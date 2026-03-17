@@ -4,6 +4,7 @@
 @page "/packs/{Id:int}/add"
 @page "/packs/{Filter}"
 
+@using DataLayer.Utilities.Extensions
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -48,8 +49,7 @@
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     [Parameter] public string? Filter { get; set; } = null;
     [Parameter] public int? Id { get; set; } = null;
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.List;
-    [Inject] public IDbContextFactory<DataLayer.EphemeralStorage>? MemoryFactory { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.List;
 
     protected override void OnInitialized()
     {
@@ -71,32 +71,36 @@
 
         var firstSegment = relativePath.Split('/').Last();
 
-        ControlMode = firstSegment.TryParse<DataLayer.Customization.ControlMode>();
+        ControlMode = firstSegment.TryParse<DataLayer.ControlMode>();
 
         // add/assign the pack to the users account for study
-        if(ControlMode == DataLayer.Customization.ControlMode.Add)
+        if(ControlMode == DataLayer.ControlMode.Add)
         {
-            DataLayer.Entities.Pack? currentPack = null;
-            if (Id < 0 && Id >= -3)
-            {
-                Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
-                currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
-                var proxy = currentPack?.Wrap(Services, false);
-                currentPack = proxy?.Save(true);
-                Id = currentPack?.Id;
-            }
+            _ = SubscribePack();
+        }
+    }
 
-            if (LoginService.User != null && !LoginService.User.UserPacks.Any(up => up.Pack?.Id == Id))
-            {
-                var up = new UserPack() { User = LoginService.User, Pack = currentPack };
-                var proxy = up.Wrap(Services);
-                proxy.Attach(currentPack);
-                up = proxy.Save();
-                LoginService.User.UserPacks.Add(up);
-            }
+
+    protected async Task SubscribePack()
+    {
+        DataLayer.Entities.Pack? currentPack = null;
+        if (Id < 0 && Id >= -3)
+        {
+            Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
+            currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
+            currentPack = await currentPack.Save();
+            Id = currentPack?.Id;
         }
 
+        if (LoginService.User != null && !LoginService.User.UserPacks.Any(up => up.Pack?.Id == Id))
+        {
+            var up = new UserPack() { User = LoginService.User, Pack = currentPack };
+            LoginService.User.UserPacks.Add(up);
+            up = await up.Save();
+        }
+        StateHasChanged();
     }
+
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {

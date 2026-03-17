@@ -10,6 +10,7 @@
 @page "/courses/{Id:int}/group"
 @page "/courses/{Id:int}/owner"
 
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -19,7 +20,7 @@
 
 <SyncedTitle Title="Courses"></SyncedTitle>
 
-<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>Course Name</label>
@@ -37,7 +38,7 @@
 @if (CurrentCourse != null)
 {
 
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Course Info</legend>
@@ -51,22 +52,22 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentCourse.CanonicalFingerprint != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { ControlMode = DataLayer.Customization.ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { ControlMode = DataLayer.Customization.ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { ControlMode = DataLayer.ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { ControlMode = DataLayer.ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
             }
             <button class="cta" @onclick="() => UpdateCourse()">Save</button>
         </div>
 
     </div>
     
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Group)">
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
     </div>
 
 
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Owner)">
+    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
     </div>
 }
 
@@ -77,8 +78,8 @@
     [Category("Recent")]
     public List<DataLayer.Entities.Course> Recent { get; set; } = new();
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; }
+    public DataLayer.ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
@@ -89,13 +90,13 @@
 
     }
 
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
         // TODO: check what happens when switching from new mode to edit mode
-        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
-        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
+        if (mode == DataLayer.ControlMode.Edit && ControlMode == DataLayer.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.ControlMode.Edit && PreviousMode == DataLayer.ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
@@ -120,23 +121,23 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
         if (segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.Customization.ControlMode.View;
+            newStep = DataLayer.ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
         }
 
 
         
-        if (newStep == DataLayer.Customization.ControlMode.List)
+        if (newStep == DataLayer.ControlMode.List)
         {
             TitleService?.UpdateTitle("Courses");
         }
-        else if (newStep == DataLayer.Customization.ControlMode.Add)
+        else if (newStep == DataLayer.ControlMode.Add)
         {
             if (CurrentCourse == null || CurrentCourse.CanonicalFingerprint != null)
             {
@@ -144,7 +145,7 @@
             }
             TitleService?.UpdateTitle("New Course");
         }
-        else if (newStep == DataLayer.Customization.ControlMode.Edit)
+        else if (newStep == DataLayer.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit Course");
             if (Id != null)

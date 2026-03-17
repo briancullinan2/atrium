@@ -1,5 +1,6 @@
 @using System.Text.RegularExpressions
 @using System.Globalization
+@using DataLayer.Utilities.Extensions
 @* AccordionSection.razor *@
 <div class="accordion-item">
     <h4 name="@Title.ToSafe()" @onclick="Toggle" style="cursor: pointer;" class="@(IsExpanded ? "header-active" : "inactive") d-flex justify-content-between align-items-center border-bottom pb-2">

@@ -40,6 +40,10 @@ namespace DataLayer
         {
             base.OnConfiguring(options);
             //options.AddInterceptors(new WrapperInterceptor());
+            var conn = Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+            Database.EnsureCreated();
+            SaveChanges();
         }
 
 
@@ -96,6 +100,8 @@ namespace DataLayer
         }
 
     }
+
+    /*
     public class WrapperInterceptor : IMaterializationInterceptor
     {
         public object InitializedInstance(MaterializationInterceptionData materializationData, object instance)
@@ -110,6 +116,9 @@ namespace DataLayer
             return instance;
         }
     }
+    */
+
+
     public partial class EntityMetadata
     {
         public static EntityMetadata<Answer> Answer => new();

@@ -474,11 +474,15 @@ namespace DataLayer.Utilities.Extensions
             return ToXDocument(query.Expression).ToString();
         }
 
-        public static object? ToQueryable(string query, IServiceProvider Service)
+        public static object? ToQueryable(string query, StorageType? persist = StorageType.Ephemeral)
         {
-            using var scope = Service.CreateScope();
-            var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<EphemeralStorage>>();
-            using var context = ephemeralStore.CreateDbContext();
+            if (QueryManager.Service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+            using var scope = QueryManager.Service.CreateScope();
+            var manager = QueryManager.Service.GetRequiredService<QueryManager>();
+            var context = QueryManager.GetContext(persist ?? StorageType.Ephemeral) ?? throw new InvalidOperationException("Database context failed.");
             var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
 
             using XmlReader reader = XmlReader.Create(new StringReader(query));

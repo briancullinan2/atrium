@@ -11,7 +11,7 @@
     {
         new NavMenuItem<Pages.Landing.Account>() { Title = "User Settings", Icon = "bi-person-circle" },
         new NavMenuItem<Pages.Admin.Settings>() { Title = "Application Settings", Icon = "bi-collection" },
-        new NavMenuItem<Pages.Admin.Settings>() { Title = "Theme Settings", Uri = s => new () { Mode = DataLayer.Customization.ControlMode.List }, Icon = "bi-collection" },
+        new NavMenuItem<Pages.Admin.Settings>() { Title = "Theme Settings", Uri = s => new () { Mode = DataLayer.ControlMode.List }, Icon = "bi-collection" },
         new NavMenuItem<Pages.Admin.Permissions>() { Title = "Permissions", Icon = "bi-activity" },
     };
 

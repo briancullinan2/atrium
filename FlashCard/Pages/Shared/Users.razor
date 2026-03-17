@@ -10,7 +10,7 @@
     private List<INavMenuItem> HeaderLinks = new()
     {
         new NavMenuItem<Pages.Landing.Search>() { Title = "Search", Icon = "bi-info-circle" },
-        new NavMenuItem<Pages.Admin.Users>() { Title = "Add User", Uri = u => new () {ControlMode = DataLayer.Customization.ControlMode.Add}, Icon = "bi-person-plus" },
+        new NavMenuItem<Pages.Admin.Users>() { Title = "Add User", Uri = u => new () {ControlMode = DataLayer.ControlMode.Add}, Icon = "bi-person-plus" },
         new NavMenuItem<Pages.Admin.Groups>() { Title = "Groups", Icon = "bi-collection" },
         new NavMenuItem<Pages.Admin.Activity>() { Title = "Activity", Icon = "bi-activity" },
         new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "bi-exclamation-triangle" }

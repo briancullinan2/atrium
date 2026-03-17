@@ -2,9 +2,14 @@
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections;
+using System.Data;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
+using System.Reflection;
 
 namespace DataLayer.Utilities
 {
@@ -15,6 +20,7 @@ namespace DataLayer.Utilities
         Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
         Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
 
+
         Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
@@ -24,29 +30,52 @@ namespace DataLayer.Utilities
         Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
+
+        Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
 
-        Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10);
-        Task<object?> Update(object key, int priority = 10);
-        Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10);
 
-        Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10);
-        Task<object?> Update(bool persistent, object key, int priority = 10);
-        Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10);
+        Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
+        Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
-        Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10);
-        Task<object?> Update(StorageType storage, object key, int priority = 10);
-        Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10);
+        Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
+        //Task<object?> Update(bool persistent, object key, int priority = 10);
+        Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
+
+        Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
+        Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
         Task ProcessQueueAsync();
+
+
+
+
+        static abstract Type GetStorageType(StorageType type);
+
+        static abstract Type GetContextType(StorageType type);
+
+        static abstract IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
+
+        static abstract IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
+
+
+        static abstract TContext? GetContext<TContext>() where TContext : DbContext;
+
+        static abstract TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
+
+        static abstract TranslationContext? GetContext(Type contextType);
+
+        static abstract TranslationContext? GetContext(StorageType type);
+
     }
+
 
 
     public class QueryManager : IQueryManager
     {
-        protected static IServiceProvider? Service { get; set; } = null;
+        internal static IServiceProvider? Service { get; set; } = null;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
         protected virtual PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         protected virtual bool IsProcessing { get; set; } = false;
@@ -162,6 +191,9 @@ namespace DataLayer.Utilities
         public static TranslationContext? GetContext(Type contextType) =>
             typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
 
+        public static TranslationContext? GetContext(StorageType type) =>
+            typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [GetContextType(type)]) as TranslationContext;
+
 
 
         public async Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
@@ -169,20 +201,38 @@ namespace DataLayer.Utilities
             return await Synchronize(true, false, qualifier, priority);
         }
 
-        public async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+        public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
         {
             return await Enqueue(async () =>
             {
                 using var scope = Service?.CreateScope();
-                var contextFromType = GetContextType(From);
-                var contextToType = GetContextType(To);
-                var contextFrom = GetContext(contextFromType);
-                var contextTo = GetContext(contextToType);
+                var contextFrom = GetContext(From);
+                var contextTo = GetContext(To);
                 if (contextFrom == null || contextTo == null)
                 {
                     throw new InvalidOperationException("Database context failed.");
                 }
-                await contextFrom.Sync(contextTo, qualifier);
+
+                //await contextFrom.Sync(contextTo, qualifier);
+                var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
+
+                foreach (var entity in entities)
+                {
+                    // 2. Upsert logic: Check if it exists in the persistent store
+                    var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
+
+                    if (exists)
+                    {
+                        _ = contextTo.Set<TSet>().Update(entity);
+                    }
+                    else
+                    {
+                        _ = contextTo.Set<TSet>().Add(entity);
+                    }
+                }
+
+                _ = await contextTo.SaveChangesAsync();
+
                 return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
             }, priority);
         }
@@ -208,14 +258,107 @@ namespace DataLayer.Utilities
 
 
 
+
+        public static void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
+        {
+
+            // 2. Find or Fetch the tracked version from the DB
+            var trackedEntity = persistentContext.Entry(updatedEntity);
+            if (trackedEntity == null)
+            {
+                // If it doesn't exist, we must Add it (Shallowly)
+                _ = persistentContext.Add(updatedEntity);
+                return;
+            }
+
+            // 3. Update only the scalar values (Title, Icon, etc.)
+            trackedEntity.CurrentValues.SetValues(updatedEntity);
+
+            // 4. If recursing, find child collections
+            if (recurse)
+            {
+                var navigations = persistentContext.Entry(trackedEntity).Metadata.GetNavigations();
+                foreach (var nav in navigations.Where(n => n.IsCollection))
+                {
+                    // Get the list of children from the updated object
+
+                    if (updatedEntity.GetType().GetProperty(nav.Name)?.GetValue(updatedEntity) is IEnumerable updatedChildren)
+                    {
+                        foreach (var child in updatedChildren)
+                        {
+                            // Use 'dynamic' or Reflection to call this method again for the child type
+                            ShallowSaveRecursive((dynamic)child, true);
+                        }
+                    }
+                }
+            }
+        }
+
+
         public async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
-            throw new NotImplementedException();
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+
+                // 1. Find the existing entity or create a new one
+                var predicate = expression.Predicate();
+                var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
+                             ?? Activator.CreateInstance<TEntity>();
+
+                // 2. Extract the values from the expression
+                // Uses the Dictionary<MemberInfo, object?> extension
+                var updates = expression.ToMembers();
+
+                // 3. Apply the fields
+                foreach (var update in updates)
+                {
+                    if (update.Key is PropertyInfo prop && prop.CanWrite)
+                    {
+                        prop.SetValue(entity, update.Value);
+                    }
+                }
+
+                // 4. Persistence logic
+                if (context.Entry(entity).State == EntityState.Detached)
+                    context.Add(entity);
+
+                entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
+                await context.SaveChangesAsync();
+
+                return await Update(entity);
+            }, priority);
         }
 
         public async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
-            throw new NotImplementedException();
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                using var transaction = context.Database.BeginTransaction();
+                try
+                {
+                    entity.CanonicalFingerprint = entity.GetHashCode();
+
+                    _ = context.Add(entity);
+
+                    _ = context.SaveChanges();
+
+                    transaction.Commit();
+
+                    return await Update(entity);
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
+                }
+                finally
+                {
+                }
+            }, priority);
         }
 
 
@@ -233,17 +376,113 @@ namespace DataLayer.Utilities
 
 
 
+
+        public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>> query, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return await Query(false, (IQueryable<TEntity> entities) => entities.Where(query), priority);
+        }
+
         public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Query(false, query, priority);
         }
-
-        public async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
+            where TEntity : Entity<TEntity>
         {
-            throw new NotImplementedException();
+            // Use the Enqueue handshake to wait for our turn in the PriorityQueue
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+
+                // 1. Get the base set for the entity type
+                IQueryable<TEntity> set = context.Set<TEntity>();
+
+                // 2. Compile the expression: Func<IQueryable<TEntity>, TResult>
+                var compiledQuery = query.Compile();
+
+                // 3. Execute the query against the live DbContext set
+                // This works for both local SQLite and your RemoteQuery compiler
+                TResult result = compiledQuery(set);
+
+                // Handle Async results if TResult is a Task (e.g., if the user passed ToListAsync)
+                if (result is Task task)
+                {
+                    await task;
+                    return (TResult)((dynamic)task).Result;
+                }
+
+                return result;
+            }, priority);
         }
 
-        public async Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+
+        public static void LoadAllNavigations(DbContext context, object entity)
+        {
+            var entry = context.Entry(entity);
+
+            // 1. Get all Navigation properties defined in the EF Model for this type
+            var navigations = entry.Metadata.GetNavigations();
+
+            foreach (var navigation in navigations)
+            {
+                if (navigation.IsCollection)
+                {
+                    // It's a Collection (like ICollection<Lesson>)
+                    var collectionEntry = entry.Collection(navigation.Name);
+                    if (!collectionEntry.IsLoaded)
+                    {
+                        collectionEntry.Load();
+                    }
+                }
+                else
+                {
+                    // It's a Reference (like ParentLesson)
+                    var referenceEntry = entry.Reference(navigation.Name);
+                    if (!referenceEntry.IsLoaded)
+                    {
+                        referenceEntry.Load();
+                    }
+                }
+            }
+        }
+
+
+
+        /*
+        public static int Update<T>(this T entity, IDbConnection conn, string keyName = "Id") where T : class, IEntity<T>
+        {
+            var type = typeof(T);
+            var props = type.GetProperties();
+            var tableName = type.Name; // Assumes Table Name = Class Name
+
+            // 1. Build the SET clause (skipping the Primary Key)
+            var setClauses = props
+                .Where(p => p.Name != keyName)
+                .Select(p => $"[{p.Name}] = @{p.Name}");
+
+            string sql = $"UPDATE [{tableName}] SET {string.Join(", ", setClauses)} WHERE [{keyName}] = @{keyName}";
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+
+            // 2. Map values to Parameters (Prevents SQL Injection)
+            foreach (var prop in props)
+            {
+                var param = cmd.CreateParameter();
+                param.ParameterName = "@" + prop.Name;
+                param.Value = prop.GetValue(entity) ?? DBNull.Value;
+                _ = cmd.Parameters.Add(param);
+            }
+
+            if (conn.State != ConnectionState.Open) conn.Open();
+            return cmd.ExecuteNonQuery();
+        }
+        */
+
+
+        public async Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
             return await Query(persistent ? StorageType.Persistent : StorageType.Ephemeral, query, priority);
         }
@@ -252,16 +491,13 @@ namespace DataLayer.Utilities
 
 
         public async Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
-        {
-            return await Update(false, key, priority);
-        }
-
-        public async Task<object?> Update(object key, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
             return await Update(false, key, priority);
         }
 
         public async Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
             return await Update(false, entity, priority);
         }
@@ -269,16 +505,13 @@ namespace DataLayer.Utilities
 
 
         public async Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
             return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
         }
 
-        public async Task<object?> Update(bool persistent, object key, int priority = 10)
-        {
-            return Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
-        }
-
         public async Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
             return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
@@ -286,18 +519,71 @@ namespace DataLayer.Utilities
 
 
         public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+            where TEntity : Entity<TEntity>
         {
-            throw new NotImplementedException();
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+
+
+                var predicate = key.Predicate();
+                var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
+                             ?? Activator.CreateInstance<TEntity>();
+
+                var entry = context.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    _ = context.Attach(entity);
+                }
+                entry.Reload();
+                LoadAllNavigations(context, entity);
+
+
+                // reapply members values
+                var updates = key.ToMembers();
+                foreach (var update in updates)
+                {
+                    if (update.Key is PropertyInfo prop && prop.CanWrite)
+                    {
+                        prop.SetValue(entity, update.Value);
+                    }
+                }
+
+
+                return entity;
+            }, priority);
         }
 
-        public async Task<object?> Update(StorageType storage, object key, int priority = 10)
-        {
-            throw new NotImplementedException();
-        }
+
 
         public async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
+            where TEntity : Entity<TEntity>
+
         {
-            throw new NotImplementedException();
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+
+                if (entity == null)
+                {
+                    throw new InvalidOperationException("Entity is null.");
+                }
+                var entry = context.Entry(entity);
+
+                // If the entity isn't being tracked, we need to attach it first
+                if (entry.State == EntityState.Detached)
+                {
+                    _ = context.Attach(entity);
+                }
+
+                // This executes the SQL SELECT and updates the object's properties
+                entry.Reload();
+                LoadAllNavigations(context, entity);
+
+                return entity;
+            }, priority);
         }
     }
 

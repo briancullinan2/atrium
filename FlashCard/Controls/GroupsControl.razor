@@ -41,6 +41,6 @@
         <span>@string.Join(", ", group.Subgroups.Take(3).Select(g => g.Name))</span>
         <span>@group.Packs.Count()</span>
         <span>@group.Users.Count()</span>
-        <span><a href="@(NavigationExtensions.GetUri<Pages.Admin.Groups>(g => new () {ControlMode = DataLayer.Customization.ControlMode.Edit, Id = group.Id}))"><span class="bi bi-pencil"></span></a></span>
+        <span><a href="@(NavigationExtensions.GetUri<Pages.Admin.Groups>(g => new () {ControlMode = DataLayer.ControlMode.Edit, Id = group.Id}))"><span class="bi bi-pencil"></span></a></span>
     </div>
 }

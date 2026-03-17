@@ -57,26 +57,14 @@ namespace Atrium.Services
             fileStream.Close();
             localStream.Close();
 
-
-            var persistentStore = _services.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
-            using var fileContext = persistentStore?.CreateDbContext();
-            try
+            var query = _services.GetRequiredService<QueryManager>();
+            var file = await query.Save(new DataLayer.Entities.File()
             {
-                ProxyEntity<DataLayer.Entities.File> file = DataLayer.Entities.Entity.Wrap(new DataLayer.Entities.File()
-                {
-                    Filename = savePath,
-                    Source = source // TODO: fill in from nav or parameter or something
-                }, _services);
-                _ = file.Save();
-
-                OnFileUploaded?.Invoke(file._target);
-                return file._target;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw new Exception("throwing up", ex);
-            }
+                Filename = savePath,
+                Source = source // TODO: fill in from nav or parameter or something
+            });
+            OnFileUploaded?.Invoke(file);
+            return file;
         }
 
 #if WINDOWS

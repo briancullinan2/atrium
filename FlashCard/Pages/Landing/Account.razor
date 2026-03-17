@@ -3,6 +3,7 @@
 @page "/account/list"
 @page "/account/delete"
 @implements IDisposable
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @inject IMenuService MenuService
@@ -11,7 +12,7 @@
 
 <SyncedTitle Title="Account Settings"></SyncedTitle>
 
-<div class="user-account flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+<div class="user-account flash-card  @GetDisplayClass(DataLayer.ControlMode.Edit)">
     <div>
         <fieldset>
             <legend>Login Info</legend>
@@ -25,17 +26,17 @@
         </fieldset>
     </div>
     <div class="highlighted-link">
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.Customization.ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { ControlMode = DataLayer.ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
         <button class="cta" @onclick="() => UpdateUser()">Save</button>
     </div>
 
 </div>
 
-<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card  @GetDisplayClass(DataLayer.ControlMode.List)">
 </div>
 
-<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.Delete)">
+<div class="flash-card  @GetDisplayClass(DataLayer.ControlMode.Delete)">
 </div>
 
 @code
@@ -44,8 +45,8 @@
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
     public DataLayer.Entities.User? CurrentUser { get; set; }
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; } = DataLayer.Customization.ControlMode.Edit;
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.Edit;
+    public DataLayer.ControlMode? PreviousMode { get; set; }
 
     protected void UpdateUser()
     {
@@ -53,7 +54,7 @@
     }
 
 
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
@@ -78,11 +79,11 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.Edit;
 
         if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.Edit;
         }
 
 

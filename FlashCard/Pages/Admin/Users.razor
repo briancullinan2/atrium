@@ -10,15 +10,18 @@
 @page "/users/{Id}/group"
 @page "/users/{Id}/owner"
 
+@using DataLayer.Utilities
+@using DataLayer.Utilities.Extensions
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
 @inject IMenuService MenuService
 @inject ITitleService TitleService
+@inject IQueryManager QueryManager
 @inject NavigationManager Nav
 
-<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>User Name</label>
@@ -32,7 +35,7 @@
 
     <h2>User Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus"></i> Add User</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { ControlMode = DataLayer.ControlMode.Add }))"><i class="bi bi-person-plus"></i> Add User</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i> User Activity</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i> Manage Roles</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i> Manage Permissions</a>
@@ -41,7 +44,7 @@
 
 @if(CurrentUser != null)
 {
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Login Info</legend>
@@ -55,7 +58,7 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentUser.CanonicalFingerprint != null)
             {
                 <a href="">User Membership</a>
@@ -65,12 +68,12 @@
         </div>
     </div>
 
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Group)">
+    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
 
     </div>
 
 
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Owner)">
+    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
     </div>
 }
 
@@ -83,18 +86,18 @@
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; }
+    public DataLayer.ControlMode? PreviousMode { get; set; }
     [Parameter] public string? Id { get; set; }
     public DataLayer.Entities.User? CurrentUser { get; set; }
 
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
         // TODO: check what happens when switching from new mode to edit mode
-        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.ControlMode.Edit && ControlMode == DataLayer.ControlMode.Add) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
-        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
+        if (mode == DataLayer.ControlMode.Edit && PreviousMode == DataLayer.ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
@@ -125,23 +128,23 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
         if(segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.Customization.ControlMode.View;
+            newStep = DataLayer.ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
         }
 
 
 
-        if (newStep == DataLayer.Customization.ControlMode.List)
+        if (newStep == DataLayer.ControlMode.List)
         {
             TitleService?.UpdateTitle("Manage Users");
         }
-        else if (newStep == DataLayer.Customization.ControlMode.Add)
+        else if (newStep == DataLayer.ControlMode.Add)
         {
             if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
             {
@@ -149,7 +152,7 @@
             }
             TitleService?.UpdateTitle("New User");
         }
-        else if (newStep == DataLayer.Customization.ControlMode.Edit)
+        else if (newStep == DataLayer.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit User");
             if (Id != null)
@@ -171,18 +174,9 @@
     }
 
 
-    [Inject]
-    public IDbContextFactory<DataLayer.EphemeralStorage>? MemoryFactory { get; set; }
-
-
     protected async Task SetCurrentUser()
     {
-        if(MemoryFactory == null)
-        {
-            return;
-        }
-        using var Context = MemoryFactory.CreateDbContext();
-        CurrentUser = await Context.Users.Where(u => u.Guid == Id).FirstOrDefaultAsync();
+        CurrentUser = (await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id)).FirstOrDefault();
         TitleService?.UpdateTitle("Edit User - " + CurrentUser?.Username);
         StateHasChanged();
     }

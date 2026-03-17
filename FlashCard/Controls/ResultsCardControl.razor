@@ -39,11 +39,11 @@
 {
     <div class="card-back">
         <div class="preview-inner">
-            @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+            @if (result.Card?.ContentType == DataLayer.DisplayType.Image)
             {
                 <img src="@result.Card?.Content" />
             }
-            else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+            else if (result.Card?.ContentType == DataLayer.DisplayType.Audio)
             {
                 <audio controls src="@result.Card?.Content"></audio>
             }
@@ -77,11 +77,11 @@
             </div>
         }
         <div class="preview-prompt">
-            @if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Image)
+            @if (result.Card?.ContentType == DataLayer.DisplayType.Image)
             {
                 <img src="@result.Card?.ResponseContent" />
             }
-            else if (result.Card?.ContentType == DataLayer.Customization.DisplayType.Audio)
+            else if (result.Card?.ContentType == DataLayer.DisplayType.Audio)
             {
                 <audio controls src="@result.Card?.ResponseContent"></audio>
             }

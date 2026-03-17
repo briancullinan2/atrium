@@ -10,8 +10,8 @@
     private List<INavMenuItem> HeaderLinks = new()
     {
         new NavMenuItem<Pages.Landing.Search>() { Title = "Search", Icon = "bi-info-circle" },
-        new NavMenuItem<Pages.Landing.EditPack>() { Title = "Create Pack", Uri = p => new() { ControlMode = DataLayer.Customization.ControlMode.Edit }, Icon = "bi-file-earmark-plus" },
-        new NavMenuItem<Pages.Landing.Packs>() { Title = "My Packs", Uri = p => new() { ControlMode = DataLayer.Customization.ControlMode.Owner }, Icon = "bi-file-earmark-text" },
+        new NavMenuItem<Pages.Landing.EditPack>() { Title = "Create Pack", Uri = p => new() { ControlMode = DataLayer.ControlMode.Edit }, Icon = "bi-file-earmark-plus" },
+        new NavMenuItem<Pages.Landing.Packs>() { Title = "My Packs", Uri = p => new() { ControlMode = DataLayer.ControlMode.Owner }, Icon = "bi-file-earmark-text" },
         new NavMenuItem<Pages.Landing.Packs>() { Title = "Purchases",  Uri = p => new() { Filter = "Purchased" }, Icon = "bi-shield-lock" },
         new NavMenuItem<Pages.Landing.Packs>() { Title = "Subscribe",  Uri = p => new() { Filter = "Subscribe" }, Icon = "bi-envelope-at" }
     };

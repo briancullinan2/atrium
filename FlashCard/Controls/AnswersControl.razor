@@ -1,5 +1,6 @@
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel
+@using DataLayer.Utilities.Extensions
 @code
 {
     [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
@@ -8,19 +9,19 @@
     public List<DataLayer.Entities.Answer> Answers { get; set; } = new List<DataLayer.Entities.Answer>();
 
 
-    public DataLayer.Customization.ControlMode Mode
+    public DataLayer.ControlMode Mode
     {
         get
         {
             // TODO: declaring type
-            return DataLayer.Customization.ControlMode.View;
+            return DataLayer.ControlMode.View;
         }
     }
 
     protected override void OnInitialized()
     {
         Answers = Data?.ElementAt(0).Answers.ToList() ?? [];
-        if(Data?.ElementAt(0).ResponseType == DataLayer.Customization.CardType.TrueFalse)
+        if(Data?.ElementAt(0).ResponseType == DataLayer.CardType.TrueFalse)
         {
             if (!Answers.Any(a => string.Equals(a.Value, "true", StringComparison.InvariantCultureIgnoreCase)))
             {

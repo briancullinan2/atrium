@@ -1,6 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @using System.ComponentModel
 @using System.Text.Json.Serialization
+@using DataLayer.Utilities.Extensions
 @code
 {
     public class EditControl
@@ -9,7 +10,7 @@
         [Category("Display")]
         public DataLayer.Entities.Card? Card { get; set; }
 
-        public DataLayer.Customization.ControlMode? Mode { get; set; } = DataLayer.Customization.ControlMode.View;
+        public DataLayer.ControlMode? Mode { get; set; } = DataLayer.ControlMode.View;
         public bool IsCollapsed { get; set; } = true;
         public int? Index { get; set; }
     }
@@ -34,7 +35,7 @@
 
     protected void ToggleCard(EditControl card)
     {
-        if(card.Mode == DataLayer.Customization.ControlMode.Edit)
+        if(card.Mode == DataLayer.ControlMode.Edit)
         {
             return;
         }
@@ -46,7 +47,7 @@
 @foreach (var card in Data ?? [])
 {
     <div @onclick="() => ToggleCard(card)" class="flex-row Card-form-container auto-form-container @(card.Mode.ToString())">
-        @if (card.Mode == DataLayer.Customization.ControlMode.Edit)
+        @if (card.Mode == DataLayer.ControlMode.Edit)
         {
             <span>@(card.Index)</span>
             <div class="form-field Content-form-field" b-apmja2q7gc="">
@@ -57,14 +58,14 @@
             </div>
             <div>
                 <select value="@(card.Card?.ResponseType.ToString() ?? "")">
-                    @foreach (var value in Enum.GetValues(typeof(DataLayer.Customization.CardType)))
+                    @foreach (var value in Enum.GetValues(typeof(DataLayer.CardType)))
                     {
                         <option value="@value.ToString()">@value.ToString()</option>
                     }
                 </select>
             </div>
             <span>
-                @if (card.Card?.ResponseType == DataLayer.Customization.CardType.Multiple)
+                @if (card.Card?.ResponseType == DataLayer.CardType.Multiple)
                 {
                     @for (var i = 0; i < 4; i++)
                     {
@@ -75,7 +76,7 @@
                         </span>
                     }
                 }
-                else if (card.Card?.ResponseType == DataLayer.Customization.CardType.TrueFalse)
+                else if (card.Card?.ResponseType == DataLayer.CardType.TrueFalse)
                 {
                     <span>
                         <input type="text" value="@(card.Card?.Answers.Count() >= 1 ? card.Card?.Answers.ElementAt(0).Content ?? "True" : "True")" />
@@ -84,8 +85,8 @@
                         <input type="text" value="@(card.Card?.Answers.Count() >= 2 ? card.Card?.Answers.ElementAt(1).Content ?? "False" : "False")" />
                     </span>
                 }
-                else if (card.Card?.ResponseType == DataLayer.Customization.CardType.Short
-                    || card.Card?.ResponseType == DataLayer.Customization.CardType.Match)
+                else if (card.Card?.ResponseType == DataLayer.CardType.Short
+                    || card.Card?.ResponseType == DataLayer.CardType.Match)
                 {
                     <span>
                         <select><option value="Match">Exact Match</option><option value="Short">Contains</option></select>
@@ -113,7 +114,7 @@
             <span>@card.Card?.ResponseType.ToString()</span>
             <span>@card.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</span>
             <span>
-                <a @onclick="() => { card.Mode = DataLayer.Customization.ControlMode.Edit; StateHasChanged(); }"><span class="bi bi-pencil"></span></a>
+                <a @onclick="() => { card.Mode = DataLayer.ControlMode.Edit; StateHasChanged(); }"><span class="bi bi-pencil"></span></a>
             </span>
             <span class="preview">
                 @if (!card.IsCollapsed)

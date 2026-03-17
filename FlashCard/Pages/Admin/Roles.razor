@@ -6,6 +6,7 @@
 @page "/roles/{Id:int}/edit"
 
 
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -26,14 +27,14 @@
         <label>Actions</label>
     </heading>
     <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@CurrentRoles"></MetadataControl>
-    @if(ControlMode == DataLayer.Customization.ControlMode.Add)
+    @if(ControlMode == DataLayer.ControlMode.Add)
     {
-        <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@([new Controls.RolesControl.ControlRole() {Mode = DataLayer.Customization.ControlMode.Edit}])"></MetadataControl>
+        <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@([new Controls.RolesControl.ControlRole() {Mode = DataLayer.ControlMode.Edit}])"></MetadataControl>
     }
 
     <h2>Roles Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add Role</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { ControlMode = DataLayer.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add Role</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i> Role Activity</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i> Manage Permissions</a>
     </div>
@@ -44,8 +45,8 @@
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Roles));
     [Category("Display")]
     public IEnumerable<Controls.RolesControl.ControlRole>? CurrentRoles { get; set; }
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; }
+    public DataLayer.ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? RolesLayout { get; set; }
     [Parameter] public int? Id { get; set; }
 
@@ -65,31 +66,31 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
         if (segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.Customization.ControlMode.View;
+            newStep = DataLayer.ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
         }
 
-        if (ControlMode == DataLayer.Customization.ControlMode.View
-            || ControlMode == DataLayer.Customization.ControlMode.List)
+        if (ControlMode == DataLayer.ControlMode.View
+            || ControlMode == DataLayer.ControlMode.List)
         {
             // TODO: set all controls back to view
             foreach (var role in CurrentRoles ?? [])
             {
-                role.Mode = DataLayer.Customization.ControlMode.View;
+                role.Mode = DataLayer.ControlMode.View;
             }
             StateHasChanged();
         }
 
-        if (ControlMode == DataLayer.Customization.ControlMode.Edit)
+        if (ControlMode == DataLayer.ControlMode.Edit)
         {
             var role = CurrentRoles?.ElementAt(Id ?? 0);
-            role?.Mode = DataLayer.Customization.ControlMode.Edit;
+            role?.Mode = DataLayer.ControlMode.Edit;
             StateHasChanged();
         }
 
@@ -106,7 +107,7 @@
         SetControlMode();
     }
 
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";

@@ -4,6 +4,7 @@
 @page "/settings/list"
 
 @implements IDisposable
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -19,7 +20,7 @@
 
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
-<div class="flash-card app-settings @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+<div class="flash-card app-settings @GetDisplayClass(DataLayer.ControlMode.Edit)">
     <h2>Display Settings</h2>
     <div class="form-row">
         <span>Show animated background from packs</span>
@@ -73,7 +74,7 @@
 </div>
 
 
-<div class="flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
     <div class="settings-page">
         <label>Theme Name</label>
         <label>Background</label>
@@ -108,8 +109,8 @@
 
 @code
 {
-    public DataLayer.Customization.ControlMode? Mode { get; set; } = DataLayer.Customization.ControlMode.Edit;
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? Mode { get; set; } = DataLayer.ControlMode.Edit;
+    public DataLayer.ControlMode? PreviousMode { get; set; }
     public List<Retheme.ThemeData>? extractedThemes { get; set;  } 
 
     private async Task CopyToCSV()
@@ -195,10 +196,10 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.Edit;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.Edit;
         if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.Edit;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.Edit;
         }
 
 
@@ -209,18 +210,18 @@
             StateHasChanged();
         }
 
-        if(Mode == DataLayer.Customization.ControlMode.List)
+        if(Mode == DataLayer.ControlMode.List)
         {
             TitleService?.UpdateTitle("Edit Theme");
         }
-        else if (Mode == DataLayer.Customization.ControlMode.Edit)
+        else if (Mode == DataLayer.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Application Settings");
         }
 
     }
     
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (Mode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";

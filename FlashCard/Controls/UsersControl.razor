@@ -37,7 +37,7 @@
         <span>@user.CardsCompleted</span>
         <span>@user.LastVisit</span>
         <span>
-            <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new () { ControlMode = DataLayer.Customization.ControlMode.Edit, Id = user.Guid }))"><span class="bi bi-pencil"></span></a>
+            <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new () { ControlMode = DataLayer.ControlMode.Edit, Id = user.Guid }))"><span class="bi bi-pencil"></span></a>
             <a href=""><span class="bi bi-person-vcard"></span></a>
         </span>
     </div>

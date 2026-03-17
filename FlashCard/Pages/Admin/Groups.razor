@@ -10,6 +10,7 @@
 @page "/groups/{Id:int}/group"
 @page "/groups/{Id:int}/owner"
 
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -18,7 +19,7 @@
 @inject NavigationManager Nav
 
 <SyncedTitle Title="Manage Groups"></SyncedTitle>
-<div class="flash-card  @GetDisplayClass(DataLayer.Customization.ControlMode.List)">
+<div class="flash-card  @GetDisplayClass(DataLayer.ControlMode.List)">
 
     <h2>Manage Groups</h2>
 
@@ -34,7 +35,7 @@
 
     <h2>Group Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Groups>(u => new() { ControlMode = DataLayer.Customization.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add Group</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Groups>(u => new() { ControlMode = DataLayer.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i> Add Group</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i> Group Activity</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge" aria-hidden="true"></i> Manage Roles</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i> Manage Permissions</a>
@@ -45,7 +46,7 @@
 @if (CurrentGroup != null)
 {
 
-    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Edit)">
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Group Info</legend>
@@ -59,7 +60,7 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.Customization.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentGroup.CanonicalFingerprint != null)
             {
                 <a href="">Group Membership</a>
@@ -70,11 +71,11 @@
 
     </div>
     
-    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Group)">
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
     </div>
 
 
-    <div class="group-edit flash-card @GetDisplayClass(DataLayer.Customization.ControlMode.Owner)">
+    <div class="group-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
     </div>
 }
 
@@ -84,8 +85,8 @@
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Groups));
     [Category("Display")]
     public IEnumerable<DataLayer.Entities.Group>? CurrentGroups { get; set; }
-    public DataLayer.Customization.ControlMode? ControlMode { get; set; }
-    public DataLayer.Customization.ControlMode? PreviousMode { get; set; }
+    public DataLayer.ControlMode? ControlMode { get; set; }
+    public DataLayer.ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? GroupLayout { get; set; }
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
@@ -114,14 +115,14 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.Customization.ControlMode? newStep = DataLayer.Customization.ControlMode.List;
+        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
         if (segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.Customization.ControlMode.View;
+            newStep = DataLayer.ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.Customization.ControlMode>() ?? DataLayer.Customization.ControlMode.List;
+            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
         }
         if (newStep != ControlMode)
         {
@@ -131,11 +132,11 @@
         }
 
         
-        if (ControlMode == DataLayer.Customization.ControlMode.List)
+        if (ControlMode == DataLayer.ControlMode.List)
         {
             TitleService?.UpdateTitle("Manage Groups");
         }
-        else if (ControlMode == DataLayer.Customization.ControlMode.Add)
+        else if (ControlMode == DataLayer.ControlMode.Add)
         {
             if (CurrentGroup == null || CurrentGroup.CanonicalFingerprint != null)
             {
@@ -143,7 +144,7 @@
             }
             TitleService?.UpdateTitle("New Group");
         }
-        else if (ControlMode == DataLayer.Customization.ControlMode.Edit)
+        else if (ControlMode == DataLayer.ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit Group");
             if (Id != null)
@@ -162,13 +163,13 @@
         SetControlMode();
     }
 
-    protected string? GetDisplayClass(DataLayer.Customization.ControlMode mode)
+    protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
         if (ControlMode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
         // TODO: check what happens when switching from new mode to edit mode
-        if (mode == DataLayer.Customization.ControlMode.Edit && ControlMode == DataLayer.Customization.ControlMode.Add) return "animate-in";
-        if (mode == DataLayer.Customization.ControlMode.Edit && PreviousMode == DataLayer.Customization.ControlMode.Add) return "animate-out";
+        if (mode == DataLayer.ControlMode.Edit && ControlMode == DataLayer.ControlMode.Add) return "animate-in";
+        if (mode == DataLayer.ControlMode.Edit && PreviousMode == DataLayer.ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
