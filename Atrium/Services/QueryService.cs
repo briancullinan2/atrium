@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using DataLayer.Utilities;
+#if WINDOWS
+using Microsoft.AspNetCore.Http;
+#endif
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
-    internal static class QueryService
+    internal class QueryService : QueryManager
     {
 
 #if WINDOWS

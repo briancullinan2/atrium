@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
     <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
@@ -19,8 +19,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
-	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	  <WasmFingerprintAssets>false</WasmFingerprintAssets>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<WasmFingerprintAssets>false</WasmFingerprintAssets>
 	  
 	  <!-- Enable XAML source generation for faster build times and improved performance.
          This generates C# code from XAML at compile time instead of runtime inflation.
@@ -117,7 +117,9 @@
       </ProjectReference>
   </ItemGroup>
 
-
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+	</PropertyGroup>
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />

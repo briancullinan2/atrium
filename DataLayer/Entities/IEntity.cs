@@ -227,7 +227,7 @@ namespace DataLayer.Entities
 
         public T Attach(ProxyEntity<T> entity, bool? recurse = false)
         {
-            return Utilities.Extensions.IEntityExtensions.Refetch(entity, recurse);
+            return Utilities.Extensions.IEntityExtensions.Update(entity, recurse);
         }
 
         public override bool Equals(object? obj)
@@ -250,12 +250,12 @@ namespace DataLayer.Entities
             }
             var proxy = entity.Wrap(_service, _context);
             proxy._scope = this._scope;
-            return Utilities.Extensions.IEntityExtensions.Refetch(proxy, recurse);
+            return Utilities.Extensions.IEntityExtensions.Update(proxy, recurse);
         }
 
-        public T Refetch(bool? recurse = false)
+        public T Update(bool? recurse = false)
         {
-            return Utilities.Extensions.IEntityExtensions.Refetch(this, recurse);
+            return Utilities.Extensions.IEntityExtensions.Update(this, recurse);
         }
 
         // 1. You create a static helper to wrap the real object

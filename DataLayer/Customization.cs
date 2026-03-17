@@ -3,6 +3,20 @@ using System.Reflection;
 
 namespace DataLayer.Customization
 {
+
+
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum StorageType
+    {
+        Ephemeral = 0,
+        Persistent = 1,
+        Remote = 2,
+        Test = 3
+    }
+
+
+
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
     public enum GradeScale
     {

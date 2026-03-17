@@ -26,18 +26,11 @@ builder.Services.AddScoped<HttpClient>(sp => new HttpClient
 builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
 
-builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
-{
-    options.UseInMemoryDatabase("RemoteShell");
-
-#pragma warning disable EF1001 // Internal EF Core API usage.
-    options.ReplaceService<IQueryCompiler, RemoteQuery>();
-#pragma warning restore EF1001 // Internal EF Core API usage.
-});
+builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 
 var app = builder.Build();
 // FUCK DI
-RemoteQuery._service = app.Services;
+DataLayer.Utilities.RemoteQuery._service = app.Services;
 FileManager._service = app.Services;
 AnkiService._service = app.Services;
 StatusService._service = app.Services;

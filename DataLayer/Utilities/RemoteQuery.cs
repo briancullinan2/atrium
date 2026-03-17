@@ -1,17 +1,18 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 
-namespace WebClient.Services
+namespace DataLayer.Utilities
 {
 #pragma warning disable EF1001 // Internal EF Core API usage.
     public class RemoteQuery : IQueryCompiler
 #pragma warning restore EF1001 // Internal EF Core API usage.
     {
         private readonly HttpClient? _httpClient;
-        internal static IServiceProvider? _service;
+        public static IServiceProvider? _service;
 
         public RemoteQuery()
         {

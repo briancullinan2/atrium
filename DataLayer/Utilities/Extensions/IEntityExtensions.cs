@@ -13,7 +13,7 @@ namespace DataLayer.Utilities.Extensions
         /// Rehydrates the entity by discarding local changes and fetching 
         /// the latest data from the database.
         /// </summary>
-        public static T Refetch<T>(this ProxyEntity<T> entity, bool? recurse = false) where T : class, IEntity<T>
+        public static T Update<T>(this ProxyEntity<T> entity, bool? recurse = false) where T : class, IEntity<T>
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             if (entity._scope == null) entity._scope = entity._service?.CreateScope();
@@ -117,7 +117,7 @@ namespace DataLayer.Utilities.Extensions
                     // 4. Finalize the transaction
                     transaction.Commit();
 
-                    return Refetch(ent, true);
+                    return Update(ent, true);
                 }
                 catch (Exception ex)
                 {

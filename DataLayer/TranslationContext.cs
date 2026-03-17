@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace DataLayer
 {
@@ -141,6 +142,9 @@ namespace DataLayer
 
     }
 
+
+
+    // expected to reset only the first time the application runs and be persistent on disk
     public class PersistentStorage : TranslationContext
     {
         public PersistentStorage(DbContextOptions<PersistentStorage> ctx) : base(ctx)
@@ -149,6 +153,8 @@ namespace DataLayer
 
     }
 
+
+    // expected to reset once at the beginning of application load
     public class EphemeralStorage : TranslationContext
     {
         public EphemeralStorage(DbContextOptions<EphemeralStorage> ctx) : base(ctx)
@@ -156,4 +162,36 @@ namespace DataLayer
         }
 
     }
+
+
+    // default interface between web client and http host server
+    public class RemoteStorage : TranslationContext
+    {
+        public RemoteStorage(DbContextOptions<RemoteStorage> ctx) : base(ctx)
+        {
+        }
+
+
+        protected override void OnConfiguring(DbContextOptionsBuilder options)
+        {
+            base.OnConfiguring(options);
+            
+            options.UseInMemoryDatabase("RemoteShell");
+
+#pragma warning disable EF1001 // Internal EF Core API usage.
+            options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>();
+#pragma warning restore EF1001 // Internal EF Core API usage.
+        }
+    }
+
+
+    // expected to reset multiple times per instance run
+    public class TestStorage : TranslationContext
+    {
+        public TestStorage(DbContextOptions<TestStorage> ctx) : base(ctx)
+        {
+        }
+
+    }
+
 }
