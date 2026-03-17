@@ -22,7 +22,7 @@ namespace Atrium
                 if (OperatingSystem.IsAndroidVersionAtLeast(30))
                 {
                     Window.InsetsController?.Hide(WindowInsets.Type.StatusBars() | WindowInsets.Type.NavigationBars());
-                    Window.InsetsController?.SystemBarsBehavior = AndroidX.Core.View.WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe;
+                    _ = (Window.InsetsController?.SystemBarsBehavior = AndroidX.Core.View.WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe);
                 }
                 else
                 {

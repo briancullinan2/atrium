@@ -5,13 +5,13 @@ using System.Text.RegularExpressions;
 
 namespace FlashCard.Utilities.Extensions
 {
-    public static class PrimitiveExtensions
+    public static partial class PrimitiveExtensions
     {
 
         public static string ToSafe(this string url)
         {
             if (string.IsNullOrEmpty(url)) return string.Empty;
-            string[] words = Regex.Split(url, @"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase);
+            string[] words = MyRegex().Split(url);
             TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
 
             var titleCasedWords = words
@@ -19,7 +19,7 @@ namespace FlashCard.Utilities.Extensions
                 .Select(w => ti.ToTitleCase(w.ToLower()));
 
             string result = string.Join("", titleCasedWords);
-            return result.Substring(0, Math.Min(result.Length, 100));
+            return result[..Math.Min(result.Length, 100)];
         }
 
 
@@ -41,7 +41,7 @@ namespace FlashCard.Utilities.Extensions
                 return (TEnum?)Enum.ToObject(typeof(TEnum), love);
             }
 
-            if (val is string love2 && Enum.TryParse<TEnum>(val.ToString(), out var love3))
+            if (val is string && Enum.TryParse<TEnum>(val.ToString(), out var love3))
             {
                 return (TEnum?)love3;
             }
@@ -64,5 +64,8 @@ namespace FlashCard.Utilities.Extensions
 
             return null;
         }
+
+        [GeneratedRegex(@"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase, "en-US")]
+        private static partial Regex MyRegex();
     }
 }

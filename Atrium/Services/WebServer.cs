@@ -50,7 +50,7 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IStatusService, StatusService>();
             webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
             webBuilder.Services.AddSingleton<IChatService, ChatService>();
-            webBuilder.Services.AddScoped<HttpClient>(sp => new HttpClient
+            webBuilder.Services.AddScoped(sp => new HttpClient
             {
 
             });

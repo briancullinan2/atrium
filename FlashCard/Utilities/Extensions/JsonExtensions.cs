@@ -9,7 +9,7 @@ namespace FlashCard.Utilities.Extensions
     {
         public static string ToSerialized<TComponent>(this TComponent component) where TComponent : IComponent
         {
-            Dictionary<string, string?> result = new();
+            Dictionary<string, string?> result = [];
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 .Select(p => (
@@ -17,12 +17,12 @@ namespace FlashCard.Utilities.Extensions
                     include: p.GetCustomAttribute<JsonPropertyNameAttribute>()
                     ))
                 .Where(p => p.include != null);
-            foreach (var item in props)
+            foreach (var (prop, include) in props)
             {
-                object? value = item.prop.GetValue(component);
+                object? value = prop.GetValue(component);
                 if (value == null) continue;
-                var storageName = component.GetType().Name + "." + item.include!.Name;
-                var generalType = (Nullable.GetUnderlyingType(item.prop.PropertyType) ?? item.prop.PropertyType);
+                var storageName = component.GetType().Name + "." + include!.Name;
+                var generalType = (Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType);
                 if (generalType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(generalType))
                 {
                     var bs = ((System.Collections.IEnumerable)value).Cast<object?>().ToList();
@@ -52,11 +52,11 @@ namespace FlashCard.Utilities.Extensions
                 .Where(p => p.include != null);
             var method = typeof(JsonSerializer)
                 .GetMethod(nameof(JsonSerializer.Deserialize), 1, [typeof(string), typeof(JsonSerializerOptions)]);
-            foreach (var item in props)
+            foreach (var (prop, include) in props)
             {
-                var storageName = component.GetType().Name + "." + item.include!.Name;
+                var storageName = component.GetType().Name + "." + include!.Name;
                 MethodInfo genericMethod;
-                var generalType = Nullable.GetUnderlyingType(item.prop.PropertyType) ?? item.prop.PropertyType;
+                var generalType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
                 if (generalType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(generalType))
                 {
                     var genericList = typeof(List<>).MakeGenericType(generalType.GenericTypeArguments[0]);
@@ -72,8 +72,7 @@ namespace FlashCard.Utilities.Extensions
                     genericMethod = method!.MakeGenericMethod(generalType);
                 }
                 // TODO: this needs to be from the page
-                string? propSerialized = null;
-                pageValues.TryGetValue(storageName, out propSerialized);
+                _ = pageValues.TryGetValue(storageName, out string? propSerialized);
                 if (propSerialized == null)
                 {
                     continue;
@@ -94,9 +93,9 @@ namespace FlashCard.Utilities.Extensions
                     Console.WriteLine("Recovered: " + val);
                     if (generalType.IsEnum && val != null && val is not Enum)
                     {
-                        val = Enum.ToObject(item.prop.PropertyType, val);
+                        val = Enum.ToObject(prop.PropertyType, val);
                     }
-                    item.prop.SetValue(component, val);
+                    prop.SetValue(component, val);
                 }
             }
         }

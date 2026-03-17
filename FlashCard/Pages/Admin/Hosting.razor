@@ -199,7 +199,7 @@
 
             var result = await StatusService.CheckStatus(Domain);
 
-            if (result?.ItWorks?[0] == token)
+            if (StatusResponse.ItWorks?[0] == token)
             {
                 hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
                 IsWorking = true;

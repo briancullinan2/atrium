@@ -6,16 +6,11 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class StateService : IJsonService
+    public class StateService(IJSRuntime JS) : object(), IJsonService
     {
-        private IJSRuntime _runtime;
+        private readonly IJSRuntime _runtime = JS;
         public event Action<IComponent?>? OnStateChanged;
         public bool IsWebClient { get; } = true;
-
-        public StateService(IJSRuntime JS) : base()
-        {
-            _runtime = JS;
-        }
 
         public async Task SetState(IComponent? state)
         {
@@ -32,8 +27,7 @@ namespace WebClient.Services
         acc[key] = input.value; 
     return acc; 
 }, {})");
-            string? componentState = null;
-            state.TryGetValue("state_" + component.GetType().Name.ToSafe(), out componentState);
+            _ = state.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState);
             Console.WriteLine("Restoring: " + component.GetType().Name);
             if (componentState == null)
             {

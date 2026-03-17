@@ -2,7 +2,7 @@
 
 namespace DataLayer.Generators
 {
-    public class Groups : IGenerator<Entities.Group>
+    public class Groups : IGenerator<Group>
     {
         public static IEnumerable<Group> Generate()
         {

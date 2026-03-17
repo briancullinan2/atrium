@@ -24,9 +24,9 @@ namespace Atrium.Services
         {
 
         }
-        public LocalServer(WebApplication _app)
+        public LocalServer(WebApplication App)
         {
-            app = _app;
+            app = App;
         }
 #else
         public string BaseUrl => "http://localhost:8080";

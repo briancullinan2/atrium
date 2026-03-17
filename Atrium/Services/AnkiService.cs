@@ -1,15 +1,16 @@
 ﻿using DataLayer.Entities;
+using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
+using FlashCard.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using FlashCard.Services;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
-    public class AnkiService : IAnkiService
+    public partial class AnkiService : IAnkiService
     {
         internal static IServiceProvider? _services;
         private readonly HttpClient? _httpClient;
@@ -19,7 +20,7 @@ namespace Atrium.Services
             _httpClient = _services?.GetRequiredService<HttpClient>();
         }
 
-        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<DataLayer.Entities.Card>?>> InspectFile(string ankiPackage)
+        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>> InspectFile(string ankiPackage)
         {
             if (_services == null)
             {
@@ -30,7 +31,7 @@ namespace Atrium.Services
             {
                 var files = AnkiParser.Parser.ListFiles(ankiPackage, _services);
                 var cards = AnkiParser.Parser.ParseCards(ankiPackage, _services);
-                return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<DataLayer.Entities.Card>?>(files, cards);
+                return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>(files, cards);
             }
             catch (Exception ex)
             {
@@ -40,12 +41,12 @@ namespace Atrium.Services
         }
 
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _userRequests = new();
-        private static readonly SemaphoreSlim _ankiLock = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim _ankiLock = new(1, 1);
         private static DateTime _lastRequestTime = DateTime.MinValue;
 
         private const int DelaySeconds = 30;
 
-        protected static async Task<IEnumerable<DataLayer.Entities.File>> SearchAnki(string clientId, string? searchTerm, HttpClient _httpClient)
+        protected static async Task<IEnumerable<DataLayer.Entities.File>> SearchAnki(string clientId, string? searchTerm, HttpClient HttpClient)
         {
 
             // 1. Cancel previous pending request for THIS client
@@ -70,7 +71,7 @@ namespace Atrium.Services
                 }
 
                 // 3. Execute the actual search
-                var results = await DoActualSearch(searchTerm, _httpClient);
+                var results = await DoActualSearch(searchTerm, HttpClient);
 
                 _lastRequestTime = DateTime.UtcNow;
                 return results;
@@ -78,20 +79,20 @@ namespace Atrium.Services
             catch (OperationCanceledException)
             {
                 // This happens when a newer keystroke comes in and cancels this task
-                return Enumerable.Empty<DataLayer.Entities.File>();
+                return [];
             }
             finally
             {
-                _ankiLock.Release();
+                _ = _ankiLock.Release();
             }
         }
 
-        protected static async Task<IEnumerable<DataLayer.Entities.File>> DoActualSearch(string? searchTerm, HttpClient _httpClient)
+        protected static async Task<IEnumerable<DataLayer.Entities.File>> DoActualSearch(string? searchTerm, HttpClient HttpClient)
         {
             // We have to mimic a real browser for SvelteKit apps to respond or find their internal JSON route
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            _httpClient.DefaultRequestHeaders.Add("Accept", "*/*");
-            _httpClient.DefaultRequestHeaders.Add("Origin", "https://ankiweb.net");
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            HttpClient.DefaultRequestHeaders.Add("Accept", "*/*");
+            HttpClient.DefaultRequestHeaders.Add("Origin", "https://ankiweb.net");
 
             // NOTE: If AnkiWeb detects a non-browser, they serve the shell you saw.
             // If we hit the search route with the right headers, we often get the pre-rendered 
@@ -113,8 +114,8 @@ namespace Atrium.Services
                 request.Headers.Add("sec-fetch-mode", "cors");
                 request.Headers.Add("sec-fetch-dest", "empty");
 
-                var response = await _httpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
+                var response = await HttpClient.SendAsync(request);
+                _ = response.EnsureSuccessStatusCode();
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 var files = new List<DataLayer.Entities.File>();
 
@@ -124,7 +125,7 @@ namespace Atrium.Services
 
                 // We'll use a sliding window to find the "Title" strings.
                 // In your dump, titles follow a pattern of non-ASCII bytes followed by the name.
-                string[] entries = content.Split(new[] { '\u0012' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] entries = content.Split(['\u0012'], StringSplitOptions.RemoveEmptyEntries);
 
                 foreach (var entry in entries)
                 {
@@ -151,7 +152,7 @@ namespace Atrium.Services
                     }
                 }
 
-                return files.DistinctBy(f => f.Source).ToList();
+                return [.. files.DistinctBy(f => f.Source)];
             }
             catch (Exception ex)
             {
@@ -163,101 +164,85 @@ namespace Atrium.Services
         private static string ExtractCleanString(string segment)
         {
             // Grab characters until we hit binary control data
-            var clean = new string(segment.TakeWhile(c => c >= 32 && c <= 126 || c > 160).ToArray());
+            var clean = new string([.. segment.TakeWhile(c => c >= 32 && c <= 126 || c > 160)]);
             return clean.Trim();
         }
 
         private static string ExtractAnkiId(string segment)
         {
             // Look for a sequence of 8-12 digits in the binary segment
-            var match = System.Text.RegularExpressions.Regex.Match(segment, @"\d{8,12}");
+            var match = MyRegex().Match(segment);
             return match.Success ? match.Value : "";
         }
 
         private static bool IsLikelyAnkiTitle(string title)
         {
             // Filter out binary noise that looks like strings
-            return title.Length > 5 && !title.Contains("http") && !title.Contains("{");
+            return title.Length > 5 && !title.Contains("http") && !title.Contains('{');
         }
 
 #if WINDOWS
-        public static async Task OnDownloadAnki(HttpContext context, IServiceProvider _service)
+        public static async Task OnDownloadAnki(HttpContext context)
         {
-            var ankiService = _service.GetRequiredService<AnkiService>();
+            if(_services == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+            var ankiService = _services.GetRequiredService<AnkiService>();
             var ankiPackage = context.Request.Query["anki"].ToString() ?? "";
             var results = await ankiService.Download(ankiPackage);
             context.Response.ContentType = "application/json";
-            var json = JsonSerializer.Serialize(results, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-            });
+            var json = JsonSerializer.Serialize(results, JsonHelper.Default);
             await context.Response.WriteAsync(json);
         }
 
 
-        public static async Task OnSearchAnki(HttpContext context, IServiceProvider _service)
+        public static async Task OnSearchAnki(HttpContext context)
         {
+            if (_services == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
             try
             {
                 var searchTerm = context.Request.Query["term"].ToString() ?? "";
-                var _httpClient = _services?.GetRequiredService<HttpClient>();
-                if (_httpClient == null)
-                {
-                    throw new InvalidOperationException("HttpClient unavailable");
-                }
+                var _httpClient = (_services.GetRequiredService<HttpClient>()) ?? throw new InvalidOperationException("HttpClient unavailable");
                 // Unique ID for the client (IP or Session)
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
                 var results = await SearchAnki(clientId, searchTerm, _httpClient);
                 context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(results, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(results, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
         }
 
 
-        public static async Task OnInspectFile(HttpContext context, IServiceProvider _service)
+        public static async Task OnInspectFile(HttpContext context, IServiceProvider Service)
         {
             try
             {
-                var files = AnkiParser.Parser.ListFiles(context.Request.Query["anki"], _service);
-                var cards = AnkiParser.Parser.ParseCards(context.Request.Query["anki"], _service);
+                var files = AnkiParser.Parser.ListFiles(context.Request.Query["anki"], Service);
+                var cards = AnkiParser.Parser.ParseCards(context.Request.Query["anki"], Service);
                 context.Response.ContentType = "application/json";
                 var json = JsonSerializer.Serialize(new Inspection()
                 {
                     Files = files,
                     Cards = cards
-                }, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                }, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
 
             }
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
         }
@@ -291,7 +276,7 @@ namespace Atrium.Services
 
             // ResponseHeadersRead ensures we don't buffer the whole file into RAM first
             var response = await _httpClient.GetAsync(ankiPackageUrl, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
 
             using var remoteStream = await response.Content.ReadAsStreamAsync();
 
@@ -299,7 +284,7 @@ namespace Atrium.Services
             // Using the URL's filename as the local path hint
             var fileName = Path.GetFileName(new Uri(ankiPackageUrl).LocalPath);
             var manager = _services.GetRequiredService<FileManager>();
-            await manager.UploadFile(remoteStream, fileName, "AnkiDownloads");
+            _ = await manager.UploadFile(remoteStream, fileName, "AnkiDownloads");
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
             var PersistentFactory = _services.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>();
@@ -314,9 +299,11 @@ namespace Atrium.Services
         public class Inspection
         {
             public List<DataLayer.Entities.File>? Files { get; set; }
-            public List<DataLayer.Entities.Card>? Cards { get; set; }
+            public List<Card>? Cards { get; set; }
 
         }
 
+        [System.Text.RegularExpressions.GeneratedRegex(@"\d{8,12}")]
+        private static partial System.Text.RegularExpressions.Regex MyRegex();
     }
 }

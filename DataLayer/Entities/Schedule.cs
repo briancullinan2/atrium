@@ -70,10 +70,10 @@ namespace DataLayer.Entities
         // --- Logic Helper Properties (Equivalent to your PHP methods) ---
 
         [NotMapped]
-        public IEnumerable<Subject> Classes => Courses?.Where(c => !c.Deleted && c.Type == "c") ?? Enumerable.Empty<Subject>();
+        public IEnumerable<Subject> Classes => Courses?.Where(c => !c.Deleted && c.Type == "c") ?? [];
 
         [NotMapped]
-        public IEnumerable<Subject> Others => Courses?.Where(c => !c.Deleted && c.Type == "o") ?? Enumerable.Empty<Subject>();
+        public IEnumerable<Subject> Others => Courses?.Where(c => !c.Deleted && c.Type == "o") ?? [];
 
         public double GetCreditHours() => Courses.Sum(c => c.CreditHours ?? 0.0);
 
@@ -104,8 +104,8 @@ namespace DataLayer.Entities
         {
             public static readonly Dictionary<string, List<ScaleEntry>> Scales = new()
             {
-                ["A +/-"] = new List<ScaleEntry>
-                {
+                ["A +/-"] =
+                [
                     new() { Letter = "A+", Max = 100, Min = 97, Point = 4.0 },
                     new() { Letter = "A",  Max = 96,  Min = 93, Point = 4.0 },
                     new() { Letter = "A-", Max = 92,  Min = 90, Point = 3.7 },
@@ -119,15 +119,15 @@ namespace DataLayer.Entities
                     new() { Letter = "D",  Max = 66,  Min = 63, Point = 1.0 },
                     new() { Letter = "D-", Max = 62,  Min = 60, Point = 0.7 },
                     new() { Letter = "F",  Max = 59,  Min = 0,  Point = 0.0 }
-                },
-                ["A"] = new List<ScaleEntry>
-                {
+                ],
+                ["A"] =
+                [
                     new() { Letter = "A", Max = 100, Min = 90, Point = 4.0 },
                     new() { Letter = "B", Max = 89,  Min = 80, Point = 3.0 },
                     new() { Letter = "C", Max = 79,  Min = 70, Point = 2.0 },
                     new() { Letter = "D", Max = 69,  Min = 60, Point = 1.0 },
                     new() { Letter = "F", Max = 59,  Min = 0,  Point = 0.0 }
-                }
+                ]
             };
         }
 
@@ -141,7 +141,7 @@ namespace DataLayer.Entities
             if (score == null) return (null, null);
 
             // Fallback to default scale if provided scale is invalid
-            var activeScale = (scale == null || !scale.Any()) ? GradePresets.Scales["A"] : scale;
+            var activeScale = (scale == null || scale.Count == 0) ? GradePresets.Scales["A"] : scale;
 
             return score switch
             {

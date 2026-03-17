@@ -11,13 +11,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Atrium
 {
-    public class KeepAlive : SqliteConnection
+    public class KeepAlive(string conn) : SqliteConnection(conn)
     {
-        public KeepAlive(string conn) : base(conn)
-        {
-
-        }
-
         public override void Close()
         {
 
@@ -64,7 +59,7 @@ namespace Atrium
             builder.Services.AddSingleton<IStatusService, StatusService>();
             builder.Services.AddSingleton<IThemeService, ThemeService>();
             builder.Services.AddSingleton<IChatService, ChatService>();
-            builder.Services.AddScoped<HttpClient>(sp => new HttpClient
+            builder.Services.AddScoped(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")
             });

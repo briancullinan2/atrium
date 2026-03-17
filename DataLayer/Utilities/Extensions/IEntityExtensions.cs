@@ -15,14 +15,11 @@ namespace DataLayer.Utilities.Extensions
         /// </summary>
         public static T Update<T>(this ProxyEntity<T> entity, bool? recurse = false) where T : class, IEntity<T>
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            if (entity._scope == null) entity._scope = entity._service?.CreateScope();
-            var persistentStore = entity._scope?.ServiceProvider.GetRequiredService(entity._context ?? typeof(IDbContextFactory<DataLayer.PersistentStorage>));
-            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<DataLayer.PersistentStorage>)?.CreateDbContext();
-            if (persistentContext == null)
-            {
-                persistentContext = (persistentStore as IDbContextFactory<DataLayer.EphemeralStorage>)?.CreateDbContext();
-            }
+            ArgumentNullException.ThrowIfNull(entity);
+            entity._scope ??= entity._service?.CreateScope();
+            var persistentStore = entity._scope?.ServiceProvider.GetRequiredService(entity._context ?? typeof(IDbContextFactory<PersistentStorage>));
+            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<PersistentStorage>)?.CreateDbContext();
+            persistentContext ??= (persistentStore as IDbContextFactory<EphemeralStorage>)?.CreateDbContext();
             if (persistentContext == null)
             {
                 throw new InvalidOperationException("Cannot determine database context.");
@@ -32,7 +29,7 @@ namespace DataLayer.Utilities.Extensions
             // If the entity isn't being tracked, we need to attach it first
             if (entry.State == EntityState.Detached)
             {
-                persistentContext.Attach(entity._target);
+                _ = persistentContext.Attach(entity._target);
             }
 
             // This executes the SQL SELECT and updates the object's properties
@@ -81,54 +78,49 @@ namespace DataLayer.Utilities.Extensions
         public static T Save<T>(this ProxyEntity<T> ent, bool? recurse = false) where T : class, IEntity<T>
         {
             // Start the Transaction
-            if (ent._scope == null) ent._scope = ent._service?.CreateScope();
-            var persistentStore = ent._scope?.ServiceProvider.GetRequiredService(ent._context ?? typeof(IDbContextFactory<DataLayer.PersistentStorage>));
-            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<DataLayer.PersistentStorage>)?.CreateDbContext();
-            if (persistentContext == null)
-            {
-                persistentContext = (persistentStore as IDbContextFactory<DataLayer.EphemeralStorage>)?.CreateDbContext();
-            }
+            ent._scope ??= ent._service?.CreateScope();
+            var persistentStore = ent._scope?.ServiceProvider.GetRequiredService(ent._context ?? typeof(IDbContextFactory<PersistentStorage>));
+            TranslationContext? persistentContext = (persistentStore as IDbContextFactory<PersistentStorage>)?.CreateDbContext();
+            persistentContext ??= (persistentStore as IDbContextFactory<EphemeralStorage>)?.CreateDbContext();
             if (persistentContext == null)
             {
                 throw new InvalidOperationException("Cannot determine database context.");
             }
-            using (var transaction = persistentContext.Database.BeginTransaction())
+            using var transaction = persistentContext.Database.BeginTransaction();
+            try
             {
-                try
+                // 1. Perform relational checks here (e.g., does the linked Facility exist?)
+                // if (!context.Facilities.Any(f => f.Id == messageEntity.FacilityId)) 
+                //    throw new Exception("Invalid Facility Link");
+                ent._target.CanonicalFingerprint = ent._target.GetHashCode();
+
+                // 2. Add the primary entity
+                if (recurse == false)
                 {
-                    // 1. Perform relational checks here (e.g., does the linked Facility exist?)
-                    // if (!context.Facilities.Any(f => f.Id == messageEntity.FacilityId)) 
-                    //    throw new Exception("Invalid Facility Link");
-                    ent._target.CanonicalFingerprint = ent._target.GetHashCode();
-
-                    // 2. Add the primary entity
-                    if (recurse == false)
-                    {
-                        ShallowSaveRecursive(persistentContext, ent._target, recurse == true);
-                    }
-                    else
-                    {
-                        persistentContext.Add(ent._target);
-                    }
-
-                    // 3. Commit the changes
-                    persistentContext.SaveChanges();
-
-                    // 4. Finalize the transaction
-                    transaction.Commit();
-
-                    return Update(ent, true);
+                    ShallowSaveRecursive(persistentContext, ent._target, recurse == true);
                 }
-                catch (Exception ex)
+                else
                 {
-                    // Arizona Compliance: Roll back to prevent data corruption
-                    transaction.Rollback();
-                    //Log.Error($"Transaction Aborted: {ex.Message}");
-                    throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
+                    _ = persistentContext.Add(ent._target);
                 }
-                finally
-                {
-                }
+
+                // 3. Commit the changes
+                _ = persistentContext.SaveChanges();
+
+                // 4. Finalize the transaction
+                transaction.Commit();
+
+                return Update(ent, true);
+            }
+            catch (Exception ex)
+            {
+                // Arizona Compliance: Roll back to prevent data corruption
+                transaction.Rollback();
+                //Log.Error($"Transaction Aborted: {ex.Message}");
+                throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
+            }
+            finally
+            {
             }
         }
 
@@ -140,7 +132,7 @@ namespace DataLayer.Utilities.Extensions
             if (trackedEntity == null)
             {
                 // If it doesn't exist, we must Add it (Shallowly)
-                persistentContext.Add(updatedEntity);
+                _ = persistentContext.Add(updatedEntity);
                 return;
             }
 
@@ -154,9 +146,8 @@ namespace DataLayer.Utilities.Extensions
                 foreach (var nav in navigations.Where(n => n.IsCollection))
                 {
                     // Get the list of children from the updated object
-                    var updatedChildren = updatedEntity.GetType().GetProperty(nav.Name)?.GetValue(updatedEntity) as IEnumerable;
 
-                    if (updatedChildren != null)
+                    if (updatedEntity.GetType().GetProperty(nav.Name)?.GetValue(updatedEntity) is IEnumerable updatedChildren)
                     {
                         foreach (var child in updatedChildren)
                         {
@@ -190,7 +181,7 @@ namespace DataLayer.Utilities.Extensions
                 var param = cmd.CreateParameter();
                 param.ParameterName = "@" + prop.Name;
                 param.Value = prop.GetValue(entity) ?? DBNull.Value;
-                cmd.Parameters.Add(param);
+                _ = cmd.Parameters.Add(param);
             }
 
             if (conn.State != ConnectionState.Open) conn.Open();
@@ -251,15 +242,15 @@ namespace DataLayer.Utilities.Extensions
 
                 if (exists)
                 {
-                    persistentContext.Set<TSet>().Update(entity);
+                    _ = persistentContext.Set<TSet>().Update(entity);
                 }
                 else
                 {
-                    persistentContext.Set<TSet>().Add(entity);
+                    _ = persistentContext.Set<TSet>().Add(entity);
                 }
             }
 
-            await persistentContext.SaveChangesAsync();
+            _ = await persistentContext.SaveChangesAsync();
         }
 
     }

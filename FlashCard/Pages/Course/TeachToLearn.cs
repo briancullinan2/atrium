@@ -3,9 +3,9 @@ using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course
 {
-    public class TeachToLearn : DataLayer.Generators.IGenerator<DataLayer.Entities.Card>
+    public class TeachToLearn : DataLayer.Generators.IGenerator<Card>
     {
-        public static IEnumerable<DataLayer.Entities.Card> Generate()
+        public static IEnumerable<Card> Generate()
         {
             return [
                 // Question 1: Text input for New Language comparison
@@ -22,11 +22,11 @@ namespace FlashCard.Pages.Course
                     Content = "True or false, teaching to learn is an effective strategy for memorizing lots of information.",
                     ResponseType = CardType.TrueFalse,
                     ResponseContent = "False. Teaching to learn should be used when you need to understand a topic more deeply. For memorizing, there are better strategies to use.",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "True", Value = "True" },
                         new Answer { Content = "False", Value = "False" }
-                    }
+                    ]
                 },
 
                 // Question 3: Text input for Videotaping

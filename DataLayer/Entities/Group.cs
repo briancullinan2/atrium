@@ -51,7 +51,7 @@ namespace DataLayer.Entities
         [Display(GroupName = "Extended Info")]
         public virtual Group? Parent { get; set; }
         [InverseProperty(nameof(Parent))]
-        public virtual ICollection<Group> Subgroups { get; set; } = new List<Group>();
+        public virtual ICollection<Group> Subgroups { get; set; } = [];
 
         // Navigation Collections
         //public virtual ICollection<Coupon> Coupons { get; set; } = new List<Coupon>();
@@ -59,18 +59,18 @@ namespace DataLayer.Entities
 
         // One-To-Many: Packs owned by this group
         [InverseProperty(nameof(Pack.Group))]
-        public virtual ICollection<Pack> Packs { get; set; } = new List<Pack>();
+        public virtual ICollection<Pack> Packs { get; set; } = [];
 
         // Many-To-Many: Packs associated with groups
         //public virtual ICollection<Pack> GroupPacks { get; set; } = new List<Pack>();
 
         // Many-To-Many: Users in groups
         [InverseProperty(nameof(User.Groups))]
-        public virtual ICollection<User> Users { get; set; } = new List<User>();
+        public virtual ICollection<User> Users { get; set; } = [];
         [InverseProperty(nameof(Role.Groups))]
-        public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+        public virtual ICollection<Role> Roles { get; set; } = [];
         [InverseProperty(nameof(Course.Groups))]
-        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+        public virtual ICollection<Course> Courses { get; set; } = [];
 
         public Group()
         {

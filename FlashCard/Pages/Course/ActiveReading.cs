@@ -3,9 +3,9 @@ using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course
 {
-    public class ActiveReading : DataLayer.Generators.IGenerator<DataLayer.Entities.Card>
+    public class ActiveReading : DataLayer.Generators.IGenerator<Card>
     {
-        public static IEnumerable<DataLayer.Entities.Card> Generate()
+        public static IEnumerable<Card> Generate()
         {
             return [
                 // Question 1: Textarea for Active Reading definition
@@ -22,11 +22,11 @@ namespace FlashCard.Pages.Course
                     Content = "Highlighting and underlining is an effective tool for active reading.",
                     ResponseType = CardType.TrueFalse,
                     ResponseContent = "False. People have been lying to you for years... Highlighting and underlining is a complete waste of time and won't help you remember anything. In order to learn the material, you have to go one step further. Convert whatever you are highlighting and underlining into an exercise that will help you commit the material to memory.",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "True", Value = "True" },
                         new Answer { Content = "False", Value = "False" }
-                    },
+                    ],
                 },
 
                 // Question 3: Radio buttons for Skimming
@@ -35,11 +35,11 @@ namespace FlashCard.Pages.Course
                     Content = "Skimming through the reading is an effective tool for active reading.",
                     ResponseType = CardType.TrueFalse,
                     ResponseContent = "True. Use this technique to get curious about the topic before you start reading. Pay particular attention to learning objectives, chapter summaries, charts, tables, and section headings. The author is trying to tell you what is important and what isn't. Take the hint.",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "True", Value = "True" },
                         new Answer { Content = "False", Value = "False" }
-                    },
+                    ],
                 },
 
                 // Question 4: Radio buttons for Self-explanation
@@ -48,11 +48,11 @@ namespace FlashCard.Pages.Course
                     Content = "Self-explanation is an effective tool for active reading",
                     ResponseType = CardType.TrueFalse,
                     ResponseContent = "True. Pause periodically when reading and try to explain what is going on in the text. This will help you stop spacing out in the middle of your reading sessions and will also help you maintain your curiosity.",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "True", Value = "True" },
                         new Answer { Content = "False", Value = "False" }
-                    },
+                    ],
                 }
             ];
         }

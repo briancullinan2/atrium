@@ -12,11 +12,11 @@ namespace DataLayer.Utilities
 #pragma warning restore EF1001 // Internal EF Core API usage.
     {
         private readonly HttpClient? _httpClient;
-        public static IServiceProvider? _service;
+        public static IServiceProvider? Service { get; set; } = null;
 
         public RemoteQuery()
         {
-            _httpClient = _service?.GetRequiredService<HttpClient>();
+            _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
 
@@ -50,16 +50,11 @@ namespace DataLayer.Utilities
 
                 // Use reflection to call ExecuteRemoteAsync<List<File>>
                 var listType = typeof(List<>).MakeGenericType(itemType);
-                
+
                 Task? task2 = typeof(RemoteQuery)
                     .GetMethod(nameof(ExecuteRemoteAsync))
                     ?.MakeGenericMethod(listType) // THIS IS THE KEY: Ask for the List
-                    .Invoke(this, new object[] { query, cancellationToken }) as Task;
-
-                if(task2 == null)
-                {
-                    throw new InvalidOperationException("Couldn't resolve task type.");
-                }
+                    .Invoke(this, [query, cancellationToken]) as Task ?? throw new InvalidOperationException("Couldn't resolve task type.");
 
                 // Bridge the Task<List<File>> to IAsyncEnumerable<File>
                 return (TResult)CreateAsyncEnumerableFromTask(task2, itemType);
@@ -69,32 +64,20 @@ namespace DataLayer.Utilities
             Task? task = typeof(RemoteQuery)
                 .GetMethod(nameof(ExecuteRemoteAsync))
                 ?.MakeGenericMethod(typeT)
-                .Invoke(this, new object[] { query, cancellationToken }) as Task;
-
-            if (task == null)
-            {
-                throw new InvalidOperationException("Couldn't resolve task type.");
-            }
-
+                .Invoke(this, [query, cancellationToken]) as Task ?? throw new InvalidOperationException("Couldn't resolve task type.");
             return (TResult)CreateAsyncEnumerableFromTask(task, typeT);
         }
 
         // Helper to wrap the Task into a stream EF Core can read
         private object CreateAsyncEnumerableFromTask(Task task, Type itemType)
         {
-            var method = typeof(RemoteQuery)
+            var method = (typeof(RemoteQuery)
                 .GetMethod(nameof(ToAsyncEnumerableInternal), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.MakeGenericMethod(itemType);
-
-            if (method == null)
-            {
-                throw new InvalidOperationException("Couldn't resolve method type.");
-            }
-
-            return method.Invoke(this, new object[] { task })!;
+                ?.MakeGenericMethod(itemType)) ?? throw new InvalidOperationException("Couldn't resolve method type.");
+            return method.Invoke(this, [task])!;
         }
 
-        private async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task task)
+        private static async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task task)
         {
             await task; // Wait for the network call to finish
             var result = (IEnumerable<T>)((dynamic)task).Result;
@@ -113,7 +96,7 @@ namespace DataLayer.Utilities
 
             var serialized = query.ToXDocument().ToString();
             var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
 
             // The key is checking the requested type T
             var typeT = typeof(T);
@@ -134,7 +117,7 @@ namespace DataLayer.Utilities
                     .First(m => m.Name == "ToAsyncEnumerable" && m.IsGenericMethod)
                     .MakeGenericMethod(itemType);
 
-                var result2 = toAsyncMethod.Invoke(null, new[] { list });
+                var result2 = toAsyncMethod.Invoke(null, [list]);
                 return (T)result2!;
             }
 

@@ -50,7 +50,7 @@ namespace Atrium.WinUI
                 var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
                     Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
                 SynchronizationContext.SetSynchronizationContext(context);
-                new App();
+                _ = new App();
             });
         }
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
@@ -83,7 +83,7 @@ namespace Atrium.WinUI
 
         internal static void SetTitle(string? title)
         {
-            Atrium.App.Current?.Windows.FirstOrDefault()?.Title = title;
+            _ = (Atrium.App.Current?.Windows.FirstOrDefault()?.Title = title);
         }
 
 

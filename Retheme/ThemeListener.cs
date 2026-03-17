@@ -5,7 +5,7 @@ namespace Retheme
     [CLSCompliant(false)]
     public class ThemeListener : css3ParserBaseListener
     {
-        public Dictionary<string, ThemeData> Themes { get; } = new();
+        public Dictionary<string, ThemeData> Themes { get; } = [];
         private ThemeData? _currentTheme;
 
         // Triggered when a selector like .theme-deepseakelp is found
@@ -49,6 +49,6 @@ namespace Retheme
     public class ThemeData
     {
         public string? ClassName { get; set; }
-        public Dictionary<string, string> Variables { get; set; } = new();
+        public Dictionary<string, string> Variables { get; set; } = [];
     }
 }

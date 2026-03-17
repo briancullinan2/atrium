@@ -1,4 +1,5 @@
-﻿using FlashCard.Services;
+﻿using DataLayer.Utilities;
+using FlashCard.Services;
 #if WINDOWS
 using Microsoft.AspNetCore.Http;
 #endif
@@ -11,13 +12,13 @@ namespace Atrium.Services
 {
     internal class ChatService : IChatService
     {
-        static string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        static string savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-chat.json");
+        private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        private static readonly string savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-chat.json");
 
         internal static IServiceProvider? _services;
         //private readonly HttpClient? _httpClient;
 
-        protected static List<ServicePreset>? Settings { get; set; } = new();
+        protected static List<ServicePreset>? Settings { get; set; } = [];
 
         public ChatService()
         {
@@ -38,17 +39,17 @@ namespace Atrium.Services
             _ = _chat?.IsWorking();
         }
 
-        const string PingMessage = "Please respond quickly and succinctly, you are learning tool with access to many functions. Please respond with the word Supercalifragilisticexpialidocious inside JSON format { \"response\" : \"...\" }. Only respond with the JSON and the word no other explanations needed. ";
+        private const string PingMessage = "Please respond quickly and succinctly, you are learning tool with access to many functions. Please respond with the word Supercalifragilisticexpialidocious inside JSON format { \"response\" : \"...\" }. Only respond with the JSON and the word no other explanations needed. ";
         private int recentHash;
         private Tuple<bool?, string?>? recentPing;
         private DateTime? recentPinged;
-        public static Dictionary<string, Dictionary<DateTime, Tuple<bool, string>>>? AllRecents { get; set; } = new();
+        public static Dictionary<string, Dictionary<DateTime, Tuple<bool, string>>>? AllRecents { get; set; } = [];
         public Dictionary<DateTime, Tuple<bool, string>>? Recents { 
             get
             {
                 if (AllRecents?.TryGetValue("", out var _recents) == true)  return _recents;
                 var newRecent = new Dictionary<DateTime, Tuple<bool, string>>();
-                AllRecents?[""] = newRecent;
+                _ = (AllRecents?[""] = newRecent);
                 return newRecent;
             } 
         }
@@ -96,11 +97,7 @@ namespace Atrium.Services
                     Settings.Add(replacementPreset);
                 }
 
-                var validSettings = JsonSerializer.Serialize(Settings, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var validSettings = JsonSerializer.Serialize(Settings, JsonHelper.Default);
                 File.WriteAllText(savedSettings, validSettings);
             }
             recentPing = new Tuple<bool?, string?>(result, json);
@@ -155,15 +152,12 @@ namespace Atrium.Services
             try
             {
                 // 2. Double-check inside the lock to prevent race conditions
-                if (_pingTask == null)
-                {
-                    // Start the task but don't await it here yet
-                    _pingTask = ExecutePingAndClear();
-                }
+                // Start the task but don't await it here yet
+                _pingTask ??= ExecutePingAndClear();
             }
             finally
             {
-                _gate.Release();
+                _ = _gate.Release();
             }
 
             return await _pingTask;
@@ -194,11 +188,7 @@ namespace Atrium.Services
         {
             context.Response.ContentType = "application/json";
 
-            var json = JsonSerializer.Serialize(GetPresets(), new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-            });
+            var json = JsonSerializer.Serialize(GetPresets(), JsonHelper.Default);
 
             await context.Response.WriteAsync(json);
         }
@@ -214,40 +204,20 @@ namespace Atrium.Services
 
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
-                var service = JsonSerializer.Deserialize<ServicePreset>(jsonQuery);
-
-
                 // TODO: save preset settings in json file
-                if (service == null)
-                {
-                    throw new InvalidOperationException("Request body failed to render.");
-                }
+                var service = JsonSerializer.Deserialize<ServicePreset>(jsonQuery) ?? throw new InvalidOperationException("Request body failed to render.");
 
-                var _chat = _services?.GetRequiredService<ChatService>();
-
-                if (_chat == null)
-                {
-                    throw new InvalidOperationException("Chat Service failed to render.");
-                }
-
+                var _chat = (_services?.GetRequiredService<ChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Params);
 
-                var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(result, JsonHelper.Default);
 
                 await context.Response.WriteAsync(json);
 
             }
             catch (Exception ex)
             {
-                var json = JsonSerializer.Serialize("Error: " + ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
 
                 await context.Response.WriteAsync(json);
             }
@@ -265,43 +235,24 @@ namespace Atrium.Services
 
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
-                var message = JsonSerializer.Deserialize<string>(jsonQuery);
-
                 // TODO: save preset settings in json file
-                if (message == null)
-                {
-                    throw new InvalidOperationException("Request message failed to render.");
-                }
+                var message = JsonSerializer.Deserialize<string>(jsonQuery) ?? throw new InvalidOperationException("Request message failed to render.");
 
-                var _chat = _services?.GetRequiredService<ChatService>();
-
-                if (_chat == null)
-                {
-                    throw new InvalidOperationException("Chat Service failed to render.");
-                }
-
+                var _chat = (_services?.GetRequiredService<ChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
 
 
                 var result = await StandardResponse(clientId, message);
 
-                var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(result, JsonHelper.Default);
 
                 await context.Response.WriteAsync(json);
 
             }
             catch (Exception ex)
             {
-                var json = JsonSerializer.Serialize("Error: " + ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
 
                 await context.Response.WriteAsync(json);
             }
@@ -314,7 +265,7 @@ namespace Atrium.Services
             Dictionary<DateTime, Tuple<bool, string>>? _recents = null;
             if (AllRecents?.TryGetValue(clientId, out _recents) != true)
             {
-                AllRecents?[clientId] = _recents = new Dictionary<DateTime, Tuple<bool, string>>();
+                _ = (AllRecents?[clientId] = _recents = []);
             }
 
 
@@ -373,7 +324,7 @@ namespace Atrium.Services
             var ModelName = string.IsNullOrWhiteSpace(_model) ? bestService?.DefaultModel : _model;
             var ApiKey = string.IsNullOrWhiteSpace(_key) ? bestService?.ApiKey : _key;
             var Response = string.IsNullOrWhiteSpace(_response) ? bestService?.ResponsePath : _response;
-            var Parameters = _parameters?.Count() == 0 ? bestService?.Params : _parameters;
+            var Parameters = _parameters?.Count == 0 ? bestService?.Params : _parameters;
 
             var payload = new Dictionary<string, object>();
 
@@ -434,7 +385,7 @@ namespace Atrium.Services
                 // Cleanup: remove the token if this specific task is the one that finished
                 if (_clientTokens.TryGetValue(_client, out var currentCts) && currentCts == cts)
                 {
-                    _clientTokens.TryRemove(_client, out _);
+                    _ = _clientTokens.TryRemove(_client, out _);
                     cts.Dispose();
                 }
             }
@@ -449,7 +400,7 @@ namespace Atrium.Services
 
                 foreach (var segment in path?.Split('.') ?? [])
                 {
-                    if (segment.Contains("[") && segment.Contains("]"))
+                    if (segment.Contains('[') && segment.Contains(']'))
                     {
                         // Handle Array Access: "choices[0]"
                         var parts = segment.Split('[');
@@ -487,7 +438,7 @@ namespace Atrium.Services
                 Params = s.Params,
                 ResponsePath = s.ResponsePath,
                 Name = string.IsNullOrWhiteSpace(s.Name) ? PredefinedServices.FirstOrDefault(p => string.Equals(s.Url, p.Url))?.Name ?? "" : s.Name
-            }).Concat(PredefinedServices.Where(p => Settings?.FirstOrDefault(s => string.Equals(s.Url, p.Url, StringComparison.InvariantCultureIgnoreCase)) == null)).ToList() ?? new();
+            }).Concat(PredefinedServices.Where(p => Settings?.FirstOrDefault(s => string.Equals(s.Url, p.Url, StringComparison.InvariantCultureIgnoreCase)) == null)).ToList() ?? [];
         }
 
         public async Task SetChatMode(bool chat)
@@ -496,17 +447,17 @@ namespace Atrium.Services
             OnChatChanged?.Invoke(chat);
         }
 
-        internal static List<ServicePreset> PredefinedServices = new() {
+        internal static List<ServicePreset> PredefinedServices = [
             new ServicePreset {
                 Name = "Ollama (Local /generate)",
                 Url = "http://localhost:11434/api/generate",
                 DefaultModel = "qwen3.5:cloud",
                 ResponsePath = "response",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "prompt", Value = "{Message}", Type = "string" },
                     new DynamicParam { Key = "stream", BoolValue = false, Type = "boolean" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "OpenAI (v1/chat)",
@@ -514,7 +465,7 @@ namespace Atrium.Services
                 DefaultModel = "gpt-4o",
                 ApiKey = "sk-...",
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     // Note: OpenAI expects a 'messages' object, 
                     // but for a generic builder, we track the key/value
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
@@ -524,7 +475,7 @@ namespace Atrium.Services
                     new DynamicParam { Key = "top_p", Value = "1", Type = "number" },
                     new DynamicParam { Key = "presence_penalty", Value = "0", Type = "number" },
                     new DynamicParam { Key = "stream", BoolValue = false, Type = "boolean" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "Groq (Cloud)",
@@ -532,11 +483,11 @@ namespace Atrium.Services
                 DefaultModel = "llama-3.3-70b-versatile",
                 ApiKey = "gsk_...",
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "temperature", Value = "0.5", Type = "number" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "Anthropic (Claude)",
@@ -544,11 +495,11 @@ namespace Atrium.Services
                 DefaultModel = "claude-3-5-sonnet-20240620",
                 ApiKey = "sk-ant-api03-...",
                 ResponsePath = "content[0].text",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "max_tokens", Value = "1024", Type = "number" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "DeepSeek",
@@ -556,10 +507,10 @@ namespace Atrium.Services
                 DefaultModel = "deepseek-chat",
                 ApiKey = "sk-...", // DeepSeek uses standard sk- format
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "OpenRouter (Universal)",
@@ -567,21 +518,21 @@ namespace Atrium.Services
                 DefaultModel = "google/gemini-2.0-flash-001",
                 ApiKey = "sk-or-v1-...", // OpenRouter keys start with sk-or-v1-
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
-                }
+                ]
             },
             new ServicePreset {
                 Name = "Mistral AI",
                 Url = "https://api.mistral.ai/v1/chat/completions",
                 DefaultModel = "mistral-tiny",
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "safe_prompt", BoolValue = true, Type = "boolean" }
-                }
+                ]
             },
 
             new ServicePreset {
@@ -589,13 +540,13 @@ namespace Atrium.Services
                 Url = "http://localhost:1234/v1/chat/completions",
                 DefaultModel = "local-model",
                 ResponsePath = "choices[0].message.content",
-                Params = new() {
+                Params = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "temperature", Value = "0.8", Type = "number" }
-                }
+                ]
             }
-        };
+        ];
 
         public event Action<bool?>? OnChatWorking;
         public event Action<bool>? OnChatChanged;

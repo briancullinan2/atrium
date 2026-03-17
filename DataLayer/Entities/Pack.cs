@@ -18,7 +18,7 @@ namespace DataLayer.Entities
         public int? GroupId { get; set; }
 
         [ForeignKey(nameof(GroupId))]
-        public virtual Entities.Group? Group { get; set; }
+        public virtual Group? Group { get; set; }
         // Add these to your existing Pack class:
 
         [Category("Structure")]

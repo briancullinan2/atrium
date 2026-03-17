@@ -3,9 +3,9 @@ using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course
 {
-    public class EndOfLevel1 : DataLayer.Generators.IGenerator<DataLayer.Entities.Card>
+    public class EndOfLevel1 : DataLayer.Generators.IGenerator<Card>
     {
-        public static IEnumerable<DataLayer.Entities.Card> Generate()
+        public static IEnumerable<Card> Generate()
         {
             return [
                 // Survey Question: Course Enjoyment
@@ -15,8 +15,8 @@ namespace FlashCard.Pages.Course
                     ResponseType = CardType.Multiple,
                     ResponseContent = "We hope you have enjoyed the course to this point.  Even if you decide not to upgrade, you are welcome to continue to use our free tools.",
                     QuizOnly = true,
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer {
                             Content = "Yes",
                             Value = "1",
@@ -27,7 +27,7 @@ namespace FlashCard.Pages.Course
                             Value = "0",
                             IsCorrect = true
                         }
-                    }
+                    ]
                 }
             ];
         }

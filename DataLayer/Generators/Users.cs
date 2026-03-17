@@ -2,7 +2,7 @@
 
 namespace DataLayer.Generators
 {
-    public class Users : IGenerator<Entities.User>
+    public class Users : IGenerator<User>
     {
 
         // TODO: i did this in studysauce2, i basically allowed guests to "impersonate" a

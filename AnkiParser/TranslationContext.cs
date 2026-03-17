@@ -2,16 +2,13 @@
 
 namespace AnkiParser
 {
-    public class TranslationContext : DbContext
+    public class TranslationContext(DbContextOptions<TranslationContext> ctx) : DbContext(ctx)
     {
-        public DbSet<AnkiParser.Entities.Collection> Collections { get; set; }
-        public DbSet<AnkiParser.Entities.Note> Notes { get; set; }
-        public DbSet<AnkiParser.Entities.Card> Cards { get; set; }
-        public DbSet<AnkiParser.Entities.Review> Reviews { get; set; }
-        public DbSet<AnkiParser.Entities.Grave> Graves { get; set; }
-        public TranslationContext(DbContextOptions<TranslationContext> ctx) : base(ctx)
-        {
-        }
+        public DbSet<Entities.Collection> Collections { get; set; }
+        public DbSet<Entities.Note> Notes { get; set; }
+        public DbSet<Entities.Card> Cards { get; set; }
+        public DbSet<Entities.Review> Reviews { get; set; }
+        public DbSet<Entities.Grave> Graves { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {

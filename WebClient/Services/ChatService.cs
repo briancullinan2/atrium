@@ -14,7 +14,7 @@ namespace WebClient.Services
         private DateTime? recentMessaged;
         private Tuple<bool?, string?>? recentPing;
         private DateTime? recentPinged;
-        public Dictionary<DateTime, Tuple<bool, string>>? Recents { get; set; } = new();
+        public Dictionary<DateTime, Tuple<bool, string>>? Recents { get; set; } = [];
         public bool Chat { get; set; } = false;
 
         public event Action<bool?>? OnChatWorking;
@@ -41,15 +41,12 @@ namespace WebClient.Services
             try
             {
                 // 2. Double-check inside the lock to prevent race conditions
-                if (_pingTask == null)
-                {
-                    // Start the task but don't await it here yet
-                    _pingTask = ExecutePingAndClear();
-                }
+                // Start the task but don't await it here yet
+                _pingTask ??= ExecutePingAndClear();
             }
             finally
             {
-                _gate.Release();
+                _ = _gate.Release();
             }
 
             return await _pingTask;

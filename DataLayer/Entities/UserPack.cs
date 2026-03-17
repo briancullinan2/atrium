@@ -40,7 +40,7 @@ namespace DataLayer.Entities
         }
 
         [NotMapped]
-        private static readonly int[] Intervals = { 1, 2, 4, 7, 14, 28, 84, 168, 364 };
+        private static readonly int[] Intervals = [1, 2, 4, 7, 14, 28, 84, 168, 364];
 
         public record CardRetention(
             int Interval,
@@ -55,15 +55,15 @@ namespace DataLayer.Entities
             if (!string.IsNullOrEmpty(RetentionJson) && !refresh)
             {
                 return JsonSerializer.Deserialize<Dictionary<int, CardRetention>>(RetentionJson)
-                       ?? new Dictionary<int, CardRetention>();
+                       ?? [];
             }
 
             var result = new Dictionary<int, CardRetention>();
-            var cards = Pack?.Cards.Where(c => !c.Deleted) ?? Enumerable.Empty<Card>();
+            var cards = Pack?.Cards.Where(c => !c.Deleted) ?? [];
             var responses = User?.Responses
                 .Where(r => r.Card?.PackId == PackId)
                 .OrderBy(r => r.Created)
-                .ToList() ?? new List<Response>();
+                .ToList() ?? [];
 
             foreach (var card in cards)
             {

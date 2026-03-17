@@ -87,7 +87,7 @@ namespace DataLayer.Entities
             get
             {
                 var validGrades = Grades.Where(g => g.Percent.HasValue && g.Score.HasValue).ToList();
-                if (!validGrades.Any()) return null;
+                if (validGrades.Count == 0) return null;
 
                 double sum = validGrades.Sum(g => g.Percent!.Value * g.Score!.Value);
                 double totalPercent = validGrades.Sum(g => g.Percent!.Value);

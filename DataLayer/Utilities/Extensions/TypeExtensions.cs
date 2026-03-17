@@ -32,7 +32,7 @@
             }
             else
             {
-                result = new Type[0];
+                result = [];
             }
             return result;
         }
@@ -79,10 +79,10 @@
 
             // If the field is too small for "...", just hard truncate
             if (maxLength <= 3)
-                return value.Substring(0, maxLength);
+                return value[..maxLength];
 
             // Standard truncation with suffix
-            return value.Substring(0, Math.Min(value.Length, maxLength) - 3) + "...";
+            return value[..(Math.Min(value.Length, maxLength) - 3)] + "...";
         }
 
         public static bool IsSimple(this Type type)

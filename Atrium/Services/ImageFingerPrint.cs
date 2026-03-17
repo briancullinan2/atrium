@@ -14,7 +14,7 @@ namespace Atrium.Services
 {
     internal static class ImageFingerPrint
     {
-        private static Net? _net;
+        private static readonly Net? _net;
 
         public static string Image(string filePath)
         {

@@ -32,11 +32,7 @@ namespace Atrium.Services
 
                 var results = DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml, _service);
 
-                var json = JsonSerializer.Serialize(results, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(results, JsonHelper.Default);
 
                 await context.Response.WriteAsync(json);
             }
@@ -45,11 +41,7 @@ namespace Atrium.Services
                 try
                 {
                     context.Response.ContentType = "application/json";
-                    var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                    });
+                    var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                     await context.Response.WriteAsync(json);
                 }
                 catch (Exception ex2)

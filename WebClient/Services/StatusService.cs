@@ -31,25 +31,25 @@ namespace WebClient.Services
             _ = _status?.IsWorking();
         }
 
-        public async Task<string?> GetToken(string? _account = null, string? _tunnel = null, string? _api = null)
+        public async Task<string?> GetToken(string? Account = null, string? Tunnel = null, string? Api = null)
         {
             if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
-                return recentResult.ItWorks?[0];
+                return StatusResponse.ItWorks?[0];
             }
             var response = _httpClient?.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
             new HostingSettings()
             {
-                AccountId = _account,
-                TunnelName = _tunnel,
-                ApiToken = _api
+                AccountId = Account,
+                TunnelName = Tunnel,
+                ApiToken = Api
             }), System.Text.Encoding.UTF8, "application/json")).Result;
             if (response == null) return null;
             var result = await response.Content.ReadFromJsonAsync<StatusResponse>();
             if (result == null) return null;
             recentResult = result;
             recentChecked = DateTime.Now;
-            return result.ItWorks?[0];
+            return StatusResponse.ItWorks?[0];
         }
 
         public async Task<string?> GetHost()
@@ -58,7 +58,7 @@ namespace WebClient.Services
             {
                 return recentResult.Host;
             }
-            await GetToken();
+            _ = await GetToken();
             return recentResult?.Host;
         }
 
@@ -68,7 +68,7 @@ namespace WebClient.Services
             {
                 return recentResult.Tunnel;
             }
-            await GetToken(_account, _tunnel, _api);
+            _ = await GetToken(_account, _tunnel, _api);
             return recentResult?.Tunnel;
         }
 
@@ -78,7 +78,7 @@ namespace WebClient.Services
             {
                 return recentResult.Installed;
             }
-            await GetToken();
+            _ = await GetToken();
             return recentResult?.Installed;
         }
 
@@ -86,13 +86,13 @@ namespace WebClient.Services
         {
             if(recentResult != null && statusResult != null)
             {
-                return recentResult.ItWorks?[0] == statusResult.ItWorks?[0];
+                return StatusResponse.ItWorks?[0] == StatusResponse.ItWorks?[0];
             }
             var token = await GetToken();
             var host = await GetHost();
             var result = await CheckStatus(host);
-            OnHttpWorking?.Invoke(result?.ItWorks?[0] == token);
-            return result?.ItWorks?[0] == token;
+            OnHttpWorking?.Invoke(StatusResponse.ItWorks?[0] == token);
+            return StatusResponse.ItWorks?[0] == token;
         }
 
         public async Task<StatusResponse?> CheckStatus(string? domain)

@@ -69,18 +69,11 @@ namespace WebClient.Services
     }
 
 
-    public class ProgressableStreamContent : HttpContent
+    public class ProgressableStreamContent(Stream stream, int bufferSize, Action<long> onProgress) : HttpContent
     {
-        private readonly Stream _fileStream;
-        private readonly int _bufferSize;
-        private readonly Action<long> _onProgress;
-
-        public ProgressableStreamContent(Stream stream, int bufferSize, Action<long> onProgress)
-        {
-            _fileStream = stream;
-            _bufferSize = bufferSize;
-            _onProgress = onProgress;
-        }
+        private readonly Stream _fileStream = stream;
+        private readonly int _bufferSize = bufferSize;
+        private readonly Action<long> _onProgress = onProgress;
 
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {

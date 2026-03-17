@@ -3,9 +3,9 @@ using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course
 {
-    public class StudyPlan : DataLayer.Generators.IGenerator<DataLayer.Entities.Card>
+    public class StudyPlan : DataLayer.Generators.IGenerator<Card>
     {
-        public static IEnumerable<DataLayer.Entities.Card> Generate()
+        public static IEnumerable<Card> Generate()
         {
             return [
                 // Question 1: Radio buttons for the multiplier
@@ -14,13 +14,13 @@ namespace FlashCard.Pages.Course
                     Content = "Multiply your class hours by ___ to get the total number of hours you should study per week.",
                     ResponseType = CardType.Multiple,
                     ResponseContent = "Multiply by 3 to get the number of weekly study hours.",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "1", Value = "1" },
                         new Answer { Content = "2", Value = "2" },
                         new Answer { Content = "3", Value = "3" },
                         new Answer { Content = "4", Value = "4" }
-                    },
+                    ],
                 },
                 // Question 2: Procrastination text area
                 new Card

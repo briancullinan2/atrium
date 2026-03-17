@@ -44,10 +44,10 @@ namespace DataLayer.Utilities
 
     public class QueryManager : IQueryManager
     {
-        protected static IServiceProvider? _service { get; set; } = null;
+        protected static IServiceProvider? Service { get; set; } = null;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
-        protected virtual PriorityQueue<QueryTask, int> _taskQueue { get; } = new();
-        protected virtual bool _isProcessing  { get; set; } = false;
+        protected virtual PriorityQueue<QueryTask, int> TaskQueue { get; } = new();
+        protected virtual bool IsProcessing  { get; set; } = false;
 
         public QueryManager()
         {
@@ -64,7 +64,7 @@ namespace DataLayer.Utilities
 
         public void Enqueue(string xml, Action<object> callback, int priority = 5)
         {
-            _taskQueue.Enqueue(new QueryTask { XmlQuery = xml, OnSuccess = callback }, priority);
+            TaskQueue.Enqueue(new QueryTask { XmlQuery = xml, OnSuccess = callback }, priority);
             _ = ProcessQueueAsync(); // Fire and forget worker
         }
 
@@ -72,10 +72,9 @@ namespace DataLayer.Utilities
 
         public virtual async Task ProcessQueueAsync()
         {
-            if (_isProcessing) return;
-            _isProcessing = true;
-
-            while (_taskQueue.TryDequeue(out var task, out var priority))
+            if (IsProcessing) return;
+            IsProcessing = true;
+            while (TaskQueue.TryDequeue(out _, out _))
             {
                 try
                 {
@@ -91,7 +90,7 @@ namespace DataLayer.Utilities
                 }
             }
 
-            _isProcessing = false;
+            IsProcessing = false;
         }
 
 
@@ -227,7 +226,7 @@ namespace DataLayer.Utilities
 
         public RemoteManager()
         {
-            _httpClient = _service?.GetRequiredService<HttpClient>();
+            _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
         public override async Task ProcessQueueAsync()
@@ -238,10 +237,10 @@ namespace DataLayer.Utilities
             }
 
 
-            if (_isProcessing) return;
-            _isProcessing = true;
+            if (IsProcessing) return;
+            IsProcessing = true;
 
-            while (_taskQueue.TryDequeue(out var task, out var priority))
+            while (TaskQueue.TryDequeue(out var task, out var priority))
             {
                 try
                 {
@@ -262,7 +261,7 @@ namespace DataLayer.Utilities
                 }
             }
 
-            _isProcessing = false;
+            IsProcessing = false;
         }
 
     }

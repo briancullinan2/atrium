@@ -19,7 +19,7 @@ builder.Services.AddSingleton<IJsonService, StateService>();
 builder.Services.AddSingleton<IStatusService, StatusService>();
 builder.Services.AddSingleton<IThemeService, ThemeService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
-builder.Services.AddScoped<HttpClient>(sp => new HttpClient
+builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
@@ -30,7 +30,7 @@ builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 
 var app = builder.Build();
 // FUCK DI
-DataLayer.Utilities.RemoteQuery._service = app.Services;
+DataLayer.Utilities.RemoteQuery.Service = app.Services;
 FileManager._service = app.Services;
 AnkiService._service = app.Services;
 StatusService._service = app.Services;

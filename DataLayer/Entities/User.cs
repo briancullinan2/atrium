@@ -103,9 +103,9 @@ namespace DataLayer.Entities
         public virtual ICollection<File> Files { get; set; } = new HashSet<File>();
         public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
         [InverseProperty(nameof(Group.Users))]
-        public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+        public virtual ICollection<Group> Groups { get; set; } = [];
         [InverseProperty(nameof(Role.Users))]
-        public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+        public virtual ICollection<Role> Roles { get; set; } = [];
 
 
         // --- Complex Properties Handling ---
@@ -129,9 +129,9 @@ namespace DataLayer.Entities
         [ForeignKey(nameof(ParentId))]
         public User? Parent { get; set; }
         [InverseProperty(nameof(Parent))]
-        public virtual ICollection<User> Children { get; set; } = new List<User>();
+        public virtual ICollection<User> Children { get; set; } = [];
         [InverseProperty(nameof(Course.Users))]
-        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+        public virtual ICollection<Course> Courses { get; set; } = [];
 
         public User()
         {

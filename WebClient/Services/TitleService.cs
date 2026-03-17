@@ -5,20 +5,14 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class TitleService : ITitleService
+    public class TitleService(IJSRuntime js) : ITitleService
     {
-        private readonly IJSRuntime _js;
+        private readonly IJSRuntime _js = js;
         private static string? _title;
-        private string? _appName;
-        public event Action<string?>? OnTitleChanged;
-
-        public TitleService(IJSRuntime js)
-        {
-            _js = js;
-            _appName = Assembly.GetEntryAssembly()?
+        private readonly string? _appName = Assembly.GetEntryAssembly()?
                      .GetCustomAttribute<AssemblyProductAttribute>()?
                      .Product;
-        }
+        public event Action<string?>? OnTitleChanged;
 
         public async Task UpdateTitle(string? title)
         {

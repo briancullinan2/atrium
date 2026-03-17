@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
 using System.Linq.Expressions;
@@ -55,7 +56,7 @@ namespace DataLayer.Utilities.Extensions
             }
 
 
-            if (node is IEnumerable list2 && !(node is string))
+            if (node is IEnumerable list2 && node is not string)
             {
                 foreach (var item in list2)
                 {
@@ -168,7 +169,7 @@ namespace DataLayer.Utilities.Extensions
 
                         element.Add(typeElement);
                     }
-                    else if (value is System.Collections.IEnumerable list && !(value is string))
+                    else if (value is IEnumerable list && value is not string)
                     {
                         var propElement = new XElement(prop.Name);
                         foreach (var item in list)
@@ -202,7 +203,7 @@ namespace DataLayer.Utilities.Extensions
 
 
         // A registry to map NodeType to the correct Factory Method
-        private static readonly Dictionary<string, ExpressionType> _nodeTypeLookup = Enum.GetValues(typeof(ExpressionType))
+        private static readonly Dictionary<string, ExpressionType> _nodeTypeLookup = Enum.GetValues<ExpressionType>()
             .Cast<ExpressionType>()
             .ToDictionary(t => t.ToString(), t => t);
         private static readonly Dictionary<ExpressionType, List<Tuple<MethodInfo, List<ParameterInfo>>>> _factoryMap = typeof(Expression)
@@ -210,9 +211,9 @@ namespace DataLayer.Utilities.Extensions
             // We filter for methods that take Expression arguments to avoid overloads like 'Constant'
             .Where(m => _nodeTypeLookup.ContainsKey(m.Name))
             .GroupBy(m => _nodeTypeLookup[m.Name])
-            .ToDictionary(g => g.Key, g => g.Select(g => new Tuple<MethodInfo, List<ParameterInfo>>(g, g.GetParameters().ToList())).ToList());
+            .ToDictionary(g => g.Key, g => g.Select(g => new Tuple<MethodInfo, List<ParameterInfo>>(g, [.. g.GetParameters()])).ToList());
         private static readonly Dictionary<ExpressionType, ExpressionFactory> _elementMap =
-            new Dictionary<ExpressionType, ExpressionFactory>() {
+            new() {
                 {ExpressionType.Call, BuildMethodCall},
                 {ExpressionType.Parameter, BuildParameter},
                 {ExpressionType.Constant, BuildConstant},
@@ -230,23 +231,10 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression? BuildProperty(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var expressionEl = el.Element("Expression")?.Elements().FirstOrDefault();
-            if (expressionEl == null)
-            {
-                throw new InvalidOperationException("Could not resolve property expression on " + el);
-            }
+            var expressionEl = (el.Element("Expression")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve property expression on " + el);
             var expression = ToExpression(expressionEl);
-            var memberInfo = el.Element("Member")?.Elements().FirstOrDefault();
-            if (memberInfo == null)
-            {
-                throw new InvalidOperationException("Could not resolve property member on " + el);
-            }
-            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberInfo.Value, memberInfo) as PropertyInfo;
-            if (propertyInfo == null)
-            {
-                throw new InvalidOperationException("Could not resolve method info on " + el);
-            }
-
+            var memberInfo = (el.Element("Member")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve property member on " + el);
+            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberInfo.Value, memberInfo) as PropertyInfo ?? throw new InvalidOperationException("Could not resolve method info on " + el);
             return Expression.MakeMemberAccess(expression, propertyInfo);
         }
 
@@ -275,48 +263,24 @@ namespace DataLayer.Utilities.Extensions
         private static Expression? BuildLambda(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var parametersEl = el.Element("Parameters")?.Elements();
-            var bodyEl = el.Element("Body")?.Elements().FirstOrDefault();
-            if (bodyEl == null)
-            {
-                throw new InvalidOperationException("Could not resolve lambda body on " + el);
-            }
+            var bodyEl = (el.Element("Body")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve lambda body on " + el);
             IEnumerable<ParameterExpression>? parameters = parametersEl?.Select(p => ToExpression(p)).Cast<ParameterExpression>();
-            var realBody = ToExpression(bodyEl);
-            if (realBody == null)
-            {
-                throw new InvalidOperationException("Could not resolve lambda body on " + el);
-            }
+            var realBody = ToExpression(bodyEl) ?? throw new InvalidOperationException("Could not resolve lambda body on " + el);
             return Expression.Lambda(realBody, parameters);
         }
 
         private static Expression? BuildUnary(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var argsEl = el.Element("Operand")?.Elements().FirstOrDefault();
-            if (argsEl == null)
-            {
-                throw new InvalidOperationException("Could not resolve operand element on " + el);
-            }
-            var operand = ToExpression(argsEl);
-            if (operand == null)
-            {
-                throw new InvalidOperationException("Could not resolve operand element on " + el);
-            }
+            var argsEl = (el.Element("Operand")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve operand element on " + el);
+            var operand = ToExpression(argsEl) ?? throw new InvalidOperationException("Could not resolve operand element on " + el);
             if (el.Attribute("NodeType")?.Value == "Quote")
             {
                 return Expression.Quote(operand);
             }
             else if (el.Attribute("NodeType")?.Value == "Convert")
             {
-                var type = el.Element("Type")?.Attribute("FullName")?.Value;
-                if (type == null)
-                {
-                    throw new InvalidOperationException("Could not resolve operand type on " + el);
-                }
-                var resolvedType = Type.GetType(type);
-                if (resolvedType == null)
-                {
-                    throw new InvalidOperationException("Could not resolve operand type on " + el);
-                }
+                var type = (el.Element("Type")?.Attribute("FullName")?.Value) ?? throw new InvalidOperationException("Could not resolve operand type on " + el);
+                var resolvedType = Type.GetType(type) ?? throw new InvalidOperationException("Could not resolve operand type on " + el);
                 return Expression.Convert(operand, resolvedType);
             }
             else
@@ -328,39 +292,31 @@ namespace DataLayer.Utilities.Extensions
         private static Expression? BuildMethodCall(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var argsEl = el.Element("Arguments");
-            var methodCall = _factoryMap[ExpressionType.Call].First(mi => mi.Item2.Count() == 1 + argsEl?.Elements().Count());
+            var methodCall = _factoryMap[ExpressionType.Call].First(mi => mi.Item2.Count == 1 + argsEl?.Elements().Count());
             var args = new List<object>();
             var methodEl = el.Element("Method");
             if (methodEl == null || argsEl == null)
             {
                 throw new InvalidOperationException("Could not resolve method elements on " + el);
             }
-            MethodInfo? methodInfo = ResolveMetadata(typeof(MethodInfo), methodEl.Value, methodEl.Elements().First()) as MethodInfo;
-            if (methodInfo == null)
-            {
-                throw new InvalidOperationException("Could not resolve method info on " + el);
-            }
+            MethodInfo? methodInfo = ResolveMetadata(typeof(MethodInfo), methodEl.Value, methodEl.Elements().First()) as MethodInfo ?? throw new InvalidOperationException("Could not resolve method info on " + el);
             args.Add(methodInfo);
             for (var i = 0; i < argsEl.Elements().Count(); i++)
             {
                 var argEl = argsEl.Elements().ElementAt(i);
-                var requiredArg = ToExpression(argEl);
-                if (requiredArg == null)
-                {
-                    throw new InvalidOperationException("Could not resolve expression argument on " + el);
-                }
+                var requiredArg = ToExpression(argEl) ?? throw new InvalidOperationException("Could not resolve expression argument on " + el);
                 args.Add(requiredArg);
             }
-            return methodCall.Item1.Invoke(null, args.ToArray()) as Expression;
+            return methodCall.Item1.Invoke(null, [.. args]) as Expression;
         }
 
-        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, DbContext context)
+        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, IQueryProvider context)
         {
             var result = ToExpression(el, context, out var outish);
             return new Tuple<Expression?, IQueryable?>(result, outish);
         }
 
-        public static Expression? ToExpression(this XElement el, DbContext context, out IQueryable? set)
+        public static Expression? ToExpression(this XElement el, IQueryProvider context, out IQueryable? set)
         {
             set = null;
             var typeStr = el.Attribute("NodeType")?.Value;
@@ -402,7 +358,7 @@ namespace DataLayer.Utilities.Extensions
                 return value;
 
             if (targetType == typeof(ExpressionType) && value != null)
-                return Enum.Parse(typeof(ExpressionType), value);
+                return Enum.Parse<ExpressionType>(value);
 
             if (targetType == typeof(MethodInfo))
             {
@@ -415,20 +371,12 @@ namespace DataLayer.Utilities.Extensions
                     throw new InvalidOperationException("Cannot find type name on " + el.ToString());
                 }
                 var declaringType = Type.GetType(methodSourceType);
-                var method = declaringType?.GetMethods()
+                var method = (declaringType?.GetMethods()
                     // TODO: fix arg count when i test Packs.CountAsync(p => p.Qualifier)
-                    .FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == (paramsCount ?? 0));
-                if (method == null)
-                {
-                    throw new InvalidOperationException("Cannot find method on " + el.ToString());
-                }
+                    .FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == (paramsCount ?? 0))) ?? throw new InvalidOperationException("Cannot find method on " + el.ToString());
                 if (method.ContainsGenericParameters)
                 {
-                    var genericsEl = el.Element("GenericArguments");
-                    if (genericsEl == null)
-                    {
-                        throw new InvalidOperationException("Cannot resolve generic arguments on " + el.ToString());
-                    }
+                    var genericsEl = el.Element("GenericArguments") ?? throw new InvalidOperationException("Cannot resolve generic arguments on " + el.ToString());
                     var genericTypes = genericsEl.Elements()
                         .Select(el2 => Type.GetType(el2.Attribute("AssemblyQualifiedName")?.Value ?? ""))
                         .Cast<Type>().ToArray();
@@ -449,13 +397,9 @@ namespace DataLayer.Utilities.Extensions
                     throw new InvalidOperationException("Cannot find type name on " + el.ToString());
                 }
                 var declaringType = Type.GetType(methodSourceType);
-                var property = declaringType?.GetProperties()
+                var property = (declaringType?.GetProperties()
                     // TODO: fix arg count when i test Packs.CountAsync(p => p.Qualifier)
-                    .FirstOrDefault(m => m.Name == methodName /*&& m.GetIndexParameters().Length == (paramsCount ?? 0)*/);
-                if (property == null)
-                {
-                    throw new InvalidOperationException("Cannot find property on " + el.ToString());
-                }
+                    .FirstOrDefault(m => m.Name == methodName /*&& m.GetIndexParameters().Length == (paramsCount ?? 0)*/)) ?? throw new InvalidOperationException("Cannot find property on " + el.ToString());
                 /*
                 TODO: ???
                 if (method.ContainsGenericParameters)
@@ -479,50 +423,27 @@ namespace DataLayer.Utilities.Extensions
             return null;
         }
 
-        private static Expression? BuildExtension(XElement el, DbContext context, out IQueryable? set)
+        private static Expression? BuildExtension(XElement el, IQueryProvider context, out IQueryable? set)
         {
-            var typeName = el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value;
-            if (typeName == null)
-            {
-                throw new InvalidOperationException("Could not resolve extension type on: " + el);
-            }
-            var entityType = Type.GetType(typeName);
-            if(entityType == null)
-            {
-                throw new InvalidOperationException("Could not resolve type on: " + el);
-            }
+            var typeName = (el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value) ?? throw new InvalidOperationException("Could not resolve extension type on: " + el);
+            var entityType = Type.GetType(typeName) ?? throw new InvalidOperationException("Could not resolve type on: " + el);
 
-            // Reflection Sparkle: Find the DbSet<T> property on TranslationContext 
-            // where T is our entityType.
-            var dbSetProperty = typeof(TranslationContext)
-                .GetProperties()
-                .FirstOrDefault(p => p.PropertyType.IsGenericType &&
-                                     p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>) &&
-                                     p.PropertyType.GetGenericArguments()[0] == entityType);
-            var asQueryableMethod = typeof(Queryable)
-                .GetMethods()
-                .First(m => m.Name == "AsQueryable" && m.IsGenericMethod)
-                .MakeGenericMethod(entityType);
+#pragma warning disable EF1001 // Internal EF Core API usage.
+            var entityQueryableType = typeof(EntityQueryable<>).MakeGenericType(entityType);
+#pragma warning restore EF1001 // Internal EF Core API usage.
 
-            if (dbSetProperty != null)
-            {
-                // Pull the live DbSet instance from your context
-                set = asQueryableMethod.Invoke(null, new[] { dbSetProperty.GetValue(context) }) as IQueryable;
-                // TODO: out DbSet until expression can 
-                return set?.Expression; // This is the "Real" root for EF Core
-            }
+            set = (IQueryable)Activator.CreateInstance(
+                entityQueryableType,
+                [context, Expression.Constant(null, entityQueryableType)] // Root expression
+            )!;
 
-            throw new InvalidOperationException($"No DbSet found for {entityType?.Name} in TranslationContext.");
+            return set.Expression;
         }
 
         private static ConstantExpression BuildConstant(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var val = el.Attribute("Value")?.Value;
-            var typeName = el.Element("Type")?.Attribute("FullName")?.Value;
-            if (typeName == null)
-            {
-                throw new InvalidOperationException("Could not resolve constant type on: " + el);
-            }
+            var typeName = (el.Element("Type")?.Attribute("FullName")?.Value) ?? throw new InvalidOperationException("Could not resolve constant type on: " + el);
             var type = Type.GetType(typeName) ?? typeof(string);
 
             // Use Activator to convert the string value back to the target type
@@ -531,16 +452,12 @@ namespace DataLayer.Utilities.Extensions
         }
 
         // Keep a cache of parameters during a single Reconstruction pass
-        private static Dictionary<string, ParameterExpression> _parameters = new();
+        private static readonly Dictionary<string, ParameterExpression> _parameters = [];
 
         private static ParameterExpression BuildParameter(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var name = el.Element("Name")?.Value ?? "x";
-            var typeName = el.Element("Type")?.Attribute("FullName")?.Value; // From your 'fluffy' reflection
-            if (typeName == null)
-            {
-                throw new InvalidOperationException("Could not resolve parameter type on: " + el);
-            }
+            var typeName = (el.Element("Type")?.Attribute("FullName")?.Value) ?? throw new InvalidOperationException("Could not resolve parameter type on: " + el); // From your 'fluffy' reflection
             var type = Type.GetType(typeName) ?? typeof(object);
 
             // Important: Re-use the same ParameterExpression object for the same name
@@ -557,44 +474,35 @@ namespace DataLayer.Utilities.Extensions
             return ToXDocument(query.Expression).ToString();
         }
 
-        public static object? ToQueryable(string query, IServiceProvider _service)
+        public static object? ToQueryable(string query, IServiceProvider Service)
         {
-            using var scope = _service.CreateScope();
-            var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
+            using var scope = Service.CreateScope();
+            var ephemeralStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<EphemeralStorage>>();
             using var context = ephemeralStore.CreateDbContext();
+            var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
 
+            using XmlReader reader = XmlReader.Create(new StringReader(query));
+            _ = reader.MoveToContent();
+            XElement root = (XElement)XNode.ReadFrom(reader);
 
-            using (XmlReader reader = XmlReader.Create(new StringReader(query)))
+            // 1. Clear the parameter cache for this specific run
+            _parameters.Clear();
+
+            // 2. Reconstruct the raw Expression tree
+            // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
+            Expression? finalExpression = root.ToExpression(provider, out IQueryable? set) ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
+            if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type) && finalExpression.Type != typeof(string))
             {
-                reader.MoveToContent();
-                XElement root = (XElement)XNode.ReadFrom(reader);
+                // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
+                var toListMethod = typeof(Enumerable).GetMethods()
+                    .First(m => m.Name == "ToList" && m.IsGenericMethod)
+                    .MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]);
 
-                // 1. Clear the parameter cache for this specific run
-                _parameters.Clear();
-
-                // 2. Reconstruct the raw Expression tree
-                // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
-                IQueryable? set;
-                Expression? finalExpression = root.ToExpression(context, out set);
-                if (finalExpression == null)
-                {
-                    throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
-                }
-
-                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(finalExpression.Type) && finalExpression.Type != typeof(string))
-                {
-                    // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
-                    var toListMethod = typeof(Enumerable).GetMethods()
-                        .First(m => m.Name == "ToList" && m.IsGenericMethod)
-                        .MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]);
-
-                    return toListMethod.Invoke(null, new[] { set });
-                }
-                else
-                {
-                    return set?.Provider.Execute(finalExpression);
-                }
-
+                return toListMethod.Invoke(null, [set]);
+            }
+            else
+            {
+                return set?.Provider.Execute(finalExpression);
             }
         }
 

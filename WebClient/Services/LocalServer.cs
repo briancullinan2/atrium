@@ -18,7 +18,7 @@ namespace WebClient.Services
             await _runtime.InvokeVoidAsync("window.close", TimeSpan.FromSeconds(1));
         }
 
-        WebAssemblyHost? app;
+        private WebAssemblyHost? app;
         private IJSRuntime? _runtime;
         private NavigationManager? _navigation;
 
@@ -27,14 +27,14 @@ namespace WebClient.Services
 
         }
 
-        public LocalServer(WebAssemblyHost _app)
+        public LocalServer(WebAssemblyHost App)
         {
-            app = _app;
+            app = App;
         }
 
-        public void Initialize(WebAssemblyHost _app, Microsoft.JSInterop.IJSRuntime runtime, Microsoft.AspNetCore.Components.NavigationManager navigation)
+        public void Initialize(WebAssemblyHost App, IJSRuntime runtime, NavigationManager navigation)
         {
-            app = _app;
+            app = App;
             _runtime = runtime;
             _navigation = navigation;
         }

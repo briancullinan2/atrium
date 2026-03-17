@@ -6,6 +6,8 @@ using FlashCard.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Stream = System.IO.Stream;
+using DataLayer.Utilities;
+
 #if WINDOWS
 using Atrium.Platforms.Windows;
 #endif
@@ -25,7 +27,7 @@ namespace Atrium.Services
 
             if (!Directory.Exists(UploadDirectory))
             {
-                Directory.CreateDirectory(UploadDirectory);
+                _ = Directory.CreateDirectory(UploadDirectory);
             }
         }
 
@@ -65,7 +67,7 @@ namespace Atrium.Services
                     Filename = savePath,
                     Source = source // TODO: fill in from nav or parameter or something
                 }, _services);
-                file.Save();
+                _ = file.Save();
 
                 OnFileUploaded?.Invoke(file._target);
                 return file._target;
@@ -100,35 +102,25 @@ namespace Atrium.Services
                     using var stream = file.OpenReadStream();
 
                     // Example: Save to disk in Arizona-based storage
-                    using (var scope = _services.CreateScope())
-                    {
-                        var manager = scope.ServiceProvider.GetRequiredService<IFileManager>();
-                        var databaseFile = await manager.UploadFile(stream, file.FileName);
+                    using var scope = _services.CreateScope();
+                    var manager = scope.ServiceProvider.GetRequiredService<IFileManager>();
+                    var databaseFile = await manager.UploadFile(stream, file.FileName);
 
-                        if (!first) continue;
-                        first = false;
+                    if (!first) continue;
+                    first = false;
 
-                        context.Response.ContentType = "application/json";
-                        var json = JsonSerializer.Serialize(databaseFile, new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                        });
-                        await context.Response.WriteAsync(json);
-                        await context.Response.Body.FlushAsync();
-                        await context.Response.CompleteAsync();
-                    }
+                    context.Response.ContentType = "application/json";
+                    var json = JsonSerializer.Serialize(databaseFile, JsonHelper.Default);
+                    await context.Response.WriteAsync(json);
+                    await context.Response.Body.FlushAsync();
+                    await context.Response.CompleteAsync();
 
                 }
             }
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ex.Message, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-                });
+                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
         }
@@ -152,11 +144,9 @@ namespace Atrium.Services
                 {
                     // You get the ABSOLUTE path immediately! 
                     // No more "browser sandbox" stream restrictions.
-                    using (var scope = _services?.CreateScope())
-                    {
-                        var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                        _ = manager?.UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
-                    }
+                    using var scope = _services?.CreateScope();
+                    var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
+                    _ = manager?.UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
                 }
             }
             catch (Exception)
@@ -228,12 +218,10 @@ namespace Atrium.Services
                 if(!_isFileDragging)
                 {
                     _isFileDragging = true;
-                    using(var scope = _services?.CreateScope())
-                    {
-                        // Notify the front end UI of the upload
-                        var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                        manager?.SetDragging(true);
-                    }
+                    using var scope = _services?.CreateScope();
+                    // Notify the front end UI of the upload
+                    var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
+                    _ = (manager?.SetDragging(true));
                 }
             }
 
@@ -275,7 +263,7 @@ namespace Atrium.Services
             {
                 // Notify the front end UI of the upload
                 var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                manager?.SetDragging(false);
+                _ = (manager?.SetDragging(false));
                 for (uint i = 0; i < fileCount; i++)
                 {
                     // 1. Get required length (returns length without null terminator)
@@ -288,14 +276,14 @@ namespace Atrium.Services
                         fixed (char* pBuffer = buffer)
                         {
                             // 3. Fill the buffer
-                            Shell32.DragQueryFile(hDrop, i, (nint)pBuffer, length);
+                            _ = Shell32.DragQueryFile(hDrop, i, (nint)pBuffer, length);
                         }
                     }
 
                     // 4. Convert to C# string
                     string filePath = new string(buffer).TrimEnd('\0');
-                
-                    manager?.UploadFile(filePath);
+
+                    _ = (manager?.UploadFile(filePath));
                 }
             }
 

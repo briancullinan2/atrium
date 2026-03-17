@@ -3,9 +3,9 @@ using DataLayer.Entities;
 
 namespace FlashCard.Pages.Course
 {
-    public class TestTaking : DataLayer.Generators.IGenerator<DataLayer.Entities.Card>
+    public class TestTaking : DataLayer.Generators.IGenerator<Card>
     {
-        public static IEnumerable<DataLayer.Entities.Card> Generate()
+        public static IEnumerable<Card> Generate()
         {
             return [
                 // Question 1: Radio buttons for Cramming
@@ -14,11 +14,11 @@ namespace FlashCard.Pages.Course
                     Content = "Leading up to the test, it is a super good idea to cram.",
                     ResponseType = CardType.TrueFalse,
                     ResponseContent = "SAY NO TO CRAMMING!!!",
-                    Answers = new List<Answer>
-                    {
+                    Answers =
+                    [
                         new Answer { Content = "True", Value = "True" },
                         new Answer { Content = "False", Value = "False" }
-                    },
+                    ],
                 },
 
                 // Question 2: Text input for Breathing Exercise

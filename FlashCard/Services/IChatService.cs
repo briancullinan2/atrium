@@ -23,8 +23,8 @@
         public string Description { get; set; } = "";
 
 
-        public static List<ChatCommand> CommandRegistry = new()
-        {
+        public static List<ChatCommand> CommandRegistry =
+        [
             // --- Navigation & Context ---
             new() {
                 Function = "NavigateTo",
@@ -126,7 +126,7 @@
                 Parameters = "(dry_run_bool, threshold_days)",
                 Description = "Identifies unlinked cards or empty packs in the Trash/Recovery area for potential purging."
             }
-        };
+        ];
     }
 
 
@@ -140,7 +140,7 @@
         public string DefaultModel { get; set; } = "";
         public string ApiKey { get; set; } = "";
         public string ResponsePath { get; set; } = "";
-        public List<DynamicParam> Params { get; set; } = new();
+        public List<DynamicParam> Params { get; set; } = [];
     }
 
     public class DynamicParam

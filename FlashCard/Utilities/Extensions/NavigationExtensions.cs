@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using System.Linq.Expressions;
 using System.Reflection;
+using DataLayer.Utilities.Extensions;
 
 namespace FlashCard.Utilities.Extensions
 {
@@ -31,51 +32,6 @@ namespace FlashCard.Utilities.Extensions
             }
         }
 
-        private static Dictionary<string, string?> ToDictionary(this MemberInitExpression expression)
-        {
-            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var binding in expression.Bindings)
-            {
-                if (binding is MemberAssignment assignment)
-                {
-                    // We extract the name and value without ever running the constructor
-                    var value = Expression.Lambda(assignment.Expression).Compile().DynamicInvoke();
-                    values[assignment.Member.Name] = value?.ToString();
-                }
-            }
-            return values;
-        }
-
-
-        public static Dictionary<string, string?> ToDictionary(this NewExpression ne)
-        {
-            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < ne.Members?.Count; i++)
-            {
-                var value = Expression.Lambda(ne.Arguments[i]).Compile().DynamicInvoke();
-                values[ne.Members[i].Name] = value?.ToString();
-            }
-            return values;
-        }
-
-        public static Dictionary<string, string?> ToDictionary<TDelegate>(this Expression<TDelegate> ex)
-        {
-            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            if (ex?.Body is NewExpression ne)
-            {
-                values = ne.ToDictionary();
-            }
-            else if (ex?.Body is MemberInitExpression mi)
-            {
-                values = mi.ToDictionary();
-            }
-            else
-            {
-                throw new InvalidOperationException("Can't do anything else, frankly.");
-            }
-            return values;
-        }
 
         // TODO: generic implicit ?
         // public static implicit operator RouteData<T>(T source) => new RouteData<T>();
@@ -135,19 +91,19 @@ namespace FlashCard.Utilities.Extensions
             internal IEnumerable<string>? Params;
             internal bool Wildcard;
         }
-        private static Dictionary<Type, IEnumerable<ParsedRoute>> _routeCache = new();
+        private static readonly Dictionary<Type, IEnumerable<ParsedRoute>> _routeCache = [];
 
         private static IEnumerable<ParsedRoute> GetRoutes(Type componentType)
         {
             // not sure how this would get in there?
-            if (_routeCache.ContainsKey(componentType))
+            if (_routeCache.TryGetValue(componentType, out IEnumerable<ParsedRoute>? value))
             {
-                if (_routeCache[componentType].Count() == 0)
+                if (!value.Any())
                 {
                     throw new ArgumentException($"Type {componentType.Name} does not have any [RouteAttribute] defined.");
                 }
 
-                return _routeCache[componentType];
+                return value;
             }
 
             var routes = componentType.GetCustomAttributes<RouteAttribute>().Select(attr => attr.Template).ToList();
@@ -157,7 +113,7 @@ namespace FlashCard.Utilities.Extensions
             }
 
             var parameterMatcher = @"\{([^:{}]+)(.*?)?\}|(\*)";
-            _routeCache[componentType] = routes
+            _routeCache[componentType] = [.. routes
                 .Select(r => new
                 {
                     Template = r,
@@ -172,8 +128,8 @@ namespace FlashCard.Utilities.Extensions
                     Template = m.Template,
                     Segments = m.Segments,
                     Params = m.Params,
-                    Wildcard = m.Params.Any(p => p.StartsWith("*")),
-                }).ToList();
+                    Wildcard = m.Params.Any(p => p.StartsWith('*')),
+                })];
 
             return _routeCache[componentType];
 
@@ -197,7 +153,7 @@ namespace FlashCard.Utilities.Extensions
                     Matches = m.Params?.Count(p => initializer?.ContainsKey(p) == true)
                             + m.Segments?.Count(s => initializer?.Any(kvp => s.Equals(kvp.Value, StringComparison.InvariantCultureIgnoreCase)) == true)
                 })
-                .OrderByDescending(r => initializer?.Count() > r.Matches && r.Params?.Count() > r.Matches && r.Wildcard ? r.Matches + 1 : r.Matches)
+                .OrderByDescending(r => initializer?.Count > r.Matches && r.Params?.Count() > r.Matches && r.Wildcard ? r.Matches + 1 : r.Matches)
                 .ThenBy(r => r.Template?.Length);
 
             var bestRoute = matchedRoutes.First();
@@ -215,7 +171,7 @@ namespace FlashCard.Utilities.Extensions
             // TODO: replace intermittent? /*/something?
             if (missing != null && finalUri.EndsWith("/*"))
             {
-                finalUri = finalUri.Substring(0, finalUri.Length - 1) + missing;
+                finalUri = finalUri[..^1] + missing;
             }
 
             return finalUri;
@@ -238,7 +194,7 @@ namespace FlashCard.Utilities.Extensions
             {
                 foreach (var route in entry.Value)
                 {
-                    var templateSegments = route.Template?.Trim('/').Split('/') ?? Array.Empty<string>();
+                    var templateSegments = route.Template?.Trim('/').Split('/') ?? [];
 
                     // 1. Structural Validation
                     if (!route.Wildcard && templateSegments.Length != pathSegments.Length) continue;

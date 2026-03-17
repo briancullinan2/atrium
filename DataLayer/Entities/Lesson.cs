@@ -23,7 +23,7 @@ namespace DataLayer.Entities
 
         [ForeignKey(nameof(ParentId))]
         public virtual Lesson? Parent { get; set; }
-        public virtual ICollection<Lesson> Children { get; set; } = new List<Lesson>();
+        public virtual ICollection<Lesson> Children { get; set; } = [];
 
         public int? CourseId { get; set; }
         [ForeignKey(nameof(CourseId))]

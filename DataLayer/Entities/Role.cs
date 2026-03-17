@@ -15,8 +15,8 @@ namespace DataLayer.Entities
         public int Priority { get; set; }
 
         [InverseProperty(nameof(User.Roles))]
-        public ICollection<DataLayer.Entities.User> Users { get; set; } = new HashSet<DataLayer.Entities.User>();
+        public ICollection<User> Users { get; set; } = new HashSet<User>();
         [InverseProperty(nameof(Group.Roles))]
-        public ICollection<DataLayer.Entities.Group> Groups { get; set; } = new HashSet<DataLayer.Entities.Group>();
+        public ICollection<Group> Groups { get; set; } = new HashSet<Group>();
     }
 }

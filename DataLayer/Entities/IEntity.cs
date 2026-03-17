@@ -29,21 +29,13 @@ namespace DataLayer.Entities
 
         public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider? service, Type? context = null) where T : class, IEntity<T>
         {
-            var result = Wrap((IEntity)target, service, context) as ProxyEntity<T>;
-            if(result == null)
-            {
-                throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
-            }
+            var result = Wrap((IEntity)target, service, context) as ProxyEntity<T> ?? throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
             return result;
         }
 
         public static ProxyEntity<T> Wrap<T>(IEntity<T> target, IServiceProvider? service) where T : class, IEntity<T>
         {
-            var result = Wrap((IEntity)target, service) as ProxyEntity<T>;
-            if (result == null)
-            {
-                throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
-            }
+            var result = Wrap((IEntity)target, service) as ProxyEntity<T> ?? throw new InvalidOperationException("Failed to create proxy entity of type: " + typeof(T));
             return result;
         }
 
@@ -90,7 +82,7 @@ namespace DataLayer.Entities
     {
         public ProxyEntity<T> Wrap(IServiceProvider? service = null, bool persist = true)
         {
-            return Entity.Wrap(this, service, persist ? typeof(IDbContextFactory<DataLayer.PersistentStorage>) : typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
+            return Entity.Wrap(this, service, persist ? typeof(IDbContextFactory<PersistentStorage>) : typeof(IDbContextFactory<EphemeralStorage>));
         }
 
         public ProxyEntity<T> Wrap(IServiceProvider? service, Type? context)
@@ -288,10 +280,10 @@ namespace DataLayer.Entities
             PropertyChanged?.Invoke(_target, new PropertyChangedEventArgs(propertyName));
 
             // Lead back to your static TranslationContext
-            OnEntityChanged(propertyName);
+            ProxyEntity<T>.OnEntityChanged(propertyName);
         }
 
-        private void OnEntityChanged(string prop)
+        private static void OnEntityChanged(string prop)
         {
             // Add your logic to track "dirty" states for your Cloud/Disk swap
             Console.WriteLine($"Property {prop} changed. Ready for sync.");
@@ -308,20 +300,14 @@ namespace DataLayer.Entities
 
             if (targetMethod?.Name.StartsWith("set_") == true)
             {
-                var propName = targetMethod.Name.Substring(4);
+                var propName = targetMethod.Name[4..];
                 // Trigger your WPF logic here
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
-                OnEntityChanged(propName);
+                ProxyEntity<T>.OnEntityChanged(propName);
             }
             if (targetMethod?.Name.StartsWith("get_") == true && result == null)
             {
-                var prop = _target.GetType().GetProperty(targetMethod.Name.Substring(4));
-
-                if (prop == null)
-                {
-                    throw new InvalidOperationException("Property does not exist: " + targetMethod.Name.Substring(4) + " on entity type " + typeof (T));
-                }
-
+                var prop = _target.GetType().GetProperty(targetMethod.Name[4..]) ?? throw new InvalidOperationException("Property does not exist: " + targetMethod.Name[4..] + " on entity type " + typeof(T));
                 using var scope = _service.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<TranslationContext>();
 
@@ -331,10 +317,9 @@ namespace DataLayer.Entities
                     context.Entry(_target).Reference(prop.Name).Load();
 
                     // 2. Retrieve the now-populated value
-                    var rawValue = prop.GetValue(_target) as IEntity;
 
                     // 3. Make it "Smart" before returning it to the UI
-                    result = rawValue != null ? Entity.Wrap(rawValue, _service) : null;
+                    result = prop.GetValue(_target) is IEntity rawValue ? Entity.Wrap(rawValue, _service) : null;
                 }
                 else if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType))
                 {

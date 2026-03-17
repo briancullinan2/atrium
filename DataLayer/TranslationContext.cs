@@ -7,31 +7,24 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 namespace DataLayer
 {
     // This context never connects to a DB; it just holds your Entity mappings
-    public class TranslationContext : DbContext
+    public class TranslationContext(DbContextOptions ctx) : DbContext(ctx)
     {
-        public DbSet<DataLayer.Entities.Permission> Permissions { get; set; }
-        public DbSet<DataLayer.Entities.Role> Roles { get; set; }
-        public DbSet<DataLayer.Entities.User> Users { get; set; }
-        public DbSet<DataLayer.Entities.Setting> Settings { get; set; }
-        public DbSet<DataLayer.Entities.Message> Messages { get; set; }
-        public DbSet<DataLayer.Entities.Pack> Packs { get; set; }
-        public DbSet<DataLayer.Entities.Card> Cards { get; set; }
-        public DbSet<DataLayer.Entities.Answer> Answers { get; set; }
-        public DbSet<DataLayer.Entities.Group> Groups { get; set; }
-        public DbSet<DataLayer.Entities.File> Files { get; set; }
-        public DbSet<DataLayer.Entities.Visit> Visits { get; set; }
-        public DbSet<DataLayer.Entities.Session> Sessions { get; set; }
-        public DbSet<DataLayer.Entities.Schedule> Schedules { get; set; }
-        public DbSet<DataLayer.Entities.Subject> Subjects { get; set; }
-        public DbSet<DataLayer.Entities.Grade> Grades { get; set; }
-        public DbSet<DataLayer.Entities.Lesson> Lessons { get; set; }
-
-
-        // Add other entities here...
-
-        public TranslationContext(DbContextOptions ctx) : base(ctx)
-        {
-        }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Setting> Settings { get; set; }
+        public DbSet<Message> Messages { get; set; }
+        public DbSet<Pack> Packs { get; set; }
+        public DbSet<Card> Cards { get; set; }
+        public DbSet<Answer> Answers { get; set; }
+        public DbSet<Group> Groups { get; set; }
+        public DbSet<Entities.File> Files { get; set; }
+        public DbSet<Visit> Visits { get; set; }
+        public DbSet<Session> Sessions { get; set; }
+        public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<Subject> Subjects { get; set; }
+        public DbSet<Grade> Grades { get; set; }
+        public DbSet<Lesson> Lessons { get; set; }
 
         public string ConnectString
         {
@@ -53,40 +46,40 @@ namespace DataLayer
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             // This makes the conversion "implicit" for the database layer globally.
-            configurationBuilder.Properties<Customization.DisplayType>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.ControlMode>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.Gender>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.PackMode>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.PackStatus>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.CardType>().HaveConversion<int>();
-            configurationBuilder.Properties<Customization.GradeScale>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.DisplayType>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.ControlMode>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.Gender>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.PackMode>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.PackStatus>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.CardType>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<Customization.GradeScale>().HaveConversion<int>();
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Ignore<System.Text.RegularExpressions.Capture>();
-            modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
-            modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Capture>();
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
 
             // Explicitly map the Message entity to the "Message" table
-            modelBuilder.Entity<Entities.Message>().ToTable(EntityMetadata.Message.TableName);
-            modelBuilder.Entity<Entities.Permission>().ToTable(EntityMetadata.Permission.TableName);
-            modelBuilder.Entity<Entities.Role>().ToTable(EntityMetadata.Role.TableName);
-            modelBuilder.Entity<Entities.Setting>().ToTable(EntityMetadata.Setting.TableName);
-            modelBuilder.Entity<Entities.User>().ToTable(EntityMetadata.User.TableName);
-            modelBuilder.Entity<Entities.Card>().ToTable(EntityMetadata.Card.TableName);
-            modelBuilder.Entity<Entities.Pack>().ToTable(EntityMetadata.Pack.TableName);
-            modelBuilder.Entity<Entities.Answer>().ToTable(EntityMetadata.Answer.TableName);
-            modelBuilder.Entity<Entities.Group>().ToTable(EntityMetadata.Group.TableName);
-            modelBuilder.Entity<Entities.File>().ToTable(EntityMetadata.File.TableName);
-            modelBuilder.Entity<Entities.Visit>().ToTable(EntityMetadata.Visit.TableName);
-            modelBuilder.Entity<Entities.Session>().ToTable(EntityMetadata.Session.TableName);
-            modelBuilder.Entity<Entities.Subject>().ToTable(EntityMetadata.Subject.TableName);
-            modelBuilder.Entity<Entities.Schedule>().ToTable(EntityMetadata.Schedule.TableName);
-            modelBuilder.Entity<Entities.Grade>().ToTable(EntityMetadata.Grade.TableName);
-            modelBuilder.Entity<Entities.Lesson>().ToTable(EntityMetadata.Lesson.TableName);
+            _ = modelBuilder.Entity<Message>().ToTable(EntityMetadata.Message.TableName);
+            _ = modelBuilder.Entity<Permission>().ToTable(EntityMetadata.Permission.TableName);
+            _ = modelBuilder.Entity<Role>().ToTable(EntityMetadata.Role.TableName);
+            _ = modelBuilder.Entity<Setting>().ToTable(EntityMetadata.Setting.TableName);
+            _ = modelBuilder.Entity<User>().ToTable(EntityMetadata.User.TableName);
+            _ = modelBuilder.Entity<Card>().ToTable(EntityMetadata.Card.TableName);
+            _ = modelBuilder.Entity<Pack>().ToTable(EntityMetadata.Pack.TableName);
+            _ = modelBuilder.Entity<Answer>().ToTable(EntityMetadata.Answer.TableName);
+            _ = modelBuilder.Entity<Group>().ToTable(EntityMetadata.Group.TableName);
+            _ = modelBuilder.Entity<Entities.File>().ToTable(EntityMetadata.File.TableName);
+            _ = modelBuilder.Entity<Visit>().ToTable(EntityMetadata.Visit.TableName);
+            _ = modelBuilder.Entity<Session>().ToTable(EntityMetadata.Session.TableName);
+            _ = modelBuilder.Entity<Subject>().ToTable(EntityMetadata.Subject.TableName);
+            _ = modelBuilder.Entity<Schedule>().ToTable(EntityMetadata.Schedule.TableName);
+            _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
+            _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
             /*
             modelBuilder.Entity<User>()
@@ -111,11 +104,7 @@ namespace DataLayer
             if (instance is IEntity entity)
             {
                 var serviceProvider = materializationData.Context.GetService<IServiceProvider>();
-                var result = Entity.Wrap(entity, serviceProvider);
-                if(result == null)
-                {
-                    throw new InvalidOperationException("Failed to wrap object: " + instance);
-                }
+                var result = Entity.Wrap(entity, serviceProvider) ?? throw new InvalidOperationException("Failed to wrap object: " + instance);
                 return result;
             }
             return instance;
@@ -123,75 +112,58 @@ namespace DataLayer
     }
     public partial class EntityMetadata
     {
-        public static EntityMetadata<Entities.Answer> Answer => new EntityMetadata<Entities.Answer>();
-        public static EntityMetadata<Entities.Pack> Pack => new EntityMetadata<Entities.Pack>();
-        public static EntityMetadata<Entities.Card> Card => new EntityMetadata<Entities.Card>();
-        public static EntityMetadata<Entities.Permission> Permission => new EntityMetadata<Entities.Permission>();
-        public static EntityMetadata<Entities.User> User => new EntityMetadata<Entities.User>();
-        public static EntityMetadata<Entities.Role> Role => new EntityMetadata<Entities.Role>();
-        public static EntityMetadata<Entities.Setting> Setting => new EntityMetadata<Entities.Setting>();
-        public static EntityMetadata<Entities.Message> Message => new EntityMetadata<Entities.Message>();
-        public static EntityMetadata<Entities.File> File => new EntityMetadata<Entities.File>();
-        public static EntityMetadata<Entities.Group> Group => new EntityMetadata<Entities.Group>();
-        public static EntityMetadata<Entities.Visit> Visit => new EntityMetadata<Entities.Visit>();
-        public static EntityMetadata<Entities.Session> Session => new EntityMetadata<Entities.Session>();
-        public static EntityMetadata<Entities.Subject> Subject => new EntityMetadata<Entities.Subject>();
-        public static EntityMetadata<Entities.Schedule> Schedule => new EntityMetadata<Entities.Schedule>();
-        public static EntityMetadata<Entities.Grade> Grade => new EntityMetadata<Entities.Grade>();
-        public static EntityMetadata<Entities.Lesson> Lesson => new EntityMetadata<Entities.Lesson>();
+        public static EntityMetadata<Answer> Answer => new();
+        public static EntityMetadata<Pack> Pack => new();
+        public static EntityMetadata<Card> Card => new();
+        public static EntityMetadata<Permission> Permission => new();
+        public static EntityMetadata<User> User => new();
+        public static EntityMetadata<Role> Role => new();
+        public static EntityMetadata<Setting> Setting => new();
+        public static EntityMetadata<Message> Message => new();
+        public static EntityMetadata<Entities.File> File => new();
+        public static EntityMetadata<Group> Group => new();
+        public static EntityMetadata<Visit> Visit => new();
+        public static EntityMetadata<Session> Session => new();
+        public static EntityMetadata<Subject> Subject => new();
+        public static EntityMetadata<Schedule> Schedule => new();
+        public static EntityMetadata<Grade> Grade => new();
+        public static EntityMetadata<Lesson> Lesson => new();
 
     }
 
 
 
     // expected to reset only the first time the application runs and be persistent on disk
-    public class PersistentStorage : TranslationContext
+    public class PersistentStorage(DbContextOptions<PersistentStorage> ctx) : TranslationContext(ctx)
     {
-        public PersistentStorage(DbContextOptions<PersistentStorage> ctx) : base(ctx)
-        {
-        }
-
     }
 
 
     // expected to reset once at the beginning of application load
-    public class EphemeralStorage : TranslationContext
+    public class EphemeralStorage(DbContextOptions<EphemeralStorage> ctx) : TranslationContext(ctx)
     {
-        public EphemeralStorage(DbContextOptions<EphemeralStorage> ctx) : base(ctx)
-        {
-        }
-
     }
 
 
     // default interface between web client and http host server
-    public class RemoteStorage : TranslationContext
+    public class RemoteStorage(DbContextOptions<RemoteStorage> ctx) : TranslationContext(ctx)
     {
-        public RemoteStorage(DbContextOptions<RemoteStorage> ctx) : base(ctx)
-        {
-        }
-
-
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
-            
-            options.UseInMemoryDatabase("RemoteShell");
+
+            _ = options.UseInMemoryDatabase("RemoteShell");
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
-            options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>();
+            _ = options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>();
 #pragma warning restore EF1001 // Internal EF Core API usage.
         }
     }
 
 
     // expected to reset multiple times per instance run
-    public class TestStorage : TranslationContext
+    public class TestStorage(DbContextOptions<TestStorage> ctx) : TranslationContext(ctx)
     {
-        public TestStorage(DbContextOptions<TestStorage> ctx) : base(ctx)
-        {
-        }
-
     }
 
 }

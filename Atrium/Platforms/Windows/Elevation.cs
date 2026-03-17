@@ -8,12 +8,12 @@ namespace Atrium.Platforms.Windows
         public static void EnsureElevated(string[] args)
         {
             using WindowsIdentity identity = WindowsIdentity.GetCurrent();
-            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            WindowsPrincipal principal = new(identity);
 
             // If not admin, relaunch with the 'runas' verb
             if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
             {
-                ProcessStartInfo startInfo = new ProcessStartInfo
+                ProcessStartInfo startInfo = new()
                 {
                     FileName = Environment.ProcessPath, // Works in .NET 6+
                     Arguments = string.Join(" ", args) + " --elevated-task",
@@ -23,7 +23,7 @@ namespace Atrium.Platforms.Windows
 
                 try
                 {
-                    Process.Start(startInfo);
+                    _ = Process.Start(startInfo);
                     Environment.Exit(0); // Exit the non-elevated instance
                 }
                 catch

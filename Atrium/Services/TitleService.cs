@@ -7,7 +7,7 @@ namespace Atrium.Services
     {
         internal static Action<string?> _setTitle = s => { };
         internal static string? _title;
-        private string? _appName;
+        private readonly string? _appName;
 
         public event Action<string?>? OnTitleChanged;
 

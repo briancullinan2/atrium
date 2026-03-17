@@ -7,7 +7,7 @@ namespace Atrium.Services
     public class TitleTrackerService : ITitleService
     {
         internal static string? _title;
-        private string? _appName;
+        private readonly string? _appName;
 
         public event Action<string?>? OnTitleChanged;
 

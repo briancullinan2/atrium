@@ -6,7 +6,7 @@ namespace FlashCard.Services
     {
         Task<string?> GetToken();
         Task<string?> GetHost();
-        Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null);
+        Task<string?> CheckTunnel(string? Account = null, string? Tunnel = null, string? Api = null);
         Task<bool?> CheckInstalled();
         Task<bool?> IsWorking();
         Task<StatusResponse?> CheckStatus(string? domain);
@@ -27,6 +27,7 @@ namespace FlashCard.Services
     {
         [JsonIgnore]
         private static string _guid;
+        [JsonIgnore]
         private static DateTime _now;
         static StatusResponse()
         {
@@ -34,7 +35,7 @@ namespace FlashCard.Services
             _now = DateTime.Now;
         }
         public DateTime? Now { get; set; }
-        public List<string>? ItWorks { get => [StatusResponse._guid]; }
+        public static List<string>? ItWorks { get => [StatusResponse._guid]; set => _guid = value?.Count > 0 ? value?.ElementAt(0) ?? _guid : _guid; }
         public string? Host { get; set; }
         public string? Tunnel { get; set; }
         public bool? Installed { get; set; }

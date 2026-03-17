@@ -1,18 +1,19 @@
 ﻿using Microsoft.AspNetCore.Http;
 using FlashCard.Services;
 using System.Net.Http.Json;
+using DataLayer.Utilities;
+
 #if WINDOWS
 using System.ServiceProcess;
 #endif
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
     internal class StatusService : IStatusService
     {
-        static string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        static HostingSettings? Settings { get; set; }
+        private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        private static HostingSettings? Settings { get; set; }
         internal static IServiceProvider? _services;
 
         static StatusService()
@@ -34,10 +35,7 @@ namespace Atrium.Services
         protected static HttpClient? _httpClient;
         public StatusService()
         {
-            if (_httpClient == null)
-            {
-                _httpClient = _services?.GetRequiredService<HttpClient>();
-            }
+            _httpClient ??= _services?.GetRequiredService<HttpClient>();
         }
 
         public async Task<bool?> CheckInstalled()
@@ -91,11 +89,7 @@ namespace Atrium.Services
                 Host = Settings?.Domain,
                 Tunnel = tunnel,
                 Installed = CheckServiceInstalled()
-            }, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                ReferenceHandler = ReferenceHandler.IgnoreCycles // Important for EF Entities
-            });
+            }, JsonHelper.Default);
 
             await context.Response.WriteAsync(json);
 
@@ -105,7 +99,7 @@ namespace Atrium.Services
 
         public async Task<string?> GetToken()
         {
-            return (new StatusResponse()).ItWorks?[0];
+            return StatusResponse.ItWorks?[0];
         }
 
         public async Task<string?> GetHost()
@@ -141,8 +135,8 @@ namespace Atrium.Services
 
             try
             {
-                _httpClient?.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiToken);
+                _ = (_httpClient?.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiToken));
 
                 var request = _httpClient?.GetAsync(
                     $"https://api.cloudflare.com/client/v4/accounts/{AccountId}/cfd_tunnel?name={TunnelName}&is_deleted=false");
@@ -177,12 +171,12 @@ namespace Atrium.Services
             var token = await GetToken();
             if (statusResult != null)
             {
-                return token == statusResult.ItWorks?[0];
+                return token == StatusResponse.ItWorks?[0];
             }
             var host = await GetHost();
             var result = await CheckStatus(host);
-            OnHttpWorking?.Invoke(result?.ItWorks?[0] == token);
-            return result?.ItWorks?[0] == token;
+            OnHttpWorking?.Invoke(token == StatusResponse.ItWorks?[0]);
+            return token == StatusResponse.ItWorks?[0];
         }
 
         public async Task<StatusResponse?> CheckStatus(string? domain)

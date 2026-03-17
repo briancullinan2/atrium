@@ -27,7 +27,7 @@ namespace Atrium.Platforms
     }
     internal class OpenPort
     {
-        public void OpenPortViaNativeCom(int port, string appName)
+        public static void OpenPortViaNativeCom(int port, string appName)
         {
             Type? policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
             if (policyType == null) return;
@@ -35,9 +35,8 @@ namespace Atrium.Platforms
 
             Type? ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule");
             if (ruleType == null) return;
-            INetFwRule? newRule = Activator.CreateInstance(ruleType) as INetFwRule;
 
-            if (newRule == null) return;
+            if (Activator.CreateInstance(ruleType) is not INetFwRule newRule) return;
             if (fwPolicy2 == null) return;
 
             newRule.Name = $"{appName} Web Host";

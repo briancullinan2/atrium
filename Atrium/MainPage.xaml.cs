@@ -41,11 +41,9 @@ namespace Atrium
                         e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
                 
                         MainThread.BeginInvokeOnMainThread(() => {
-                            using(var scope = _services?.CreateScope())
-                            {
-                                var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                                manager?.SetDragging(true);
-                            }
+                            using var scope = _services?.CreateScope();
+                            var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
+                            manager?.SetDragging(true);
                         });
                     }
                 };
@@ -53,11 +51,9 @@ namespace Atrium
                 webView.DragLeave += (s, e) =>
                 {
                     MainThread.BeginInvokeOnMainThread(() => {
-                        using(var scope = _services?.CreateScope())
-                        {
-                            var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                            manager?.SetDragging(false);
-                        }
+                        using var scope = _services?.CreateScope();
+                        var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
+                        manager?.SetDragging(false);
                     });
                 };
 
@@ -70,11 +66,9 @@ namespace Atrium
                         {
                             // Here is your absolute path for the .apkg!
                             string path = item.Path;
-                            using(var scope = _services?.CreateScope())
-                            {
-                                var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                                manager?.UploadFile(path);
-                            }
+                            using var scope = _services?.CreateScope();
+                            var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
+                            manager?.UploadFile(path);
                         }
                     }
                 };

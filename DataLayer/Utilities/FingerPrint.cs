@@ -55,7 +55,7 @@ namespace DataLayer.Utilities
             return (long)hash;
         }
 
-        public static readonly Dictionary<string, string[]> StopWords = new Dictionary<string, string[]>
+        public static readonly Dictionary<string, string[]> StopWords = new()
         {
             { "en", new[] { "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "is", "it", "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these", "they", "this", "to", "was", "will", "with" } },
             { "es", new[] { "al", "ante", "bajo", "con", "contra", "de", "del", "desde", "durante", "el", "ella", "ellos", "en", "entre", "es", "esta", "esto", "hacia", "hasta", "la", "las", "lo", "los", "mas", "mi", "mis", "ni", "no", "nos", "o", "para", "pero", "por", "que", "se", "si", "sin", "sobre", "su", "sus", "te", "tu", "un", "una", "unas", "uno", "unos", "y" } },
@@ -84,7 +84,7 @@ namespace DataLayer.Utilities
             { "pl", new[] { "a", "aby", "ach", "acz", "aczkolwiek", "aj", "albo", "ale", "ani", "aż", "bardziej", "bardzo", "bo", "bowiem", "by", "byle", "byli", "było", "był", "była", "były", "będzie", "będą", "cali", "cała", "cały", "ci", "cię", "ciebie", "co", "cokolwiek", "coś", "czasami", "czasem", "czemu", "czy", "czyli", "daleko", "dla", "dlaczego", "dlatego", "do", "dobrze", "dokąd", "dość", "dużo", "dwa", "dwaj", "dwie", "dwoje", "dziś", "dzisiaj", "gdy", "gdyby", "gdyż", "gdzie", "gdziekolwiek", "gdzieś", "i", "ich", "ile", "im", "inna", "inne", "inny", "innych", "iż", "ja", "jak", "jakaś", "jakby", "jaki", "jakie", "jakiś", "jako", "jakoś", "je", "jeden", "jedna", "jedno", "jednak", "jednakże", "jego", "jej", "jako", "jeżeli", "już", "ją", "każdy", "kiedy", "kilka", "kimś", "kto", "ktokolwiek", "ktoś", "która", "które", "którego", "której", "który", "których", "którym", "którzy", "ku", "lat", "lecz", "lub", "ma", "mają", "mało", "mam", "mi", "mimo", "między", "mnie", "mną", "może", "można", "mój", "my", "na", "nawet", "nam", "nami", "nas", "nasz", "nasza", "nasze", "naszym", "nasi", "nic", "nich", "nie", "niech", "niego", "niej", "niemu", "nigdy", "nim", "nimi", "niż", "no", "o", "obok", "on", "ona", "one", "oni", "ono", "owszem", "pan", "po", "pod", "podczas", "pomimo", "ponad", "ponieważ", "powinien", "powinna", "powinni", "powinno", "poza", "prawie", "przecież", "przed", "przede", "przez", "przy", "roku", "również", "sam", "sama", "są", "się", "skąd", "sobie", "sobą", "sposób", "swoje", "ta", "tak", "taki", "takie", "także", "tam", "te", "tego", "tej", "temu", "ten", "teraz", "też", "totem", "tobie", "tobą", "trochę", "tu", "tutaj", "twoja", "twoje", "twój", "twój", "ty", "tych", "tylko", "tym", "u", "w", "wam", "wami", "was", "wasz", "wasza", "wasze", "we", "według", "wiele", "wielu", "więc", "więcej", "właśnie", "wszyscy", "wszystkich", "wszystkie", "wszystkim", "wszystko", "wtedy", "wy", "z", "za", "zawsze", "ze", "znowu", "znów", "został", "żaden", "żadna", "żadne", "żadnych", "że", "żeby" } }
         };
 
-        private static readonly HashSet<string> GlobalStopWords = new HashSet<string>(
+        private static readonly HashSet<string> GlobalStopWords = new(
             StopWords.Values.SelectMany(x => x),
             StringComparer.OrdinalIgnoreCase
         );
@@ -94,10 +94,9 @@ namespace DataLayer.Utilities
             // 1. Clean & Lowercase
             if (string.IsNullOrEmpty(input)) return 0;
             string pattern = @"[^\p{L}\p{N}\p{Sc}\p{Sm}]+";
-            IEnumerable<string> words = Regex.Split(input, pattern, RegexOptions.IgnoreCase)
+            IEnumerable<string> words = [.. Regex.Split(input, pattern, RegexOptions.IgnoreCase)
                 .Where(w => !string.IsNullOrWhiteSpace(w) && w.Length > 1)
-                .Select(w => w.ToLowerInvariant())
-                .ToList();
+                .Select(w => w.ToLowerInvariant())];
 
             // 2. Filter for Nouns (NN) and Negations (NOT)
             var coreContent = words

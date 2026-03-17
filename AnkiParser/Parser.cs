@@ -1,4 +1,5 @@
 ﻿using DataLayer.Customization;
+using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,10 @@ using System.Text.RegularExpressions;
 
 namespace AnkiParser
 {
-    public static class Parser
+    public static partial class Parser
     {
 
-        public static List<DataLayer.Entities.File> ListFiles(string? ankiPackage, IServiceProvider _services)
+        public static List<DataLayer.Entities.File> ListFiles(string? ankiPackage, IServiceProvider Services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -26,13 +27,13 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = _services.CreateScope();
+            using var scope = Services.CreateScope();
             var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
             using var context = persistentStore.CreateDbContext();
             if (context.Files.Any(f => f.Created == fileTime && f.Filename == ankiPackage))
             {
-                results = context.Files.Where(f => f.Source == simpleName).ToList();
-                if (results.Any())
+                results = [.. context.Files.Where(f => f.Source == simpleName)];
+                if (results.Count != 0)
                 {
                     return results;
                 }
@@ -54,14 +55,14 @@ namespace AnkiParser
                     Created = entry.LastWriteTime.DateTime
                 };
                 results.Add(newFile);
-                var wrapped = DataLayer.Entities.Entity.Wrap(newFile, _services, typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
-                wrapped.Save();
+                var wrapped = DataLayer.Entities.Entity.Wrap(newFile, Services, typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
+                _ = wrapped.Save();
             }
 
             return results;
         }
 
-        public static List<DataLayer.Entities.Card> ParseCards(string? ankiPackage, IServiceProvider _services)
+        public static List<DataLayer.Entities.Card> ParseCards(string? ankiPackage, IServiceProvider Services)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -72,11 +73,11 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            using var scope = _services.CreateScope();
+            using var scope = Services.CreateScope();
             var persistentStore = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>();
             using var context = persistentStore.CreateDbContext();
             var results = context.Cards.Where(f => f.Source == simpleName).ToList();
-            if (results.Any() == true)
+            if (results.Count != 0 == true)
             {
                 return results;
             }
@@ -97,7 +98,7 @@ namespace AnkiParser
             {
                 if (entry.FullName.EndsWith(".anki2"))
                 {
-                    return ParseCards(entry.Open(), simpleName, _services);
+                    return ParseCards(entry.Open(), simpleName, Services);
                 }
             }
             return [];
@@ -122,10 +123,7 @@ namespace AnkiParser
             // 1. Get the Note Models (Col.models JSON) 
             // Anki stores deck configs and note models in the 'col' table 'models' column
             var collection = context.Collections.First();
-            var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, new JsonSerializerOptions()
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonHelper.Default);
 
             var results = new List<DataLayer.Entities.Card>();
             var cards = context.Cards.Include(c => c.Note).ToList();
@@ -159,7 +157,7 @@ namespace AnkiParser
                 results.Add(newCard);
                 // idempotence
                 var wrapped = DataLayer.Entities.Entity.Wrap(newCard, _services, typeof(IDbContextFactory<DataLayer.EphemeralStorage>));
-                wrapped.Save();
+                _ = wrapped.Save();
             }
             uploadConn.Close();
             SqliteConnection.ClearPool(uploadConn);
@@ -178,7 +176,7 @@ namespace AnkiParser
                     output = output.Replace("{{" + fields[i].Name + "}}", values[i]);
             }
             // Remove any remaining Anki-specific syntax like {{type:...}} or {{#...}}
-            return Regex.Replace(output, @"{{.*?}}", "").Trim();
+            return AnkiTagRegEx().Replace(output, "").Trim();
         }
 
 
@@ -187,18 +185,16 @@ namespace AnkiParser
 
         public static void ParseMediaFile(Stream fileStream)
         {
-            using (StreamReader reader = new StreamReader(fileStream))
+            using StreamReader reader = new(fileStream);
+            string jsonContent = reader.ReadToEnd();
+
+            // Anki's 'media' file is a JSON object: {"0": "img1.png", "1": "img2.jpg"}
+            var rawMap = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonContent);
+
+            if (rawMap != null)
             {
-                string jsonContent = reader.ReadToEnd();
-
-                // Anki's 'media' file is a JSON object: {"0": "img1.png", "1": "img2.jpg"}
-                var rawMap = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonContent);
-
-                if (rawMap != null)
-                {
-                    // We flip it so you can look up "Screen Shot..." and get "0"
-                    NameToDiskMap = rawMap.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
-                }
+                // We flip it so you can look up "Screen Shot..." and get "0"
+                NameToDiskMap = rawMap.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
             }
         }
 
@@ -221,11 +217,14 @@ namespace AnkiParser
             if (input.Contains("src=\""))
             {
                 int start = input.IndexOf("src=\"") + 5;
-                int end = input.IndexOf("\"", start);
-                return input.Substring(start, end - start);
+                int end = input.IndexOf('\"', start);
+                return input[start..end];
             }
             return input;
         }
+
+        [GeneratedRegex(@"{{.*?}}")]
+        private static partial Regex AnkiTagRegEx();
     }
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]

@@ -77,7 +77,7 @@
             var response = await HttpClient.PostAsJsonAsync($"https://{Domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
             var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
 
-            if (result?.ItWorks?[0] == token)
+            if (StatusResponse.ItWorks?[0] == token)
             {
                 hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
                 IsWorking = true;

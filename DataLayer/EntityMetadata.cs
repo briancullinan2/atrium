@@ -50,17 +50,11 @@ namespace DataLayer
     //[AttributeUsage(AttributeTargets.Class)]
     //public class GenerateIndexerPropertiesAttribute : Attribute { }
     //[GenerateIndexerProperties]
-    public class AttributeValueIndexer<TValue>
+    public class AttributeValueIndexer<TValue>(IEnumerable<PropertyMetadata> source, Func<PropertyMetadata, TValue> selector)
     {
-        private readonly IEnumerable<PropertyMetadata> _source;
-        private readonly Func<PropertyMetadata, TValue> _selector;
-        private readonly Dictionary<string, TValue?> _cache = new();
-
-        public AttributeValueIndexer(IEnumerable<PropertyMetadata> source, Func<PropertyMetadata, TValue> selector)
-        {
-            _source = source;
-            _selector = selector;
-        }
+        private readonly IEnumerable<PropertyMetadata> _source = source;
+        private readonly Func<PropertyMetadata, TValue> _selector = selector;
+        private readonly Dictionary<string, TValue?> _cache = [];
 
         public TValue? this[string? propertyName]
         {
@@ -74,17 +68,11 @@ namespace DataLayer
             }
         }
     }
-    public class AttributeIndexer
+    public class AttributeIndexer(IEnumerable<PropertyMetadata> source, Func<PropertyMetadata, string?> selector)
     {
-        private readonly IEnumerable<PropertyMetadata> _source;
-        private readonly Func<PropertyMetadata, string?> _selector;
-        private readonly Dictionary<string, ObservableCollection<PropertyMetadata>> _cache = new();
-
-        public AttributeIndexer(IEnumerable<PropertyMetadata> source, Func<PropertyMetadata, string?> selector)
-        {
-            _source = source;
-            _selector = selector;
-        }
+        private readonly IEnumerable<PropertyMetadata> _source = source;
+        private readonly Func<PropertyMetadata, string?> _selector = selector;
+        private readonly Dictionary<string, ObservableCollection<PropertyMetadata>> _cache = [];
 
         public ObservableCollection<PropertyMetadata>? this[string key]
         {
@@ -93,22 +81,17 @@ namespace DataLayer
                 if (_cache.TryGetValue(key, out var list)) return list;
 
                 var props = _source.Where(p => _selector(p) == key);
-                if (props.Count() > 0) return new ObservableCollection<PropertyMetadata>(props);
+                if (props.Any()) return new ObservableCollection<PropertyMetadata>(props);
                 return null;
 
             }
         }
     }
 
-    public class AttributeTypeIndexer
+    public class AttributeTypeIndexer(IEnumerable<PropertyMetadata> source)
     {
-        private readonly IEnumerable<PropertyMetadata> _source;
-        private readonly Dictionary<string, ObservableCollection<Attribute>> _cache = new();
-
-        public AttributeTypeIndexer(IEnumerable<PropertyMetadata> source)
-        {
-            _source = source;
-        }
+        private readonly IEnumerable<PropertyMetadata> _source = source;
+        private readonly Dictionary<string, ObservableCollection<Attribute>> _cache = [];
 
         public ObservableCollection<Attribute>? this[string key]
         {
@@ -171,17 +154,11 @@ namespace DataLayer
 
     // TODO: syntax sugar to allow for EntityMetadata.User.MaxLength[x => x.Name]
     // LIMITED TO: where TReturn : struct because only primitives and enums are allowed inside attributes and that's what we're matching mostly
-    public class ModelAccessor<TModel, TReturn> where TModel : class, DataLayer.Entities.IEntity<TModel> where TReturn : struct
+    public class ModelAccessor<TModel, TReturn>(EntityMetadata<TModel> model, Func<EntityMetadata<TModel>, string?, TReturn?> selector) where TModel : class, Entities.IEntity<TModel> where TReturn : struct
     {
-        private readonly EntityMetadata<TModel> _model;
+        private readonly EntityMetadata<TModel> _model = model;
         // TODO: this is kind of single purpose
-        private Func<EntityMetadata<TModel>, string?, TReturn?> _selector;
-
-        public ModelAccessor(EntityMetadata<TModel> model, Func<EntityMetadata<TModel>, string?, TReturn?> selector)
-        {
-            _model = model;
-            _selector = selector;
-        }
+        private readonly Func<EntityMetadata<TModel>, string?, TReturn?> _selector = selector;
 
         // TODO: this is kind of single purpose
         // Indexer taking a function/delegate
