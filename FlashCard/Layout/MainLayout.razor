@@ -139,7 +139,8 @@
         .Any(r => r.Template.Equals("/" + relativeUri, StringComparison.OrdinalIgnoreCase)));
         }
     */
-    private MarkupString? _previousBody;
+    private LinkedList<MarkupString?> _previousList = new();
+    private MarkupString? _previousBody = null;
     private RenderFragment? _activeBody;
     private bool _isTransitioning;
 
@@ -178,9 +179,10 @@
 
         // Now update the active view to the new Router-provided Body
         //_activeBody = Body; 
-        
-        
+
+
         _isTransitioning = false;
+        _previousList.Clear();
         _previousBody = null;
 
         StateHasChanged();
@@ -207,16 +209,15 @@
         // never wrap study-now
         if(currentType == typeof(Pages.Landing.Home))
         {
+            _previousList.AddLast((MarkupString?)null);
             return;
         }
 
         var fragment = _activeBody;
         using var htmlRenderer = new HtmlRenderer(ServiceProvider, LoggerFactory);
 
-        // 2. Render the current Body to a string inside the Dispatcher
         var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
-{
-            // Wrap the fragment in a cascading value
+        {
             RenderFragment wrappedFragment = builder =>
             {
                 builder.OpenComponent<CascadingValue<bool>>(0);
@@ -233,12 +234,16 @@
                 }));
             return output.ToHtmlString();
         });
-        _previousBody = new MarkupString(html);
-
+        _previousList.AddLast(new MarkupString(html));
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        if (_previousBody == null)
+        {
+            _previousBody = _previousList.FirstOrDefault();
+            _previousList.Clear();
+        }
         SetPageClass();
     }
 
