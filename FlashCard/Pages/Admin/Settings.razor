@@ -111,7 +111,7 @@
 {
     public DataLayer.ControlMode? Mode { get; set; } = DataLayer.ControlMode.Edit;
     public DataLayer.ControlMode? PreviousMode { get; set; }
-    public List<Retheme.ThemeData>? extractedThemes { get; set;  } 
+    public static List<Retheme.ThemeData>? extractedThemes { get; set;  } 
 
     private async Task CopyToCSV()
     {
@@ -157,6 +157,7 @@
         "Gold"
     };
 
+    // TODO: move this to ThemeService
     public static readonly List<string> ThemeVariableKeys = new()
     {
         "--slate-bg",
@@ -176,14 +177,10 @@
         "--atrium-gold"
     };
 
-    private string? themeContent;
+    protected static string? themeContent;
 
     protected async Task InitializeTheme()
     {
-        // Path is relative to wwwroot
-        //using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/_content/FlashCard/css/theme.css");
-        //using var reader = new StreamReader(stream);
-        //themeContent = await reader.ReadToEndAsync();
         themeContent = await FileManager.OpenFile("_content/FlashCard/css/theme.css");
         extractedThemes = Retheme.Theme.ExtractThemes(themeContent ?? "");
         StateHasChanged();
@@ -311,11 +308,19 @@
         }
     }
 
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
         ThemeLayout = Pages.Admin.Settings.Metadata.Groups["Themes"]?.ToList();
+        
+        if (IsStaticRender) return;
+        // we don't have to reinitialize theme just to get it to show up now
+        //   because it's stored in static property after the first load
+
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
         _ = InitializeTheme();
     }

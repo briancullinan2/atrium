@@ -1,4 +1,5 @@
 ﻿#if WINDOWS
+using DataLayer.Utilities;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -50,6 +51,7 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IStatusService, StatusService>();
             webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
             webBuilder.Services.AddSingleton<IChatService, ChatService>();
+            webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
             webBuilder.Services.AddScoped(sp => new HttpClient
             {
 

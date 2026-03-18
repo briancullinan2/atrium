@@ -98,13 +98,18 @@
 
     }
 
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
     protected override void OnInitialized()
     {
-        // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        base.OnInitialized();
         GroupLayout = Pages.Admin.Groups.Metadata.Categories["Display"]?.ToList();
         InfoLayout = DataLayer.EntityMetadata.Group.Groups["Group Info"]?.ToList();
         ExtendedLayout = DataLayer.EntityMetadata.Group.Groups["Extended Info"]?.ToList();
+        
+        if (IsStaticRender) return;
+
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
         Nav.LocationChanged += OnLocationChanged;
     }
 
@@ -158,8 +163,12 @@
         }
     }
 
+    protected bool IsClosing = false;
+
+
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        if (IsClosing) return;
         SetControlMode();
     }
 
@@ -184,6 +193,7 @@
 
     public void Dispose()
     {
+        IsClosing = true;
         Nav.LocationChanged -= OnLocationChanged;
     }
 }

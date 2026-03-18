@@ -8,6 +8,7 @@ using DataLayer.Entities;
 using FlashCard.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using DataLayer.Utilities;
 
 namespace Atrium
 {
@@ -59,6 +60,7 @@ namespace Atrium
             builder.Services.AddSingleton<IStatusService, StatusService>();
             builder.Services.AddSingleton<IThemeService, ThemeService>();
             builder.Services.AddSingleton<IChatService, ChatService>();
+            builder.Services.AddSingleton<IQueryManager, QueryManager>();
             builder.Services.AddScoped(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")
@@ -97,7 +99,7 @@ namespace Atrium
             AnkiService._services = mauiApp.Services;
             StatusService._services = mauiApp.Services;
             ChatService._services = mauiApp.Services;
-
+            QueryManager.Service = mauiApp.Services;
 
             // 3. Return the built app
             return mauiApp;

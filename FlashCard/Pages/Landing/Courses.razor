@@ -100,18 +100,26 @@
         return "hidden";
     }
 
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+
     protected override void OnInitialized()
     {
+        base.OnInitialized();
         // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         RecentLayout = Pages.Landing.Courses.Metadata.Categories["Recent"]?.ToList();
         InfoLayout = DataLayer.EntityMetadata.Group.Groups["Group Info"]?.ToList();
         ExtendedLayout = DataLayer.EntityMetadata.Group.Groups["Extended Info"]?.ToList();
+
+        if (IsStaticRender) return;
+
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         Nav.LocationChanged += OnLocationChanged;
     }
     
     public void Dispose()
     {
+        IsClosing = true;
         Nav.LocationChanged -= OnLocationChanged;
     }
     
@@ -168,8 +176,12 @@
     }
 
 
+    protected bool IsClosing = false;
+
+
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        if (IsClosing) return;
         SetControlMode();
     }
 
@@ -192,4 +204,6 @@
         IEnumerable<DataLayer.Entities.Course>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Course>;
         return packs;
     }
+
+    
 }

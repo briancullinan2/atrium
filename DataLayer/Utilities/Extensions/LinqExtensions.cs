@@ -482,7 +482,7 @@ namespace DataLayer.Utilities.Extensions
             }
             using var scope = QueryManager.Service.CreateScope();
             var manager = QueryManager.Service.GetRequiredService<QueryManager>();
-            var context = QueryManager.GetContext(persist ?? StorageType.Ephemeral) ?? throw new InvalidOperationException("Database context failed.");
+            var context = manager.GetContext(persist ?? StorageType.Ephemeral) ?? throw new InvalidOperationException("Database context failed.");
             var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
 
             using XmlReader reader = XmlReader.Create(new StringReader(query));

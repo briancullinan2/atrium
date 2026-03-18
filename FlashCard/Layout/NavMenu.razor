@@ -3,6 +3,7 @@
 @inject NavigationManager Nav
 @inject IStudyService StudyService
 @inject IChatService ChatService
+@inject ILoginService LoginService
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-logo" @onclick="() => ToggleStudy()">
@@ -191,6 +192,8 @@ else
         new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
         new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "bi-cart" },
         new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
+        
+        
         new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "bi-person-gear" },
 
         // administration

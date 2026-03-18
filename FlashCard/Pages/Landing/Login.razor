@@ -49,8 +49,9 @@
         LoginService.SetLoginMode(false);
         NavigationExtensions.NavigateTo<Pages.Landing.Home>(Nav);
     }
-    [CascadingParameter(Name = "IsStaticRender")]
-    public bool IsStaticRender { get; set; }
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
     protected override void OnInitialized()
     {
         if (IsStaticRender) return;

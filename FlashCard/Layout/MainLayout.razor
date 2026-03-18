@@ -384,23 +384,13 @@
     {
         if (HeaderTitle != title)
         {
-            //if(title != null)
-            //{
-            //    MenuService.SetHeader(true);
-            //}
             HeaderTitle = title;
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
     protected override void OnParametersSet()
     {
-        // This runs every time the @Body content changes
-        //MenuService.SetMenu(null);
-        //TitleService.UpdateTitle(null);
-        //Tag = null;
-        //this.StateHasChanged();
-        //SetPageClass();
         if (!_isTransitioning)
         {
             _activeBody = Body;

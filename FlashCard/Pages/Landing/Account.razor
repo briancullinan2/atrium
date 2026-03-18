@@ -60,16 +60,27 @@
         if (PreviousMode == mode) return "animate-out";
         return "hidden";
     }
+
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+
     protected override void OnInitialized()
     {
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
         GeneralLayout = DataLayer.EntityMetadata.User.Groups["General Info"]?.ToList();
         LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
+
+        if (IsStaticRender) return;
+
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
     }
 
+    protected bool IsClosing = false;
+
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        if (IsClosing) return;
         SetControlMode();
     }
 
@@ -97,6 +108,14 @@
 
     protected override void OnParametersSet()
     {
+        if (IsClosing) return;
+        if (LoginService.User == null)
+        {
+            IsClosing = true;
+            if (IsStaticRender) return;
+            Nav.NavigateTo(NavigationExtensions.GetUri<Pages.Landing.Login>());
+            return;
+        }
         if(CurrentUser == null)
         {
             CurrentUser = LoginService.User;
@@ -106,6 +125,7 @@
     
     public void Dispose()
     {
+        IsClosing = true;
         Nav.LocationChanged -= OnLocationChanged;
     }
 }

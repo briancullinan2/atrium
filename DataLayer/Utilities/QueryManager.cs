@@ -52,30 +52,30 @@ namespace DataLayer.Utilities
 
 
 
-        static abstract Type GetStorageType(StorageType type);
+         Type GetStorageType(StorageType type);
 
-        static abstract Type GetContextType(StorageType type);
+         Type GetContextType(StorageType type);
 
-        static abstract IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
+         IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
 
-        static abstract IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
+         IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
 
 
-        static abstract TContext? GetContext<TContext>() where TContext : DbContext;
+         TContext? GetContext<TContext>() where TContext : DbContext;
 
-        static abstract TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
+         TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
 
-        static abstract TranslationContext? GetContext(Type contextType);
+         TranslationContext? GetContext(Type contextType);
 
-        static abstract TranslationContext? GetContext(StorageType type);
+         TranslationContext? GetContext(StorageType type);
 
     }
 
 
-
+    
     public class QueryManager : IQueryManager
     {
-        internal static IServiceProvider? Service { get; set; } = null;
+        public static IServiceProvider? Service { get; set; } = null;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
         protected virtual PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         protected virtual bool IsProcessing { get; set; } = false;
@@ -155,7 +155,7 @@ namespace DataLayer.Utilities
 
 
 
-        public static Type GetStorageType(StorageType type) => type switch
+        public Type GetStorageType(StorageType type) => type switch
         {
             StorageType.Ephemeral => typeof(EphemeralStorage),
             StorageType.Persistent => typeof(PersistentStorage),
@@ -165,7 +165,7 @@ namespace DataLayer.Utilities
         };
 
 
-        public static Type GetContextType(StorageType type) => type switch
+        public Type GetContextType(StorageType type) => type switch
         {
             StorageType.Ephemeral => typeof(IDbContextFactory<EphemeralStorage>),
             StorageType.Persistent => typeof(IDbContextFactory<PersistentStorage>),
@@ -175,23 +175,23 @@ namespace DataLayer.Utilities
         };
 
 
-        public static IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext => 
+        public IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext => 
             Service?.GetService<IDbContextFactory<TContext>>();
 
-        public static IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext =>
+        public IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext =>
             Service?.GetService(contextType) as IDbContextFactory<TContext>;
 
 
-        public static TContext? GetContext<TContext>() where TContext : DbContext =>
+        public TContext? GetContext<TContext>() where TContext : DbContext =>
             GetContextFactory<TContext>()?.CreateDbContext();
 
-        public static TContext? GetContext<TContext>(Type contextType) where TContext : DbContext =>
+        public TContext? GetContext<TContext>(Type contextType) where TContext : DbContext =>
             GetContextFactory<TContext>(contextType)?.CreateDbContext();
 
-        public static TranslationContext? GetContext(Type contextType) =>
+        public TranslationContext? GetContext(Type contextType) =>
             typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
 
-        public static TranslationContext? GetContext(StorageType type) =>
+        public TranslationContext? GetContext(StorageType type) =>
             typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [GetContextType(type)]) as TranslationContext;
 
 
@@ -259,7 +259,7 @@ namespace DataLayer.Utilities
 
 
 
-        public static void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
+        public void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
         {
 
             // 2. Find or Fetch the tracked version from the DB
@@ -302,16 +302,12 @@ namespace DataLayer.Utilities
                 using var scope = Service?.CreateScope();
                 var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
 
-                // 1. Find the existing entity or create a new one
                 var predicate = expression.Predicate();
                 var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
                              ?? Activator.CreateInstance<TEntity>();
 
-                // 2. Extract the values from the expression
-                // Uses the Dictionary<MemberInfo, object?> extension
                 var updates = expression.ToMembers();
 
-                // 3. Apply the fields
                 foreach (var update in updates)
                 {
                     if (update.Key is PropertyInfo prop && prop.CanWrite)
@@ -320,7 +316,6 @@ namespace DataLayer.Utilities
                     }
                 }
 
-                // 4. Persistence logic
                 if (context.Entry(entity).State == EntityState.Detached)
                     context.Add(entity);
 
@@ -450,7 +445,7 @@ namespace DataLayer.Utilities
 
 
         /*
-        public static int Update<T>(this T entity, IDbConnection conn, string keyName = "Id") where T : class, IEntity<T>
+        public int Update<T>(this T entity, IDbConnection conn, string keyName = "Id") where T : class, IEntity<T>
         {
             var type = typeof(T);
             var props = type.GetProperties();

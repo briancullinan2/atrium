@@ -1,3 +1,5 @@
+@implements IDisposable
+
 @page "/packs"
 @page "/packs/list"
 @page "/packs/owner"
@@ -30,9 +32,7 @@
     </heading>
     <MetadataControl TModel="DataLayer.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
-
     <h2>Packs Needing Study</h2>
-
 
     <h2>Packs You Might Like</h2>
 
@@ -40,6 +40,7 @@
 
 @code {
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Packs));
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
     public List<DataLayer.Entities.Pack> Recent { get; set; } = new();
@@ -53,9 +54,12 @@
 
     protected override void OnInitialized()
     {
-        // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
+        base.OnInitialized();
         RecentLayout = Pages.Landing.Packs.Metadata.Categories["Recent"]?.ToList();
+
+        if (IsStaticRender) return;
+
+        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
     }
 
     protected void SetControlMode()
@@ -101,6 +105,7 @@
         StateHasChanged();
     }
 
+    protected bool IsClosing = false;
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
     {
@@ -120,6 +125,12 @@
         var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
         return packs;
+    }
+
+
+    public void Dispose()
+    {
+        IsClosing = true;
     }
 
 }

@@ -1,3 +1,4 @@
+using DataLayer.Utilities;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -25,7 +26,7 @@ builder.Services.AddScoped(sp => new HttpClient
 });
 builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
-
+builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 
 var app = builder.Build();
@@ -35,6 +36,7 @@ FileManager._service = app.Services;
 AnkiService._service = app.Services;
 StatusService._service = app.Services;
 ChatService._service = app.Services;
+QueryManager.Service = app.Services;
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();
 var navigation = app.Services.GetRequiredService<NavigationManager>();

@@ -360,7 +360,9 @@ fieldset
     width: 54px;
     background: blue;
     color: white;
-    padding: 10px;
+    display:flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .flex-row span:first-child .bi {

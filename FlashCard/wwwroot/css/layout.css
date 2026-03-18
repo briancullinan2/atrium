@@ -98,6 +98,11 @@ main {
     max-height: 0;
 }
 
+.page.login-mode .chat-box
+{
+    display:none;
+}
+
 .chat-message
 {
     padding: 10px;
