@@ -13,6 +13,7 @@ namespace FlashCard.Services
         void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p);
         void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p);
         void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p);
+        (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id);
     }
 
 
@@ -22,6 +23,7 @@ namespace FlashCard.Services
     // Statically typed IDs for all 12+ providers
     public enum AuthID
     {
+        Unset,
         Google,
         GitHub,
         Microsoft,
@@ -41,14 +43,21 @@ namespace FlashCard.Services
         Strava
     }
 
-    public record AuthProviderMetadata(
-        AuthID Id,
-        string DisplayName,
-        string Icon,
-        AuthType Type = AuthType.BuiltIn,
-        string? ClientId = null,
-        string? Secret = null,
-        string? Authority = null); // fuck the authority
+    public class AuthProviderMetadata(
+        AuthID _id,
+        string? _displayName,
+        string? _icon,
+        AuthType _type = AuthType.BuiltIn
+        )
+    {
+        public AuthID Id = _id;
+        public string? DisplayName = _displayName;
+        public string? Icon = _icon;
+        public AuthType Type = _type;
+        public string? ClientId = null;
+        public string? Secret = null;
+        public string? Authority = null; // fuck the authority
+    }
 
 
     public abstract class AuthService : IAuthService
@@ -129,7 +138,7 @@ namespace FlashCard.Services
         public abstract void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p);
 
 
-        protected virtual (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)
+        public virtual (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)
         {
             return id switch
             {

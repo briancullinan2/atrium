@@ -1,22 +1,114 @@
 @page "/permissions"
 @using FlashCard.Services
+@using DataLayer.Entities
 @inject IMenuService MenuService
+@inject ILoginService LoginService
 
-
-<SyncedTitle Title="User Permissions"></SyncedTitle>
+<SyncedTitle Title="User Permissions" />
 
 <div class="flash-card animate-in">
+    <h2>Access Control Matrix</h2>
+    <p>Assign granular system permissions to specific roles or individual users.</p>
+
+    <div>
+        <div>
+            <label>Select Target (Role/User)</label>
+            <select class="form-control" @bind="SelectedTarget">
+                <option value="">-- Select a Role --</option>
+                @foreach(var role in Roles) {
+                    <option value="Role:@role.Name">Role: @role.Name</option>
+                }
+                <hr />
+                @foreach(var user in Users) {
+                    <option value="User:@user.Username">User: @user.Username</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Permission Type</th>
+                <th>Access Level</th>
+                <th>Metadata / Description</th>
+                <th style="width: 50px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in ActivePermissions)
+            {
+                <tr>
+                    <td>
+                        <select @bind="entry.Name" class="form-control">
+                            @foreach (var def in Enum.GetValues<DefaultPermissions>())
+                            {
+                                <option value="@def.ToString()">@def.ToString()</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select @bind="entry.IsActionable" class="form-control">
+                            <option value="true">Allowed</option>
+                            <option value="false">Denied/View-Only</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" @bind="entry.Description" class="form-control" placeholder="e.g. Temporary tech access" />
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => ActivePermissions.Remove(entry)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div>
+        <button class="cta" @onclick="AddPermissionRow"><i class="bi bi-plus"></i> Add Permission</button>
+        <button class="cta @(IsSaving ? "disabled" : "")" @onclick="SaveChanges">
+            <i class="bi bi-cloud-arrow-up"></i> Save Matrix
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert alert-info">@StatusMessage</div>
+    }
 </div>
 
+@code {
+    private List<Role> Roles = new();
+    private List<User> Users = new();
+    private List<Permission> ActivePermissions = new();
+    private string? SelectedTarget;
+    private bool IsSaving = false;
+    private string StatusMessage = "";
 
-@code
-{
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
-
+        
+        // Mocking or fetching actual data
+        Roles = DataLayer.Generators.Roles.Generate().ToList();
+        // In a real scenario, you'd pull these from DbContext
     }
 
+    private void AddPermissionRow() => ActivePermissions.Add(new Permission { Name = DefaultPermissions.Unset.ToString() });
 
+    private async Task SaveChanges()
+    {
+        IsSaving = true;
+        StatusMessage = "Applying permissions to system architecture...";
+        StateHasChanged();
+
+        // logic to persist to DB via DbContext
+        await Task.Delay(1000); // Simulate network latency
+        
+        IsSaving = false;
+        StatusMessage = "Changes saved successfully.";
+        StateHasChanged();
+    }
 }

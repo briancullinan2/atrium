@@ -3,11 +3,52 @@ using System.Reflection;
 
 namespace DataLayer
 {
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum DefaultPermissions : int
+    {
+        Unset = 0,
+
+        // Core User/Role Management
+        CanModifyDefaultUsers = 1,
+        CanModifyDefaultRoles = 2,
+        CanImpersonateUser = 3,      // "Switch Users" functionality
+        CanInviteUsers = 4,         // For User Import/Registration
+
+        // Content & Data Management
+        CanManagePacks = 100,        // Pack Import / Content Analysis
+        CanExecuteBackups = 101,     // Device HDD / Backups
+        CanFlushTrash = 102,         // Trash management
+        CanExportData = 103,         // Data export (P.I.I. sensitive)
+
+        // Financial & Merchant
+        CanViewBilling = 200,        // Billing / Payments
+        CanManageMerchants = 201,    // Merchant Tools
+        CanIssueTokens = 202,        // Download Tokens / Credits
+
+        // System & Security (The "Guts")
+        CanManageEncryption = 300,   // Incognito / Keys
+        CanMarshalData = 301,        // Marshalling / DB Lock
+        CanManageHosting = 302,      // HDD Network / Hosting
+        CanInstallAI = 303,          // Robot / AI deployment
+        CanViewSystemStatus = 304,   // Status / Activity logs
+
+        // Absolute Override
+        Unrestricted = 9000
+    }
+
+    [Obfuscation(Exclude = true, ApplyToMembers = true)]
+    public enum DefaultRoles : int
+    {
+        Guest = 0,
+        Client = 1,
+        Tech = 2,
+        Admin = 3
+    }
 
 
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum StorageType
+    public enum StorageType : int
     {
         Ephemeral = 0,
         Persistent = 1,
@@ -18,7 +59,7 @@ namespace DataLayer
 
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum GradeScale
+    public enum GradeScale : int
     {
         Unset = 0,
         AthroughF = 1,
@@ -32,7 +73,7 @@ namespace DataLayer
 
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum DisplayType
+    public enum DisplayType : int
     {
         Unset = 0,
         Text = 1,
@@ -44,7 +85,7 @@ namespace DataLayer
 
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum ControlMode
+    public enum ControlMode : int
     {
         Unset = 0,
         View = 1,
@@ -58,7 +99,7 @@ namespace DataLayer
     }
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum PackMode
+    public enum PackMode : int
     {
         [Description("pack")] // show only one card at a time and return to home
         Card = 1,
@@ -74,7 +115,7 @@ namespace DataLayer
 
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum CardType
+    public enum CardType : int
     {
         Unset = 0,
         FlashCard = 1,

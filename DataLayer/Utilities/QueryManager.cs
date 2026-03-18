@@ -40,7 +40,7 @@ namespace DataLayer.Utilities
         Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
 
-        Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>> query, int priority = 10) where TEntity : Entity<TEntity>;
+        Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
@@ -409,9 +409,9 @@ namespace DataLayer.Utilities
 
 
 
-        public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>> query, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Query(false, (IQueryable<TEntity> entities) => entities.Where(query), priority);
+            return await Query(false, (IQueryable<TEntity> entities) => query != null ? entities.Where(query) : entities, priority);
         }
 
         public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>

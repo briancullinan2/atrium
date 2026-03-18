@@ -19,6 +19,7 @@
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject IQueryManager QueryManager
+@inject LoginService LoginService
 @inject NavigationManager Nav
 
 <div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
@@ -82,8 +83,8 @@
 @code {
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Users));
 
-    [Category("Display")]
-    public IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
+    public bool FilterChanged { get; set; }
+    [Category("Display")] public IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
@@ -152,6 +153,11 @@
 
         if (newStep == DataLayer.ControlMode.List)
         {
+            if (CurrentUsers == null || FilterChanged)
+            {
+                _ = GetCurrentUsers();
+            }
+
             TitleService?.UpdateTitle("Manage Users");
         }
         else if (newStep == DataLayer.ControlMode.Add)
@@ -184,6 +190,22 @@
     }
 
 
+    protected async Task GetCurrentUsers()
+    {
+        var users = await QueryManager.Query<DataLayer.Entities.User>();
+        if(LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true
+            || LoginService.User?.Settings.Any(s => string.Equals(s.Permission?.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
+        {
+            var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
+            CurrentUsers = users.Concat(defaultUsers.Where(d => users.Any(u => u.Roles.Any(r => r.DefaultRole == d.Roles.First().DefaultRole)))).ToList();
+        }
+        else
+        {
+            CurrentUsers = users.ToList();
+        }
+    }
+
+
     protected async Task SetCurrentUser()
     {
         CurrentUser = (await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id)).FirstOrDefault();
@@ -200,8 +222,6 @@
         //   default guest user, start loading settings/config with "auto login" on desktop, store theme settings
         //   for user accounts, and finally and most importantly, build the firewall for query manager to only show 
         //   the default users to admin, this involved the ILoginService and IAuthService to work together
-
-        CurrentUsers = DataLayer.Generators.Users.Generate().ToList();
         SetControlMode();
         StateHasChanged();
     }

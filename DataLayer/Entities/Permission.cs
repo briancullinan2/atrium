@@ -9,6 +9,24 @@ namespace DataLayer.Entities
         [Key]
         public string? Name { get; set; }
         public string? Description { get; set; }
+        public string? Type { get; set; }
+        [NotMapped]
+        public Type? ResolvedType
+        {
+            get
+            {
+                if(Type == null)
+                    return null;
+                try
+                {
+                    return System.Type.GetType(Type);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
         public bool IsActionable { get; set; }
         [NotMapped]
         public bool IsPageAccess { get; set; } = false;
@@ -17,7 +35,7 @@ namespace DataLayer.Entities
         {
             get
             {
-                return IsPageAccess ? simplifiedSet : Name;
+                return IsPageAccess ? simplifiedSet ?? Name : Name;
             }
             set
             {

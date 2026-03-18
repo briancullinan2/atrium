@@ -8,10 +8,11 @@ namespace DataLayer.Generators
         {
             IEnumerable<Role> roles =
             [
-                new Role{ Name = "Admin", Description = "General administrator, full control" },
-                new Role{ Name = "Client", Description = "General client, like a doctor or nurse" },
-                new Role{ Name = "Tech", Description = "General technician, device certified" },
-                new Role{ Name = "Guest", Description = "General guest, for emergent use" }
+                // these become default expectation of access, rather than static settings
+                new Role{ Name = DefaultRoles.Admin.ToString(), Description = "General administrator, full control" },
+                new Role{ Name = DefaultRoles.Client.ToString(), Description = "General client, like a doctor or nurse" },
+                new Role{ Name = DefaultRoles.Tech.ToString(), Description = "General technician, device certified" },
+                new Role{ Name = DefaultRoles.Guest.ToString(), Description = "General guest, for emergent use" }
             ];
             return roles;
         }

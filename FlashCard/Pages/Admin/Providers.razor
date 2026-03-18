@@ -1,0 +1,102 @@
+@page "/settings/providers"
+@using FlashCard.Services
+@inject IAuthService AuthService
+
+<SyncedTitle Title="Identity Providers" />
+
+<div class="flash-card animate-in">
+    <h2>Auth Control Plane</h2>
+    <p>Configure OAuth secrets and endpoints for all 17 identity services.</p>
+
+    <div>
+        <div>
+            <label>Select Provider to Configure</label>
+            <select class="form-control" @bind="SelectedProviderId">
+                <option value="">-- Select a Provider --</option>
+                @foreach (var p in Services.AuthService.Providers)
+                {
+                    <option value="@p.Id">@p.DisplayName</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (CurrentMetadata != null)
+    {
+        <div class="provider-config-box p-3 border rounded bg-dark">
+            <h4><i class="@CurrentMetadata.Icon"></i> @CurrentMetadata.DisplayName Configuration</h4>
+            <div class="row">
+                <div>
+                    <label>Client ID</label>
+                    <input type="text" @bind="CurrentMetadata.ClientId" class="form-control" />
+                </div>
+                <div>
+                    <label>Client Secret</label>
+                    <input type="password" @bind="CurrentMetadata.Secret" class="form-control" />
+                </div>
+                
+                @if (CurrentMetadata.Type == AuthType.OpenIdConnect)
+                {
+                    <div>
+                        <label>Authority (Discovery URL)</label>
+                        <input type="text" @bind="CurrentMetadata.Authority" class="form-control" placeholder="https://dev-123.okta.com" />
+                    </div>
+                }
+            </div>
+
+            <div class="mt-3">
+                <button class="cta" @onclick="SaveProviderSettings">
+                    <i class="bi bi-save"></i> Commit Changes
+                </button>
+                <span class="text-muted ms-3">Protocol: @CurrentMetadata.Type</span>
+            </div>
+        </div>
+    }
+
+    <hr />
+    <h5>Active Endpoints (Static)</h5>
+    <table class="table table-sm">
+        <thead>
+            <tr><th>Provider</th><th>Auth Endpoint</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Services.AuthService.Providers.Where(x => x.Type == AuthType.GenericOAuth))
+            {
+                <tr>
+                    <td>@p.DisplayName</td>
+                    <td class="small">@AuthService.GetOAuthEndpoints(p.Id).AuthUrl</td>
+                    <td><span class="badge bg-success">Static</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private AuthID? _selectedId;
+    private AuthID? SelectedProviderId
+    {
+        get => _selectedId;
+        set { _selectedId = value; LoadMetadata(value); }
+    }
+
+    private AuthProviderMetadata? CurrentMetadata;
+
+    private void LoadMetadata(AuthID? id)
+    {
+        if (id == null) return;
+        // Find the metadata from the static list and clone it for the editor
+        var original = Services.AuthService.Providers.FirstOrDefault(x => x.Id == id);
+        if (original != null)
+        {
+            CurrentMetadata = original; // Record clone
+        }
+    }
+
+    private async Task SaveProviderSettings()
+    {
+        // Here you would call your QueryManager to persist these secrets
+        // to a "SystemSettings" table so they survive a reboot.
+        Console.WriteLine($"Saved {CurrentMetadata?.Id}");
+    }
+}

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using DataLayer.Utilities.Extensions;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,7 +17,12 @@ namespace DataLayer.Entities
 
         [InverseProperty(nameof(User.Roles))]
         public ICollection<User> Users { get; set; } = new HashSet<User>();
+
         [InverseProperty(nameof(Group.Roles))]
         public ICollection<Group> Groups { get; set; } = new HashSet<Group>();
+
+        [NotMapped]
+        public DefaultRoles? DefaultRole { get => Name?.TryParse<DefaultRoles>(); }
+
     }
 }

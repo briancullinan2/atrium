@@ -99,11 +99,15 @@ namespace DataLayer.Entities
         //public virtual ICollection<Invite> InvitesReceived { get; set; } = new HashSet<Invite>();
         public virtual ICollection<Pack> AuthoredPacks { get; set; } = new HashSet<Pack>();
         public virtual ICollection<UserPack> UserPacks { get; set; } = new HashSet<UserPack>();
+        
         [InverseProperty(nameof(File.User))]
         public virtual ICollection<File> Files { get; set; } = new HashSet<File>();
+        [InverseProperty(nameof(Response.User))]
         public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
+        
         [InverseProperty(nameof(Group.Users))]
         public virtual ICollection<Group> Groups { get; set; } = [];
+        
         [InverseProperty(nameof(Role.Users))]
         public virtual ICollection<Role> Roles { get; set; } = [];
 
@@ -126,12 +130,18 @@ namespace DataLayer.Entities
         /// </summary>
         public string? Devices { get; set; }
         public string? ParentId { get; set; }
+        
         [ForeignKey(nameof(ParentId))]
         public User? Parent { get; set; }
+        
         [InverseProperty(nameof(Parent))]
         public virtual ICollection<User> Children { get; set; } = [];
+
         [InverseProperty(nameof(Course.Users))]
         public virtual ICollection<Course> Courses { get; set; } = [];
+
+        [InverseProperty(nameof(Setting.User))]
+        public virtual ICollection<Setting> Settings { get; set; } = [];
 
         public User()
         {
