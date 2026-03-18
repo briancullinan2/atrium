@@ -41,17 +41,22 @@ namespace DataLayer.Utilities.Extensions
                 return (TEnum?)Enum.ToObject(typeof(TEnum), love);
             }
 
-            if (val is string && Enum.TryParse<TEnum>(val.ToString(), out var love3))
+            // ignore case because comes from a url
+            if (val is string && Enum.TryParse<TEnum>(val.ToString(), true, out var love3))
             {
                 return (TEnum?)love3;
             }
 
             foreach (var value in Enum.GetValues<TEnum>())
             {
+                if(string.Equals(value.ToString(), val.ToString(), StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return (TEnum?)Enum.ToObject(typeof(TEnum), value);
+                }
                 var attribute = typeof(TEnum).GetField(value.ToString())?.GetCustomAttribute<DescriptionAttribute>();
                 if (attribute != null && string.Equals(val.ToString(), Enum.GetName(value)) || string.Equals(val.ToString(), attribute?.Description, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    return (TEnum?)Enum.ToObject(typeof(Enum), value);
+                    return (TEnum?)Enum.ToObject(typeof(TEnum), value);
                 }
             }
 

@@ -54,7 +54,6 @@
             {
                 <h2>@HeaderTitle</h2>            
             }
-            @* This is where the contextual menu will appear *@
             @if (HeaderMenu != null)
             {
                 <div class="contextual-menu">
@@ -65,15 +64,6 @@
             {
                 <span>&nbsp;</span>
             }
-
-            @*@if(CurrentUser != null)
-            {
-                <NavLink class="header-link" href="@(NavigationExtensions.GetUri<Pages.Landing.Account>())" Match="NavLinkMatch.All">
-                    <i class="bi bi-person-circle" aria-hidden="true"></i>
-                    <span class="header-text">Profile</span>
-                </NavLink>
-            }*@
-
         </header>
     }
     <main>
@@ -85,12 +75,9 @@
                     @(_previousBody)
                 </div>
             }
-            @* We pass the Layout instance to the Body so pages can set the HeaderMenu *@
             @_activeBody
         </article>
 
-
-    @* Connected to @server.BaseUrl *@
     </main>
 
     @if (ShowChat == true)
@@ -177,10 +164,7 @@
 
         await Task.Delay(400);
 
-        // Now update the active view to the new Router-provided Body
-        //_activeBody = Body; 
-
-
+        
         _isTransitioning = false;
         _previousList.Clear();
         _previousBody = null;
