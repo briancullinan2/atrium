@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Docs/">
+    <File Path="Auth.md" />
     <File Path="README.md" />
   </Folder>
   <Project Path="AnkiParser/AnkiParser.csproj" Id="615d09d4-ed2f-43b8-973c-488d1c7ae695" />

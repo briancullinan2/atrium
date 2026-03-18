@@ -20,7 +20,7 @@ namespace WebClient.Services
 
         public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
         {
-            using var fileStream = System.IO.File.OpenRead(localPath);
+            using var fileStream = File.OpenRead(localPath);
             return await UploadFile(fileStream, localPath);
         }
 

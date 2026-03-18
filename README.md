@@ -24,6 +24,20 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 3/18/2026
+TODO: whats the holdup, merge any missing default users with database results, but only for admin view
+   so many splits in reality, i can save settings, get an oauth flow working, store the setting for
+   default guest user, start loading settings/config with "auto login" on desktop, store theme settings
+   for user accounts, and finally and most importantly, build the firewall for query manager to only show 
+   the default users to admin, this involved the ILoginService and IAuthService to work together
+
+All related to just getting this line working properly in my head:
+
+CurrentUsers = DataLayer.Generators.Users.Generate().ToList();
+
+Never ask me why I smoke. I'm not saying I'm special or alone in this experience, I'm just saying I'm not enjoying it. This is the only skill I have and it isn't worth anything.
+
+
 #### 3/16/2026
 
 I've designed this storage mechanism and testing suite I want to write down before I forget, and then I can compare if it came out

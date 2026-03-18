@@ -16,6 +16,15 @@ namespace DataLayer.Utilities
 
     public interface IQueryManager
     {
+        // TODO: for overriding in web client to switch persistent to remote, code reduction
+        StorageType EphemeralStorage { get; set; }
+        StorageType PersistentStorage { get; set; }
+        Type EphemeralType { get; set; }
+        Type PersistentType { get; set; }
+        Type EphemeralContext { get; set; }
+        Type PersistentContext { get; set; }
+
+
         Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
         Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
         Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
@@ -44,30 +53,39 @@ namespace DataLayer.Utilities
         //Task<object?> Update(bool persistent, object key, int priority = 10);
         Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
+
         Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
+
 
         Task ProcessQueueAsync();
 
 
 
 
-         Type GetStorageType(StorageType type);
+        Type GetStorageType(StorageType type);
 
-         Type GetContextType(StorageType type);
+        Type GetContextType(StorageType type);
 
-         IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
-
-         IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
+        Type GetContextType(Type type);
 
 
-         TContext? GetContext<TContext>() where TContext : DbContext;
 
-         TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
+        IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
 
-         TranslationContext? GetContext(Type contextType);
+        IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
 
-         TranslationContext? GetContext(StorageType type);
+
+
+        TContext? GetContext<TContext>() where TContext : DbContext;
+
+        TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
+
+
+
+        TranslationContext? GetContext(Type contextType);
+
+        TranslationContext? GetContext(StorageType type);
 
     }
 
@@ -81,6 +99,25 @@ namespace DataLayer.Utilities
         protected virtual bool IsProcessing { get; set; } = false;
         private readonly SemaphoreSlim _gate = new(0);
 
+        public virtual StorageType EphemeralStorage { get; set; } = StorageType.Ephemeral;
+        public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
+        private Type? _ephemeral;
+        public virtual Type EphemeralType {
+            get => _ephemeral ?? GetStorageType(EphemeralStorage);
+            set => _ephemeral = value; 
+        }
+        public virtual Type PersistentType {
+            get => _ephemeral ?? GetStorageType(PersistentStorage);
+            set => _ephemeral = value;
+        }
+        public virtual Type EphemeralContext {
+            get => _ephemeral ?? GetContextType(EphemeralType);
+            set => _ephemeral = value;
+        }
+        public virtual Type PersistentContext {
+            get => _ephemeral ?? GetContextType(PersistentType);
+            set => _ephemeral = value;
+        }
 
 
         public QueryManager()
@@ -119,7 +156,7 @@ namespace DataLayer.Utilities
             finally
             {
                 // Tell the background loop we are done so it can release the next one
-                _gate.Release();
+                _ = _gate.Release();
             }
         }
 
@@ -175,6 +212,12 @@ namespace DataLayer.Utilities
         };
 
 
+        public Type GetContextType(Type type)
+        {
+            return typeof(IDbContextFactory<>).MakeGenericType(type);
+        }
+
+
         public IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext => 
             Service?.GetService<IDbContextFactory<TContext>>();
 
@@ -213,12 +256,10 @@ namespace DataLayer.Utilities
                     throw new InvalidOperationException("Database context failed.");
                 }
 
-                //await contextFrom.Sync(contextTo, qualifier);
                 var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
 
                 foreach (var entity in entities)
                 {
-                    // 2. Upsert logic: Check if it exists in the persistent store
                     var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
 
                     if (exists)
@@ -261,8 +302,6 @@ namespace DataLayer.Utilities
 
         public void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
         {
-
-            // 2. Find or Fetch the tracked version from the DB
             var trackedEntity = persistentContext.Entry(updatedEntity);
             if (trackedEntity == null)
             {
@@ -271,10 +310,8 @@ namespace DataLayer.Utilities
                 return;
             }
 
-            // 3. Update only the scalar values (Title, Icon, etc.)
             trackedEntity.CurrentValues.SetValues(updatedEntity);
 
-            // 4. If recursing, find child collections
             if (recurse)
             {
                 var navigations = persistentContext.Entry(trackedEntity).Metadata.GetNavigations();
@@ -317,10 +354,10 @@ namespace DataLayer.Utilities
                 }
 
                 if (context.Entry(entity).State == EntityState.Detached)
-                    context.Add(entity);
+                    _ = context.Add(entity);
 
                 entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
-                await context.SaveChangesAsync();
+                _ = await context.SaveChangesAsync();
 
                 return await Update(entity);
             }, priority);
@@ -589,6 +626,8 @@ namespace DataLayer.Utilities
 
         public RemoteManager()
         {
+            PersistentStorage = StorageType.Test;
+            PersistentStorage = StorageType.Remote;
             _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 

@@ -50,7 +50,7 @@ namespace DataLayer.Entities
         [NotMapped]
         public string ComputedFilename =>
             string.IsNullOrEmpty(Filename) && !string.IsNullOrEmpty(Url)
-                ? System.IO.Path.GetFileName(Url)
+                ? Path.GetFileName(Url)
                 : Filename;
 
         public File()

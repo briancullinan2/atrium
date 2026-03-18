@@ -61,6 +61,8 @@ namespace Atrium
             builder.Services.AddSingleton<IThemeService, ThemeService>();
             builder.Services.AddSingleton<IChatService, ChatService>();
             builder.Services.AddSingleton<IQueryManager, QueryManager>();
+            builder.Services.AddSingleton<IAuthService, Services.AuthService>();
+
             builder.Services.AddScoped(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")

@@ -58,7 +58,8 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))">
+                <span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentUser.CanonicalFingerprint != null)
             {
                 <a href="">User Membership</a>
@@ -90,6 +91,7 @@
     public DataLayer.ControlMode? PreviousMode { get; set; }
     [Parameter] public string? Id { get; set; }
     public DataLayer.Entities.User? CurrentUser { get; set; }
+    public DataLayer.Entities.User? ParentUser { get; set; }
 
     protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
@@ -122,7 +124,7 @@
 
     protected void UpdateUser()
     {
-
+        // TODO add parent?
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
@@ -146,7 +148,6 @@
         {
             newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
         }
-
 
 
         if (newStep == DataLayer.ControlMode.List)
@@ -190,10 +191,17 @@
         StateHasChanged();
     }
 
+
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        CurrentUsers = DataLayer.Generators.Users.Generate();
+        // TODO: whats the holdup, merge any missing default users with database results, but only for admin view
+        //   so many splits in reality, i can save settings, get an oauth flow working, store the setting for
+        //   default guest user, start loading settings/config with "auto login" on desktop, store theme settings
+        //   for user accounts, and finally and most importantly, build the firewall for query manager to only show 
+        //   the default users to admin, this involved the ILoginService and IAuthService to work together
+
+        CurrentUsers = DataLayer.Generators.Users.Generate().ToList();
         SetControlMode();
         StateHasChanged();
     }

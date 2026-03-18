@@ -1,11 +1,12 @@
 ﻿using FlashCard.Services;
+using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Reflection;
 
 namespace Atrium.Services
 {
     internal class TitleService : ITitleService
     {
-        internal static Action<string?> _setTitle = s => { };
+        internal static Action<string?, IEnumerable<Window>> _setTitle = (s, windows) => { };
         internal static string? _title;
         private readonly string? _appName;
 
@@ -29,7 +30,7 @@ namespace Atrium.Services
             {
                 _title = title + " - " + _appName;
             }
-            _setTitle(_title);
+            _setTitle(_title, App.Current?.Windows ?? []);
             OnTitleChanged?.Invoke(title);
         }
 

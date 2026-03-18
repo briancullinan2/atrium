@@ -40,7 +40,7 @@ namespace Atrium.Services
 
         public async Task<bool?> CheckInstalled()
         {
-            return StatusService.CheckServiceInstalled();
+            return CheckServiceInstalled();
         }
 
         public static bool CheckServiceInstalled()

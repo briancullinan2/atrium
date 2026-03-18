@@ -132,7 +132,7 @@ namespace DataLayer.Entities
 
         public static (string? Letter, double? GPA) ConvertToScale(GradeScale? scale, object? score)
         {
-            return ConvertToScale(scale == GradeScale.AthroughFPlusMinus ? Schedule.GradePresets.Scales["A +/-"] : Schedule.GradePresets.Scales["A"], score);
+            return ConvertToScale(scale == GradeScale.AthroughFPlusMinus ? GradePresets.Scales["A +/-"] : GradePresets.Scales["A"], score);
         }
 
         public static (string? Letter, double? GPA) ConvertToScale(List<ScaleEntry>? scale, object? score)

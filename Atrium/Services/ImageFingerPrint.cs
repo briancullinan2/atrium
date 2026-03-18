@@ -34,7 +34,7 @@ namespace Atrium.Services
             // ORB descriptors are typically CV_8U (8-bit unsigned integers)
             int size = (int)(descriptors.Total() * descriptors.ElemSize());
             byte[] buffer = new byte[size];
-            System.Runtime.InteropServices.Marshal.Copy(descriptors.Data, buffer, 0, size);
+            Marshal.Copy(descriptors.Data, buffer, 0, size);
 
             // 3. Return as Base64 for your DB string column
             return Convert.ToBase64String(buffer);
@@ -50,8 +50,8 @@ namespace Atrium.Services
             using var m1 = new Mat(b1.Length / 32, 32, MatType.CV_8U);
             using var m2 = new Mat(b2.Length / 32, 32, MatType.CV_8U);
 
-            System.Runtime.InteropServices.Marshal.Copy(b1, 0, m1.Data, b1.Length);
-            System.Runtime.InteropServices.Marshal.Copy(b2, 0, m2.Data, b2.Length);
+            Marshal.Copy(b1, 0, m1.Data, b1.Length);
+            Marshal.Copy(b2, 0, m2.Data, b2.Length);
 
             using var matcher = new BFMatcher(NormTypes.Hamming);
             DMatch[] matches = matcher.Match(m1, m2);

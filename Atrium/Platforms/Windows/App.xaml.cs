@@ -45,7 +45,7 @@ namespace Atrium.WinUI
             // 2. Start the WinUI/MAUI Application
             WinRT.ComWrappersSupport.InitializeComWrappers();
 
-            Microsoft.UI.Xaml.Application.Start((p) =>
+            Start((p) =>
             {
                 var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
                     Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
@@ -81,9 +81,9 @@ namespace Atrium.WinUI
             }
         }
 
-        internal static void SetTitle(string? title)
+        internal static void SetTitle(string? title, IEnumerable<Window> windows)
         {
-            _ = (Atrium.App.Current?.Windows.FirstOrDefault()?.Title = title);
+            windows.FirstOrDefault()?.Title = title;
         }
 
 

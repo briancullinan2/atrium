@@ -1,4 +1,10 @@
-﻿namespace FlashCard.Services
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Security.Claims;
+
+namespace FlashCard.Services
 {
     public interface ILoginService
     {
@@ -9,6 +15,7 @@
         event Action<bool>? OnLoginChanged;
         event Action<DataLayer.Entities.User?>? OnUserChanged;
     }
+
 
     public class LoginService : ILoginService
     {

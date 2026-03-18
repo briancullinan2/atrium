@@ -42,8 +42,8 @@ namespace DataLayer
             //options.AddInterceptors(new WrapperInterceptor());
             var conn = Database.GetDbConnection();
             if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-            Database.EnsureCreated();
-            SaveChanges();
+            _ = Database.EnsureCreated();
+            _ = SaveChanges();
         }
 
 
@@ -84,21 +84,7 @@ namespace DataLayer
             _ = modelBuilder.Entity<Schedule>().ToTable(EntityMetadata.Schedule.TableName);
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
-
-            /*
-            modelBuilder.Entity<User>()
-                .Property(u => u.FirstName)
-                .HasMaxLength(50); // This is the "Gold Standard" for EF
-            */
-
-            /*
-            modelBuilder.Entity<MedicalMessage>()
-                .Property(e => e.VoltageSetting)
-                .HasConversion<int>();
-            */
-
         }
-
     }
 
     /*
@@ -141,7 +127,6 @@ namespace DataLayer
     }
 
 
-
     // expected to reset only the first time the application runs and be persistent on disk
     public class PersistentStorage(DbContextOptions<PersistentStorage> ctx) : TranslationContext(ctx)
     {
@@ -173,6 +158,11 @@ namespace DataLayer
     // expected to reset multiple times per instance run
     public class TestStorage(DbContextOptions<TestStorage> ctx) : TranslationContext(ctx)
     {
-    }
+        protected override void OnConfiguring(DbContextOptionsBuilder options)
+        {
+            base.OnConfiguring(options);
 
+            _ = options.UseInMemoryDatabase("TestShell");
+        }
+    }
 }

@@ -27,11 +27,14 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
 builder.Services.AddSingleton<IQueryManager, RemoteManager>();
+builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
+
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
+builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
 
 var app = builder.Build();
 // FUCK DI
-DataLayer.Utilities.RemoteQuery.Service = app.Services;
+RemoteQuery.Service = app.Services;
 FileManager._service = app.Services;
 AnkiService._service = app.Services;
 StatusService._service = app.Services;

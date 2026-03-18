@@ -52,6 +52,8 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
             webBuilder.Services.AddSingleton<IChatService, ChatService>();
             webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
+            webBuilder.Services.AddSingleton<IAuthService, AuthService>();
+
             webBuilder.Services.AddScoped(sp => new HttpClient
             {
 
