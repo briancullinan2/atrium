@@ -19,7 +19,7 @@
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject IQueryManager QueryManager
-@inject LoginService LoginService
+@inject ILoginService LoginService
 @inject NavigationManager Nav
 
 <div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
@@ -71,9 +71,7 @@
     </div>
 
     <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
-
     </div>
-
 
     <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
     </div>
@@ -84,7 +82,7 @@
     public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Users));
 
     public bool FilterChanged { get; set; }
-    [Category("Display")] public IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
+    [Category("Display")] public static IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
@@ -197,12 +195,14 @@
             || LoginService.User?.Settings.Any(s => string.Equals(s.Permission?.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
         {
             var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
-            CurrentUsers = users.Concat(defaultUsers.Where(d => users.Any(u => u.Roles.Any(r => r.DefaultRole == d.Roles.First().DefaultRole)))).ToList();
+            CurrentUsers = users.Concat(defaultUsers.Where(d => users.Any(u => u.Roles
+                .Any(r => r.DefaultRole == d.Roles.First().DefaultRole)))).ToList();
         }
         else
         {
             CurrentUsers = users.ToList();
         }
+        StateHasChanged();
     }
 
 

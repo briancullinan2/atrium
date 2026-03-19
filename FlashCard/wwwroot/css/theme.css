@@ -874,8 +874,8 @@ button.btn-more, .btn-primary,
 
 .badge.bg-secondary {
     background: #334155;
-    border: 1px solid var(--text-muted);
-    color: var(--text-main);
+    border: 1px solid var(--text-main);
+    color: var(--slate-bg);
 }
 
 a.deemphasize, button.deemphasize {

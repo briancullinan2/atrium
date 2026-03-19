@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Components;
-using FlashCard.Utilities.Extensions;
-using System.Linq.Expressions;
+﻿using DataLayer;
 using DataLayer.Utilities.Extensions;
+using FlashCard.Utilities.Extensions;
+using Microsoft.AspNetCore.Components;
+using System.Linq.Expressions;
 
 namespace FlashCard.Layout
 {
@@ -14,7 +15,8 @@ namespace FlashCard.Layout
         bool IsBeta { get; set; }
         bool IsCollapsed { get; set; }
         IEnumerable<INavMenuItem> Children { get; set; }
-
+        DefaultPermissions? Permission { get; set; }
+        string? RequiredPermission { get; set; }
     }
 
 
@@ -29,6 +31,8 @@ namespace FlashCard.Layout
         public string? RoleRequired { get; set; }
         public bool IsBeta { get; set; } = false;
         public bool IsCollapsed { get; set; } = true; // Added state
+        public virtual DefaultPermissions? Permission { get => RequiredPermission?.TryParse<DefaultPermissions>(); set => RequiredPermission = value.ToString(); }
+        public virtual string? RequiredPermission { get; set; } = DefaultPermissions.Unset.ToString();
         public virtual IEnumerable<INavMenuItem> Children { get; set; } = [];
     }
 

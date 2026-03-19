@@ -7,6 +7,45 @@ namespace DataLayer
     public enum DefaultPermissions : int
     {
         Unset = 0,
+        
+
+        // Display Settings
+        DisplayAnimatedBackground = 10,
+        DisplayMatchOS = 11,
+        DisplayDarkMode = 12,
+        DisplayHighContrast = 13,
+        DisplayStartOnBoot = 14,
+
+        ApplicationAutoLogin = 6,
+        ApplicationDefaultUser = 5,
+
+        // Theme Metadata (The ones using MetadataControl)
+        ApplicationBackground = 15, // "Application.Background"
+        ApplicationTheme = 16,      // "Application.Theme"
+        ApplicationSidebar = 17,    // "Application.Sidebar"
+
+        // UI & Experience
+        CanChangeTheme = 18,        // Background, Dark Mode, High Contrast
+        CanToggleStartup = 19,      // Start when computer starts
+
+        // Parental Controls
+        ParentalAllowChildSubscriptions = 20,
+
+        // Privacy & Safety
+        CanManageParentalControls = 21,
+        CanManageTelemetry = 22,    // Usage statistics sharing
+
+        // Telemetry
+        TelemetryEnableCreators = 30,
+        TelemetryEnableHosts = 31,
+
+        // Infrastructure
+        HostingEnabled = 40,
+
+
+        // System & Infrastructure
+        CanToggleHosting = 50,      // Enable/Disable web access
+        CanExportSettings = 51,     // "Copy to CSV" functionality
 
         // Core User/Role Management
         CanModifyDefaultUsers = 1,

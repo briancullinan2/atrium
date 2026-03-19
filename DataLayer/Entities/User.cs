@@ -11,7 +11,7 @@ namespace DataLayer.Entities
         [MaxLength(256)]
         [Category("User Info")]
         [Display(Name = "Globally Unique ID", Description = "Server assigned GUID for synchronization tracking")]
-        public string? Guid { get; private set; }
+        public string? Guid { get; set; }
 
         [MaxLength(256)]
         [Category("User Info")]

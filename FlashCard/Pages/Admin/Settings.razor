@@ -44,9 +44,9 @@
     </div>
 
 
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Background", Value = Background.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Theme", Value = Application.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() {Name = "Application.Sidebar", Value = Sidebar.ToString()}])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationBackground, Value = Background.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationTheme, Value = Application.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationSidebar, Value = Sidebar.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
 
     <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
 
@@ -76,23 +76,11 @@
 
 <div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
     <div class="settings-page">
-        <label>Theme Name</label>
-        <label>Background</label>
-        <label>Surface</label>
-        <label>Card</label>
-        <label>Border</label>
-        <label>Emerald</label>
-        <label>Bolt</label>
-        <label>Amber</label>
-        <label>Compliment</label>
-        <label>Text</label>
-        <label>Muted</label>
-        <label>Sidebar</label>
-        <label>Stone</label>
-        <label>Nature</label>
-        <label>Electric</label>
-        <label>Gold</label>
-        <label>Actions</label>
+        @foreach (var label in themeLabels)
+        {
+            <label>@label</label>
+        }
+
         @foreach (var theme in extractedThemes ?? [])
         {
             <span class="sticky-left">@theme.ClassName?.Replace("theme-", "")</span>
@@ -154,7 +142,8 @@
         "Stone",
         "Nature",
         "Electric",
-        "Gold"
+        "Gold",
+        "Actions"
     };
 
     // TODO: move this to ThemeService

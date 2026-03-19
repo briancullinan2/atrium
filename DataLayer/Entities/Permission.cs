@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DataLayer.Utilities.Extensions;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DataLayer.Entities
@@ -48,5 +49,7 @@ namespace DataLayer.Entities
         public string? Baml { get; set; }
         [NotMapped]
         public System.Reflection.Assembly? Assembly { get; set; }
+        [NotMapped]
+        public DefaultPermissions? Default { get => Name?.TryParse<DefaultPermissions>(); set => Name = value.ToString(); }
     }
 }

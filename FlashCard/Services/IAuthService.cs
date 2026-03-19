@@ -1,10 +1,14 @@
-﻿using DataLayer.Utilities;
+﻿using DataLayer;
+using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace FlashCard.Services
 {
@@ -50,13 +54,16 @@ namespace FlashCard.Services
         AuthType _type = AuthType.BuiltIn
         )
     {
-        public AuthID Id = _id;
+        public AuthID? Id = _id;
         public string? DisplayName = _displayName;
         public string? Icon = _icon;
         public AuthType Type = _type;
         public string? ClientId = null;
         public string? Secret = null;
         public string? Authority = null; // fuck the authority
+        [NotMapped]
+        public AuthID? DefaultProvider { get => Id ?? DisplayName?.TryParse<AuthID>(); }
+
     }
 
 
@@ -92,7 +99,7 @@ namespace FlashCard.Services
             new(AuthID.Twitch, "Twitch", "bi-twitch", AuthType.GenericOAuth),
             new(AuthID.Reddit, "Reddit", "bi-reddit", AuthType.GenericOAuth),
     
-            new(AuthID.Okta, "Okta Enterprise", "bi-circle-upside", AuthType.OpenIdConnect),
+            new(AuthID.Okta, "Okta Enterprise", "bi-circle", AuthType.OpenIdConnect),
             new(AuthID.Auth0, "Auth0 Universal", "bi-shield-shaded", AuthType.OpenIdConnect),
     
             new(AuthID.Patreon, "Patreon", "bi-p-circle", AuthType.GenericOAuth),
@@ -142,6 +149,11 @@ namespace FlashCard.Services
         {
             return id switch
             {
+                AuthID.LinkedIn => (
+                    "https://www.linkedin.com/oauth/v2/authorization",
+                    "https://www.linkedin.com/oauth/v2/accessToken",
+                    "https://api.linkedin.com/v2/userinfo" // Note: Requires 'openid' scope
+                ),
                 AuthID.GitHub => (
                     "https://github.com/login/oauth/authorize",
                     "https://github.com/login/oauth/access_token",

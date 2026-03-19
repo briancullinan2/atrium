@@ -1,4 +1,5 @@
-﻿using FlashCard.Services;
+﻿using DataLayer.Utilities.Extensions;
+using FlashCard.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,7 @@ namespace Atrium.Services
     {
         public override void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
         {
-            _ = builder.AddOpenIdConnect(p.Id.ToString(), o =>
+            _ = builder.AddOpenIdConnect(p.Id.ToString() ?? p.DisplayName ?? ("OpenId" + builder.Services.Count), o =>
             {
                 o.ResponseType = "code";
                 o.SaveTokens = true;
@@ -33,18 +34,25 @@ namespace Atrium.Services
                 throw new InvalidOperationException("Cannot register service without ClientId and Secret.");
             }
             //var section = config.GetSection($"Authentication:{p.Id}");
-            _ = builder.AddOAuth(p.Id.ToString(), options =>
+            _ = builder.AddOAuth(p.Id.ToString() ?? p.DisplayName ?? ("OAuth" + builder.Services.Count), options =>
             {
                 options.ClientId = p.ClientId;
                 options.ClientSecret = p.Secret;
-                options.CallbackPath = new PathString($"/signin-{p.Id.ToString().ToLower()}");
+                options.CallbackPath = new PathString($"/login/callback/{p.Id.ToString()?.ToLower() ?? p.DisplayName?.ToSafe()}");
                 options.SaveTokens = true;
 
                 // 1. You must route the endpoints manually
-                var (AuthUrl, TokenUrl, UserInfoUrl) = GetOAuthEndpoints(p.Id);
-                options.AuthorizationEndpoint = AuthUrl;
-                options.TokenEndpoint = TokenUrl;
-                options.UserInformationEndpoint = UserInfoUrl;
+                if(p.Id != null)
+                {
+                    var (AuthUrl, TokenUrl, UserInfoUrl) = GetOAuthEndpoints(p.Id.Value);
+                    options.AuthorizationEndpoint = AuthUrl;
+                    options.TokenEndpoint = TokenUrl;
+                    options.UserInformationEndpoint = UserInfoUrl;
+                }
+                else
+                {
+
+                }
 
                 options.Events = new OAuthEvents
                 {

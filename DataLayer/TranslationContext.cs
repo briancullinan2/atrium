@@ -39,11 +39,7 @@ namespace DataLayer
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
-            //options.AddInterceptors(new WrapperInterceptor());
-            var conn = Database.GetDbConnection();
-            if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-            _ = Database.EnsureCreated();
-            _ = SaveChanges();
+
         }
 
 
@@ -67,7 +63,7 @@ namespace DataLayer
             _ = modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
             _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
 
-            // Explicitly map the Message entity to the "Message" table
+
             _ = modelBuilder.Entity<Message>().ToTable(EntityMetadata.Message.TableName);
             _ = modelBuilder.Entity<Permission>().ToTable(EntityMetadata.Permission.TableName);
             _ = modelBuilder.Entity<Role>().ToTable(EntityMetadata.Role.TableName);
@@ -84,6 +80,15 @@ namespace DataLayer
             _ = modelBuilder.Entity<Schedule>().ToTable(EntityMetadata.Schedule.TableName);
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
+
+
+            _ = Task.Run(async () =>
+            {
+                var conn = Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                _ = Database.EnsureCreated();
+                _ = SaveChanges();
+            });
         }
     }
 

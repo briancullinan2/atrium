@@ -1,4 +1,6 @@
 @page "/login"
+@page "/login/callback"
+@page "/login/callback/{ServiceId}"
 @using FlashCard.Services
 @inject IMenuService MenuService
 @inject ILoginService LoginService
@@ -31,7 +33,7 @@
 
 
 @code {
-
+    [Parameter] public string? ServiceId { get; set; }
     public IEnumerable<DataLayer.Entities.User>? Users { get; set; }
 
     public string GetBackgroundColor(DataLayer.Entities.User user)

@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using DataLayer;
+using DataLayer.Utilities;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,11 +21,49 @@ namespace FlashCard.Services
 
     public class LoginService : ILoginService
     {
+        public static bool FirstTime { get; set; } = true;
         public bool Login { get; set; } = false;
         public DataLayer.Entities.User? User { get; set; } = null;
 
         public event Action<bool>? OnLoginChanged;
         public event Action<DataLayer.Entities.User?>? OnUserChanged;
+
+        public LoginService(IServiceProvider Services)
+        {
+            var queryManager = Services.GetService<IQueryManager>() ?? throw new InvalidOperationException("Couldn't resolve query manager.");
+            
+            if(!FirstTime)
+            {
+                return;
+            }
+            FirstTime = false;
+
+            _ = Task.Run(async () =>
+            {
+                var autoLoginSetting = await queryManager.Query<DataLayer.Entities.Setting>(s => 
+                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
+
+                if (autoLoginSetting.FirstOrDefault()?.Value != null)
+                {
+                    var automaticUser = await queryManager.Update<DataLayer.Entities.User>(u => new () { Guid = autoLoginSetting.First().Value });
+                    await SetUser(automaticUser);
+                }
+
+
+                // TODO: fallback to default user
+                var defaultUserSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
+                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationDefaultUser);
+
+
+                if (defaultUserSetting.FirstOrDefault()?.Value == null)
+                {
+                    return;
+                }
+
+                var defaultUser = await queryManager.Update<DataLayer.Entities.User>(u => new() { Guid = defaultUserSetting.First().Value });
+                await SetUser(defaultUser);
+            });
+        }
 
         public async Task SetLoginMode(bool login)
         {

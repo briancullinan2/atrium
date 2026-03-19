@@ -1,4 +1,5 @@
 ﻿@implements IDisposable
+@using FlashCard.Controls
 @using FlashCard.Services
 @inject NavigationManager Nav
 @inject IStudyService StudyService
@@ -158,18 +159,19 @@ else
             <div @onclick="() => HandleClick(item)"
                  @onclick:stopPropagation="true"
                  data-href="@item.Href">
+                <HasPermission Permission="@item.RequiredPermission">
+                    <NavLink class="nav-link"
+                             Match="@(string.IsNullOrWhiteSpace(item.Href) ? NavLinkMatch.All : NavLinkMatch.Prefix)">
 
-                <NavLink class="nav-link"
-                         Match="@(string.IsNullOrWhiteSpace(item.Href) ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                        <span class="bi @item.Icon" aria-hidden="true"></span>
+                        <span class="nav-text">@item.Title</span>
 
-                    <span class="bi @item.Icon" aria-hidden="true"></span>
-                    <span class="nav-text">@item.Title</span>
-
-                    @if (hasChildren)
-                    {
-                        <span class="bi @(item.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down")"></span>
-                    }
-                </NavLink>
+                        @if (hasChildren)
+                        {
+                            <span class="bi @(item.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down")"></span>
+                        }
+                    </NavLink>
+                </HasPermission>
             </div>
 
             @if (hasChildren && !item.IsCollapsed)
@@ -192,7 +194,6 @@ else
         new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
         new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "bi-cart" },
         new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
-        
         
         new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "bi-person-gear" },
 

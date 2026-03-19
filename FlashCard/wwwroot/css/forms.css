@@ -331,6 +331,9 @@ fieldset
     justify-content: space-between;
 }
 
+.user-list .user-avatar > a:hover > *:not(:first-child) {
+    text-decoration: underline;
+}
 
 .user-avatar > a:first-child {
     color: darkgrey;
@@ -340,7 +343,7 @@ fieldset
     cursor: pointer;
 }
 
-.user-avatar > a:first-child:hover {
+.User-form-container .user-avatar > a:first-child:hover {
     text-decoration: underline;
 }
 

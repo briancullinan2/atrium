@@ -6,97 +6,103 @@
 
 <div class="flash-card animate-in">
     <h2>Auth Control Plane</h2>
-    <p>Configure OAuth secrets and endpoints for all 17 identity services.</p>
+    <p>Manage secrets and endpoints for the identity federation.</p>
 
-    <div>
-        <div>
-            <label>Select Provider to Configure</label>
-            <select class="form-control" @bind="SelectedProviderId">
-                <option value="">-- Select a Provider --</option>
-                @foreach (var p in Services.AuthService.Providers)
-                {
-                    <option value="@p.Id">@p.DisplayName</option>
-                }
-            </select>
-        </div>
-    </div>
-
-    @if (CurrentMetadata != null)
-    {
-        <div class="provider-config-box p-3 border rounded bg-dark">
-            <h4><i class="@CurrentMetadata.Icon"></i> @CurrentMetadata.DisplayName Configuration</h4>
-            <div class="row">
-                <div>
-                    <label>Client ID</label>
-                    <input type="text" @bind="CurrentMetadata.ClientId" class="form-control" />
-                </div>
-                <div>
-                    <label>Client Secret</label>
-                    <input type="password" @bind="CurrentMetadata.Secret" class="form-control" />
-                </div>
-                
-                @if (CurrentMetadata.Type == AuthType.OpenIdConnect)
-                {
-                    <div>
-                        <label>Authority (Discovery URL)</label>
-                        <input type="text" @bind="CurrentMetadata.Authority" class="form-control" placeholder="https://dev-123.okta.com" />
-                    </div>
-                }
-            </div>
-
-            <div class="mt-3">
-                <button class="cta" @onclick="SaveProviderSettings">
-                    <i class="bi bi-save"></i> Commit Changes
-                </button>
-                <span class="text-muted ms-3">Protocol: @CurrentMetadata.Type</span>
-            </div>
-        </div>
-    }
-
-    <hr />
-    <h5>Active Endpoints (Static)</h5>
-    <table class="table table-sm">
+    <table class="table align-middle">
         <thead>
-            <tr><th>Provider</th><th>Auth Endpoint</th><th>Status</th></tr>
+            <tr>
+                <th>Provider</th>
+                <th>Client ID</th>
+                <th>Client Secret</th>
+                <th>Type</th>
+                <th class="text-end">Status</th>
+            </tr>
         </thead>
         <tbody>
-            @foreach (var p in Services.AuthService.Providers.Where(x => x.Type == AuthType.GenericOAuth))
+            @foreach (var p in Services.AuthService.Providers)
             {
-                <tr>
-                    <td>@p.DisplayName</td>
-                    <td class="small">@AuthService.GetOAuthEndpoints(p.Id).AuthUrl</td>
-                    <td><span class="badge bg-success">Static</span></td>
+                var isEditing = Editing.TryGetValue(p, out var value) ? value : false;
+                <tr class="@(isEditing ? "table-active" : "")">
+                    <td style="width: 200px;">
+                        <i class="bi @p.Icon me-2"></i>
+                        @if (isEditing && p.Id == null)
+                        {
+                            <input type="text" @bind="p.DisplayName" class="form-control form-control-sm d-inline-block w-75" />
+                        }
+                        else
+                        {
+                            <strong>@p.DisplayName</strong>
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="text" @bind="p.ClientId" class="form-control form-control-sm" placeholder="Paste ID..." />
+                        }
+                        else
+                        {
+                            <span class="text-truncate d-block" style="max-width: 150px;">@(string.IsNullOrEmpty(p.ClientId) ? "---" : p.ClientId)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="password" @bind="p.Secret" class="form-control form-control-sm" placeholder="Paste Secret..." />
+                        }
+                        else
+                        {
+                            <span>@(string.IsNullOrEmpty(p.Secret) ? "---" : "••••••••")</span>
+                        }
+                    </td>
+                    <td><small class="badge bg-secondary">@p.Type</small></td>
+                    <td class="text-end">
+                        @if (isEditing)
+                        {
+                            <a class="btn btn-success btn-sm me-1" @onclick="() => SaveRow(p)"><i class="bi bi-check-lg"></i></a>
+                            <a class="btn btn-outline-light btn-sm" @onclick="() => Editing[p] = false"><i class="bi bi-x-lg"></i></a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-outline-primary btn-sm" @onclick="() => Editing[p] = true">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+
+                            @if (!string.IsNullOrEmpty(p.ClientId) && !string.IsNullOrEmpty(p.Secret))
+                            {
+                                <span class="badge bg-success me-2">Online</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark me-2">Pending</span>
+                            }
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
+
+    <div class="mt-4">
+        <button class="cta" @onclick="AddNewProvider">
+            <i class="bi bi-plus-circle me-2"></i>Add Custom Provider
+        </button>
+    </div>
 </div>
 
 @code {
-    private AuthID? _selectedId;
-    private AuthID? SelectedProviderId
+    private Dictionary<AuthProviderMetadata, bool> Editing = new();
+
+    private void AddNewProvider()
     {
-        get => _selectedId;
-        set { _selectedId = value; LoadMetadata(value); }
+        // Logic to push a new generic AuthProviderMetadata to your list
+        // You might need to change Providers to a List if it's currently an array
     }
 
-    private AuthProviderMetadata? CurrentMetadata;
-
-    private void LoadMetadata(AuthID? id)
+    private async Task SaveRow(AuthProviderMetadata p)
     {
-        if (id == null) return;
-        // Find the metadata from the static list and clone it for the editor
-        var original = Services.AuthService.Providers.FirstOrDefault(x => x.Id == id);
-        if (original != null)
-        {
-            CurrentMetadata = original; // Record clone
-        }
-    }
-
-    private async Task SaveProviderSettings()
-    {
-        // Here you would call your QueryManager to persist these secrets
-        // to a "SystemSettings" table so they survive a reboot.
-        Console.WriteLine($"Saved {CurrentMetadata?.Id}");
+        // Persist change to DB via your QueryManager
+        Console.WriteLine($"Persisting settings for {p.DisplayName}...");
+        Editing.Clear();
+        StateHasChanged();
     }
 }

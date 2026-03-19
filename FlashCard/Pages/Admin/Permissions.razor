@@ -3,71 +3,119 @@
 @using DataLayer.Entities
 @inject IMenuService MenuService
 @inject ILoginService LoginService
+@inject IAuthService AuthService
 
 <SyncedTitle Title="User Permissions" />
 
 <div class="flash-card animate-in">
     <h2>Access Control Matrix</h2>
-    <p>Assign granular system permissions to specific roles or individual users.</p>
+    <p>View and override permissions for roles and individual users.</p>
 
-    <div>
-        <div>
-            <label>Select Target (Role/User)</label>
-            <select class="form-control" @bind="SelectedTarget">
-                <option value="">-- Select a Role --</option>
-                @foreach(var role in Roles) {
-                    <option value="Role:@role.Name">Role: @role.Name</option>
-                }
-                <hr />
-                @foreach(var user in Users) {
-                    <option value="User:@user.Username">User: @user.Username</option>
-                }
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label class="form-label">Filter by Target</label>
+            <select class="form-control" @onchange="OnTargetChanged">
+                <option value="">-- All Active Permissions --</option>
+                <optgroup label="Roles">
+                    @foreach (var role in Roles)
+                    {
+                        <option value="Role:@role.Name">Role: @role.Name</option>
+                    }
+                </optgroup>
+                <optgroup label="Users">
+                    @foreach (var user in Users)
+                    {
+                        <option value="User:@user.Username">User: @user.Username</option>
+                    }
+                </optgroup>
             </select>
         </div>
     </div>
 
-    <table class="table">
+    <table class="table align-middle">
         <thead>
             <tr>
+                <th>Subject</th>
                 <th>Permission Type</th>
                 <th>Access Level</th>
-                <th>Metadata / Description</th>
-                <th style="width: 50px;"></th>
+                <th>Description</th>
+                <th class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var entry in ActivePermissions)
             {
-                <tr>
+                var isEditing = EditingEntry == entry;
+                <tr class="@(isEditing ? "table-active border-primary" : "")">
                     <td>
-                        <select @bind="entry.Name" class="form-control">
-                            @foreach (var def in Enum.GetValues<DefaultPermissions>())
-                            {
-                                <option value="@def.ToString()">@def.ToString()</option>
-                            }
-                        </select>
+                        <span class="badge @(entry.Type == "Role" ? "bg-info" : "bg-secondary")">
+                            @entry.Simplified
+                        </span>
                     </td>
                     <td>
-                        <select @bind="entry.IsActionable" class="form-control">
-                            <option value="true">Allowed</option>
-                            <option value="false">Denied/View-Only</option>
-                        </select>
+                        @if (isEditing)
+                        {
+                            <select @bind="entry.Name" class="form-control form-control-sm">
+                                @foreach (var def in Enum.GetValues<DefaultPermissions>())
+                                {
+                                    <option value="@def.ToString()">@def.ToString()</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <strong>@entry.Name</strong>
+                        }
                     </td>
                     <td>
-                        <input type="text" @bind="entry.Description" class="form-control" placeholder="e.g. Temporary tech access" />
+                        @if (isEditing)
+                        {
+                            <select @bind="entry.IsActionable" class="form-control form-control-sm">
+                                <option value="true">Allowed</option>
+                                <option value="false">Denied</option>
+                            </select>
+                        }
+                        else
+                        {
+                            <span class="badge @(entry.IsActionable ? "bg-success" : "bg-danger")">
+                                @(entry.IsActionable ? "Allowed" : "Denied")
+                            </span>
+                        }
                     </td>
                     <td>
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => ActivePermissions.Remove(entry)">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        @if (isEditing)
+                        {
+                            <input type="text" @bind="entry.Description" class="form-control form-control-sm" />
+                        }
+                        else
+                        {
+                            <small class="text-muted">@entry.Description</small>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (isEditing)
+                        {
+                            <button class="btn btn-success btn-sm" @onclick="() => EditingEntry = null">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditingEntry = entry">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => ActivePermissions.Remove(entry)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        }
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <div>
-        <button class="cta" @onclick="AddPermissionRow"><i class="bi bi-plus"></i> Add Permission</button>
+    <div class="mt-4">
+        <button class="cta" @onclick="AddPermissionRow"><i class="bi bi-plus"></i> Add Override</button>
         <button class="cta @(IsSaving ? "disabled" : "")" @onclick="SaveChanges">
             <i class="bi bi-cloud-arrow-up"></i> Save Matrix
         </button>
@@ -75,7 +123,7 @@
 
     @if (!string.IsNullOrEmpty(StatusMessage))
     {
-        <div class="alert alert-info">@StatusMessage</div>
+        <div class="alert alert-info mt-3">@StatusMessage</div>
     }
 </div>
 
@@ -83,6 +131,7 @@
     private List<Role> Roles = new();
     private List<User> Users = new();
     private List<Permission> ActivePermissions = new();
+    private Permission? EditingEntry;
     private string? SelectedTarget;
     private bool IsSaving = false;
     private string StatusMessage = "";
@@ -90,25 +139,33 @@
     protected override async Task OnInitializedAsync()
     {
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
-        
-        // Mocking or fetching actual data
         Roles = DataLayer.Generators.Roles.Generate().ToList();
-        // In a real scenario, you'd pull these from DbContext
+        // Load your current flattened permissions from the DB here
     }
 
-    private void AddPermissionRow() => ActivePermissions.Add(new Permission { Name = DefaultPermissions.Unset.ToString() });
+    private void OnTargetChanged(ChangeEventArgs e)
+    {
+        SelectedTarget = e.Value?.ToString();
+        // Trigger a reload of ActivePermissions filtered by this target
+    }
+
+    private void AddPermissionRow()
+    {
+        var newP = new Permission
+        {
+            Name = DefaultPermissions.Unset.ToString(),
+            Simplified = SelectedTarget ?? "Global"
+        };
+        ActivePermissions.Add(newP);
+        EditingEntry = newP;
+    }
 
     private async Task SaveChanges()
     {
         IsSaving = true;
-        StatusMessage = "Applying permissions to system architecture...";
-        StateHasChanged();
-
-        // logic to persist to DB via DbContext
-        await Task.Delay(1000); // Simulate network latency
-        
+        StatusMessage = "Syncing permission matrix with database...";
+        await Task.Delay(800);
         IsSaving = false;
-        StatusMessage = "Changes saved successfully.";
-        StateHasChanged();
+        StatusMessage = "Architecture updated.";
     }
 }

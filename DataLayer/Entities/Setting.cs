@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DataLayer.Entities
@@ -19,6 +20,17 @@ namespace DataLayer.Entities
         [ForeignKey(nameof(SetterId))]
         public User? Setter { get; set; }
         [ForeignKey(nameof(Permission.Name))]
-        public Permission? Permission { get; set; }
+        private Permission? _permission;
+        public Permission? Permission
+        {
+            get => _permission ?? new() { Name = Name };
+            set
+            {
+                Name = value?.Name;
+                _permission = value;
+            }
+        }
+        [NotMapped]
+        public DefaultPermissions? Default { get => Name?.TryParse<DefaultPermissions>(); set => Name = value.ToString(); }
     }
 }

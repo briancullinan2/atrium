@@ -614,7 +614,7 @@ Razor CSHTML
     @foreach (var provider in AuthConstants.Providers)
     {
         <button class="btn btn-outline-primary" @onclick="() => Login(provider.Name)">
-            <i class="@provider.Icon"></i> Sign in with @provider.DisplayName
+            <i class="@provider.Icon"></i>Sign in with @provider.DisplayName
         </button>
     }
 </div>

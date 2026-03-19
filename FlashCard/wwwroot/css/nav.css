@@ -9,6 +9,13 @@
     margin-left: 0.5rem;
     top: 0;
     background-size: cover;
+    text-decoration:none;
+}
+
+a:hover .bi,
+a:hover .bi:before, a:hover .bi:after,
+.bi:before, .bi:after {
+    text-decoration:none;
 }
 
 a .bi {

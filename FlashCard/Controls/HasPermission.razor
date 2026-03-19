@@ -1,0 +1,22 @@
+@using DataLayer.Utilities.Extensions
+@using FlashCard.Services
+@inject ILoginService LoginService
+
+@if (IsAuthorized)
+{
+    <div class="protected" aria-disable="@(!IsAuthorized ? "disabled" : "")">
+        @ChildContent
+    </div>
+}
+
+@code {
+    [Parameter] public string? Permission { get; set; } = null;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool IsAuthorized =>
+        Permission == null ||
+        Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
+        LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true ||
+        LoginService.User?.Settings.Any(s => s.Permission?.Name == Permission) == true ||
+        LoginService.User?.Settings.Any(s => s.Permission?.Name == DefaultPermissions.Unrestricted.ToString()) == true;
+}

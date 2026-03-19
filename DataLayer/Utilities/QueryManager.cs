@@ -153,6 +153,11 @@ namespace DataLayer.Utilities
             {
                 return await callback();
             }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw new Exception("holy shit", ex);
+            }
             finally
             {
                 // Tell the background loop we are done so it can release the next one
@@ -234,8 +239,23 @@ namespace DataLayer.Utilities
         public TranslationContext? GetContext(Type contextType) =>
             typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
 
-        public TranslationContext? GetContext(StorageType type) =>
-            typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [GetContextType(type)]) as TranslationContext;
+        public TranslationContext? GetContext(StorageType type)
+        {
+            var contextType = GetStorageType(type);
+            var factoryType = GetContextType(contextType);
+            var contextMethod = typeof(QueryManager)
+                .GetMethod(nameof(GetContext), 1, [typeof(Type)])
+                ?.MakeGenericMethod(contextType);
+            try
+            {
+                return contextMethod?.Invoke(this, [factoryType]) as TranslationContext;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
+            }
+        }
 
 
 
@@ -418,6 +438,10 @@ namespace DataLayer.Utilities
         {
             return await Query(false, query, priority);
         }
+
+
+        // TODO: make this only queue once per same result
+
         public virtual async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
             where TEntity : Entity<TEntity>
         {
@@ -428,7 +452,7 @@ namespace DataLayer.Utilities
                 var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
 
                 // 1. Get the base set for the entity type
-                IQueryable<TEntity> set = context.Set<TEntity>();
+                IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
 
                 // 2. Compile the expression: Func<IQueryable<TEntity>, TResult>
                 var compiledQuery = query.Compile();
