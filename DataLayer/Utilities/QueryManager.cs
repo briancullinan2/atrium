@@ -22,8 +22,8 @@ namespace DataLayer.Utilities
         StorageType PersistentStorage { get; set; }
         Type EphemeralType { get; set; }
         Type PersistentType { get; set; }
-        Type EphemeralContext { get; set; }
-        Type PersistentContext { get; set; }
+        Type? EphemeralContext { get; set; }
+        Type? PersistentContext { get; set; }
 
 
         Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
@@ -68,7 +68,7 @@ namespace DataLayer.Utilities
 
         Type GetContextType(StorageType type);
 
-        Type GetContextType(Type type);
+        Type? GetContextType(Type? type);
 
 
 
@@ -96,28 +96,29 @@ namespace DataLayer.Utilities
     {
         public static IServiceProvider? Service { get; set; } = null;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
-        protected virtual PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
-        protected virtual bool IsProcessing { get; set; } = false;
-        private readonly SemaphoreSlim _gate = new(0);
+        protected static PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
+        private static readonly SemaphoreSlim _processorLock = new(1, 1);
+        private static readonly SemaphoreSlim _gate = new(0);
 
         public virtual StorageType EphemeralStorage { get; set; } = StorageType.Ephemeral;
         public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
         private Type? _ephemeral;
+        private Type? _persistent;
         public virtual Type EphemeralType {
             get => _ephemeral ?? GetStorageType(EphemeralStorage);
             set => _ephemeral = value; 
         }
         public virtual Type PersistentType {
-            get => _ephemeral ?? GetStorageType(PersistentStorage);
-            set => _ephemeral = value;
+            get => _persistent ?? GetStorageType(PersistentStorage);
+            set => _persistent = value;
         }
-        public virtual Type EphemeralContext {
-            get => _ephemeral ?? GetContextType(EphemeralType);
-            set => _ephemeral = value;
+        public virtual Type? EphemeralContext {
+            get => GetContextType(_ephemeral) ?? GetContextType(EphemeralType);
+            set => _ephemeral = value?.GetType().GetGenericArguments()[0];
         }
-        public virtual Type PersistentContext {
-            get => _ephemeral ?? GetContextType(PersistentType);
-            set => _ephemeral = value;
+        public virtual Type? PersistentContext {
+            get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
+            set => _persistent = value?.GetType().GetGenericArguments()[0];
         }
 
 
@@ -152,7 +153,19 @@ namespace DataLayer.Utilities
 
             try
             {
-                return await callback();
+                var result = await callback();
+
+                if (result is IQueryable queryable)
+                {
+                    // Use reflection or 'dynamic' to call ToList() 
+                    // This pulls the data into memory while the DbContext is still alive
+                    var list = Enumerable.ToList((dynamic)queryable);
+                    var finalResult = (TReturn)Queryable.AsQueryable(list);
+                    var finalType = typeof(TReturn);
+                    return (TReturn)finalResult;
+                }
+
+                return result;
             }
             catch(Exception ex)
             {
@@ -166,33 +179,39 @@ namespace DataLayer.Utilities
             }
         }
 
+
+
         public virtual async Task ProcessQueueAsync()
         {
-            lock (this)
-            {
-                if (IsProcessing) return;
-                IsProcessing = true;
-            }
+            // Ensure only one worker loop runs
+            if (!await _processorLock.WaitAsync(0)) return;
 
-            while (true)
+            try
             {
-                TaskCompletionSource? next;
-                lock (TaskQueue)
+                while (true)
                 {
-                    if (!TaskQueue.TryDequeue(out next, out _)) break;
+                    TaskCompletionSource? next;
+                    lock (TaskQueue)
+                    {
+                        if (!TaskQueue.TryDequeue(out next, out _)) break;
+                    }
+
+                    // Important: Let the thread pool breathe
+                    await Task.Yield();
+
+                    // 1. Give the caller their turn
+                    next.TrySetResult();
+
+                    // 2. WAIT for the caller to finish their finally block
+                    // This ensures the DbContext in the callback is fully disposed 
+                    // before the next loop starts.
+                    await _gate.WaitAsync();
                 }
-
-                // Throttling
-                await Task.Delay(50);
-
-                // Trigger the caller's 'await myTurn.Task'
-                next.SetResult();
-
-                // Wait for the caller to finish their work (via the release in 'finally')
-                await _gate.WaitAsync();
             }
-
-            lock (this) { IsProcessing = false; }
+            finally
+            {
+                _processorLock.Release();
+            }
         }
 
 
@@ -218,8 +237,9 @@ namespace DataLayer.Utilities
         };
 
 
-        public Type GetContextType(Type type)
+        public Type? GetContextType(Type? type)
         {
+            if (type == null) return null;
             return typeof(IDbContextFactory<>).MakeGenericType(type);
         }
 
@@ -380,7 +400,7 @@ namespace DataLayer.Utilities
                 entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
                 _ = await context.SaveChangesAsync();
 
-                return await Update(entity);
+                return await UpdateNow(storage, entity);
             }, priority);
         }
 
@@ -401,7 +421,7 @@ namespace DataLayer.Utilities
 
                     transaction.Commit();
 
-                    return await Update(entity);
+                    return await UpdateNow(storage, entity);
                 }
                 catch (Exception ex)
                 {
@@ -442,7 +462,7 @@ namespace DataLayer.Utilities
 
 
         // TODO: make this only queue once per same result
-        private readonly ConcurrentDictionary<string, Task<object?>> _pendingQueries = new();
+        private static readonly ConcurrentDictionary<string, Task<object?>> _pendingQueries = new();
 
         public virtual async Task<TResult> Query<TEntity, TResult>(
             StorageType storage,
@@ -490,6 +510,7 @@ namespace DataLayer.Utilities
 
             // 4. All callers (original and late-comers) await the same task
             var finalResult = await task;
+            var finalType = typeof(TResult);
             return (TResult)finalResult!;
         }
 
@@ -640,27 +661,35 @@ namespace DataLayer.Utilities
         {
             return await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
-
-                if (entity == null)
-                {
-                    throw new InvalidOperationException("Entity is null.");
-                }
-                var entry = context.Entry(entity);
-
-                // If the entity isn't being tracked, we need to attach it first
-                if (entry.State == EntityState.Detached)
-                {
-                    _ = context.Attach(entity);
-                }
-
-                // This executes the SQL SELECT and updates the object's properties
-                entry.Reload();
-                LoadAllNavigations(context, entity);
-
-                return entity;
+                return await UpdateNow(storage, entity);
             }, priority);
+        }
+
+
+        public virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
+            where TEntity : Entity<TEntity>
+
+        {
+            using var scope = Service?.CreateScope();
+            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+
+            if (entity == null)
+            {
+                throw new InvalidOperationException("Entity is null.");
+            }
+            var entry = context.Entry(entity);
+
+            // If the entity isn't being tracked, we need to attach it first
+            if (entry.State == EntityState.Detached)
+            {
+                _ = context.Attach(entity);
+            }
+
+            // This executes the SQL SELECT and updates the object's properties
+            entry.Reload();
+            LoadAllNavigations(context, entity);
+
+            return entity;
         }
     }
 

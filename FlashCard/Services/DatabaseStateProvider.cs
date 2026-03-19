@@ -28,7 +28,8 @@ namespace FlashCard.Services
             if(_services.GetService<IHttpContextAccessor>() is IHttpContextAccessor _httpContextAccessor)
             {
                 sessionId = _httpContextAccessor.HttpContext?.Request.Cookies[cookieName];
-            } else
+            }
+            else
             {
                 var autoLoginSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
                     s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
@@ -61,7 +62,7 @@ namespace FlashCard.Services
             // 3. Create the Entity
             var newSession = new DataLayer.Entities.Session();
             claimsData.Add(new Claim(nameof(SessionId), newSession.Id)); // Add the "Bridge"
-            var sessionValue = JsonSerializer.Serialize(claimsData);
+            var sessionValue = JsonSerializer.Serialize(claimsData.Select(c => new { c.Type, c.Value }), JsonHelper.Default);
             newSession.Value = sessionValue;
 
             // 4. Save to DB using your QueryManager (assuming you have a Save/Command method)

@@ -2,10 +2,13 @@
 @page "/login/callback"
 @page "/login/callback/{ServiceId}"
 @using FlashCard.Services
+@using System.Security.Claims
 @attribute [AllowAnonymous]
 @inject IMenuService MenuService
 @inject ILoginService LoginService
+@inject IAuthService AuthService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider Auth
 
 <SyncedTitle Title="User Login"></SyncedTitle>
 
@@ -45,13 +48,35 @@
         return $"background-color:#{(int)r:X2}{(int)g:X2}{(int)b:X2};";
     }
 
-    protected void HandleLogin(DataLayer.Entities.User user)
+    protected async Task HandleLogin(DataLayer.Entities.User user)
     {
-        user.AvatarColor = GetBackgroundColor(user);
-        LoginService.SetUser(user);
-        LoginService.SetLoginMode(false);
-        NavigationExtensions.NavigateTo<Pages.Landing.Home>(Nav);
+        // 1. Create the Claims for this user
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.Username ?? ""),
+            new Claim(ClaimTypes.GivenName, user.FirstName ?? ""),
+            new Claim(ClaimTypes.Surname, user.LastName ?? ""),
+            new Claim("UserId", user.Guid?.ToString() ?? ""),
+            // Add roles based on your DefaultRoles enum
+            new Claim(ClaimTypes.Role, "User")
+        };
+
+        var identity = new ClaimsIdentity(claims, "AtriumAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        // 2. Call the provider to save to DB and set the Cookie
+        if (Auth is DatabaseStateProvider dbAuthProvider)
+        {
+            await dbAuthProvider.MarkUserAsAuthenticated(principal);
+        }
+
+        // 3. UI logic
+        _ = LoginService.SetUser(user);
+        _ = LoginService.SetLoginMode(false);
+    
+        Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
     }
+
 
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 

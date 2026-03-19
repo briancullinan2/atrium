@@ -129,6 +129,7 @@
     private LinkedList<MarkupString?> _previousList = new();
     private MarkupString? _previousBody = null;
     private RenderFragment? _activeBody;
+    private RenderFragment? _nextBody;
     private bool _isTransitioning;
 
     private IDisposable? _registration;
@@ -164,11 +165,15 @@
 
         await Task.Delay(400);
 
-        
+
         _isTransitioning = false;
         _previousList.Clear();
         _previousBody = null;
-
+        if(_nextBody != null)
+        {
+            _activeBody = _nextBody;
+        }
+        _nextBody = null;
         StateHasChanged();
     }
 
@@ -336,7 +341,7 @@
         }
     }
 
-    
+
     private void SetChat(bool? chat)
     {
         if (chat != ShowChat)
@@ -383,6 +388,11 @@
         if (!_isTransitioning)
         {
             _activeBody = Body;
+        }
+        // so it doesn't show right away until the previous page is gone to reduce the weird stack sliding effect
+        else
+        {
+            _nextBody = Body;
         }
         _ = UnvaluedTask();
     }

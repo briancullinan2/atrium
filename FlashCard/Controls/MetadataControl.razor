@@ -15,7 +15,6 @@
                     RenderFragment renderControl = builder =>
                     {
                         builder.OpenComponent(0, controlType);
-                        // Manually assign parameters from your dictionary
                         builder.AddAttribute(1, "Model", entry.Metadata);
                         builder.AddAttribute(2, "ValueChanged", entry.Params["ValueChanged"]);
                         builder.AddAttribute(3, "Data", Data);
