@@ -16,7 +16,7 @@
 
 <SyncedTitle Title="User Login"></SyncedTitle>
 
-@if (!string.Equals(Nav.ToBaseRelativePath(Nav.Uri).Split('/').FirstOrDefault(), "access-denied"))
+@if (string.Equals(Nav.ToBaseRelativePath(Nav.Uri).Split('/').FirstOrDefault(), "access-denied"))
 {
     <NotFoundControl />
     return;

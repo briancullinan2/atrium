@@ -58,6 +58,7 @@
                 <MetadataControl TModel="DataLayer.Entities.User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
             </fieldset>
         </div>
+
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))">
                 <span class="bi bi-chevron-left"></span>Back</button>
