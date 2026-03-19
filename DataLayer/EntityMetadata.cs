@@ -43,8 +43,15 @@ namespace DataLayer
         }
 
         // You can even wrap the actual Get/Set calls
-        public object? GetValue(object obj) => _info.GetValue(obj);
-        public void SetValue(object obj, object? value) => _info.SetValue(obj, value);
+        public object? GetValue(object obj)
+        {
+            return _info.GetValue(obj);
+        }
+
+        public void SetValue(object obj, object? value)
+        {
+            _info.SetValue(obj, value);
+        }
     }
 
     //[AttributeUsage(AttributeTargets.Class)]

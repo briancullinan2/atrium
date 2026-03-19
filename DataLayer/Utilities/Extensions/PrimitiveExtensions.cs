@@ -49,7 +49,7 @@ namespace DataLayer.Utilities.Extensions
 
             foreach (var value in Enum.GetValues<TEnum>())
             {
-                if(string.Equals(value.ToString(), val.ToString(), StringComparison.InvariantCultureIgnoreCase))
+                if (string.Equals(value.ToString(), val.ToString(), StringComparison.InvariantCultureIgnoreCase))
                 {
                     return (TEnum?)Enum.ToObject(typeof(TEnum), value);
                 }

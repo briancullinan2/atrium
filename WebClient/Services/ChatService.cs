@@ -26,7 +26,7 @@ namespace WebClient.Services
 
         public async Task<bool?> IsWorking()
         {
-            if(recentPing != null && recentPinged != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
+            if (recentPing != null && recentPinged != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return recentPing.Item1;
             }

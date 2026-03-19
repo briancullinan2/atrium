@@ -184,7 +184,7 @@ namespace Atrium.Services
 #if WINDOWS
         public static async Task OnDownloadAnki(HttpContext context)
         {
-            if(_services == null)
+            if (_services == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }

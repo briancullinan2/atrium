@@ -9,7 +9,6 @@ using FlashCard.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using DataLayer.Utilities;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Atrium
@@ -25,6 +24,7 @@ namespace Atrium
         {
             return Task.CompletedTask;
         }
+
         protected override void Dispose(bool disposing)
         {
 
@@ -67,9 +67,11 @@ namespace Atrium
 
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped<AuthenticationStateProvider, DatabaseStateProvider>();
+#if WINDOWS
             var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(builder);
             new Services.AuthService(null).AddExternalLogins(authenticationBuilder);
-            
+#endif
+
             builder.Services.AddScoped(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")

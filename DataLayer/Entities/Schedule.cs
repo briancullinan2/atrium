@@ -74,7 +74,10 @@ namespace DataLayer.Entities
         [NotMapped]
         public IEnumerable<Subject> Others => Courses?.Where(c => !c.Deleted && c.Type == "o") ?? [];
 
-        public double GetCreditHours() => Courses.Sum(c => c.CreditHours ?? 0.0);
+        public double GetCreditHours()
+        {
+            return Courses.Sum(c => c.CreditHours ?? 0.0);
+        }
 
         public double? GetGPA()
         {

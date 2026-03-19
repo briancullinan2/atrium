@@ -73,7 +73,7 @@ namespace Atrium.Services
         {
             try
             {
-                if(_services == null)
+                if (_services == null)
                 {
                     throw new InvalidOperationException("No service provider.");
                 }
@@ -176,7 +176,7 @@ namespace Atrium.Services
             User32.AllowDrops(hwnd);
             Shell32.DragAcceptFiles(hwnd, 1);
             _wndProc = MyWndProc; // Simplified assignment
-            _oldWndProc = User32.SetWindowLongPtr(hwnd, -4,  System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
+            _oldWndProc = User32.SetWindowLongPtr(hwnd, -4, System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
 
         }
 
@@ -201,9 +201,9 @@ namespace Atrium.Services
                 User32.AllowDrops(hWnd);
             }
 
-            if(msg == Shell32.WM_CAPTURECHANGED)
+            if (msg == Shell32.WM_CAPTURECHANGED)
             {
-                if(!_isFileDragging)
+                if (!_isFileDragging)
                 {
                     _isFileDragging = true;
                     using var scope = _services?.CreateScope();
@@ -247,7 +247,7 @@ namespace Atrium.Services
             // Get count of dropped files
             uint fileCount = Shell32.DragQueryFile(hDrop, 0xFFFFFFFF, nint.Zero, 0);
 
-            using(var scope = _services?.CreateScope())
+            using (var scope = _services?.CreateScope())
             {
                 // Notify the front end UI of the upload
                 var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();

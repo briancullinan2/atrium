@@ -44,14 +44,15 @@ namespace Atrium.Services
         private Tuple<bool?, string?>? recentPing;
         private DateTime? recentPinged;
         public static Dictionary<string, Dictionary<DateTime, Tuple<bool, string>>>? AllRecents { get; set; } = [];
-        public Dictionary<DateTime, Tuple<bool, string>>? Recents { 
+        public Dictionary<DateTime, Tuple<bool, string>>? Recents
+        {
             get
             {
-                if (AllRecents?.TryGetValue("", out var _recents) == true)  return _recents;
+                if (AllRecents?.TryGetValue("", out var _recents) == true) return _recents;
                 var newRecent = new Dictionary<DateTime, Tuple<bool, string>>();
                 _ = (AllRecents?[""] = newRecent);
                 return newRecent;
-            } 
+            }
         }
 
         public bool Chat { get; set; } = false;
@@ -69,7 +70,7 @@ namespace Atrium.Services
             var result = parsed?.TryGetValue("response", out var response) == true
                 && string.Equals(response?.ToString(), "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
 
-            if(result == true && Settings != null && !string.IsNullOrWhiteSpace(ServiceUrl))
+            if (result == true && Settings != null && !string.IsNullOrWhiteSpace(ServiceUrl))
             {
                 // TODO: save service information
                 var index = Settings.FindIndex(s => string.Equals(s.Url, ServiceUrl, StringComparison.InvariantCultureIgnoreCase));
@@ -83,7 +84,7 @@ namespace Atrium.Services
                     IsPrevious = true,
                 };
 
-                if(Settings.Count == 0 || Settings.FirstOrDefault(s => s.IsDefault) == null)
+                if (Settings.Count == 0 || Settings.FirstOrDefault(s => s.IsDefault) == null)
                 {
                     replacementPreset.IsDefault = true;
                 }
@@ -106,7 +107,7 @@ namespace Atrium.Services
             OnChatWorking?.Invoke(result);
             return recentPing;
         }
-        
+
 
         public class RecentModel
         {
@@ -117,7 +118,8 @@ namespace Atrium.Services
 
         public async Task<string?> SendMessage(string message)
         {
-            var previous = JsonSerializer.Serialize(Recents?.TakeLast(10).Select(r => new RecentModel () { 
+            var previous = JsonSerializer.Serialize(Recents?.TakeLast(10).Select(r => new RecentModel()
+            {
                 Role = r.Value.Item1 ? "assistant" : "user",
                 Date = r.Key,
                 Content = r.Value.Item2
@@ -286,14 +288,14 @@ namespace Atrium.Services
             var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message
                 + "\n\nIf it's directly related to a command, respond with JSON only like "
                 + "{\"Function\": \"...\", \"Param1\" : \"...\"}. If you need to chain informational "
-                + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n" 
+                + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n"
                 + previous);
 
             return result;
         }
 
 
-        public static string CommandString { get => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description));  }
+        public static string CommandString { get => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description)); }
 
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _clientTokens = new();
 
@@ -310,7 +312,7 @@ namespace Atrium.Services
                 oldCts.Cancel();
                 oldCts.Dispose();
             }
-            
+
             // Create a new token for this specific request
             var cts = new CancellationTokenSource();
             _clientTokens[_client] = cts;
@@ -370,7 +372,7 @@ namespace Atrium.Services
             }
             catch (OperationCanceledException)
             {
-                if(cts.Token.IsCancellationRequested)
+                if (cts.Token.IsCancellationRequested)
                 {
                     return "Request cancelled by new input.";
                 }
@@ -429,7 +431,8 @@ namespace Atrium.Services
 
         public static List<ServicePreset> GetPresets()
         {
-            return Settings?.Select(s => new ServicePreset() {
+            return Settings?.Select(s => new ServicePreset()
+            {
                 Url = s.Url,
                 IsDefault = s.IsDefault,
                 IsPrevious = s.IsPrevious,

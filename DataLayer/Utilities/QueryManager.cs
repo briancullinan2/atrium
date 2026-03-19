@@ -91,7 +91,7 @@ namespace DataLayer.Utilities
     }
 
 
-    
+
     public class QueryManager : IQueryManager
     {
         public static IServiceProvider? Service { get; set; } = null;
@@ -104,19 +104,23 @@ namespace DataLayer.Utilities
         public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
         private Type? _ephemeral;
         private Type? _persistent;
-        public virtual Type EphemeralType {
+        public virtual Type EphemeralType
+        {
             get => _ephemeral ?? GetStorageType(EphemeralStorage);
-            set => _ephemeral = value; 
+            set => _ephemeral = value;
         }
-        public virtual Type PersistentType {
+        public virtual Type PersistentType
+        {
             get => _persistent ?? GetStorageType(PersistentStorage);
             set => _persistent = value;
         }
-        public virtual Type? EphemeralContext {
+        public virtual Type? EphemeralContext
+        {
             get => GetContextType(_ephemeral) ?? GetContextType(EphemeralType);
             set => _ephemeral = value?.GetType().GetGenericArguments()[0];
         }
-        public virtual Type? PersistentContext {
+        public virtual Type? PersistentContext
+        {
             get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
             set => _persistent = value?.GetType().GetGenericArguments()[0];
         }
@@ -167,7 +171,7 @@ namespace DataLayer.Utilities
 
                 return result;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 throw new Exception("holy shit", ex);
@@ -217,25 +221,29 @@ namespace DataLayer.Utilities
 
 
 
-        public Type GetStorageType(StorageType type) => type switch
+        public Type GetStorageType(StorageType type)
         {
-            StorageType.Ephemeral => typeof(EphemeralStorage),
-            StorageType.Persistent => typeof(PersistentStorage),
-            StorageType.Remote => typeof(RemoteStorage),
-            StorageType.Test => typeof(TestStorage),
-            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
-        };
+            return type switch
+            {
+                StorageType.Ephemeral => typeof(EphemeralStorage),
+                StorageType.Persistent => typeof(PersistentStorage),
+                StorageType.Remote => typeof(RemoteStorage),
+                StorageType.Test => typeof(TestStorage),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
+            };
+        }
 
-
-        public Type GetContextType(StorageType type) => type switch
+        public Type GetContextType(StorageType type)
         {
-            StorageType.Ephemeral => typeof(IDbContextFactory<EphemeralStorage>),
-            StorageType.Persistent => typeof(IDbContextFactory<PersistentStorage>),
-            StorageType.Remote => typeof(IDbContextFactory<RemoteStorage>),
-            StorageType.Test => typeof(IDbContextFactory<TestStorage>),
-            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
-        };
-
+            return type switch
+            {
+                StorageType.Ephemeral => typeof(IDbContextFactory<EphemeralStorage>),
+                StorageType.Persistent => typeof(IDbContextFactory<PersistentStorage>),
+                StorageType.Remote => typeof(IDbContextFactory<RemoteStorage>),
+                StorageType.Test => typeof(IDbContextFactory<TestStorage>),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
+            };
+        }
 
         public Type? GetContextType(Type? type)
         {
@@ -244,21 +252,30 @@ namespace DataLayer.Utilities
         }
 
 
-        public IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext => 
-            Service?.GetService<IDbContextFactory<TContext>>();
+        public IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
+        {
+            return Service?.GetService<IDbContextFactory<TContext>>();
+        }
 
-        public IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext =>
-            Service?.GetService(contextType) as IDbContextFactory<TContext>;
+        public IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
+        {
+            return Service?.GetService(contextType) as IDbContextFactory<TContext>;
+        }
 
+        public TContext? GetContext<TContext>() where TContext : DbContext
+        {
+            return GetContextFactory<TContext>()?.CreateDbContext();
+        }
 
-        public TContext? GetContext<TContext>() where TContext : DbContext =>
-            GetContextFactory<TContext>()?.CreateDbContext();
+        public TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
+        {
+            return GetContextFactory<TContext>(contextType)?.CreateDbContext();
+        }
 
-        public TContext? GetContext<TContext>(Type contextType) where TContext : DbContext =>
-            GetContextFactory<TContext>(contextType)?.CreateDbContext();
-
-        public TranslationContext? GetContext(Type contextType) =>
-            typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
+        public TranslationContext? GetContext(Type contextType)
+        {
+            return typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
+        }
 
         public TranslationContext? GetContext(StorageType type)
         {
@@ -288,35 +305,35 @@ namespace DataLayer.Utilities
         public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
         {
             return await Enqueue(async () =>
-            {
-                using var scope = Service?.CreateScope();
-                var contextFrom = GetContext(From);
-                var contextTo = GetContext(To);
-                if (contextFrom == null || contextTo == null)
-                {
-                    throw new InvalidOperationException("Database context failed.");
-                }
+                                                                                                                                                                                                   {
+                                                                                                                                                                                                       using var scope = Service?.CreateScope();
+                                                                                                                                                                                                       var contextFrom = GetContext(From);
+                                                                                                                                                                                                       var contextTo = GetContext(To);
+                                                                                                                                                                                                       if (contextFrom == null || contextTo == null)
+                                                                                                                                                                                                       {
+                                                                                                                                                                                                           throw new InvalidOperationException("Database context failed.");
+                                                                                                                                                                                                       }
 
-                var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
+                                                                                                                                                                                                       var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
 
-                foreach (var entity in entities)
-                {
-                    var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
+                                                                                                                                                                                                       foreach (var entity in entities)
+                                                                                                                                                                                                       {
+                                                                                                                                                                                                           var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
 
-                    if (exists)
-                    {
-                        _ = contextTo.Set<TSet>().Update(entity);
-                    }
-                    else
-                    {
-                        _ = contextTo.Set<TSet>().Add(entity);
-                    }
-                }
+                                                                                                                                                                                                           if (exists)
+                                                                                                                                                                                                           {
+                                                                                                                                                                                                               _ = contextTo.Set<TSet>().Update(entity);
+                                                                                                                                                                                                           }
+                                                                                                                                                                                                           else
+                                                                                                                                                                                                           {
+                                                                                                                                                                                                               _ = contextTo.Set<TSet>().Add(entity);
+                                                                                                                                                                                                           }
+                                                                                                                                                                                                       }
 
-                _ = await contextTo.SaveChangesAsync();
+                                                                                                                                                                                                       _ = await contextTo.SaveChangesAsync();
 
-                return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
-            }, priority);
+                                                                                                                                                                                                       return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
+                                                                                                                                                                                                   }, priority);
         }
 
         public async Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
@@ -327,7 +344,6 @@ namespace DataLayer.Utilities
                 qualifier, priority);
         }
 
-
         public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Save(false, expression, priority);
@@ -337,9 +353,6 @@ namespace DataLayer.Utilities
         {
             return await Save(false, entity, priority);
         }
-
-
-
 
         public void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = false) where T : class, IEntity<T>
         {
@@ -376,65 +389,63 @@ namespace DataLayer.Utilities
         public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
-            {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                                                                                                                                                                                            {
+                                                                                                                                                                                                using var scope = Service?.CreateScope();
+                                                                                                                                                                                                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
 
-                var predicate = expression.Predicate();
-                var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
-                             ?? Activator.CreateInstance<TEntity>();
+                                                                                                                                                                                                var predicate = expression.Predicate();
+                                                                                                                                                                                                var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
+                                                                                                                                                                                                             ?? Activator.CreateInstance<TEntity>();
 
-                var updates = expression.ToMembers();
+                                                                                                                                                                                                var updates = expression.ToMembers();
 
-                foreach (var update in updates)
-                {
-                    if (update.Key is PropertyInfo prop && prop.CanWrite)
-                    {
-                        prop.SetValue(entity, update.Value);
-                    }
-                }
+                                                                                                                                                                                                foreach (var update in updates)
+                                                                                                                                                                                                {
+                                                                                                                                                                                                    if (update.Key is PropertyInfo prop && prop.CanWrite)
+                                                                                                                                                                                                    {
+                                                                                                                                                                                                        prop.SetValue(entity, update.Value);
+                                                                                                                                                                                                    }
+                                                                                                                                                                                                }
 
-                if (context.Entry(entity).State == EntityState.Detached)
-                    _ = context.Add(entity);
+                                                                                                                                                                                                if (context.Entry(entity).State == EntityState.Detached)
+                                                                                                                                                                                                    _ = context.Add(entity);
 
-                entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
-                _ = await context.SaveChangesAsync();
+                                                                                                                                                                                                entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
+                                                                                                                                                                                                _ = await context.SaveChangesAsync();
 
-                return await UpdateNow(storage, entity);
-            }, priority);
+                                                                                                                                                                                                return await UpdateNow(storage, entity);
+                                                                                                                                                                                            }, priority);
         }
 
         public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
-            {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
-                using var transaction = context.Database.BeginTransaction();
-                try
-                {
-                    entity.CanonicalFingerprint = entity.GetHashCode();
+                                                                                                                                                             {
+                                                                                                                                                                 using var scope = Service?.CreateScope();
+                                                                                                                                                                 var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                                                                                                                                                                 using var transaction = context.Database.BeginTransaction();
+                                                                                                                                                                 try
+                                                                                                                                                                 {
+                                                                                                                                                                     entity.CanonicalFingerprint = entity.GetHashCode();
 
-                    _ = context.Add(entity);
+                                                                                                                                                                     _ = context.Add(entity);
 
-                    _ = context.SaveChanges();
+                                                                                                                                                                     _ = context.SaveChanges();
 
-                    transaction.Commit();
+                                                                                                                                                                     transaction.Commit();
 
-                    return await UpdateNow(storage, entity);
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
-                }
-                finally
-                {
-                }
-            }, priority);
+                                                                                                                                                                     return await UpdateNow(storage, entity);
+                                                                                                                                                                 }
+                                                                                                                                                                 catch (Exception ex)
+                                                                                                                                                                 {
+                                                                                                                                                                     transaction.Rollback();
+                                                                                                                                                                     throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
+                                                                                                                                                                 }
+                                                                                                                                                                 finally
+                                                                                                                                                                 {
+                                                                                                                                                                 }
+                                                                                                                                                             }, priority);
         }
-
-
 
         public async Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
@@ -445,10 +456,6 @@ namespace DataLayer.Utilities
         {
             return await Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
-
-
-
-
 
         public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>
         {
@@ -585,9 +592,6 @@ namespace DataLayer.Utilities
             return await Query(persistent ? StorageType.Persistent : StorageType.Ephemeral, query, priority);
         }
 
-
-
-
         public async Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
@@ -599,8 +603,6 @@ namespace DataLayer.Utilities
         {
             return await Update(false, entity, priority);
         }
-
-
 
         public async Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
@@ -614,57 +616,51 @@ namespace DataLayer.Utilities
             return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
 
-
-
         public virtual async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
             return await Enqueue(async () =>
-            {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                                                        {
+                                                            using var scope = Service?.CreateScope();
+                                                            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
 
 
-                var predicate = key.Predicate();
-                var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
-                             ?? Activator.CreateInstance<TEntity>();
+                                                            var predicate = key.Predicate();
+                                                            var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
+                                                                         ?? Activator.CreateInstance<TEntity>();
 
-                var entry = context.Entry(entity);
-                if (entry.State == EntityState.Detached)
-                {
-                    _ = context.Attach(entity);
-                }
-                entry.Reload();
-                LoadAllNavigations(context, entity);
-
-
-                // reapply members values
-                var updates = key.ToMembers();
-                foreach (var update in updates)
-                {
-                    if (update.Key is PropertyInfo prop && prop.CanWrite)
-                    {
-                        prop.SetValue(entity, update.Value);
-                    }
-                }
+                                                            var entry = context.Entry(entity);
+                                                            if (entry.State == EntityState.Detached)
+                                                            {
+                                                                _ = context.Attach(entity);
+                                                            }
+                                                            entry.Reload();
+                                                            LoadAllNavigations(context, entity);
 
 
-                return entity;
-            }, priority);
+                                                            // reapply members values
+                                                            var updates = key.ToMembers();
+                                                            foreach (var update in updates)
+                                                            {
+                                                                if (update.Key is PropertyInfo prop && prop.CanWrite)
+                                                                {
+                                                                    prop.SetValue(entity, update.Value);
+                                                                }
+                                                            }
+
+
+                                                            return entity;
+                                                        }, priority);
         }
-
-
 
         public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
             where TEntity : Entity<TEntity>
-
         {
             return await Enqueue(async () =>
-            {
-                return await UpdateNow(storage, entity);
-            }, priority);
+                                                        {
+                                                            return await UpdateNow(storage, entity);
+                                                        }, priority);
         }
-
 
         public virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
             where TEntity : Entity<TEntity>

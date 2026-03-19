@@ -1,7 +1,11 @@
 ﻿using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
+#if WINDOWS || ANDROID
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Authentication.OAuth.Claims;
+using Microsoft.AspNetCore.Components.Authorization;
+#endif
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +18,17 @@ namespace Atrium.Services
 {
     internal class AuthService(IServiceProvider? _service) : FlashCard.Services.AuthService(_service)
     {
-        public override void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
+
+        public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
+        {
+#if WINDOWS
+            var task = (_service?.GetService<AuthenticationStateProvider>() as DatabaseStateProvider)?.MarkUserAsAuthenticated(user);
+            if (task != null) await task;
+#endif
+        }
+
+#if WINDOWS || ANDROID
+        public static void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
         {
             _ = builder.AddOpenIdConnect(p.Id.ToString() ?? p.DisplayName ?? ("OpenId" + builder.Services.Count), o =>
             {
@@ -25,11 +39,10 @@ namespace Atrium.Services
                 o.ClientSecret = p.Secret;
             });
         }
-        
-        
-        public override void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p)
+
+        public void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p)
         {
-            if(p.ClientId == null || p.Secret == null)
+            if (p.ClientId == null || p.Secret == null)
             {
                 throw new InvalidOperationException("Cannot register service without ClientId and Secret.");
             }
@@ -42,7 +55,7 @@ namespace Atrium.Services
                 options.SaveTokens = true;
 
                 // 1. You must route the endpoints manually
-                if(p.Id != null)
+                if (p.Id != null)
                 {
                     var (AuthUrl, TokenUrl, UserInfoUrl) = GetOAuthEndpoints(p.Id.Value);
                     options.AuthorizationEndpoint = AuthUrl;
@@ -179,7 +192,7 @@ namespace Atrium.Services
         }
 
 
-        public override void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p)
+        public static void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p)
         {
             if (p.ClientId == null || p.Secret == null)
             {
@@ -198,5 +211,138 @@ namespace Atrium.Services
             };
         }
 
+
+
+        public virtual AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
+        {
+            foreach (var p in Providers)
+            {
+                if (p.ClientId == null || p.Secret == null)
+                {
+                    continue;
+                }
+                switch (p.Type)
+                {
+                    case AuthType.BuiltIn:
+                        AuthService.RegisterBuiltIn(builder, p);
+                        break;
+                    case AuthType.OpenIdConnect:
+                        AuthService.RegisterOpenId(builder, p);
+                        break;
+                    case AuthType.GenericOAuth:
+                        RegisterOauth(builder, p);
+                        break;
+                }
+            }
+            return builder;
+        }
+
+
+
+
+        public static void ConfigureClaimActions(AuthID id, ClaimActionCollection actions)
+        {
+            switch (id)
+            {
+                case AuthID.GitHub:
+                    actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                    actions.MapJsonKey(ClaimTypes.Name, "name"); // or "login"
+                    actions.MapJsonKey(ClaimTypes.Email, "email");
+                    actions.MapJsonKey("urn:github:avatar", "avatar_url");
+                    break;
+
+                case AuthID.Google:
+                    actions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
+                    actions.MapJsonKey(ClaimTypes.Name, "name");
+                    actions.MapJsonKey(ClaimTypes.Email, "email");
+                    actions.MapJsonKey("urn:google:avatar", "picture");
+                    break;
+
+                case AuthID.Discord:
+                    actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                    actions.MapJsonKey(ClaimTypes.Name, "global_name");
+                    actions.MapJsonKey(ClaimTypes.Email, "email");
+                    actions.MapCustomJson("urn:discord:avatar", user =>
+                        user.TryGetProperty("avatar", out var av) && av.GetString() != null
+                        ? $"https://cdn.discordapp.com/avatars/{user.GetProperty("id").GetString()}/{av.GetString()}.png"
+                        : null);
+                    break;
+
+                case AuthID.LinkedIn:
+                    {
+                        actions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
+                        actions.MapJsonKey(ClaimTypes.Name, "name");
+                        actions.MapJsonKey(ClaimTypes.Email, "email");
+                        actions.MapJsonKey("urn:linkedin:avatar", "picture");
+                    }
+                    break;
+
+                case AuthID.Twitch:
+                    {
+                        actions.MapCustomJson(ClaimTypes.NameIdentifier, user => user.GetProperty("data")[0].GetProperty("id").GetString());
+                        actions.MapCustomJson(ClaimTypes.Name, user => user.GetProperty("data")[0].GetProperty("display_name").GetString());
+                        actions.MapCustomJson(ClaimTypes.Email, user => user.GetProperty("data")[0].GetProperty("email").GetString());
+                        actions.MapCustomJson("urn:twitch:avatar", user => user.GetProperty("data")[0].GetProperty("profile_image_url").GetString());
+                    }
+                    break;
+
+                case AuthID.Patreon:
+                    {
+                        actions.MapCustomJson(ClaimTypes.NameIdentifier, user => user.GetProperty("data").GetProperty("id").GetString());
+                        actions.MapCustomJson(ClaimTypes.Name, user => user.GetProperty("data").GetProperty("attributes").GetProperty("full_name").GetString());
+                        actions.MapCustomJson(ClaimTypes.Email, user => user.GetProperty("data").GetProperty("attributes").GetProperty("email").GetString());
+                    }
+                    break;
+
+                case AuthID.Trakt:
+                    {
+                        actions.MapCustomJson(ClaimTypes.NameIdentifier, user => user.GetProperty("ids").GetProperty("slug").GetString());
+                        actions.MapJsonKey(ClaimTypes.Name, "username");
+                        actions.MapJsonKey("urn:trakt:vip", "vip");
+                    }
+                    break;
+
+                case AuthID.BattleNet:
+                    {
+                        actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                        actions.MapJsonKey(ClaimTypes.Name, "battletag");
+                    }
+                    break;
+
+                case AuthID.Strava:
+                    {
+                        actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                        actions.MapCustomJson(ClaimTypes.Name, user =>
+                            $"{user.GetProperty("firstname").GetString()} {user.GetProperty("lastname").GetString()}");
+                        actions.MapJsonKey("urn:strava:avatar", "profile_medium");
+                    }
+                    break;
+
+                case AuthID.Reddit:
+                    {
+                        actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                        actions.MapJsonKey(ClaimTypes.Name, "name");
+                        actions.MapJsonKey("urn:reddit:avatar", "icon_img");
+                    }
+                    break;
+
+                case AuthID.Spotify:
+                    {
+                        actions.MapJsonKey(ClaimTypes.NameIdentifier, "id");
+                        actions.MapJsonKey(ClaimTypes.Name, "display_name");
+                        actions.MapJsonKey(ClaimTypes.Email, "email");
+
+                        // Spotify usually returns an array of images, this grabs the first one
+                        actions.MapCustomJson("urn:spotify:avatar", user =>
+                            user.TryGetProperty("images", out var images) && images.GetArrayLength() > 0
+                            ? images[0].GetProperty("url").GetString()
+                            : null);
+                    }
+                    break;
+
+            }
+        }
+
+#endif
     }
 }

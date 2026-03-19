@@ -61,7 +61,7 @@ namespace Atrium.Services
             var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(webBuilder);
             new AuthService(null).AddExternalLogins(authenticationBuilder);
 
-            webBuilder.Services.AddScoped(sp => new HttpClient {});
+            webBuilder.Services.AddScoped(sp => new HttpClient { });
 
             // FUCK DI
             webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
@@ -85,7 +85,7 @@ namespace Atrium.Services
                 webBuilder.Configuration);
 
             var webApp = webBuilder.Build();
-            
+
             var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();
             localServer.Initialize(webApp);
 

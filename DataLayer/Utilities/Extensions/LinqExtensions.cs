@@ -36,6 +36,7 @@ namespace DataLayer.Utilities.Extensions
         {
             return new XDocument(VisitToXml(expression, 0, 0));
         }
+
         private static XElement VisitToXml(object node, int currentDepth, int expressionDepth)
         {
             if (node == null) return new XElement("Null");

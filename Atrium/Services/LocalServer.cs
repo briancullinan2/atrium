@@ -13,7 +13,10 @@ namespace Atrium.Services
         private WebApplication? app;
 
         public string BaseUrl => app?.Urls.FirstOrDefault() ?? "http://localhost:8080";
-        public async Task StopAsync() => app?.StopAsync();
+        public async Task StopAsync()
+        {
+            app?.StopAsync();
+        }
 
         internal void Initialize(WebApplication _app)
         {

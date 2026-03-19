@@ -11,7 +11,7 @@ namespace WebClient.Services
 
         public AnkiService()
         {
-            if(_service == null)
+            if (_service == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }
@@ -20,7 +20,7 @@ namespace WebClient.Services
 
         public async Task<IEnumerable<DataLayer.Entities.File>?> Download(string? ankiPackage)
         {
-            if(string.IsNullOrWhiteSpace(ankiPackage))
+            if (string.IsNullOrWhiteSpace(ankiPackage))
             {
                 throw new InvalidOperationException("Must enter a package name.");
             }
@@ -34,7 +34,7 @@ namespace WebClient.Services
             var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, new StringContent("", System.Text.Encoding.UTF8, "application/json"));
 
             var result = await response.Content.ReadFromJsonAsync<Inspection>();
-            if(result == null)
+            if (result == null)
             {
                 return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>(null, null);
             }

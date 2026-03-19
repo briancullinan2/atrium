@@ -85,7 +85,5 @@ namespace Atrium.WinUI
         {
             windows.FirstOrDefault()?.Title = title;
         }
-
-
     }
 }

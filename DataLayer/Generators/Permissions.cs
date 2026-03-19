@@ -9,8 +9,7 @@ namespace DataLayer.Generators
     {
         public static IEnumerable<Entities.Permission> Generate()
         {
-            return
-            [
+            return [
                 // Display Definitions
                 Create(DefaultPermissions.DisplayAnimatedBackground, "Enable or disable animated pack backgrounds.", typeof(bool)),
                 Create(DefaultPermissions.DisplayMatchOS, "Sync application theme with system dark/light mode settings.", typeof(bool)),
@@ -18,7 +17,7 @@ namespace DataLayer.Generators
                 Create(DefaultPermissions.DisplayHighContrast, "Enable accessibility high-contrast theme.", typeof(bool)),
                 Create(DefaultPermissions.DisplayStartOnBoot, "Launch StudySauce automatically on computer startup.", typeof(bool)),
 
-                
+
                 Create(DefaultPermissions.ApplicationDefaultUser, "Automatically log this user into the app when it starts.", typeof(string)),
                 Create(DefaultPermissions.ApplicationAutoLogin, "Should use automatic login with this application instance.", typeof(string)),
 

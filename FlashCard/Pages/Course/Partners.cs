@@ -7,7 +7,6 @@ namespace FlashCard.Pages.Course
     {
         public static IEnumerable<Card> Generate()
         {
-
             return [
                 // Question 1: How accountability partners help
                 new Card

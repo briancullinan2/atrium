@@ -9,7 +9,7 @@ namespace Retheme
         private ThemeData? _currentTheme;
 
         // Triggered when a selector like .theme-deepseakelp is found
-        public override void EnterClassName( css3Parser.ClassNameContext context)
+        public override void EnterClassName(css3Parser.ClassNameContext context)
         {
             var className = context.GetText().TrimStart('.');
             if (className.StartsWith("theme-"))

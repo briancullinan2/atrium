@@ -1,12 +1,12 @@
 ﻿using DataLayer;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Text;
 using System.Xml.Linq;
 
@@ -14,9 +14,7 @@ namespace FlashCard.Services
 {
     public interface IAuthService
     {
-        void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p);
-        void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p);
-        void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p);
+        Task MarkUserAsAuthenticated(ClaimsPrincipal user);
         (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id);
     }
 
@@ -98,10 +96,10 @@ namespace FlashCard.Services
             new(AuthID.LinkedIn, "LinkedIn", "bi-linkedin", AuthType.GenericOAuth),
             new(AuthID.Twitch, "Twitch", "bi-twitch", AuthType.GenericOAuth),
             new(AuthID.Reddit, "Reddit", "bi-reddit", AuthType.GenericOAuth),
-    
+
             new(AuthID.Okta, "Okta Enterprise", "bi-circle", AuthType.OpenIdConnect),
             new(AuthID.Auth0, "Auth0 Universal", "bi-shield-shaded", AuthType.OpenIdConnect),
-    
+
             new(AuthID.Patreon, "Patreon", "bi-p-circle", AuthType.GenericOAuth),
             new(AuthID.Spotify, "Spotify", "bi-spotify", AuthType.GenericOAuth),
 
@@ -111,39 +109,9 @@ namespace FlashCard.Services
             new(AuthID.Strava, "Strava", "bi-triangle-half", AuthType.GenericOAuth),
         ];
 
-        public virtual AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
-        {
-            foreach (var p in Providers)
-            {
-                if(p.ClientId == null || p.Secret == null)
-                {
-                    continue;
-                }
-                switch (p.Type)
-                {
-                    case AuthType.BuiltIn:
-                        RegisterBuiltIn(builder, p);
-                        break;
-                    case AuthType.OpenIdConnect:
-                        RegisterOpenId(builder, p);
-                        break;
-                    case AuthType.GenericOAuth:
-                        RegisterOauth(builder, p);
-                        break;
-                }
-            }
-            return builder;
-        }
 
 
-        public abstract void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p);
-
-
-        public abstract void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p);
-
-
-        public abstract void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p);
-
+        public abstract Task MarkUserAsAuthenticated(ClaimsPrincipal user);
 
         public virtual (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)
         {
@@ -152,7 +120,7 @@ namespace FlashCard.Services
                 AuthID.LinkedIn => (
                     "https://www.linkedin.com/oauth/v2/authorization",
                     "https://www.linkedin.com/oauth/v2/accessToken",
-                    "https://api.linkedin.com/v2/userinfo" // Note: Requires 'openid' scope
+                    "https://api.linkedin.com/v2/userinfo"
                 ),
                 AuthID.GitHub => (
                     "https://github.com/login/oauth/authorize",
@@ -194,7 +162,7 @@ namespace FlashCard.Services
                     "https://www.reddit.com/api/v1/access_token",
                     "https://oauth.reddit.com/api/v1/me"
                 ),
-                AuthID.Strava => ( // In case you need to start tracking your runs from the cops
+                AuthID.Strava => (
                     "https://www.strava.com/oauth/authorize",
                     "https://www.strava.com/oauth/token",
                     "https://www.strava.com/api/v3/athlete"

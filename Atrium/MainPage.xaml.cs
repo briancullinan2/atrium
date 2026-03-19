@@ -39,8 +39,9 @@ namespace Atrium
                     {
                         // This turns the Red Circle into a Green Plus
                         e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-                
-                        MainThread.BeginInvokeOnMainThread(() => {
+
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
                             using var scope = _services?.CreateScope();
                             var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
                             manager?.SetDragging(true);
@@ -50,7 +51,8 @@ namespace Atrium
 
                 webView.DragLeave += (s, e) =>
                 {
-                    MainThread.BeginInvokeOnMainThread(() => {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
                         using var scope = _services?.CreateScope();
                         var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
                         manager?.SetDragging(false);

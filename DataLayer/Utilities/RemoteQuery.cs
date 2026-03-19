@@ -22,7 +22,7 @@ namespace DataLayer.Utilities
 
         public TResult Execute<TResult>(Expression query)
         {
-            if(_httpClient == null)
+            if (_httpClient == null)
             {
                 throw new InvalidOperationException("No Http client.");
             }
@@ -134,6 +134,7 @@ namespace DataLayer.Utilities
         {
             return (queryContext) => this.Execute<TResult>(query);
         }
+
         public Expression<Func<QueryContext, TResult>> PrecompileQuery<TResult>(Expression query, bool async)
         {
             if (async)

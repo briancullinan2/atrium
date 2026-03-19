@@ -12,12 +12,8 @@ namespace AnkiParser
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            base.OnConfiguring(options);
-            // TODO: ??
-            // options.AddInterceptors(new WrapperInterceptor());
-
+            base.OnConfiguring(options);// TODO: ??// options.AddInterceptors(new WrapperInterceptor());
         }
-
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
@@ -28,9 +24,5 @@ namespace AnkiParser
         {
             base.OnModelCreating(modelBuilder);
         }
-
-
-
-
     }
 }

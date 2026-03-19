@@ -24,6 +24,9 @@ namespace WebClient.Services
                 new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "PersistentAuth"))));
         }
 
-        public override Task<AuthenticationState> GetAuthenticationStateAsync() => _authenticationStateTask;
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+        {
+            return _authenticationStateTask;
+        }
     }
 }

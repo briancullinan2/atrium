@@ -1,5 +1,5 @@
 ﻿using FlashCard.Services;
-using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
 
 namespace WebClient.Services
 {
@@ -7,17 +7,7 @@ namespace WebClient.Services
     //   into an encrypted field and only the "****" will be returned here for display
     public class AuthService(IServiceProvider _service) : FlashCard.Services.AuthService(_service)
     {
-        public override void RegisterBuiltIn(AuthenticationBuilder builder, AuthProviderMetadata p)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
+        public override Task MarkUserAsAuthenticated(ClaimsPrincipal user)
         {
             throw new NotImplementedException();
         }

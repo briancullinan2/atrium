@@ -7,7 +7,7 @@ namespace DataLayer
     public enum DefaultPermissions : int
     {
         Unset = 0,
-        
+
 
         // Display Settings
         DisplayAnimatedBackground = 10,

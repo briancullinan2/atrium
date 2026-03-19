@@ -39,10 +39,7 @@ namespace DataLayer
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
-
         }
-
-
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {

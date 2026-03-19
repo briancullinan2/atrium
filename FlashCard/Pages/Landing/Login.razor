@@ -12,7 +12,6 @@
 @inject ILoginService LoginService
 @inject IAuthService AuthService
 @inject NavigationManager Nav
-@inject AuthenticationStateProvider Auth
 
 <SyncedTitle Title="User Login"></SyncedTitle>
 
@@ -75,10 +74,7 @@
         var principal = new ClaimsPrincipal(identity);
 
         // 2. Call the provider to save to DB and set the Cookie
-        if (Auth is DatabaseStateProvider dbAuthProvider)
-        {
-            await dbAuthProvider.MarkUserAsAuthenticated(principal);
-        }
+        await AuthService.MarkUserAsAuthenticated(principal);
 
         // 3. UI logic
         _ = LoginService.SetUser(user);

@@ -26,7 +26,7 @@ namespace WebClient.Services
 
         public async Task<DataLayer.Entities.File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
         {
-            if(_httpClient == null)
+            if (_httpClient == null)
             {
                 throw new InvalidOperationException("No Http client.");
             }

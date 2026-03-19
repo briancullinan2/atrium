@@ -1,6 +1,5 @@
 ﻿using DataLayer;
 using DataLayer.Utilities;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,8 +30,8 @@ namespace FlashCard.Services
         public LoginService(IServiceProvider Services)
         {
             var queryManager = Services.GetService<IQueryManager>() ?? throw new InvalidOperationException("Couldn't resolve query manager.");
-            
-            if(!FirstTime)
+
+            if (!FirstTime)
             {
                 return;
             }
@@ -40,12 +39,12 @@ namespace FlashCard.Services
 
             _ = Task.Run(async () =>
             {
-                var autoLoginSetting = await queryManager.Query<DataLayer.Entities.Setting>(s => 
+                var autoLoginSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
                     s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
 
                 if (autoLoginSetting.FirstOrDefault()?.Value != null)
                 {
-                    var automaticUser = await queryManager.Update<DataLayer.Entities.User>(u => new () { Guid = autoLoginSetting.First().Value });
+                    var automaticUser = await queryManager.Update<DataLayer.Entities.User>(u => new() { Guid = autoLoginSetting.First().Value });
                     await SetUser(automaticUser);
                 }
 

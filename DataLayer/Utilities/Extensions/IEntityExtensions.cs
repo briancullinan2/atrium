@@ -31,7 +31,7 @@ namespace DataLayer.Utilities.Extensions
 
         public static async Task<T?> Save<T>(this T? ent) where T : Entity<T>
         {
-            if(ent == null)
+            if (ent == null)
             {
                 return default!;
             }
@@ -239,6 +239,5 @@ namespace DataLayer.Utilities.Extensions
         {
             return (await EntryAsync(context, entity)) != null;
         }
-
     }
 }

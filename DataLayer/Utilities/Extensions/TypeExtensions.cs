@@ -87,8 +87,7 @@
 
         public static bool IsSimple(this Type type)
         {
-            return
-                type.IsPrimitive ||
+            return type.IsPrimitive ||
                 type.IsEnum ||
                 new[] {
             typeof(string),

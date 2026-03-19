@@ -27,6 +27,5 @@ namespace FlashCard.Services
         {
             OnHeaderChanged?.Invoke(show);
         }
-
     }
 }

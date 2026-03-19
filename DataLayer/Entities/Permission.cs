@@ -16,7 +16,7 @@ namespace DataLayer.Entities
         {
             get
             {
-                if(Type == null)
+                if (Type == null)
                     return null;
                 try
                 {

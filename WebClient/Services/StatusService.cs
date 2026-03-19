@@ -84,7 +84,7 @@ namespace WebClient.Services
 
         public async Task<bool?> IsWorking()
         {
-            if(recentResult != null && statusResult != null)
+            if (recentResult != null && statusResult != null)
             {
                 return StatusResponse.ItWorks?[0] == StatusResponse.ItWorks?[0];
             }
