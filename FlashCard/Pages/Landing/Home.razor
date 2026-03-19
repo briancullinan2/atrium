@@ -5,17 +5,18 @@
 @using DataLayer.Entities
 @using FlashCard.Controls
 @using FlashCard.Services
+@attribute [AllowAnonymous]
 @inject IFormFactor FormFactor
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 
-@if(!String.IsNullOrWhiteSpace(notFound))
+<SyncedTitle Title="Home"></SyncedTitle>
+
+@if (!String.IsNullOrWhiteSpace(notFound))
 {
     <NotFoundControl />
     return;
 }
-
-<SyncedTitle Title="Home"></SyncedTitle>
 
 <a class="big-button" href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = DataLayer.PackMode.Shuffle}))">
     <span>

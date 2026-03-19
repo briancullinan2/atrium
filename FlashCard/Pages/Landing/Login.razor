@@ -1,6 +1,10 @@
 @page "/login"
 @page "/login/callback"
 @page "/login/callback/{ServiceId}"
+@page "/logout"
+@page "/access-denied"
+
+@using FlashCard.Controls
 @using FlashCard.Services
 @using System.Security.Claims
 @attribute [AllowAnonymous]
@@ -11,6 +15,12 @@
 @inject AuthenticationStateProvider Auth
 
 <SyncedTitle Title="User Login"></SyncedTitle>
+
+@if (!string.Equals(Nav.ToBaseRelativePath(Nav.Uri).Split('/').FirstOrDefault(), "access-denied"))
+{
+    <NotFoundControl />
+    return;
+}
 
 <div class="flash-card">
     <h2>Who is using the app?</h2>
