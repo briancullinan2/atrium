@@ -31,8 +31,8 @@
         <label>Last Login</label>
         <label>Actions</label>
     </heading>
+    
     <MetadataControl TModel="DataLayer.Entities.User" Model="@UserLayout" Data="@CurrentUsers"></MetadataControl>
-
 
     <h2>User Controls</h2>
     <div class="link-list">
@@ -118,7 +118,7 @@
 
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
         Nav.LocationChanged += OnLocationChanged;
-
+        _ = GetCurrentUsers();
     }
 
     protected void UpdateUser()
@@ -190,13 +190,16 @@
 
     protected async Task GetCurrentUsers()
     {
-        var users = await QueryManager.Query<DataLayer.Entities.User>();
+        var users = (await QueryManager.Query<DataLayer.Entities.User>()).ToList();
         if(LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true
             || LoginService.User?.Settings.Any(s => string.Equals(s.Permission?.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
         {
             var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
-            CurrentUsers = users.Concat(defaultUsers.Where(d => users.Any(u => u.Roles
-                .Any(r => r.DefaultRole == d.Roles.First().DefaultRole)))).ToList();
+            var fresh = defaultUsers.Where(d => {
+                var roleAlreadyExists = users.Any(u => u.Roles.Any(r => r.DefaultRole == d.Roles.First().DefaultRole));
+                return !roleAlreadyExists;
+            });
+            CurrentUsers = users.Concat(fresh).ToList();
         }
         else
         {

@@ -1,7 +1,9 @@
 ﻿#if WINDOWS
 using DataLayer.Utilities;
 using FlashCard.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -54,10 +56,12 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
             webBuilder.Services.AddSingleton<IAuthService, AuthService>();
 
-            webBuilder.Services.AddScoped(sp => new HttpClient
-            {
+            webBuilder.Services.AddAuthorizationCore();
+            webBuilder.Services.AddScoped<AuthenticationStateProvider, DatabaseStateProvider>();
+            var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(webBuilder);
+            new AuthService(null).AddExternalLogins(authenticationBuilder);
 
-            });
+            webBuilder.Services.AddScoped(sp => new HttpClient {});
 
             // FUCK DI
             webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
@@ -126,6 +130,7 @@ namespace Atrium.Services
             webApp.UseBlazorFrameworkFiles();
             webApp.UseAntiforgery();
             webApp.UseRouting();     // Move this UP
+            webApp.UseAuthorization();
 
             // 2. Mapping happens AFTER routing is configured
             //webApp.MapBlazorHub();

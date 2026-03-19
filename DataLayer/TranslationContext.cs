@@ -53,6 +53,7 @@ namespace DataLayer
             _ = configurationBuilder.Properties<PackStatus>().HaveConversion<int>();
             _ = configurationBuilder.Properties<CardType>().HaveConversion<int>();
             _ = configurationBuilder.Properties<GradeScale>().HaveConversion<int>();
+            _ = configurationBuilder.Properties<DefaultPermissions>().HaveConversion<string>();
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -77,7 +77,7 @@ namespace FlashCard.Services
             QueryManager = Service?.GetService(typeof(IQueryManager)) as IQueryManager;
         }
 
-        public AuthService(IServiceProvider _service)
+        public AuthService(IServiceProvider? _service)
         {
             Service = _service;
             QueryManager = Service?.GetService(typeof(IQueryManager)) as IQueryManager;
@@ -111,14 +111,14 @@ namespace FlashCard.Services
             new(AuthID.Strava, "Strava", "bi-triangle-half", AuthType.GenericOAuth),
         ];
 
-        public virtual AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder, IConfiguration config)
+        public virtual AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
         {
             foreach (var p in Providers)
             {
-                // We use p.Id.ToString() to find the config section
-                var section = config.GetSection($"Authentication:{p.Id}");
-                if (!section.Exists()) continue;
-
+                if(p.ClientId == null || p.Secret == null)
+                {
+                    continue;
+                }
                 switch (p.Type)
                 {
                     case AuthType.BuiltIn:

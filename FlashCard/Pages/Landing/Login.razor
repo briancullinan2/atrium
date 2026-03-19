@@ -2,6 +2,7 @@
 @page "/login/callback"
 @page "/login/callback/{ServiceId}"
 @using FlashCard.Services
+@attribute [AllowAnonymous]
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject NavigationManager Nav

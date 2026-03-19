@@ -1,6 +1,7 @@
 using DataLayer.Utilities;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.Internal;
@@ -28,6 +29,9 @@ builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
 builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
+
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<AuthenticationStateProvider, BrowserStateProvider>();
 
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();

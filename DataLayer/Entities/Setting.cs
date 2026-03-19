@@ -30,7 +30,7 @@ namespace DataLayer.Entities
                 _permission = value;
             }
         }
-        [NotMapped]
-        public DefaultPermissions? Default { get => Name?.TryParse<DefaultPermissions>(); set => Name = value.ToString(); }
+        [ForeignKey(nameof(Name))]
+        public DefaultPermissions? Default { get; set; }
     }
 }

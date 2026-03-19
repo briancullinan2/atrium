@@ -17,10 +17,10 @@ namespace DataLayer.Entities
         public string Value { get; set; } = string.Empty;
 
         [Column("session_time")]
-        public int Time { get; set; }
+        public DateTime Time { get; set; }
 
         [Column("session_lifetime")]
-        public int Lifetime { get; set; }
+        public int Lifetime { get; set; } = 31536000;
 
         /// <summary>
         /// Maps to @ORM\OneToMany. 
@@ -31,6 +31,8 @@ namespace DataLayer.Entities
         public Session()
         {
             Visits = new HashSet<Visit>();
+            Id = Guid.NewGuid().ToString();
+            Time = DateTime.UtcNow;
         }
     }
 }

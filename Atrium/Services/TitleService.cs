@@ -30,7 +30,7 @@ namespace Atrium.Services
             {
                 _title = title + " - " + _appName;
             }
-            _setTitle(_title, App.Current?.Windows ?? []);
+            _setTitle(_title, Application.Current?.Windows ?? []);
             OnTitleChanged?.Invoke(title);
         }
 

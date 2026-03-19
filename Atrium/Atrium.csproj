@@ -107,6 +107,7 @@
 	  <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.5" />
 	  <PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="10.0.5" />
 	  <PackageReference Include="EntityFramework" Version="6.5.1" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.5" />
       <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
       <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
       <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />

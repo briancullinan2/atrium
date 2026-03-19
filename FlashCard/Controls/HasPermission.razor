@@ -17,6 +17,6 @@
         Permission == null ||
         Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
         LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true ||
-        LoginService.User?.Settings.Any(s => s.Permission?.Name == Permission) == true ||
-        LoginService.User?.Settings.Any(s => s.Permission?.Name == DefaultPermissions.Unrestricted.ToString()) == true;
+        LoginService.User?.Settings.Any(s => s.Permission?.Name == DefaultPermissions.Unrestricted.ToString() || 
+            s.Permission?.Name == Permission) == true;
 }

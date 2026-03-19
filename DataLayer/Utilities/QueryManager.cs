@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
@@ -441,35 +442,55 @@ namespace DataLayer.Utilities
 
 
         // TODO: make this only queue once per same result
+        private readonly ConcurrentDictionary<string, Task<object?>> _pendingQueries = new();
 
-        public virtual async Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
+        public virtual async Task<TResult> Query<TEntity, TResult>(
+            StorageType storage,
+            Expression<Func<IQueryable<TEntity>, TResult>> query,
+            int priority = 10)
             where TEntity : Entity<TEntity>
         {
-            // Use the Enqueue handshake to wait for our turn in the PriorityQueue
-            return await Enqueue(async () =>
+            // 1. Generate a unique key for this specific query signature
+            // For "absurd detail," you could use query.ToXDocument() if you've mapped it,
+            // but ToString() catches 99% of identical LINQ structures.
+            string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query}";
+
+            // 2. Check if this exact query is already "in flight"
+            // GetOrAdd ensures that only one Task is created for the same key.
+            var task = _pendingQueries.GetOrAdd(queryKey, _ =>
             {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
-
-                // 1. Get the base set for the entity type
-                IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-
-                // 2. Compile the expression: Func<IQueryable<TEntity>, TResult>
-                var compiledQuery = query.Compile();
-
-                // 3. Execute the query against the live DbContext set
-                // This works for both local SQLite and your RemoteQuery compiler
-                TResult result = compiledQuery(set);
-
-                // Handle Async results if TResult is a Task (e.g., if the user passed ToListAsync)
-                if (result is Task task)
+                // This inner block only runs ONCE for the same queryKey
+                return Enqueue(async () =>
                 {
-                    await task;
-                    return (TResult)((dynamic)task).Result;
-                }
+                    try
+                    {
+                        using var scope = Service?.CreateScope();
+                        var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed.");
 
-                return result;
-            }, priority);
+                        IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
+                        var compiledQuery = query.Compile();
+                        TResult result = compiledQuery(set);
+
+                        if (result is Task taskResult)
+                        {
+                            await taskResult;
+                            return (object?)((dynamic)taskResult).Result;
+                        }
+
+                        return (object?)result;
+                    }
+                    finally
+                    {
+                        // 3. CRITICAL: Remove the task from the dictionary when done
+                        // so subsequent calls actually hit the DB for fresh data.
+                        _pendingQueries.TryRemove(queryKey, out var _);
+                    }
+                }, priority);
+            });
+
+            // 4. All callers (original and late-comers) await the same task
+            var finalResult = await task;
+            return (TResult)finalResult!;
         }
 
 

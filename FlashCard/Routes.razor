@@ -1,14 +1,27 @@
 ﻿@using FlashCard.Pages
 @using FlashCard.Controls
-<Router AppAssembly="typeof(Layout.MainLayout).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        @* DO NOT leave this empty or put complex logic here yet *@
-        <LayoutView Layout="@typeof(Layout.MainLayout)">
-            <NotFoundControl />
-        </LayoutView>
-    </NotFound>
-</Router>
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @* If they aren't logged in, they see this instead of the page *@
+                    <RedirectToLogin />
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="loading-shimmer">Verifying Identity...</div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            @*<RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />*@
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            @* DO NOT leave this empty or put complex logic here yet *@
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+                <NotFoundControl />
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

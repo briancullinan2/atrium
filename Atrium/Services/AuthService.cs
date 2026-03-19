@@ -12,7 +12,7 @@ using System.Text;
 
 namespace Atrium.Services
 {
-    internal class AuthService(IServiceProvider _service) : FlashCard.Services.AuthService(_service)
+    internal class AuthService(IServiceProvider? _service) : FlashCard.Services.AuthService(_service)
     {
         public override void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
         {

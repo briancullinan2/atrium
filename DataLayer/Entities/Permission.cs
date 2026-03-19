@@ -49,7 +49,7 @@ namespace DataLayer.Entities
         public string? Baml { get; set; }
         [NotMapped]
         public System.Reflection.Assembly? Assembly { get; set; }
-        [NotMapped]
-        public DefaultPermissions? Default { get => Name?.TryParse<DefaultPermissions>(); set => Name = value.ToString(); }
+        [ForeignKey(nameof(Name))]
+        public DefaultPermissions? Default { get; set; }
     }
 }
