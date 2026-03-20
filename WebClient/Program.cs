@@ -32,7 +32,7 @@ builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
 builder.Services.AddSingleton<NavigationTracker>();
 
 builder.Services.AddAuthorizationCore();
-builder.Services.AddScoped<AuthenticationStateProvider, BrowserStateProvider>();
+builder.Services.AddSingleton<AuthenticationStateProvider, BrowserStateProvider>();
 
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();

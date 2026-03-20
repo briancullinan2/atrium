@@ -350,7 +350,7 @@ namespace DataLayer.Utilities
                 var contextTo = GetContext(To);
                 if (contextFrom == null || contextTo == null)
                 {
-                    throw new InvalidOperationException("Database context failed.");
+                    throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
                 }
 
                 var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
@@ -478,7 +478,7 @@ namespace DataLayer.Utilities
             return await Enqueue(async () =>
             {
                 using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
 
                 var predicate = expression.Predicate();
                 var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
@@ -511,11 +511,10 @@ namespace DataLayer.Utilities
         public virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
         {
             using var scope = Service?.CreateScope();
-            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             using var transaction = context.Database.BeginTransaction();
             try
             {
-
                 await ShallowSaveRecursive(context, entity);
                 entity.CanonicalFingerprint = entity.GetHashCode();
                 _ = await context.SaveChangesAsync();
@@ -537,7 +536,7 @@ namespace DataLayer.Utilities
             return await Enqueue(async () =>
             {
                 using var scope = Service?.CreateScope();
-                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+                var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(__func));
                 using var transaction = context.Database.BeginTransaction();
                 try
                 {
@@ -612,7 +611,7 @@ namespace DataLayer.Utilities
                     try
                     {
                         using var scope = Service?.CreateScope();
-                        var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed.");
+                        var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
                         var invokedExpression = Expression.Invoke(query, set.Expression);
@@ -860,7 +859,7 @@ namespace DataLayer.Utilities
 
         {
             using var scope = Service?.CreateScope();
-            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
             return await UpdateNow(context, entity, predicate, 3);
         }
 

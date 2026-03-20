@@ -38,9 +38,17 @@ namespace Atrium.WinUI
         [STAThread]
         public static void Main(string[] args)
         {
-            // 1. Start your Web Server in a background thread
-            _ = WebServer.StartWebServer(args);
-            TitleService._setTitle = SetTitle;
+            try
+            {
+                // 1. Start your Web Server in a background thread
+                _ = WebServer.StartWebServer(args);
+                TitleService._setTitle = SetTitle;
+            } 
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw new Exception("bs", ex);
+            }
 
             // 2. Start the WinUI/MAUI Application
             WinRT.ComWrappersSupport.InitializeComWrappers();

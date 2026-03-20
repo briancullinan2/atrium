@@ -141,13 +141,7 @@
         var wideStart = day.Date.ToUniversalTime();
         var wideEnd = day.Date.AddDays(1).ToUniversalTime();
 
-        var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v =>
-            v.Created >= wideStart && v.Created < wideEnd)).ToList();
-        //var allRecent = await QueryManager.Query<DataLayer.Entities.Visit>();
-
-        // Now filter in C# where we can actually see the 'Kind'
-        //var result = allRecent
-        //    .Where(v => v.Created.ToLocalTime().Date == day.Date).ToList();
+        var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created >= wideStart && v.Created < wideEnd)).ToList();
 
         if (!Events.TryGetValue(day.Date, out var existing) || existing.Count() != allRecent.Count)
         {
