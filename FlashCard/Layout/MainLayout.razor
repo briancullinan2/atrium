@@ -21,6 +21,7 @@
 @inject IChatService ChatService
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
+@inject NavigationTracker Tracker
 
 <div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
     <div id="theme-sensor" style="display:none;">
@@ -262,9 +263,9 @@
         ChatService.OnChatWorking += SetChat;
         //AuthProvider.AuthenticationStateChanged += (task) =>
         //{
-            // If this line never hits when you login, the UI is NOT
-            // subscribed to the instance you are calling Notify on.
-            //Console.WriteLine("UI received Auth Change Notification!");
+        // If this line never hits when you login, the UI is NOT
+        // subscribed to the instance you are calling Notify on.
+        //Console.WriteLine("UI received Auth Change Notification!");
         //};
         SetPageClass();
         _ = ChatService.IsWorking();
@@ -344,7 +345,7 @@
             Background = theme;
             initRender = true;
             this.StateHasChanged();
-            _ = OnAfterRenderAsync(true);
+            _ = InitializeRender();
         }
     }
 
@@ -422,17 +423,6 @@
         ChatService.OnChatWorking -= SetChat;
     }
 
-    /*
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Assuming your SectionOutlet renders something with ID 'sync-target'
-            var content = await JSRuntime.InvokeAsync<string>("eval", "document.title");
-            // Now you have it in C#
-            }
-        }
-   */
 
     private IJSObjectReference? _animationCts;
 
@@ -442,16 +432,29 @@
         {
             return;
         }
+
+        _ = InitializeRender();
+
+        if (firstRender)
+        {
+            // At this point, the WebView is 100% initialized.
+            _ = InvokeAsync(() => Tracker.InitializeTracker(Nav));
+        }
+    }
+
+
+    protected async Task InitializeRender()
+    {
         initRender = false;
 
-        if(_animationCts != null)
+        if (_animationCts != null)
         {
             _ = _animationCts.InvokeVoidAsync("dispose");
             _ = _animationCts.DisposeAsync();
             _animationCts = null;
         }
 
-        if(Background == AnimationMode.None)
+        if (Background == AnimationMode.None)
         {
             return;
         }
@@ -462,7 +465,6 @@
 
         // 2. Call the function from the module
         _animationCts = await _module.InvokeAsync<IJSObjectReference>("initLichtenberg", "lichtenbergCanvas");
-
     }
 
     public async ValueTask DisposeAsync()

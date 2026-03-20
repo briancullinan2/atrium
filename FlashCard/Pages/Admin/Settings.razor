@@ -44,9 +44,9 @@
     </div>
 
 
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationBackground, Value = Background.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationTheme, Value = Application.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Default = DefaultPermissions.ApplicationSidebar, Value = Sidebar.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
 
     <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
 

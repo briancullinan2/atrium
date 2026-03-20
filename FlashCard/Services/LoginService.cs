@@ -45,7 +45,7 @@ namespace FlashCard.Services
                 // discard the current user
 
                 var currentSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
-                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser);
+                    s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString());
                 if (currentSetting.FirstOrDefault()?.Value != null)
                 {
                     currentSetting.First().Value = null;
@@ -54,7 +54,7 @@ namespace FlashCard.Services
 
 
                 var autoLoginSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
-                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
+                    s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString());
 
                 if (autoLoginSetting.FirstOrDefault()?.Value != null)
                 {
@@ -65,7 +65,7 @@ namespace FlashCard.Services
 
                 // TODO: fallback to default user
                 var defaultUserSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
-                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationDefaultUser);
+                    s.Name != null && s.Name == DefaultPermissions.ApplicationDefaultUser.ToString());
 
 
                 if (defaultUserSetting.FirstOrDefault()?.Value == null)

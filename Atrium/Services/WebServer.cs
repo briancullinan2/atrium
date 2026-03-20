@@ -55,6 +55,7 @@ namespace Atrium.Services
             webBuilder.Services.AddSingleton<IChatService, ChatService>();
             webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
             webBuilder.Services.AddSingleton<IAuthService, AuthService>();
+            webBuilder.Services.AddSingleton<NavigationTracker>();
 
             webBuilder.Services.AddAuthorizationCore();
             // Register your provider as the base class
@@ -62,7 +63,7 @@ namespace Atrium.Services
             webBuilder.Services.AddScoped<AuthenticationStateProvider, DatabaseStateProvider>();
             // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
             webBuilder.Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
-            
+
             var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(webBuilder);
             new AuthService(null).AddExternalLogins(authenticationBuilder);
 

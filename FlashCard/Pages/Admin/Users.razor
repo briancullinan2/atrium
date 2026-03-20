@@ -193,7 +193,7 @@
     {
         var users = (await QueryManager.Query<DataLayer.Entities.User>()).ToList();
         if(LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true
-            || LoginService.User?.Settings.Any(s => string.Equals(s.Permission?.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
+            || LoginService.User?.Settings.Any(s => string.Equals(s.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
         {
             var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
             var fresh = defaultUsers.Where(d => {

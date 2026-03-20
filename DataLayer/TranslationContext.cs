@@ -10,22 +10,22 @@ namespace DataLayer
     // This context never connects to a DB; it just holds your Entity mappings
     public class TranslationContext(DbContextOptions ctx) : DbContext(ctx)
     {
-        public DbSet<Permission> Permissions { get; set; }
-        public DbSet<Role> Roles { get; set; }
-        public DbSet<User> Users { get; set; }
-        public DbSet<Setting> Settings { get; set; }
-        public DbSet<Message> Messages { get; set; }
-        public DbSet<Pack> Packs { get; set; }
-        public DbSet<Card> Cards { get; set; }
-        public DbSet<Answer> Answers { get; set; }
-        public DbSet<Group> Groups { get; set; }
-        public DbSet<Entities.File> Files { get; set; }
-        public DbSet<Visit> Visits { get; set; }
-        public DbSet<Session> Sessions { get; set; }
-        public DbSet<Schedule> Schedules { get; set; }
-        public DbSet<Subject> Subjects { get; set; }
-        public DbSet<Grade> Grades { get; set; }
-        public DbSet<Lesson> Lessons { get; set; }
+        public DbSet<Permission>? Permissions { get; set; }
+        public DbSet<Role>? Roles { get; set; }
+        public DbSet<User>? Users { get; set; }
+        public DbSet<Setting>? Settings { get; set; }
+        public DbSet<Message>? Messages { get; set; }
+        public DbSet<Pack>? Packs { get; set; }
+        public DbSet<Card>? Cards { get; set; }
+        public DbSet<Answer>? Answers { get; set; }
+        public DbSet<Group>? Groups { get; set; }
+        public DbSet<Entities.File>? Files { get; set; }
+        public DbSet<Visit>? Visits { get; set; }
+        public DbSet<Session>? Sessions { get; set; }
+        public DbSet<Schedule>? Schedules { get; set; }
+        public DbSet<Subject>? Subjects { get; set; }
+        public DbSet<Grade>? Grades { get; set; }
+        public DbSet<Lesson>? Lessons { get; set; }
 
         public string ConnectString
         {

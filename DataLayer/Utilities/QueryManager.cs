@@ -1,7 +1,10 @@
 ﻿using DataLayer.Entities;
+using DataLayer.Generators;
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +14,6 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DataLayer.Utilities
 {
@@ -40,6 +42,9 @@ namespace DataLayer.Utilities
 
         Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
+        
+        
+        //Task<IEntity> Save(bool persistent, IEntity entity, int priority = 10);
 
 
         Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
@@ -48,14 +53,20 @@ namespace DataLayer.Utilities
         Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
 
 
+
+        Task<TEntity> Update<TEntity, TResult>(StorageType storage, Expression<Func<TEntity, TResult>> key, int priority = 10) where TEntity : Entity<TEntity>;
+
+        Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
+        Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         //Task<object?> Update(bool persistent, object key, int priority = 10);
         Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
 
+        Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
@@ -64,7 +75,7 @@ namespace DataLayer.Utilities
 
 
 
-
+        StorageType GetStorageType(Type type);
         Type GetStorageType(StorageType type);
 
         Type GetContextType(StorageType type);
@@ -124,6 +135,17 @@ namespace DataLayer.Utilities
         {
             get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
             set => _persistent = value?.GetType().GetGenericArguments()[0];
+        }
+        public static MethodInfo UpdateGeneric { get; }
+
+        static QueryManager()
+        {
+
+            var methods = typeof(QueryManager)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            UpdateGeneric = methods
+                .FirstOrDefault(m => m.Name == nameof(UpdateNow) && m.IsGenericMethod && m.GetParameters().First().ParameterType == typeof(DbContext))
+                ?? throw new Exception("UpdateNow method definition not found.");
         }
 
 
@@ -232,6 +254,21 @@ namespace DataLayer.Utilities
                 StorageType.Test => typeof(TestStorage),
                 _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
             };
+        }
+
+
+
+        public StorageType GetStorageType(Type type)
+        {
+            if (typeof(IDbContextFactory<EphemeralStorage>).IsAssignableFrom(type) || type == typeof(EphemeralStorage))
+                return StorageType.Ephemeral;
+            if (typeof(IDbContextFactory<PersistentStorage>).IsAssignableFrom(type) || type == typeof(PersistentStorage))
+                return StorageType.Persistent;
+            if (typeof(IDbContextFactory<TestStorage>).IsAssignableFrom(type) || type == typeof(TestStorage))
+                return StorageType.Test;
+            if (typeof(IDbContextFactory<RemoteStorage>).IsAssignableFrom(type) || type == typeof(RemoteStorage))
+                return StorageType.Remote;
+            throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.");
         }
 
         public Type GetContextType(StorageType type)
@@ -355,33 +392,73 @@ namespace DataLayer.Utilities
             return await Save(false, entity, priority);
         }
 
-        public void ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = true) where T : class, IEntity<T>
+        public async Task ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = true) where T : Entity<T>
         {
-            var trackedEntity = persistentContext.Entry(updatedEntity);
-            if (trackedEntity == null)
+            var compiled = updatedEntity.Predicate().Compile();
+            var trackedEntry = persistentContext.ChangeTracker.Entries<T>()
+                .FirstOrDefault(e => compiled(e.Entity))
+                ?? persistentContext.Entry(updatedEntity);
+
+            if (trackedEntry.Entity == null || trackedEntry.Entity.CanonicalFingerprint == null)
             {
-                // If it doesn't exist, we must Add it (Shallowly)
-                _ = persistentContext.Add(updatedEntity);
-                return;
+                // This is a NEW user, but we MUST NOT use context.Add(updatedEntity) 
+                // because it will try to re-insert the Roles.
+                trackedEntry.State = EntityState.Added;
             }
 
-            trackedEntity.CurrentValues.SetValues(updatedEntity);
+            trackedEntry.CurrentValues.SetValues(updatedEntity);
 
-            if (recurse)
+            if (!recurse)
             {
-                var navigations = trackedEntity.Metadata.GetNavigations();
-                foreach (var nav in navigations.Where(n => n.IsCollection))
-                {
-                    // Get the list of children from the updated object
+                return;
+            }
+            var navigations = trackedEntry.Metadata.GetNavigations()
+                    .Concat<INavigationBase>(trackedEntry.Metadata.GetSkipNavigations())
+                    .Where(n => n.IsCollection || n is IReadOnlySkipNavigation)
+                    .ToList() ?? [];
 
-                    if (updatedEntity.GetType().GetProperty(nav.Name)?.GetValue(updatedEntity) is IEnumerable updatedChildren)
+
+
+            foreach (var nav in navigations)
+            {
+                var trackedCollection = trackedEntry?.Collection(nav.Name);
+
+                // We need to ensure the internal list is loaded so EF can diff it
+                if (trackedCollection?.IsLoaded != true) trackedCollection?.Load();
+                
+                var trackedList = trackedCollection?.CurrentValue as IList;
+                if (((nav.GetMemberInfo(false, true) as PropertyInfo)?.GetValue(updatedEntity)
+                    ?? (nav.GetMemberInfo(false, true) as FieldInfo)?.GetValue(updatedEntity)) is not IEnumerable incomingList) continue;
+
+                if (!ReferenceEquals(trackedList, incomingList))
+                {
+                    // Clear the tracked list and fill it with the incoming "Ghosts" 
+                    // (which we will resolve in the next step)
+                    trackedList?.Clear();
+                }
+
+                
+                var genericMethod = UpdateGeneric.MakeGenericMethod(nav.TargetEntityType.ClrType);
+
+                var resolvedItems = new List<object>();
+                foreach (var child in incomingList.Cast<object>().ToList() ?? Enumerable.Empty<object>())
+                {
+                    if (genericMethod.Invoke(this, [persistentContext, child, null, 3]) is Task task)
                     {
-                        foreach (var child in updatedChildren)
-                        {
-                            // Use 'dynamic' or Reflection to call this method again for the child type
-                            ShallowSaveRecursive(persistentContext, (dynamic)child, true);
-                        }
+                        await task;
+                        ShallowSaveRecursive(persistentContext, (task as dynamic).Result, recurse);
+                        resolvedItems.Add((task as dynamic).Result);
+                        //persistentContext.Add((task as dynamic).Result);
                     }
+                }
+
+                var toRemove = trackedList?.Cast<object>().Where(x => !resolvedItems.Contains(x)).ToList() ?? [];
+                foreach (var item in toRemove) trackedList?.Remove(item);
+
+                // Add what's new
+                foreach (var item in resolvedItems)
+                {
+                    if (trackedList?.Contains(item) != true) trackedList?.Add(item);
                 }
             }
         }
@@ -408,17 +485,45 @@ namespace DataLayer.Utilities
                     }
                 }
 
-                if (context.Entry(entity).State == EntityState.Detached)
-                    _ = context.Add(entity);
-
-                entity.CanonicalFingerprint = entity.GetHashCode(); // Your fingerprint logic
-                _ = await context.SaveChangesAsync();
-
-                return await UpdateNow(storage, entity);
+                return await SaveNow(storage, entity);
             }, priority);
         }
 
+
         public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return await Enqueue(async () =>
+            {
+                return await SaveNow(storage, entity);
+            }, priority);
+        }
+
+
+        public virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
+        {
+            using var scope = Service?.CreateScope();
+            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+            using var transaction = context.Database.BeginTransaction();
+            try
+            {
+
+                await ShallowSaveRecursive(context, entity);
+                entity.CanonicalFingerprint = entity.GetHashCode();
+                _ = await context.SaveChangesAsync();
+
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
+            }
+
+            return await UpdateNow(storage, entity);
+        }
+
+        /*
+        public async Task<IEntity> Save(StorageType storage, IEntity entity, int priority = 10)
         {
             return await Enqueue(async () =>
             {
@@ -434,19 +539,19 @@ namespace DataLayer.Utilities
                     _ = context.SaveChanges();
 
                     transaction.Commit();
-
-                    return await UpdateNow(storage, entity);
                 }
                 catch (Exception ex)
                 {
                     transaction.Rollback();
                     throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
                 }
-                finally
-                {
-                }
+
+                return await UpdateNow(storage, entity);
+
             }, priority);
         }
+        */
+
 
         public async Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
@@ -523,31 +628,65 @@ namespace DataLayer.Utilities
         }
 
 
-        public static void LoadAllNavigations(DbContext context, object entity)
-        {
-            var entry = context.Entry(entity);
+        public async Task LoadAllNavigations<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
+            where TEntity : Entity<TEntity>
 
-            // 1. Get all Navigation properties defined in the EF Model for this type
-            var navigations = entry.Metadata.GetNavigations();
+        {
+            if (depth <= 0) return;
+
+            _ = predicate ?? entity.Predicate();
+
+            var entry = context.Entry(entity);
+            var navigations = entry.Metadata.GetNavigations()
+                .Concat<INavigationBase>(entry.Metadata.GetSkipNavigations());
 
             foreach (var navigation in navigations)
             {
-                if (navigation.IsCollection)
+                // 1. Get the current value (even if it's just a 'New' object with an ID)
+                var navValue = navigation.GetGetter().GetClrValue(entity);
+
+                if ((navigation.IsCollection || navigation is IReadOnlySkipNavigation) && navValue is IEnumerable collection)
                 {
-                    // It's a Collection (like ICollection<Lesson>)
-                    var collectionEntry = entry.Collection(navigation.Name);
-                    if (!collectionEntry.IsLoaded)
+                    var resolvedItems = new List<object>();
+                    var genericMethod = UpdateGeneric.MakeGenericMethod(navigation.TargetEntityType.ClrType);
+                    foreach (var item in collection)
                     {
-                        collectionEntry.Load();
+                        // This is where the recursive magic happens
+                        // We need a non-generic way to call UpdateNow or a similar resolver
+                        if (genericMethod.Invoke(this, [context, item, null, depth]) is Task task)
+                        {
+                            await task;
+                            if ((task as dynamic).Result != null)
+                            {
+                                resolvedItems.Add((task as dynamic).Result);
+                            }
+                        }
+                    }
+
+                    ((dynamic)navValue).Clear();
+                    foreach (var resolved in resolvedItems)
+                    {
+                        ((dynamic)navValue).Add(resolved);
                     }
                 }
-                else
+                else if (navValue != null)
                 {
-                    // It's a Reference (like ParentLesson)
-                    var referenceEntry = entry.Reference(navigation.Name);
-                    if (!referenceEntry.IsLoaded)
+                    var genericMethod = UpdateGeneric.MakeGenericMethod(navigation.TargetEntityType.ClrType);
+                    var member = navigation.GetMemberInfo(false, true);
+
+                    // 3. Invoke it (Note: You must pass all 4 arguments because Reflection doesn't 'see' defaults)
+                    if (genericMethod.Invoke(this, [context, navValue, null, depth]) is Task task)
                     {
-                        referenceEntry.Load();
+                        await task;
+
+                        if (member is PropertyInfo prop)
+                        {
+                            prop.SetValue(entity, (task as dynamic).Result);
+                        }
+                        else if (member is FieldInfo field)
+                        {
+                            field.SetValue(entity, (task as dynamic).Result);
+                        }
                     }
                 }
             }
@@ -608,7 +747,7 @@ namespace DataLayer.Utilities
         public async Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
-            return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
+            return await Update<TEntity, TEntity>(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
         }
 
         public async Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10)
@@ -617,7 +756,7 @@ namespace DataLayer.Utilities
             return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
         }
 
-        public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10)
+        public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
             var entity = Activator.CreateInstance<TEntity>();
@@ -629,7 +768,23 @@ namespace DataLayer.Utilities
                     prop.SetValue(entity, update.Value);
                 }
             }
-            return await Update(storage, entity, priority);
+            return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
+        }
+
+
+        public async Task<TEntity> Update<TEntity, TResult>(StorageType storage, Expression<Func<TEntity, TResult>> key, int priority = 10)
+            where TEntity : Entity<TEntity>
+        {
+            var entity = Activator.CreateInstance<TEntity>();
+            var updates = key.ToMembers();
+            foreach (var update in updates)
+            {
+                if (update.Key is PropertyInfo prop && prop.CanWrite)
+                {
+                    prop.SetValue(entity, update.Value);
+                }
+            }
+            return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
 
         public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
@@ -638,12 +793,29 @@ namespace DataLayer.Utilities
             return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
 
-        public virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
+        public async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
+            where TEntity : Entity<TEntity>
+
+        {
+            return await UpdateNow(storage, entity, entity.Predicate());
+        }
+
+
+        public virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null)
             where TEntity : Entity<TEntity>
 
         {
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed.");
+            return await UpdateNow(context, entity, predicate, 3);
+        }
+
+        public virtual async Task<TEntity> UpdateNow<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
+            where TEntity : Entity<TEntity>
+
+        {
+            predicate ??= entity.Predicate();
+            var compiled = predicate.Compile();
 
             if (entity == null)
             {
@@ -658,28 +830,56 @@ namespace DataLayer.Utilities
                 throw new InvalidOperationException("Predicate not assigned.");
             }
 
-            var entry = context.Entry(entity);
-
             // If the entity isn't being tracked, we need to attach it first
-            if (entry.State == EntityState.Detached)
+            if (context.Entry(entity).State == EntityState.Detached)
             {
+                var existingEntity = context.Set<TEntity>().Local.FirstOrDefault(e => compiled(e) == true);
+
                 // TODO: make this an overload that accepts an IEnumberable as an output and iterates over all matches?
-                var existingEntity = context.Set<TEntity>().FirstOrDefault(entity.Predicate());
+                existingEntity ??= context.ChangeTracker.Entries<TEntity>().FirstOrDefault(e => compiled(e.Entity))?.Entity;
+                existingEntity ??= context.Set<TEntity>().FirstOrDefault(predicate);
                 if (existingEntity != null)
                 {
-                    _ = context.Attach(existingEntity);
                     return existingEntity;
                 }
 
-                _ = context.Attach(entity);
+                await LoadAllNavigations(context, entity, predicate, --depth);
+
+                context.Attach(entity);
+            }
+            else
+            {
+                await LoadAllNavigations(context, entity, predicate, --depth);
             }
 
             // This executes the SQL SELECT and updates the object's properties
-            entry.Reload();
-            LoadAllNavigations(context, entity);
+            try
+            {
+                await context.Entry(entity).ReloadAsync();
+            }
+            catch
+            {
+                
+            }
 
-            return entry.Entity;
+            return entity;
         }
+
+        public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return Update<TEntity>(StorageType.Ephemeral, key, priority);
+        }
+
+        public Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return Update<TEntity>(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
+        }
+
+        public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return Update<TEntity, TEntity>(storage, key, priority);
+        }
+
     }
 
 

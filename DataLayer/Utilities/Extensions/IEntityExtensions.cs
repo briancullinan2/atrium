@@ -15,8 +15,12 @@ namespace DataLayer.Utilities.Extensions
         /// Rehydrates the entity by discarding local changes and fetching 
         /// the latest data from the database.
         /// </summary>
-        public static async Task<T> Update<T>(this T entity) where T : Entity<T>
+        public static async Task<T> Update<T>(this T? entity) where T : Entity<T>, IEntity
         {
+            if (entity == null)
+            {
+                return default!;
+            }
             if (QueryManager.Service == null)
             {
                 throw new InvalidOperationException("No service provider.");
@@ -25,11 +29,40 @@ namespace DataLayer.Utilities.Extensions
             return await QueryManager.Service.GetRequiredService<IQueryManager>().Update(false, entity);
         }
 
+        /*
+        public static async Task<IEntity> Update(this IEntity? entity)
+        {
+            if (entity == null)
+            {
+                return default!;
+            }
+            if (QueryManager.Service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+
+            return await QueryManager.Service.GetRequiredService<IQueryManager>().Update(false, entity);
+        }
+        */
+
+        /*
+        public static async Task<IEntity> Save(this IEntity? ent)
+        {
+            if (ent == null)
+            {
+                return default!;
+            }
+            if (QueryManager.Service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+
+            return await QueryManager.Service.GetRequiredService<IQueryManager>().Save(false, ent);
+        }
+        */
 
 
-
-
-        public static async Task<T?> Save<T>(this T? ent) where T : Entity<T>
+        public static async Task<T> Save<T>(this T? ent) where T : Entity<T>, IEntity<T>, IEntity
         {
             if (ent == null)
             {

@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using DataLayer.Utilities.Extensions;
 
 namespace DataLayer.Entities
 {
@@ -15,15 +16,21 @@ namespace DataLayer.Entities
     {
         //abstract internal static IEntity Create(IEntity target);
         //abstract internal static IEntity Wrap(IEntity target);
-    }
-
-    public interface IEntity<T> : IEntity where T : class, IEntity<T>
-    {
+        //Task<IEntity> Update(IEntity? entity = null);
+        //Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
+        //Task<IEntity> Save();
         int? CanonicalFingerprint { get; set; }
+
+    }
+
+    public interface IEntity<T> : IEntity where T : Entity<T>, IEntity<T>
+    {
+        Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
+        Task<T> Save();
     }
 
 
-    public class Entity<T> : IEntity<T> where T : class, IEntity<T>
+    public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity
     {
 
 
@@ -131,6 +138,36 @@ namespace DataLayer.Entities
             return (int)hash;
         }
 
+        public async Task<T> Save()
+        {
+            return (T)(await IEntityExtensions.Save<T>(this as T));
+        }
+
+        /*
+
+        async Task<IEntity> IEntity.Save()
+        {
+            return await IEntityExtensions.Save(this);
+        }
+        */
+
+        /*
+        async Task<IEntity> IEntity.Update(IEntity? entity)
+        {
+            return await IEntityExtensions.Update(entity);
+        }
+        */
+
+        public async Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity
+        {
+            entity ??= this as TEntity;
+            return await IEntityExtensions.Update(entity!);
+        }
+
+        //async Task<TEntity> IEntity.Update<TEntity>(TEntity? entity) where TEntity : class
+        //{
+        //    return await IEntityExtensions.Update(entity!);
+        //}
     }
 
 }

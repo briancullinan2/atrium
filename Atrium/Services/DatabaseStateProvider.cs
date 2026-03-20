@@ -41,13 +41,13 @@ namespace Atrium.Services
 #endif
             {
                 var currentSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
-                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser);
+                    s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString());
                 sessionId = currentSetting?.FirstOrDefault()?.Value;
 
                 if (sessionId == null)
                 {
                     var autoLoginSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
-                        s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
+                        s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString());
                     sessionId = autoLoginSetting?.FirstOrDefault()?.Value;
                 }
             }
@@ -57,7 +57,7 @@ namespace Atrium.Services
 
             // 2. Fetch the session from your DataLayer.Entities.Session table
             var session = await _query.Query<DataLayer.Entities.Session>(s =>
-                s.Id == sessionId && s.Time + TimeSpan.FromSeconds(s.Lifetime) > DateTime.UtcNow);
+                s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow);
 
             if (session.FirstOrDefault() == null)
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -67,32 +67,29 @@ namespace Atrium.Services
             var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(sessionEntity.Value) ?? [];
 
             // 4. Sync Logic
-            if (sessionEntity.Time < DateTime.UtcNow.AddHours(-1))
+            var token = storedClaims.FirstOrDefault(c => c.Type == "access_token")?.Value;
+            var providerStr = storedClaims.FirstOrDefault(c => c.Type == "urn:atrium:provider")?.Value;
+
+            if (!string.IsNullOrEmpty(token) && Enum.TryParse<AuthID>(providerStr, out var providerId))
             {
-                var token = storedClaims.FirstOrDefault(c => c.Type == "access_token")?.Value;
-                var providerStr = storedClaims.FirstOrDefault(c => c.Type == "urn:atrium:provider")?.Value;
+                var authService = _services.GetRequiredService<AuthService>();
+                using var json = await GetFreshUserInfo(providerId, token);
 
-                if (!string.IsNullOrEmpty(token) && Enum.TryParse<AuthID>(providerStr, out var providerId))
+                if (json != null)
                 {
-                    var authService = _services.GetRequiredService<AuthService>();
-                    using var json = await GetFreshUserInfo(providerId, token);
-
-                    if (json != null)
+                    // Update claims with fresh data from the JSON
+                    // You can loop through your existing MapJsonKey logic or do it manually:
+                    var freshName = json.RootElement.TryGetProperty("name", out var n) ? n.GetString() : null;
+                    if (freshName != null)
                     {
-                        // Update claims with fresh data from the JSON
-                        // You can loop through your existing MapJsonKey logic or do it manually:
-                        var freshName = json.RootElement.TryGetProperty("name", out var n) ? n.GetString() : null;
-                        if (freshName != null)
-                        {
-                            storedClaims.RemoveAll(c => c.Type == ClaimTypes.Name);
-                            storedClaims.Add(new UserClaim(ClaimTypes.Name, freshName));
-                        }
-
-                        // Update the DB session so we don't sync again for another hour
-                        sessionEntity.Value = JsonSerializer.Serialize(storedClaims);
-                        sessionEntity.Time = DateTime.UtcNow; // Reset the sync timer
-                        await _query.Save(sessionEntity);
+                        storedClaims.RemoveAll(c => c.Type == ClaimTypes.Name);
+                        storedClaims.Add(new UserClaim(ClaimTypes.Name, freshName));
                     }
+
+                    // Update the DB session so we don't sync again for another hour
+                    sessionEntity.Value = JsonSerializer.Serialize(storedClaims);
+                    sessionEntity.Time = DateTime.UtcNow; // Reset the sync timer
+                    await _query.Save(sessionEntity);
                 }
             }
 
@@ -148,14 +145,21 @@ namespace Atrium.Services
             // TODO: set newSession.Lifetime to token lifetime
             await _query.Save(newSession);
 
+            var guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userEntity = (await _query.Query<User>(u => u.Guid == guid)).FirstOrDefault();
             var currentSetting = (await _query.Query<Setting>(s =>
-                s.Permission != null 
-                && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser))?.FirstOrDefault() 
-                ?? new Setting { 
-                    Name = DefaultPermissions.ApplicationCurrentUser.ToString(),
-                    Value = newSession.Id,
-                    Guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value,
+                s.Name != null
+                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString()))?.FirstOrDefault()
+                ?? new Setting
+                {
+                    Name = DefaultPermissions.ApplicationCurrentUser.ToString()
                 };
+            currentSetting.Value = newSession.Id;
+            currentSetting.Guid = userEntity?.Guid;
+            currentSetting.User = userEntity;
+            //currentSetting.Default = DefaultPermissions.ApplicationCurrentUser;
+            //currentSetting.Permission = await new Permission { Name = DefaultPermissions.ApplicationCurrentUser.ToString() }.Update();
+
             if (user.Claims.Any(c => c.Type == ClaimTypes.Role))
             {
                 currentSetting.Role = await new Role { Name = user.Claims.First(c => c.Type == ClaimTypes.Role).Value }.Update();

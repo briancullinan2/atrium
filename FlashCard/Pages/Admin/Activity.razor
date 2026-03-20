@@ -1,8 +1,10 @@
+@using DataLayer.Utilities
 @using FlashCard.Services
 @using System
 @implements IDisposable
 @page "/activity"
 @inject IMenuService MenuService
+@inject IQueryManager QueryManager
 @inject IJSRuntime JS
 
 <SyncedTitle Title="Usage Activity"></SyncedTitle>
@@ -44,7 +46,7 @@
                     <div class="day-header">@day.ToString("MMM dd")</div>
 
                     <div class="events-layer">
-                        @foreach (var ev in GetEventsForDay(day))
+                        @foreach (var ev in Events.TryGetValue(day, out var events) ? events : [])
                         {
                             <div class="event-pill"
                                  style="top: @(GetYPosition(ev.Created))px;"
@@ -130,10 +132,17 @@
         }
     }
 
+    private Dictionary<DateTime, IEnumerable<DataLayer.Entities.Visit>> Events = new();
+
+
+    private async Task UpdateEvents(DateTime day)
+    {
+        Events[day] = await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created > day.Date && v.Created < day.Date + TimeSpan.FromDays(1));
+    }
 
     private IEnumerable<DataLayer.Entities.Visit> GetEventsForDay(DateTime day)
     {
-        return [];
+        return Events[day];
     }
 
     [JSInvokable]

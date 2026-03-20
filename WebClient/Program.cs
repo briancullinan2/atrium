@@ -29,6 +29,7 @@ builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
 builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
+builder.Services.AddSingleton<NavigationTracker>();
 
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, BrowserStateProvider>();

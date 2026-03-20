@@ -4,6 +4,7 @@
 @page "/logout"
 @page "/access-denied"
 
+@using DataLayer.Utilities
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -12,6 +13,7 @@
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject IAuthService AuthService
+@inject IQueryManager QueryManager
 @inject NavigationManager Nav
 
 <SyncedTitle Title="User Login"></SyncedTitle>
@@ -64,7 +66,8 @@
         if(user.CanonicalFingerprint == null
             && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
         {
-            await user.Roles.First().Update();
+            //await user.Roles.First().Update();
+            user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == DefaultRoles.Admin.ToString()));
             await user.Save();
         }
 

@@ -16,21 +16,12 @@ namespace DataLayer.Entities
         public string? Guid { get; set; }
         [ForeignKey(nameof(Guid))]
         public User? User { get; set; }
-        public string? SetterId { get; set; }
-        [ForeignKey(nameof(SetterId))]
-        public User? Setter { get; set; }
-        [ForeignKey(nameof(Permission.Name))]
-        private Permission? _permission;
-        public Permission? Permission
-        {
-            get => _permission ?? new() { Name = Name };
-            set
-            {
-                Name = value?.Name;
-                _permission = value;
-            }
-        }
-        [ForeignKey(nameof(Name))]
-        public DefaultPermissions? Default { get; set; }
+        //public string? SetterId { get; set; }
+        //[ForeignKey(nameof(SetterId))]
+        //public User? Setter { get; set; }
+        //[ForeignKey(nameof(Name))]
+        //public Permission? Permission { get; set; }
+        //[ForeignKey(nameof(Name))]
+        //public DefaultPermissions? Default { get; set; }
     }
 }

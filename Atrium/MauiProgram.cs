@@ -64,7 +64,7 @@ namespace Atrium
             builder.Services.AddSingleton<IChatService, ChatService>();
             builder.Services.AddSingleton<IQueryManager, QueryManager>();
             builder.Services.AddSingleton<IAuthService, Services.AuthService>();
-
+            builder.Services.AddSingleton<NavigationTracker>();
 
             builder.Services.AddAuthorizationCore();
             builder.Services.AddCascadingAuthenticationState();
