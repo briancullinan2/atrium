@@ -14,6 +14,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 
 namespace DataLayer.Utilities
 {
@@ -446,7 +447,15 @@ namespace DataLayer.Utilities
                     if (genericMethod.Invoke(this, [persistentContext, child, null, 3]) is Task task)
                     {
                         await task;
-                        ShallowSaveRecursive(persistentContext, (task as dynamic).Result, recurse);
+                        var itemEntry = persistentContext.Entry((task as dynamic).Result);
+
+                        // TODO: this worked for the recursion error so it's probably going to fuck me over in the near future.
+                        if (itemEntry.State != EntityState.Unchanged
+                            && itemEntry.State != EntityState.Added)
+                        {
+                            ShallowSaveRecursive(persistentContext, (task as dynamic).Result, recurse);
+                        }
+
                         resolvedItems.Add((task as dynamic).Result);
                         //persistentContext.Add((task as dynamic).Result);
                     }
@@ -586,7 +595,12 @@ namespace DataLayer.Utilities
             // 1. Generate a unique key for this specific query signature
             // For "absurd detail," you could use query.ToXDocument() if you've mapped it,
             // but ToString() catches 99% of identical LINQ structures.
-            string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query}";
+            var variables = query.GetHashCode().ToString();
+            try
+            {
+                variables = JsonSerializer.Serialize(query.ToDictionary()).ToSafe();
+            } catch { }
+            string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query}_{variables}";
 
             // 2. Check if this exact query is already "in flight"
             // GetOrAdd ensures that only one Task is created for the same key.
@@ -601,8 +615,33 @@ namespace DataLayer.Utilities
                         var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed.");
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-                        var compiledQuery = query.Compile();
-                        TResult result = compiledQuery(set);
+                        var invokedExpression = Expression.Invoke(query, set.Expression);
+                        TResult result;
+
+                        if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
+                        {
+                            // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
+                            var finalQueryable = set.Provider.CreateQuery(invokedExpression);
+
+                            // Force ToList to materialize it before the context is disposed
+                            var forcedList = typeof(Enumerable)
+                                .GetMethod(nameof(Enumerable.ToList))
+                                ?.MakeGenericMethod(typeof(TEntity)) // Or the target type
+                                .Invoke(null, [finalQueryable])!;
+
+                            if(typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
+                            {
+                                result = (TResult)Queryable.AsQueryable((IEnumerable)forcedList)!;
+                            }
+                            else
+                            {
+                                result = (TResult)forcedList;
+                            }
+                        }
+                        else
+                        {
+                            result = (TResult)set?.Provider.Execute(invokedExpression)!;
+                        }
 
                         if (result is Task taskResult)
                         {
@@ -663,10 +702,25 @@ namespace DataLayer.Utilities
                         }
                     }
 
-                    ((dynamic)navValue).Clear();
-                    foreach (var resolved in resolvedItems)
+                    // Cast to the non-generic IList
+
+                    if (navValue is IList list)
                     {
-                        ((dynamic)navValue).Add(resolved);
+                        list.Clear();
+                        foreach (var resolved in resolvedItems)
+                        {
+                            // IList.Add(object) handles the internal casting to Role for you
+                            list.Add(resolved);
+                        }
+                    }
+                    else
+                    {
+                        // Fallback for weird collections that don't implement IList
+                        ((dynamic)navValue).Clear();
+                        foreach (var resolved in resolvedItems)
+                        {
+                            ((dynamic)navValue).Add((dynamic)resolved); // Force the binder to see the actual type
+                        }
                     }
                 }
                 else if (navValue != null)

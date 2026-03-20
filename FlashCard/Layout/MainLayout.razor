@@ -1,6 +1,7 @@
 ﻿@using DataLayer.Utilities.Extensions
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.HtmlRendering
+@using Microsoft.AspNetCore.Http
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
@@ -15,7 +16,7 @@
 @inject IStudyService StudyService
 @inject ILoginService LoginService
 @inject ITitleService TitleService
-@inject IServiceProvider ServiceProvider
+@inject IServiceProvider Services
 @inject IJsonService JsonService
 @inject ILoggerFactory LoggerFactory
 @inject IChatService ChatService
@@ -156,6 +157,7 @@
         // No need to StateHasChanged() because the SendMessage event handler will invoke it
     }
 
+    private string? contextKey;
 
     protected async Task UnvaluedTask()
     {
@@ -167,6 +169,10 @@
 
         await Task.Delay(400);
 
+        if(contextKey != null)
+        {
+            RedirectToLogin.InFlight[contextKey] = null;
+        }
 
         _isTransitioning = false;
         _previousList.Clear();
@@ -183,6 +189,14 @@
     {
         var currentUri = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery.TrimEnd('/');
         var targetUri = Nav.ToAbsoluteUri(context.TargetLocation).PathAndQuery.TrimEnd('/');
+
+        contextKey = "Internal";
+        // so web clients don't interfere with desktop clients
+        var httpContext = Services.GetService<IHttpContextAccessor>();
+        if (httpContext != null)
+        {
+            contextKey = httpContext.HttpContext.Connection.RemoteIpAddress.ToString();
+        }
 
         if (currentUri == targetUri)
         {
@@ -205,7 +219,7 @@
         }
 
         var fragment = _activeBody;
-        using var htmlRenderer = new HtmlRenderer(ServiceProvider, LoggerFactory);
+        using var htmlRenderer = new HtmlRenderer(Services, LoggerFactory);
 
         var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
         {

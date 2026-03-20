@@ -51,6 +51,8 @@
 @code {
     [Parameter] public string? ServiceId { get; set; }
     public IEnumerable<DataLayer.Entities.User>? Users { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    [Parameter] public string? ReturnUrl { get; set; }
 
     public string GetBackgroundColor(DataLayer.Entities.User user)
     {
@@ -95,7 +97,12 @@
         // 3. UI logic
         _ = LoginService.SetUser(user);
         _ = LoginService.SetLoginMode(false);
-    
+
+        if(ReturnUrl != null)
+        {
+            Nav.NavigateTo(ReturnUrl);
+            return;
+        }
         Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
     }
 

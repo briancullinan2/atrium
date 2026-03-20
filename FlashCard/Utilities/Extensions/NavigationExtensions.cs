@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using DataLayer.Utilities.Extensions;
+using System.Net;
 
 namespace FlashCard.Utilities.Extensions
 {
@@ -92,6 +93,18 @@ namespace FlashCard.Utilities.Extensions
             internal bool Wildcard;
         }
         private static readonly Dictionary<Type, IEnumerable<ParsedRoute>> _routeCache = [];
+        private static readonly Dictionary<Type, IDictionary<string, string?>> _queryCache = [];
+
+        private static IDictionary<string, string?> GetQueries(Type componentType)
+        {
+            // not sure how this would get in there?
+            if (_queryCache.TryGetValue(componentType, out var value))
+            {
+                return value;
+            }
+
+            return componentType.GetProperties().Where(p => p.GetCustomAttributes<SupplyParameterFromQueryAttribute>().Any()).ToDictionary(p => p.Name, p => p.GetCustomAttribute<SupplyParameterFromQueryAttribute>()?.Name);
+        }
 
         private static IEnumerable<ParsedRoute> GetRoutes(Type componentType)
         {
@@ -140,6 +153,7 @@ namespace FlashCard.Utilities.Extensions
         {
 
             var sortedRoutes = GetRoutes(componentType);
+            var sortedQueries = GetQueries(componentType);
 
             // 2. Select the "Best" route
             // We want the route that has the same number of parameters as our 'values' count
@@ -157,7 +171,7 @@ namespace FlashCard.Utilities.Extensions
                 .ThenBy(r => r.Template?.Length);
 
             var bestRoute = matchedRoutes.First();
-            var missing = initializer?.Where(kvp => bestRoute.Params?.Contains(kvp.Key) == true).FirstOrDefault().Value;
+            var missing = initializer?.Where(kvp => bestRoute.Params?.Contains(kvp.Key) != true).FirstOrDefault();
             var finalUri = bestRoute.Template ?? "";
 
             // 3. Replace the placeholders
@@ -171,7 +185,11 @@ namespace FlashCard.Utilities.Extensions
             // TODO: replace intermittent? /*/something?
             if (missing != null && finalUri.EndsWith("/*"))
             {
-                finalUri = finalUri[..^1] + missing;
+                finalUri = finalUri[..^1] + missing.Value;
+            }
+            else if (missing != null && sortedQueries.Any(q => q.Key == missing?.Key))
+            {
+                finalUri = finalUri + "?" + sortedQueries.First(q => q.Key == missing?.Key).Value + '=' + WebUtility.UrlEncode(missing?.Value);
             }
 
             return finalUri;

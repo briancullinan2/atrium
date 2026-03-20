@@ -213,7 +213,7 @@
 
     protected static IEnumerable<DataLayer.Entities.Card>? GetCurrentQuiz(Type? lesson)
     {
-        var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Card>? cards = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Card>;
         return cards;
     }

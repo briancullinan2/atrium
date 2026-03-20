@@ -499,11 +499,13 @@ namespace DataLayer.Utilities.Extensions
             if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type) && finalExpression.Type != typeof(string))
             {
                 // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
-                var toListMethod = typeof(Enumerable).GetMethods()
-                    .First(m => m.Name == "ToList" && m.IsGenericMethod)
-                    .MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]);
+                var finalQueryable = set?.Provider.CreateQuery(finalExpression);
 
-                return toListMethod.Invoke(null, [set]);
+                // Force ToList to materialize it before the context is disposed
+                return typeof(Enumerable)
+                    .GetMethod(nameof(Enumerable.ToList))
+                    ?.MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]) // Or the target type
+                    .Invoke(null, [finalQueryable])!;
             }
             else
             {

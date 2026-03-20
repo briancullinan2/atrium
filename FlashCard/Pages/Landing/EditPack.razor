@@ -210,7 +210,7 @@
 
     protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod("Generate", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
         return packs?.ToList();
     }

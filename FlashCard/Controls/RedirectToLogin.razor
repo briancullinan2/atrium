@@ -1,11 +1,28 @@
+@using Microsoft.AspNetCore.Http;
+@using Microsoft.Extensions.DependencyInjection
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
 
 @code {
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+    internal static Dictionary<string, string?> InFlight = new();
 
     protected override void OnInitialized()
     {
         if (IsStaticRender) return;
-        Navigation.NavigateTo<Pages.Landing.Login>();
-    }
+
+        var httpContext = Services.GetService<IHttpContextAccessor>();
+        var contextKey = "Internal";
+        // so web clients don't interfere with desktop clients
+        if(httpContext != null)
+        {
+            contextKey = httpContext.HttpContext.Connection.RemoteIpAddress.ToString();
+        }
+        if (InFlight.TryGetValue(contextKey, out var _)) return;
+        InFlight.TryAdd(contextKey, Navigation.Uri);
+        Navigation.NavigateTo<Pages.Landing.Login>(l => new()
+        {
+            ReturnUrl = Navigation.Uri
+        });
+}
 }

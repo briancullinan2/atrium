@@ -46,7 +46,7 @@
                     <div class="day-header">@day.ToString("MMM dd")</div>
 
                     <div class="events-layer">
-                        @foreach (var ev in Events.TryGetValue(day, out var events) ? events : [])
+                        @foreach (var ev in GetEventsForDay(day.Date))
                         {
                             <div class="event-pill"
                                  style="top: @(GetYPosition(ev.Created))px;"
@@ -133,16 +133,36 @@
     }
 
     private Dictionary<DateTime, IEnumerable<DataLayer.Entities.Visit>> Events = new();
-
-
+    
+    
     private async Task UpdateEvents(DateTime day)
     {
-        Events[day] = await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created > day.Date && v.Created < day.Date + TimeSpan.FromDays(1));
+        // Temporary Wide Query: Get everything from the last 48 hours
+        var wideStart = day.Date.ToUniversalTime();
+        var wideEnd = day.Date.AddDays(1).ToUniversalTime();
+
+        var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v =>
+            v.Created >= wideStart && v.Created < wideEnd)).ToList();
+        //var allRecent = await QueryManager.Query<DataLayer.Entities.Visit>();
+
+        // Now filter in C# where we can actually see the 'Kind'
+        //var result = allRecent
+        //    .Where(v => v.Created.ToLocalTime().Date == day.Date).ToList();
+
+        if (!Events.TryGetValue(day.Date, out var existing) || existing.Count() != allRecent.Count)
+        {
+            Events[day.Date] = allRecent;
+            if (allRecent.Count != 0) StateHasChanged();
+        }
     }
+
+
 
     private IEnumerable<DataLayer.Entities.Visit> GetEventsForDay(DateTime day)
     {
-        return Events[day];
+        var localDate = day.Date;
+        _ = UpdateEvents(localDate);
+        return Events.TryGetValue(localDate, out var events) ? events : [];
     }
 
     [JSInvokable]

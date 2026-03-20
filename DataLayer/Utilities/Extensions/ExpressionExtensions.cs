@@ -59,6 +59,10 @@ namespace DataLayer.Utilities.Extensions
             {
                 values = bi.ToDictionary();
             }
+            else if (ex?.Body is ConditionalExpression ce)
+            {
+                values = ce.ToDictionary();
+            }
             else
             {
                 throw new InvalidOperationException("Can't do anything else with this " + ex?.Body.GetType() + ", frankly.");
@@ -67,10 +71,27 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        private static Dictionary<MemberInfo, object?> ToMembers(this ConditionalExpression expression)
+        {
+            var values = new Dictionary<MemberInfo, object?>();
+
+            // The 'Body' of the Lambda is where the comparison logic lives
+            ParseExpression(expression, values);
+
+            return values;
+        }
+
+
         private static Dictionary<string, string?> ToDictionary(this LambdaExpression expression)
         {
             return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
         }
+
+        private static Dictionary<string, string?> ToDictionary(this ConditionalExpression expression)
+        {
+            return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
+        }
+
 
 
         private static Dictionary<MemberInfo, object?> ToMembers(this LambdaExpression expression)
@@ -100,44 +121,174 @@ namespace DataLayer.Utilities.Extensions
             return values;
         }
 
-        private static void ParseExpression(Expression expr, Dictionary<MemberInfo, object?> values)
+
+        private static void ParseExpression(Expression? expr, Dictionary<MemberInfo, object?> values)
         {
-            if (expr is BinaryExpression binary)
+            if (expr == null) return;
+
+            // 1. Handle Ternary logic branches
+            if (expr is LambdaExpression le)
             {
-                if (binary.NodeType == ExpressionType.AndAlso)
+                // Dive into the body of the lambda (e.g., s => [Body])
+                ParseExpression(le.Body, values);
+            }
+            else if (expr is ConditionalExpression ce)
+            {
+                ParseExpression(ce.Test, values);
+                ParseExpression(ce.IfTrue, values);
+                ParseExpression(ce.IfFalse, values);
+            }
+            // 2. Handle Binary logic (And, Or, and Comparisons)
+            else if (expr is BinaryExpression binary)
+            {
+                switch (binary.NodeType)
                 {
-                    // Recursively check both sides of the &&
-                    ParseExpression(binary.Left, values);
-                    ParseExpression(binary.Right, values);
+                    case ExpressionType.AndAlso:
+                    case ExpressionType.OrElse:
+                        // Logical connectors: recurse both sides
+                        ParseExpression(binary.Left, values);
+                        ParseExpression(binary.Right, values);
+                        break;
+
+                    case ExpressionType.Equal:
+                    case ExpressionType.NotEqual:
+                    case ExpressionType.GreaterThan:
+                    case ExpressionType.LessThan:
+                    case ExpressionType.GreaterThanOrEqual:
+                    case ExpressionType.LessThanOrEqual:
+                        // Comparison: Identify Member vs Value
+                        ExtractComparison(binary, values);
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unknown comparison: " + binary.NodeType);
                 }
-                else if (binary.NodeType == ExpressionType.Equal)
+            }
+            // 3. Handle Method calls (like .ToString())
+            else if (expr is MethodCallExpression mc)
+            {
+                if (mc.Object is MemberExpression me)
                 {
-                    // We found a comparison: e.Member == Constant
-                    MemberInfo? member = null;
-
-                    // Handle e.Member (Left)
-                    if (binary.Left is MemberExpression memberExpr)
-                    {
-                        member = memberExpr.Member;
-                    }
-
-                    object? value;
-                    // Handle Constant (Right)
-                    if (binary.Right is ConstantExpression constantExpr)
-                    {
-                        value = constantExpr.Value;
-                    }
-                    else
-                    {
-                        // If it's a variable capture, we compile and invoke to get the value
-                        value = Expression.Lambda(binary.Right).Compile().DynamicInvoke();
-                    }
-
-                    if (member != null)
-                    {
-                        values[member] = value;
-                    }
+                    values[me.Member] = ResolveValue(mc);
                 }
+            }
+            else if (expr is NewExpression ne) Merge(values, ne.ToMembers());
+            else if (expr is MemberInitExpression mi) Merge(values, mi.ToMembers());
+            else if (expr is ParameterExpression pe)
+            {
+                // This is 's' in 's => s.Name'
+                // We don't store a 'value' because it's the iterator, 
+                // but we capture the Type to differentiate a Query<Visit> from a Query<User>.
+                values[pe.Type.GetTypeInfo()] = pe.Name;
+            }
+            else if (expr is UnaryExpression ue)
+            {
+                // (object)x or (int?)y - just peel the onion and keep going
+                ParseExpression(ue.Operand, values);
+            }
+            else
+            {
+                throw new InvalidOperationException("Can't do anything else with this " + expr.GetType() + ", frankly.");
+            }
+
+        }
+
+        private static void Merge(Dictionary<MemberInfo, object?> target, Dictionary<MemberInfo, object?> source)
+        {
+            foreach (var kvp in source)
+            {
+                target[kvp.Key] = kvp.Value;
+            }
+        }
+
+
+        private static void ExtractComparison(BinaryExpression binary, Dictionary<MemberInfo, object?> values)
+        {
+            var left = Unbox(binary.Left);
+            var right = Unbox(binary.Right);
+
+            // 1. Try to find the Entity Member on either side
+            if (TryGetEntityMember(left, out var entityMember))
+            {
+                values[entityMember!] = ResolveValue(right);
+            }
+            else if (TryGetEntityMember(right, out var entityMemberRight))
+            {
+                values[entityMemberRight!] = ResolveValue(left);
+            }
+            else
+            {
+                // 2. RECURSIVE WRAPPER LOGIC:
+                // If neither side is a direct entity property, one side might be a 
+                // MemberExpression that EVALUATES to a Lambda/Expression.
+                if (left is MemberExpression me && typeof(Expression).IsAssignableFrom(me.Type))
+                {
+                    var innerExpr = ResolveValue(me) as Expression;
+                    ParseExpression(innerExpr, values);
+                }
+                if (right is MemberExpression re && typeof(Expression).IsAssignableFrom(re.Type))
+                {
+                    var innerExpr = ResolveValue(re) as Expression;
+                    ParseExpression(innerExpr, values);
+                }
+            }
+        }
+
+        private static bool TryGetEntityMember(Expression expr, out MemberInfo? member)
+        {
+            member = null;
+            if (Unbox(expr) is MemberExpression me && IsParameterResource(me))
+            {
+                member = me.Member;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool IsParameterResource(MemberExpression me)
+        {
+            // Drills down to the root. If the root is 's' in 's => s.Name', it's an entity property.
+            // If the root is a 'Constant' (the closure class), it's a value/variable.
+            Expression? root = me.Expression;
+            while (root is MemberExpression next) root = next.Expression;
+            while (root is UnaryExpression unary) root = unary.Operand;
+
+            return root is ParameterExpression;
+        }
+
+        private static Expression Unbox(Expression expr)
+        {
+            // Strips away (object), Nullable conversion, or other Unary wrappers
+            while (expr is UnaryExpression unary)
+            {
+                expr = unary.Operand;
+            }
+            return expr;
+        }
+
+
+        private static object? ResolveValue(Expression expr)
+        {
+            if (expr is ConstantExpression constant)
+            {
+                return constant.Value;
+            }
+
+            // This is the "Wiggle Room" for the Ternary
+            if (expr is ConditionalExpression ce)
+            {
+                // We have to evaluate the Test to know which branch to take
+                var testFunc = Expression.Lambda<Func<bool>>(ce.Test).Compile();
+                return testFunc() ? ResolveValue(ce.IfTrue) : ResolveValue(ce.IfFalse);
+            }
+
+            // Fallback for closures/variables
+            try
+            {
+                return Expression.Lambda(expr).Compile().DynamicInvoke();
+            }
+            catch
+            {
+                return null;
             }
         }
 
