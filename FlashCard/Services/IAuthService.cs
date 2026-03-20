@@ -72,7 +72,6 @@ namespace FlashCard.Services
 
         static AuthService()
         {
-            QueryManager = Service?.GetService(typeof(IQueryManager)) as IQueryManager;
         }
 
         public AuthService(IServiceProvider? _service)

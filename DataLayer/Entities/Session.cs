@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DataLayer.Generators;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DataLayer.Entities
@@ -27,6 +28,10 @@ namespace DataLayer.Entities
         /// Use ICollection for EF Core navigation properties.
         /// </summary>
         public virtual ICollection<Visit> Visits { get; set; }
+
+        // there is no Users on purpose
+        //public virtual ICollection<Users> Users { get; set; }
+
 
         public Session()
         {

@@ -16,6 +16,7 @@ namespace DataLayer
         DisplayHighContrast = 13,
         DisplayStartOnBoot = 14,
 
+        ApplicationCurrentUser = 7,
         ApplicationAutoLogin = 6,
         ApplicationDefaultUser = 5,
 

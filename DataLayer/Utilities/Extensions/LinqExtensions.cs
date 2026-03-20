@@ -482,7 +482,7 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("No service provider.");
             }
             using var scope = QueryManager.Service.CreateScope();
-            var manager = QueryManager.Service.GetRequiredService<QueryManager>();
+            var manager = QueryManager.Service.GetRequiredService<IQueryManager>();
             var context = manager.GetContext(persist ?? StorageType.Ephemeral) ?? throw new InvalidOperationException("Database context failed.");
             var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
 

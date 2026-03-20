@@ -57,7 +57,7 @@ namespace Atrium.Services
             fileStream.Close();
             localStream.Close();
 
-            var query = _services.GetRequiredService<QueryManager>();
+            var query = _services.GetRequiredService<IQueryManager>();
             var file = await query.Save(new DataLayer.Entities.File()
             {
                 Filename = savePath,

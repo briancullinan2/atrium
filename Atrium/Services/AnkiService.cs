@@ -287,7 +287,7 @@ namespace Atrium.Services
             _ = await manager.UploadFile(remoteStream, fileName, "AnkiDownloads");
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
-            var query = _services.GetRequiredService<QueryManager>();
+            var query = _services.GetRequiredService<IQueryManager>();
             return await query.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
         }
 

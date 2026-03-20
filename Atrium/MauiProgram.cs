@@ -65,12 +65,13 @@ namespace Atrium
             builder.Services.AddSingleton<IQueryManager, QueryManager>();
             builder.Services.AddSingleton<IAuthService, Services.AuthService>();
 
+
             builder.Services.AddAuthorizationCore();
-            builder.Services.AddScoped<AuthenticationStateProvider, DatabaseStateProvider>();
-#if WINDOWS
-            var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(builder);
-            new Services.AuthService(null).AddExternalLogins(authenticationBuilder);
-#endif
+            builder.Services.AddCascadingAuthenticationState();
+            // Register your provider as the base class
+            builder.Services.AddSingleton<AuthenticationStateProvider, DatabaseStateProvider>();
+            // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
+            builder.Services.AddSingleton(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
             builder.Services.AddScoped(sp => new HttpClient
             {

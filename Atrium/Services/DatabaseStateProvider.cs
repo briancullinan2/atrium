@@ -15,12 +15,15 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using DataLayer.Generators;
+using DataLayer.Entities;
+using DataLayer.Utilities.Extensions;
 
 namespace Atrium.Services
 {
     public class DatabaseStateProvider(IQueryManager _query, IServiceProvider _services) : AuthenticationStateProvider
     {
-#if WINDOWS
+
         private static readonly string SessionId = "AtriumSession";
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -29,15 +32,24 @@ namespace Atrium.Services
             var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
 
             string? sessionId = null;
+#if WINDOWS
             if (_services.GetService<IHttpContextAccessor>() is IHttpContextAccessor _httpContextAccessor)
             {
                 sessionId = _httpContextAccessor.HttpContext?.Request.Cookies[cookieName];
             }
             else
+#endif
             {
-                var autoLoginSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
-                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
-                sessionId = autoLoginSetting?.FirstOrDefault()?.Value;
+                var currentSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
+                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser);
+                sessionId = currentSetting?.FirstOrDefault()?.Value;
+
+                if (sessionId == null)
+                {
+                    var autoLoginSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
+                        s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
+                    sessionId = autoLoginSetting?.FirstOrDefault()?.Value;
+                }
             }
 
             if (string.IsNullOrEmpty(sessionId))
@@ -97,13 +109,14 @@ namespace Atrium.Services
         {
             var claimsData = user.Claims.ToList();
 
-            var newSession = new DataLayer.Entities.Session();
+            var newSession = new Session();
             claimsData.Add(new Claim(nameof(SessionId), newSession.Id)); // Add the "Bridge"
 
             var provider = user.Identity?.AuthenticationType ?? typeof(DatabaseStateProvider).Name;
             claimsData.Add(new Claim("urn:atrium:provider", provider));
 
             var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
+#if WINDOWS
             if (_services.GetService<IHttpContextAccessor>() is IHttpContextAccessor _httpContextAccessor)
             {
                 var context = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("Could not obtain Http context");
@@ -125,11 +138,31 @@ namespace Atrium.Services
                     Expires = DateTimeOffset.UtcNow.AddSeconds(newSession.Lifetime)
                 });
             }
-
+#endif
             var sessionValue = JsonSerializer.Serialize(claimsData.Select(c => new UserClaim(c.Type, c.Value)), JsonHelper.Default);
             newSession.Value = sessionValue;
+            // there is no newSession.User on purpose
+
+
+
             // TODO: set newSession.Lifetime to token lifetime
             await _query.Save(newSession);
+
+            var currentSetting = (await _query.Query<Setting>(s =>
+                s.Permission != null 
+                && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser))?.FirstOrDefault() 
+                ?? new Setting { 
+                    Name = DefaultPermissions.ApplicationCurrentUser.ToString(),
+                    Value = newSession.Id,
+                    Guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value,
+                };
+            if (user.Claims.Any(c => c.Type == ClaimTypes.Role))
+            {
+                currentSetting.Role = await new Role { Name = user.Claims.First(c => c.Type == ClaimTypes.Role).Value }.Update();
+                currentSetting.RoleId = currentSetting.Role.Name;
+            }
+
+            await _query.Save(currentSetting);
 
             var claims = user.Claims.ToList();
 
@@ -153,7 +186,17 @@ namespace Atrium.Services
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
             // GitHub and others require a User-Agent
-            request.Headers.UserAgent.ParseAdd("StudySauce-App");
+            var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";
+            request.Headers.UserAgent.ParseAdd(userAgent);
+            request.Headers.Add("Accept-Language", "en-US,en;q=0.9");
+            request.Headers.Add("Sec-Ch-Ua", "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"144\", \"Chromium\";v=\"144\"");
+            request.Headers.Add("Sec-Ch-Ua-Mobile", "?0");
+            request.Headers.Add("Sec-Ch-Ua-Platform", "\"Windows\"");
+            request.Headers.Add("Sec-Fetch-Dest", "document");
+            request.Headers.Add("Sec-Fetch-Mode", "navigate");
+            request.Headers.Add("Sec-Fetch-Site", "none");
+            request.Headers.Add("Sec-Fetch-User", "?1");
+            request.Headers.Add("Upgrade-Insecure-Requests", "1");
 
             var response = await client.SendAsync(request);
             if (!response.IsSuccessStatusCode) return null;
@@ -161,7 +204,7 @@ namespace Atrium.Services
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         }
 
-
+#if WINDOWS
         public static AuthenticationBuilder BuildAuthentication(IHostApplicationBuilder builder)
         {
             return builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -198,11 +241,6 @@ namespace Atrium.Services
                         }
                     };
                 });
-        }
-#else
-        public override async Task<AuthenticationState> GetAuthenticationStateAsync()
-        {
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 #endif
     }

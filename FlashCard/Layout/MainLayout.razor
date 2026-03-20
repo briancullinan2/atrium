@@ -20,6 +20,7 @@
 @inject ILoggerFactory LoggerFactory
 @inject IChatService ChatService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
 
 <div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
     <div id="theme-sensor" style="display:none;">
@@ -259,6 +260,12 @@
         LoginService.OnUserChanged += SetUser;
         JsonService.OnStateChanged += SetState;
         ChatService.OnChatWorking += SetChat;
+        //AuthProvider.AuthenticationStateChanged += (task) =>
+        //{
+            // If this line never hits when you login, the UI is NOT
+            // subscribed to the instance you are calling Notify on.
+            //Console.WriteLine("UI received Auth Change Notification!");
+        //};
         SetPageClass();
         _ = ChatService.IsWorking();
     }

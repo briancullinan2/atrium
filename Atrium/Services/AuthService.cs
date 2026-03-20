@@ -22,7 +22,7 @@ namespace Atrium.Services
         public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
         {
 #if WINDOWS
-            var task = (_service?.GetService<AuthenticationStateProvider>() as DatabaseStateProvider)?.MarkUserAsAuthenticated(user);
+            var task = (Service?.GetService<AuthenticationStateProvider>() as DatabaseStateProvider)?.MarkUserAsAuthenticated(user);
             if (task != null) await task;
 #endif
         }

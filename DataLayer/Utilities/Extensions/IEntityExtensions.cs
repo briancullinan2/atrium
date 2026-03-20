@@ -22,7 +22,7 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("No service provider.");
             }
 
-            return await QueryManager.Service.GetRequiredService<QueryManager>().Update(false, entity);
+            return await QueryManager.Service.GetRequiredService<IQueryManager>().Update(false, entity);
         }
 
 
@@ -40,7 +40,7 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("No service provider.");
             }
 
-            return await QueryManager.Service.GetRequiredService<QueryManager>().Save(false, ent);
+            return await QueryManager.Service.GetRequiredService<IQueryManager>().Save(false, ent);
         }
 
         //public static T Wrap<T>(this T target) where T : class, IEntity<T>
@@ -144,8 +144,9 @@ namespace DataLayer.Utilities.Extensions
             var type = typeof(TEntity);
 
             // 1. Find properties via Reflection that have the [Key] attribute
+            var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
             var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null)
+                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null || primaryKey?.Contains(p.Name) == true)
                 .ToList();
 
             // Fallback: If no [Key] attribute, check for "Id" or "{ClassName}Id" 

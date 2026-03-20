@@ -28,7 +28,7 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var query = Services.GetRequiredService<QueryManager>();
+            var query = Services.GetRequiredService<IQueryManager>();
             var alreadyLoaded = await query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage);
             if (alreadyLoaded.Any())
             {
@@ -71,7 +71,7 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var query = Services.GetRequiredService<QueryManager>();
+            var query = Services.GetRequiredService<IQueryManager>();
             var alreadyLoaded = await query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName);
             if (alreadyLoaded.Any())
             {
@@ -138,7 +138,7 @@ namespace AnkiParser
                 var template = model.Tmpls?.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
-                var query = Services.GetRequiredService<QueryManager>();
+                var query = Services.GetRequiredService<IQueryManager>();
                 var newCard = await query.Save(new DataLayer.Entities.Card()
                 {
                     // Inject the field values into the Mustache brackets

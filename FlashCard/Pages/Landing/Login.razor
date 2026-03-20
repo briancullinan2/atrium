@@ -4,6 +4,7 @@
 @page "/logout"
 @page "/access-denied"
 
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.Security.Claims
@@ -59,16 +60,28 @@
 
     protected async Task HandleLogin(DataLayer.Entities.User user)
     {
+        // save the built ins on first login
+        if(user.CanonicalFingerprint == null
+            && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
+        {
+            await user.Roles.First().Update();
+            await user.Save();
+        }
+
         // 1. Create the Claims for this user
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.Username ?? ""),
             new Claim(ClaimTypes.GivenName, user.FirstName ?? ""),
             new Claim(ClaimTypes.Surname, user.LastName ?? ""),
-            new Claim("UserId", user.Guid?.ToString() ?? ""),
-            // Add roles based on your DefaultRoles enum
-            new Claim(ClaimTypes.Role, "User")
+            new Claim(ClaimTypes.NameIdentifier, user.Guid ?? ""),
         };
+
+        foreach(var claim in user.Roles)
+        {
+            if (claim.Name == null) continue;
+            claims.Add(new Claim(ClaimTypes.Role, claim.Name));
+        }
 
         var identity = new ClaimsIdentity(claims, "AtriumAuth");
         var principal = new ClaimsPrincipal(identity);

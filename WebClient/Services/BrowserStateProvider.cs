@@ -6,6 +6,9 @@ namespace WebClient.Services
 {
     public class BrowserStateProvider : AuthenticationStateProvider
     {
+
+        private static readonly string SessionId = "AtriumSession";
+
         private static readonly Task<AuthenticationState> _unauthenticatedTask =
         Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
 
@@ -17,11 +20,10 @@ namespace WebClient.Services
             // Reconstruct the identity on the Client
             List<Claim> claims = [
                 new Claim(ClaimTypes.Name, user.Username ?? ""),
-                new Claim("SessionId", user.SessionId ?? "")
             ];
 
             _authenticationStateTask = Task.FromResult(
-                new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "PersistentAuth"))));
+                new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, SessionId))));
         }
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()

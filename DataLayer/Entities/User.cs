@@ -120,14 +120,13 @@ namespace DataLayer.Entities
         [EditorBrowsable(EditorBrowsableState.Never)]
         public string? PropertiesJson { get; set; }
 
-        [MaxLength(256)]
-        public string? SessionId { get; set; }
+        // There is no access to sessions on purpose on in DatabaseStateProvider
+        //[MaxLength(256)]
+        //public string? SessionId { get; set; }
 
-        [MaxLength(4096 * 2)]
-        public string? Session { get; set; }
-        /// <summary>
-        /// Stores the "devices" simple_array from PHP
-        /// </summary>
+        //[MaxLength(4096 * 2)]
+        //public string? Session { get; set; }
+
         public string? Devices { get; set; }
         public string? ParentId { get; set; }
 

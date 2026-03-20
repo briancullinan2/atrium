@@ -1,5 +1,7 @@
 ﻿using DataLayer;
 using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +33,7 @@ namespace FlashCard.Services
         {
             var queryManager = Services.GetService<IQueryManager>() ?? throw new InvalidOperationException("Couldn't resolve query manager.");
 
+            // first time is static so really first time
             if (!FirstTime)
             {
                 return;
@@ -39,6 +42,17 @@ namespace FlashCard.Services
 
             _ = Task.Run(async () =>
             {
+                // discard the current user
+
+                var currentSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
+                    s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationCurrentUser);
+                if (currentSetting.FirstOrDefault()?.Value != null)
+                {
+                    currentSetting.First().Value = null;
+                    await currentSetting.First().Save();
+                }
+
+
                 var autoLoginSetting = await queryManager.Query<DataLayer.Entities.Setting>(s =>
                     s.Permission != null && s.Permission.Default == DefaultPermissions.ApplicationAutoLogin);
 
