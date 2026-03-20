@@ -1,0 +1,190 @@
+﻿using FlashCard.Utilities.Extensions;
+using DataLayer.Utilities.Extensions;
+using FlashCard.Services;
+
+#if WINDOWS
+using log4net.Appender;
+using log4net.Core;
+using log4net.Util;
+
+namespace Atrium.Logging
+{
+    // Token: 0x02000061 RID: 97
+    public class MessageLogAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
+    {
+        public string Name { get; set; }
+        internal static IServiceProvider Services { get; set; }
+
+        static MessageLogAppender()
+        {
+            if (Services == null)
+            {
+                throw new InvalidOperationException("Services not available.");
+            }
+        }
+
+        public MessageLogAppender()
+        {
+            Name ??= nameof(MessageLogAppender);
+        }
+
+
+        public void ActivateOptions()
+        {
+            if (string.IsNullOrEmpty(Name)) Name = nameof(MessageLogAppender);
+        }
+
+        // Token: 0x060002FF RID: 767 RVA: 0x000193A4 File Offset: 0x000175A4
+        public void Close()
+        {
+            lock (this)
+            {
+                this._mAppenderAttachedImpl?.RemoveAllAppenders();
+            }
+        }
+        public void DoAppend(LoggingEvent[] loggingEvents)
+        {
+            for (int i = 0; i < loggingEvents.Length; i++)
+            {
+                DoAppend(loggingEvents[i]);
+            }
+        }
+
+
+        public void DoAppend(LoggingEvent loggingEvent)
+        {
+            var _ = DoAppendForget(loggingEvent);
+        }
+
+        public static async Task DoAppendForget(LoggingEvent loggingEvent)
+        {
+            try
+            {
+                DataLayer.Entities.Message newMessage;
+                if (loggingEvent.ExceptionObject != null)
+                {
+                    newMessage = await new DataLayer.Entities.Message
+                    {
+                        Source = loggingEvent.LoggerName,
+                        Title = loggingEvent.ExceptionObject.Message.Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
+                        Body = loggingEvent.ExceptionObject.StackTrace?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    }.Save();
+                }
+                else
+                {
+                    newMessage = await new DataLayer.Entities.Message
+                    {
+                        Source = loggingEvent.LoggerName,
+                        Title = (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage)?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
+                        Body = new System.Diagnostics.StackTrace(true).ToString().Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    }.Save();
+                }
+
+                var pageManager = Services.GetService<IPageManager>();
+                pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        // Token: 0x06000303 RID: 771 RVA: 0x000194D0 File Offset: 0x000176D0
+        public void AddAppender(IAppender newAppender)
+        {
+            ArgumentNullException.ThrowIfNull(newAppender);
+            lock (this)
+            {
+                this._mAppenderAttachedImpl ??= new AppenderAttachedImpl();
+                this._mAppenderAttachedImpl.AddAppender(newAppender);
+            }
+        }
+
+        // Token: 0x17000091 RID: 145
+        // (get) Token: 0x06000304 RID: 772 RVA: 0x00019554 File Offset: 0x00017754
+        public AppenderCollection Appenders
+        {
+            get
+            {
+                AppenderCollection result;
+                lock (this)
+                {
+                    if (this._mAppenderAttachedImpl == null)
+                    {
+                        result = AppenderCollection.EmptyCollection;
+                    }
+                    else
+                    {
+                        result = this._mAppenderAttachedImpl.Appenders;
+                    }
+                }
+                return result;
+            }
+        }
+
+        // Token: 0x06000305 RID: 773 RVA: 0x000195BC File Offset: 0x000177BC
+        public IAppender GetAppender(string? name)
+        {
+            IAppender result;
+            lock (this)
+            {
+                if (this._mAppenderAttachedImpl == null || name == null)
+                {
+                    result = null;
+                }
+                else
+                {
+                    result = this._mAppenderAttachedImpl.GetAppender(name);
+                }
+            }
+            return result;
+        }
+
+        // Token: 0x06000306 RID: 774 RVA: 0x00019628 File Offset: 0x00017828
+        public void RemoveAllAppenders()
+        {
+            lock (this)
+            {
+                this._mAppenderAttachedImpl?.RemoveAllAppenders();
+                this._mAppenderAttachedImpl = null;
+            }
+        }
+
+        // Token: 0x06000307 RID: 775 RVA: 0x0001968C File Offset: 0x0001788C
+        public IAppender RemoveAppender(IAppender appender)
+        {
+            lock (this)
+            {
+                if (appender != null && this._mAppenderAttachedImpl != null)
+                {
+                    return this._mAppenderAttachedImpl.RemoveAppender(appender);
+                }
+            }
+            return null;
+        }
+
+        // Token: 0x06000308 RID: 776 RVA: 0x000196F8 File Offset: 0x000178F8
+        public IAppender RemoveAppender(string name)
+        {
+            lock (this)
+            {
+                if (name != null && this._mAppenderAttachedImpl != null)
+                {
+                    return this._mAppenderAttachedImpl.RemoveAppender(name);
+                }
+            }
+            return null;
+        }
+
+        // Token: 0x04000170 RID: 368
+        private AppenderAttachedImpl? _mAppenderAttachedImpl;
+    }
+
+}
+#endif

@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<log4net>
+	<root>
+		<level value="ALL" />
+		<appender-ref ref="AsyncForwarder" />
+	</root>
+
+	<!--<appender name="AsyncForwarder" type="log4net.Appender.BufferingForwardingAppender">
+		<bufferSize value="1" />
+		<lossy value="false" />
+		<fix value="All" />
+
+		<appender-ref ref="MessageLogAppender" />
+
+		<appender-ref ref="RollingFileAppender" />
+
+		<appender-ref ref="EventLogAppender" />
+	</appender>
+
+	<appender name="MessageLogAppender" type="EPIC.ClearView.Utilities.Logging.MessageLogAppender, EPICClearView">
+		<param name="ConnectionStringName" value="MedicalMemory" />
+	</appender>
+
+	<appender name="RollingFileAppender" type="log4net.Appender.RollingFileAppender">
+		<file value="Logs\EPIC_Audit.log" />
+		<appendToFile value="true" />
+		<rollingStyle value="Composite" />
+		<maxSizeRollBackups value="10" />
+		<maximumFileSize value="10MB" />
+		<layout type="log4net.Layout.PatternLayout">
+			<conversionPattern value="%date [%thread] %-5level - %message%newline" />
+		</layout>
+	</appender>
+
+	<appender name="EventLogAppender" type="log4net.Appender.EventLogAppender">
+		<logName value="EPIC_ClearView_Audit" />
+		<applicationName value="EPIC_Flagstaff_Facility" />
+		<layout type="log4net.Layout.PatternLayout">
+			<conversionPattern value="%date [%thread] %-5level %logger - %message%newline" />
+		</layout>
+		<filter type="log4net.Filter.LevelRangeFilter">
+			<levelMin value="WARN" />
+		</filter>
+	</appender>-->
+</log4net>

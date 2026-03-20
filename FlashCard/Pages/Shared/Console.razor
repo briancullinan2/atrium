@@ -1,0 +1,63 @@
+@page "/error"
+@page "/console"
+@implements IDisposable
+
+<div class="dev-console @(_isExpanded ? "expanded" : "collapsed")">
+    <div class="console-header" @onclick="Toggle">
+        <span>Dev Console @*(@Logger.Errors.Count Errors)*@</span>
+        <button class="clear-btn" @onclick:stopPropagation @onclick="Clear">Clear</button>
+    </div>
+
+    @if (_isExpanded)
+    {
+        <div class="console-body">
+            @foreach (var error in /*Logger.Errors.OrderByDescending(e => e.Timestamp)*/ (DataLayer.Entities.Message[])[])
+            {
+                <div class="error-entry">
+                    <div class="entry-header">
+                        <strong>@error.Created.ToString("HH:mm:ss")</strong> - @error.Title
+                    </div>
+                    <div class="entry-details">
+                        <p><strong>Type:</strong> @error.MessageType</p>
+                        <p><strong>Source:</strong> <pre>@error.Source</pre></p>
+                        <details>
+                            <summary>Stack Trace</summary>
+                            <pre>@error.Body</pre>
+                        </details>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .dev-console { position: fixed; bottom: 0; right: 20px; width: 400px; background: #1e1e1e; color: #d4d4d4; 
+    border: 1px solid #333; font-family: 'Consolas', monospace; z-index: 9999; border-top-left-radius: 8px; }
+    .expanded { height: 400px; }
+    .collapsed { height: 40px; }
+    .console-header { padding: 10px; background: #333; cursor: pointer; display: flex; justify-content: space-between; }
+    .console-body { height: 360px; overflow-y: auto; padding: 10px; font-size: 12px; }
+    .error-entry { border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; }
+    pre { background: #000; padding: 5px; color: #9cdcfe; white-space: pre-wrap; }
+    .clear-btn { background: #ce9178; border: none; color: white; cursor: pointer; border-radius: 4px; padding: 2px 8px; }
+</style>
+
+@code {
+    private bool _isExpanded = false;
+    private void Toggle() => _isExpanded = !_isExpanded;
+    private void Clear()
+    {
+        // Logger.Errors.Clear();
+    }
+
+    protected override void OnInitialized()
+    {
+        //Logger.OnErrorAdded += Refresh;
+    }
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        //Logger.OnErrorAdded -= Refresh;
+    }
+}

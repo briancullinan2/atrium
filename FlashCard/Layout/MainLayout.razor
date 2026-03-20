@@ -17,7 +17,7 @@
 @inject ILoginService LoginService
 @inject ITitleService TitleService
 @inject IServiceProvider Services
-@inject IJsonService JsonService
+@inject IPageManager PageManager
 @inject ILoggerFactory LoggerFactory
 @inject IChatService ChatService
 @inject NavigationManager Nav
@@ -45,7 +45,7 @@
         <NavMenu />
     </div>
     
-    @foreach (var item in State)
+    @foreach (var item in PageManager.State)
     {
         <input type="hidden" name="state_@item.Key" value="@item.Value" />
     }
@@ -71,15 +71,29 @@
     }
     <main>
 
-        <article class="content course-container">
-            @if(_previousBody != null)
-            {
-                <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
-                    @(_previousBody)
+        <ErrorBoundary @ref="_errorBoundary">
+            <ChildContent>
+                <article class="content course-container">
+                    @if (_previousBody != null)
+                    {
+                        <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
+                            @(_previousBody)
+                        </div>
+                    }
+                    @_activeBody
+                </article>
+            </ChildContent>
+            <ErrorContent>
+                <div class="hip-error-trace">
+                    <h3>Something went sideways in Flagstaff.</h3>
+                    <p>The Task failed successfully.</p>
+                    <button @onclick="() => _errorBoundary?.Recover()">Try Again</button>
+                    
+                    <pre>@_lastException?.StackTrace</pre>
                 </div>
-            }
-            @_activeBody
-        </article>
+            </ErrorContent>
+        </ErrorBoundary>
+
 
     </main>
 
@@ -108,6 +122,8 @@
     public bool? ShowHeader { get; set; }
     public bool? ShowChat { get; set; }
     public string? ChatMessage { get; set; }
+    [CascadingParameter] private ErrorBoundary? _errorBoundary { get; set; }
+    private Exception? _lastException;
 
     /*
      * This is so fucking dumb this isn't more obvious like Nav.GetComponent(route);
@@ -273,7 +289,7 @@
         StudyService.OnStudyChanged += SetStudyMode;
         LoginService.OnLoginChanged += SetLoginMode;
         LoginService.OnUserChanged += SetUser;
-        JsonService.OnStateChanged += SetState;
+        PageManager.OnStateChanged += SetState;
         ChatService.OnChatWorking += SetChat;
         //AuthProvider.AuthenticationStateChanged += (task) =>
         //{
@@ -285,15 +301,12 @@
         _ = ChatService.IsWorking();
     }
 
-    public Dictionary<string, string?> State { get; set; } = new();
-
     public void SetState(IComponent? state)
     {
         if(state == null)
         {
             return;
         }
-        State[state.GetType().Name.ToSafe()] = FlashCard.Utilities.Extensions.JsonExtensions.ToSerialized(state);
         this.StateHasChanged();
     }
 
@@ -407,6 +420,8 @@
 
     protected override void OnParametersSet()
     {
+        _errorBoundary?.Recover();
+
         if (!_isTransitioning)
         {
             _activeBody = Body;
@@ -433,7 +448,7 @@
         LoginService.OnLoginChanged -= SetLoginMode;
         LoginService.OnUserChanged -= SetUser;
         MenuService.OnHeaderChanged -= SetHeader;
-        JsonService.OnStateChanged -= SetState;
+        PageManager.OnStateChanged -= SetState;
         ChatService.OnChatWorking -= SetChat;
     }
 

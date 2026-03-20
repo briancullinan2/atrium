@@ -6,11 +6,13 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class StateService(IJSRuntime JS) : object(), IJsonService
+    public class PageManager(IJSRuntime JS) : object(), IPageManager
     {
         private readonly IJSRuntime _runtime = JS;
         public event Action<IComponent?>? OnStateChanged;
+        public event Action<Exception?>? OnErrorChanged;
         public bool IsWebClient { get; } = true;
+        public Dictionary<string, string?> State { get; set; } = [];
 
         public async Task SetState(IComponent? state)
         {
@@ -41,6 +43,11 @@ namespace WebClient.Services
             }
             FlashCard.Utilities.Extensions.JsonExtensions.ToProperties(component, deserializedState);
 
+        }
+
+        public async Task SetError(Exception? error)
+        {
+            OnErrorChanged?.Invoke(error);
         }
     }
 }

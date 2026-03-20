@@ -10,6 +10,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using DataLayer.Utilities;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Atrium
 {
@@ -49,6 +50,8 @@ namespace Atrium
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 });
 
+            builder.Services.AddCascadingValue(sp => new ErrorBoundary());
+
             // Add device-specific services used by the FlashCard project
             builder.Services.AddSingleton<IFormFactor, FormFactor>();
             builder.Services.AddSingleton<ITitleService, TitleService>();
@@ -56,10 +59,10 @@ namespace Atrium
             builder.Services.AddSingleton<IStudyService, StudyService>();
             builder.Services.AddSingleton<ILoginService, LoginService>();
             builder.Services.AddSingleton<ICourseService, CourseService>();
-            builder.Services.AddSingleton<IJsonService, JsonService>();
+            builder.Services.AddSingleton<IPageManager, PageManager>();
             builder.Services.AddSingleton<IFileManager, FileManager>();
             builder.Services.AddSingleton<IAnkiService, AnkiService>();
-            builder.Services.AddSingleton<IStatusService, StatusService>();
+            builder.Services.AddSingleton<IHostingService, HostingService>();
             builder.Services.AddSingleton<IThemeService, ThemeService>();
             builder.Services.AddSingleton<IChatService, ChatService>();
             builder.Services.AddSingleton<IQueryManager, QueryManager>();
@@ -109,7 +112,7 @@ namespace Atrium
             MainPage._services = mauiApp.Services;
             FileManager._services = mauiApp.Services;
             AnkiService._services = mauiApp.Services;
-            StatusService._services = mauiApp.Services;
+            HostingService._services = mauiApp.Services;
             ChatService._services = mauiApp.Services;
             QueryManager.Service = mauiApp.Services;
 

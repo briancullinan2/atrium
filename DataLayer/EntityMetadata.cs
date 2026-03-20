@@ -169,7 +169,7 @@ namespace DataLayer
 
         // TODO: this is kind of single purpose
         // Indexer taking a function/delegate
-        public TReturn? this[Expression<Func<TModel, dynamic>> property]
+        public TReturn? this[Expression<Func<TModel, dynamic?>> property]
         {
             get
             {

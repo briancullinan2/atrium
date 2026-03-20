@@ -10,13 +10,13 @@ using System.Text.Json;
 
 namespace Atrium.Services
 {
-    internal class StatusService : IStatusService
+    internal class HostingService : IHostingService
     {
         private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static HostingSettings? Settings { get; set; }
         internal static IServiceProvider? _services;
 
-        static StatusService()
+        static HostingService()
         {
             var savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-hosting.json");
             if (File.Exists(savedSettings))
@@ -28,14 +28,14 @@ namespace Atrium.Services
                 catch (Exception) { }
             }
 
-            var _status = _services?.GetRequiredService<StatusService>();
+            var _status = _services?.GetService(typeof(HostingService)) as HostingService;
             _ = _status?.IsWorking();
         }
 
         protected static HttpClient? _httpClient;
-        public StatusService()
+        public HostingService()
         {
-            _httpClient ??= _services?.GetRequiredService<HttpClient>();
+            _httpClient ??= _services?.GetService(typeof(HttpClient)) as HttpClient;
         }
 
         public async Task<bool?> CheckInstalled()

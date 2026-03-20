@@ -2,7 +2,7 @@
 
 namespace FlashCard.Services
 {
-    public interface IStatusService
+    public interface IHostingService
     {
         Task<string?> GetToken();
         Task<string?> GetHost();

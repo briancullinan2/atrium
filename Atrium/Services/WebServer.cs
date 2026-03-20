@@ -1,9 +1,11 @@
 ﻿#if WINDOWS
 using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +44,7 @@ namespace Atrium.Services
                     options.DetailedErrors = true;
                 });
 
+                webBuilder.Services.AddCascadingValue(sp => new ErrorBoundary());
                 // Add device-specific services used by the FlashCard project
                 webBuilder.Services.AddSingleton<IFormFactor, FormFactor>();
                 webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
@@ -49,10 +52,10 @@ namespace Atrium.Services
                 webBuilder.Services.AddSingleton<IStudyService, StudyService>();
                 webBuilder.Services.AddSingleton<ILoginService, LoginService>();
                 webBuilder.Services.AddSingleton<ICourseService, CourseService>();
-                webBuilder.Services.AddSingleton<IJsonService, JsonService>();
+                webBuilder.Services.AddSingleton<IPageManager, PageManager>();
                 webBuilder.Services.AddSingleton<IFileManager, FileManager>();
                 webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
-                webBuilder.Services.AddSingleton<IStatusService, StatusService>();
+                webBuilder.Services.AddSingleton<IHostingService, HostingService>();
                 webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
                 webBuilder.Services.AddSingleton<IChatService, ChatService>();
                 webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
@@ -142,12 +145,14 @@ namespace Atrium.Services
 
                 // 2. Mapping happens AFTER routing is configured
                 //webApp.MapBlazorHub();
+                webApp.UseExceptionHandler("/error", createScopeForErrors: true);
+
                 webApp.MapPost("/api/query", QueryService.RespondQuery);
                 webApp.MapPost("/api/upload", FileManager.OnUploadFile);
                 webApp.MapPost("/api/inspect", AnkiService.OnInspectFile);
                 webApp.MapPost("/api/search", AnkiService.OnSearchAnki);
                 webApp.MapPost("/api/download", AnkiService.OnDownloadAnki);
-                webApp.MapPost("/api/status", StatusService.OnStatusCheck);
+                webApp.MapPost("/api/status", HostingService.OnStatusCheck);
                 webApp.MapPost("/api/chat/presets", ChatService.OnPresets);
                 webApp.MapPost("/api/chat/ping", ChatService.OnPing);
                 webApp.MapPost("/api/chat", ChatService.OnChat);
@@ -162,17 +167,7 @@ namespace Atrium.Services
 
 
                 // Run the Web Server in the background
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        await webApp.RunAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"!!! Kestrel Crash: {ex.Message}");
-                    }
-                });
+                webApp.RunAsync().Forget();
             }
             catch (Exception ex)
             {

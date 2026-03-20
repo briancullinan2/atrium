@@ -43,8 +43,8 @@ namespace DataLayer.Utilities
 
         Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
-        
-        
+
+
         //Task<IEntity> Save(bool persistent, IEntity entity, int priority = 10);
 
 
@@ -426,7 +426,7 @@ namespace DataLayer.Utilities
 
                 // We need to ensure the internal list is loaded so EF can diff it
                 if (trackedCollection?.IsLoaded != true) trackedCollection?.Load();
-                
+
                 var trackedList = trackedCollection?.CurrentValue as IList;
                 if (((nav.GetMemberInfo(false, true) as PropertyInfo)?.GetValue(updatedEntity)
                     ?? (nav.GetMemberInfo(false, true) as FieldInfo)?.GetValue(updatedEntity)) is not IEnumerable incomingList) continue;
@@ -438,7 +438,7 @@ namespace DataLayer.Utilities
                     trackedList?.Clear();
                 }
 
-                
+
                 var genericMethod = UpdateGeneric.MakeGenericMethod(nav.TargetEntityType.ClrType);
 
                 var resolvedItems = new List<object>();
@@ -598,7 +598,8 @@ namespace DataLayer.Utilities
             try
             {
                 variables = JsonSerializer.Serialize(query.ToDictionary()).ToSafe();
-            } catch { }
+            }
+            catch { }
             string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query}_{variables}";
 
             // 2. Check if this exact query is already "in flight"
@@ -628,7 +629,7 @@ namespace DataLayer.Utilities
                                 ?.MakeGenericMethod(typeof(TEntity)) // Or the target type
                                 .Invoke(null, [finalQueryable])!;
 
-                            if(typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
+                            if (typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
                             {
                                 result = (TResult)Queryable.AsQueryable((IEnumerable)forcedList)!;
                             }
@@ -912,7 +913,7 @@ namespace DataLayer.Utilities
             }
             catch
             {
-                
+
             }
 
             return entity;

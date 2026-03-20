@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class StatusService : IStatusService
+    public class HostingService : IHostingService
     {
         private readonly HttpClient? _httpClient;
         internal static IServiceProvider? _service;
@@ -15,7 +15,7 @@ namespace WebClient.Services
 
         public event Action<bool?>? OnHttpWorking;
 
-        public StatusService()
+        public HostingService()
         {
             _httpClient = _service?.GetRequiredService<HttpClient>();
         }
@@ -25,9 +25,9 @@ namespace WebClient.Services
             return await GetToken(null, null, null);
         }
 
-        static StatusService()
+        static HostingService()
         {
-            var _status = _service?.GetRequiredService<StatusService>();
+            var _status = _service?.GetRequiredService<HostingService>();
             _ = _status?.IsWorking();
         }
 

@@ -1,8 +1,10 @@
 ﻿// To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
+using Atrium.Logging;
 using Atrium.Platforms.Windows;
 using Atrium.Services;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Atrium.WinUI
 {
@@ -38,12 +40,24 @@ namespace Atrium.WinUI
         [STAThread]
         public static void Main(string[] args)
         {
+            log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo("log4net.xml"));
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                Log.Error(e, e.ExceptionObject as Exception);
+
+            // 2. Catch exceptions in 'set and forget' tasks (Async)
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                Log.Error(e, e.Exception);
+                e.SetObserved(); // Prevents process crash if you want, but logs it
+            };
+
             try
             {
                 // 1. Start your Web Server in a background thread
                 _ = WebServer.StartWebServer(args);
                 TitleService._setTitle = SetTitle;
-            } 
+            }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
