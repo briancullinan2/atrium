@@ -33,6 +33,7 @@ namespace DataLayer.Entities
     public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity
     {
 
+        public static EntityMetadata<T> Metadata => new();
 
         public int? CanonicalFingerprint { get; set; } = null;
 

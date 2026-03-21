@@ -26,12 +26,12 @@ namespace DataLayer.Utilities.Extensions
         private static readonly string[] TrueValues = ["true", "1", "yes", "y", "on", "checked"];
         private static readonly string[] FalseValues = ["false", "0", "no", "n", "off", "unchecked"];
 
-        public static bool? TryParse(object val)
+        public static bool? TryParse(this string val)
         {
             if (val == null) return null;
 
             // 1. Check for actual boolean or numeric types first (The 'int love' logic)
-            if (val is bool b) return b;
+            if (bool.TryParse(val, out var b)) return b;
 
             var inputString = val.ToString()?.Trim();
             if (string.IsNullOrEmpty(inputString)) return null;
@@ -60,6 +60,14 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+
+        public static object? TryParse(this string val, Type enumType)
+        {
+            return typeof(PrimitiveExtensions)
+                .GetMethod(nameof(TryParse), [typeof(object)])
+                ?.MakeGenericMethod(enumType)
+                .Invoke(null, [val]);
+        }
 
         public static TEnum? TryParse<TEnum>(this string val) where TEnum : struct, Enum
         {

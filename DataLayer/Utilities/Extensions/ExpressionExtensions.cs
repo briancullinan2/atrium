@@ -4,38 +4,125 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DataLayer.Utilities.Extensions
 {
-    public static class ExpressionExtensions
+    public static partial class ExpressionExtensions
     {
         /// <summary>
         /// Converts a string path (e.g. "User.Address.City") into a MemberExpression.
         /// Replaces the old GetExpressionRecursive.
         /// </summary>
-        public static MemberExpression? ToMember(this string columnName)
+        public static Expression ToMember(this Expression container, string columnName)
         {
+            if (string.IsNullOrWhiteSpace(columnName)) return container;
+
             var parts = columnName.Split('.');
-            // TODO: entity? automatically map to queryable as top level
+            Expression current = container;
 
             foreach (var part in parts)
             {
-                var type = current.Type;
+                // Use regex to split "Users[0]" into "Users" and "0"
+                var match = BasicIndexerParser().Match(part);
+                var name = match.Groups["name"].Value;
+                var indexStr = match.Groups["index"].Value;
 
-                // Look for Property then Field
-                var member = type.GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) as MemberInfo
-                             ?? type.GetField(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-                if (member == null) return null;
-
-                // Handle the "Collection" logic from your old code
-                // If we hit a collection, we might need a Select or Any, 
-                // but for a simple Accessor, we usually want the property itself.
+                // 1. Resolve the Member (Property/Field)
+                var member = current.Type.GetMember(name,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                    .FirstOrDefault() 
+                    ?? throw new ArgumentException($"Member {name} not found on {current.Type.Name}");
+                
                 current = Expression.MakeMemberAccess(current, member);
+
+                // 2. Resolve the Indexer if [n] was provided
+                if (!string.IsNullOrEmpty(indexStr) && int.TryParse(indexStr, out int index))
+                {
+                    if (current.Type.IsArray)
+                    {
+                        current = Expression.ArrayIndex(current, Expression.Constant(index));
+                    }
+                    else
+                    {
+                        // Look for the 'Item' indexer property (standard for List<T>, Dictionary, etc.)
+                        var indexer = current.Type.GetProperty("Item");
+                        if (indexer != null)
+                        {
+                            current = Expression.MakeIndex(current, indexer, [ Expression.Constant(index) ]);
+                        }
+                    }
+                }
+            }
+            return current;
+        }
+
+        // TODO: QueryManager.Query(string).Any(u => !u.IsDeleted) 
+        // TODO: QueryManager.Query<User>().Where(string) 
+        // TODO: QueryManager.Query<User>().OrderBy(string) 
+        // 
+        public static Expression ToMember(this Expression container, string columnName, string term)
+        {
+            if (string.IsNullOrWhiteSpace(columnName)) return container;
+
+            var parts = columnName.Split('.');
+            Expression current = container;
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+                var match = BasicIndexerParser().Match(part);
+                var name = match.Groups["name"].Value;
+                var indexStr = match.Groups["index"].Value;
+
+                // 1. Resolve Property/Field
+                var member = current.Type.GetMember(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault() ?? throw new ArgumentException($"Member {name} not found.");
+                current = Expression.MakeMemberAccess(current, member);
+
+                // 2. Handle [0] Indexers (Direct Access)
+                if (!string.IsNullOrEmpty(indexStr) && int.TryParse(indexStr, out int index))
+                {
+                    current = current.Type.IsArray
+                        ? Expression.ArrayIndex(current, Expression.Constant(index))
+                        : Expression.MakeIndex(current, current.Type.GetProperty("Item"), new[] { Expression.Constant(index) });
+                    continue;
+                }
+
+                // 3. Handle Collections (Any matching)
+                // Check if type is IEnumerable but NOT string
+                var elementType = GetEnumerableElementType(current.Type);
+                if (elementType != null && i < parts.Length - 1)
+                {
+                    // We are at a collection (e.g., "Orders") and have more path (e.g., "Amount")
+                    var innerParam = Expression.Parameter(elementType, "i");
+                    var remainingPath = string.Join(".", parts.Skip(i + 1));
+
+                    // Recursive call for the inner part: i.Amount == term
+                    var innerBody = innerParam.ToMember(remainingPath, term).ToEquality(term);
+
+                    var anyLambda = Expression.Lambda(innerBody, innerParam);
+
+                    // Return Enumerable.Any(current, anyLambda)
+                    return Expression.Call(
+                        typeof(Enumerable), "Any", [ elementType ],
+                        current, anyLambda
+                    );
+                }
             }
 
-            return current as MemberExpression;
+            return current;
         }
+
+        private static Type? GetEnumerableElementType(Type type)
+        {
+            if (type == typeof(string)) return null;
+            if (type.IsArray) return type.GetElementType();
+            return type.GetInterfaces()
+                       .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                       ?.GetGenericArguments()[0];
+        }
+
+
 
 
         public static Expression<Func<object, object?>>? ToAccessor(this string columnName, Type entityType)
@@ -458,5 +545,8 @@ namespace DataLayer.Utilities.Extensions
 
             return Expression.Lambda<Func<TEntity, bool>>(predicate!, parameter);
         }
+
+        [GeneratedRegex(@"(?<name>[^\[]+)(?:\[(?<index>\d+)\])?")]
+        private static partial Regex BasicIndexerParser();
     }
 }

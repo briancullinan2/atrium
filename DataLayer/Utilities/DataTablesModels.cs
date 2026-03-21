@@ -169,10 +169,13 @@ namespace DataLayer.Utilities
 
         public IEnumerable<DataTableColumn<TEntity>> GetValidColumns()
         {
-            var parameter = Expression.Parameter(typeof(TEntity), "m");
+            // TODO: use metadata
 
-            var validColumns = QueryableExtensions.GetMemberExpressions(Columns, parameter);
-            return validColumns.Select(x => x.Key);
+            //var parameter = Expression.Parameter(typeof(TEntity), "m");
+
+            //var validColumns = QueryableExtensions.GetMemberExpressions(Columns, parameter);
+            //return validColumns.Select(x => x.Key);
+            return [];
         }
 
         public int GetColumnIndex(string columnName)
