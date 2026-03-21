@@ -104,7 +104,7 @@ namespace Atrium.Logging
         // Token: 0x06000305 RID: 773 RVA: 0x000195BC File Offset: 0x000177BC
         public IAppender GetAppender(string name)
         {
-            IAppender result;
+            IAppender? result;
             lock (this)
             {
                 if (this._mAppenderAttachedImpl == null || name == null)
@@ -116,7 +116,7 @@ namespace Atrium.Logging
                     result = this._mAppenderAttachedImpl.GetAppender(name);
                 }
             }
-            return result;
+            return result!;
         }
 
         // Token: 0x06000306 RID: 774 RVA: 0x00019628 File Offset: 0x00017828
@@ -136,10 +136,10 @@ namespace Atrium.Logging
             {
                 if (appender != null && this._mAppenderAttachedImpl != null)
                 {
-                    return this._mAppenderAttachedImpl.RemoveAppender(appender);
+                    return this._mAppenderAttachedImpl.RemoveAppender(appender)!;
                 }
             }
-            return null;
+            return null!;
         }
 
         // Token: 0x06000308 RID: 776 RVA: 0x000196F8 File Offset: 0x000178F8
@@ -149,10 +149,10 @@ namespace Atrium.Logging
             {
                 if (name != null && this._mAppenderAttachedImpl != null)
                 {
-                    return this._mAppenderAttachedImpl.RemoveAppender(name);
+                    return this._mAppenderAttachedImpl.RemoveAppender(name)!;
                 }
             }
-            return null;
+            return null!;
         }
 
         // Token: 0x04000170 RID: 368

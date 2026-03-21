@@ -2,6 +2,7 @@
 using DataLayer.Generators;
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -447,16 +448,25 @@ namespace DataLayer.Utilities
                     if (genericMethod.Invoke(this, [persistentContext, child, null, 3]) is Task task)
                     {
                         await task;
-                        var itemEntry = persistentContext.Entry((task as dynamic).Result);
+                        dynamic itemEntry = persistentContext.Entry((task as dynamic).Result);
 
                         // TODO: this worked for the recursion error so it's probably going to fuck me over in the near future.
-                        if (itemEntry.State != EntityState.Unchanged
+                        if (itemEntry.Context != persistentContext || itemEntry.State != EntityState.Unchanged
                             && itemEntry.State != EntityState.Added)
                         {
                             ShallowSaveRecursive(persistentContext, (task as dynamic).Result, recurse);
                         }
 
-                        resolvedItems.Add((task as dynamic).Result);
+                        itemEntry.CurrentValues.SetValues(child);
+
+                        await persistentContext.SaveChangesAsync();
+
+                        if (genericMethod.Invoke(this, [persistentContext, child, null, 3]) is Task task2)
+                        {
+                            await task2;
+
+                            resolvedItems.Add((task2 as dynamic).Result);
+                        }
                         //persistentContext.Add((task as dynamic).Result);
                     }
                 }
@@ -667,7 +677,7 @@ namespace DataLayer.Utilities
         }
 
 
-        public async Task LoadAllNavigations<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
+        public async Task LoadAllNavigations<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 5)
             where TEntity : Entity<TEntity>
 
         {
@@ -681,6 +691,12 @@ namespace DataLayer.Utilities
 
             foreach (var navigation in navigations)
             {
+                var navEntry = entry.Navigation(navigation.Name);
+                if (!navEntry.IsLoaded)
+                {
+                    await navEntry.LoadAsync();
+                }
+
                 // 1. Get the current value (even if it's just a 'New' object with an ID)
                 var navValue = navigation.GetGetter().GetClrValue(entity);
 
@@ -869,7 +885,6 @@ namespace DataLayer.Utilities
 
         {
             predicate ??= entity.Predicate();
-            var compiled = predicate.Compile();
 
             if (entity == null)
             {
@@ -878,26 +893,26 @@ namespace DataLayer.Utilities
 
             var entityType = context.Model.FindEntityType(typeof(TEntity));
             var primaryKey = entityType?.FindPrimaryKey();
-            var predicateValues = entity.Predicate().ToDictionary();
-            if (primaryKey?.Properties.Count != predicateValues.Values.Count)
-            {
-                throw new InvalidOperationException("Predicate not assigned.");
-            }
+            var predicateValues = predicate.ToDictionary();
 
             // If the entity isn't being tracked, we need to attach it first
             if (context.Entry(entity).State == EntityState.Detached)
             {
-                var existingEntity = context.Set<TEntity>().Local.FirstOrDefault(e => compiled(e) == true);
-
-                // TODO: make this an overload that accepts an IEnumberable as an output and iterates over all matches?
-                existingEntity ??= context.ChangeTracker.Entries<TEntity>().FirstOrDefault(e => compiled(e.Entity))?.Entity;
-                existingEntity ??= context.Set<TEntity>().FirstOrDefault(predicate);
-                if (existingEntity != null)
+                if (primaryKey?.Properties.Count == predicateValues.Values.Count(s => !string.IsNullOrWhiteSpace(s) && (!int.TryParse(s, out var key) || key != 0)))
                 {
-                    return existingEntity;
+                    var existingEntity = context.Set<TEntity>().Local.AsQueryable().FirstOrDefault(predicate);
+                    // TODO: make this an overload that accepts an IEnumberable as an output and iterates over all matches?
+                    existingEntity ??= context.ChangeTracker.Entries<TEntity>().AsQueryable().Select(e => e.Entity).FirstOrDefault(predicate);
+                    existingEntity ??= context.Set<TEntity>().FirstOrDefault(predicate);
+
+                    await LoadAllNavigations(context, entity, predicate, --depth);
+
+                    if (existingEntity != null)
+                    {
+                        return existingEntity;
+                    }
                 }
 
-                await LoadAllNavigations(context, entity, predicate, --depth);
 
                 context.Attach(entity);
             }

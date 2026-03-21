@@ -35,7 +35,7 @@ namespace Atrium.Logging
         public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
             GetLogger(callerPath).Fatal(message, ex);
-            //#if WINDOWS
+//#if WINDOWS
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 // On Windows/Mac, this closes the main window
@@ -51,7 +51,7 @@ namespace Atrium.Logging
                     Environment.Exit(1); // Exit with error code 1 for Fatal
                 });
             });
-            //#endif
+//#endif
         }
 
         public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
@@ -106,7 +106,7 @@ namespace Atrium.Logging
                 if (ex != null) Console.WriteLine(ex);
             }
         }
-
+        
 #endif
     }
 }

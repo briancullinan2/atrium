@@ -12,31 +12,26 @@ namespace DataLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("id")]
         public int Id { get; set; }
 
-        [Column("user_id")]
-        public int UserId { get; set; }
+        public int? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; } = null!;
+        public virtual User? User { get; set; } = null!;
 
         [Required]
         [MaxLength(10)]
-        [Column("type")]
-        public string Type { get; set; } = string.Empty;
+        public string? Type { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(256)]
-        [Column("goal")] // Keep DB column name as 'goal'
-        public string Description { get; set; } = string.Empty;
+// Keep DB column name as 'goal'
+        public string? Description { get; set; } = string.Empty;
 
         [Required]
-        [Column("reward")]
-        public string Reward { get; set; } = string.Empty;
+        public string? Reward { get; set; } = string.Empty;
 
         [Required]
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
         // Navigation property for Claims (One-to-Many)

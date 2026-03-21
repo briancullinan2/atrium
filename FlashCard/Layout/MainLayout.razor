@@ -1,4 +1,5 @@
 ﻿@using DataLayer.Utilities.Extensions
+@using FlashCard.Pages.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.HtmlRendering
 @using Microsoft.AspNetCore.Http
@@ -96,6 +97,9 @@
 
 
     </main>
+
+
+    <FlashCard.Pages.Shared.Console Embedded="true" />
 
     @if (ShowChat == true)
     {
@@ -234,28 +238,8 @@
             return;
         }
 
-        var fragment = _activeBody;
-        using var htmlRenderer = new HtmlRenderer(Services, LoggerFactory);
-
-        var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
-        {
-            RenderFragment wrappedFragment = builder =>
-            {
-                builder.OpenComponent<CascadingValue<bool>>(0);
-                builder.AddAttribute(1, "Name", "IsStaticRender");
-                builder.AddAttribute(2, "Value", true);
-                builder.AddAttribute(3, "ChildContent", fragment);
-                builder.CloseComponent();
-            };
-
-            var output = await htmlRenderer.RenderComponentAsync<ContentWrapper>(
-                ParameterView.FromDictionary(new Dictionary<string, object?>
-                {
-                    { "ChildContent", wrappedFragment }
-                }));
-            return output.ToHtmlString();
-        });
-        _previousList.AddLast(new MarkupString(html));
+        
+        _previousList.AddLast(await PageManager.Copy(_activeBody, Services));
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)

@@ -35,7 +35,7 @@ namespace Atrium.Services
                 }
                 catch (Exception) { }
             }
-            var _chat = _services?.GetRequiredService<ChatService>();
+            var _chat = _services?.GetService(typeof(ChatService)) as ChatService;
             _ = _chat?.IsWorking();
         }
 
@@ -66,9 +66,16 @@ namespace Atrium.Services
             }
 
             var json = await ExecutePost("", ServiceUrl, ModelName, ApiKey, Response, Parameters, PingMessage);
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, object?>>(json ?? "");
-            var result = parsed?.TryGetValue("response", out var response) == true
-                && string.Equals(response?.ToString(), "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
+            bool? result = null;
+            try
+            {
+                var parsed = JsonSerializer.Deserialize<Dictionary<string, object?>>(json ?? "");
+
+                result = parsed?.TryGetValue("response", out var response) == true
+                    && string.Equals(response?.ToString(), "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
+
+            } catch (Exception) { }
+
 
             if (result == true && Settings != null && !string.IsNullOrWhiteSpace(ServiceUrl))
             {
@@ -303,7 +310,7 @@ namespace Atrium.Services
         public static async Task<string?> ExecutePost(string _client, string _service, string _model, string _key, string _response, List<DynamicParam> _parameters, string FirstMessage)
         {
             if (_services == null) throw new InvalidOperationException("Assign services after app is created.");
-            var Http = _services.GetRequiredService<HttpClient>();
+            var Http = _services.GetService(typeof(HttpClient)) as HttpClient;
 
             // --- Cancellation Logic ---
             // Cancel and dispose of any existing request for this client
@@ -366,7 +373,8 @@ namespace Atrium.Services
                 }
 
                 request.Content = JsonContent.Create(payload);
-                var response = await Http.SendAsync(request, cts.Token);
+                var task = Http?.SendAsync(request, cts.Token) ?? throw new InvalidOperationException("Could not create request.");
+                var response = await task;
                 var result = await response.Content.ReadAsStringAsync();
                 return ExtractValue(result, Response);
             }

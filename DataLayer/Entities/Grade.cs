@@ -8,28 +8,23 @@ namespace DataLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("id")]
         public int Id { get; set; }
 
-        [Column("course_id")] // Keeping original DB column name
-        public int SubjectId { get; set; }
+// Keeping original DB column name
+        public int? SubjectId { get; set; }
 
         [ForeignKey(nameof(SubjectId))]
         public virtual Subject Subject { get; set; } = null!;
 
         [Required]
         [MaxLength(256)]
-        [Column("assignment")]
         public string Assignment { get; set; } = string.Empty;
 
-        [Column("percent")]
         public int? Percent { get; set; }
 
-        [Column("score")]
         public int? Score { get; set; }
 
         [Required]
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
         // --- Logic & Calculated Properties ---

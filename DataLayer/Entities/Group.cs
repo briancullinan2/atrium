@@ -7,34 +7,27 @@ namespace DataLayer.Entities
     public class Group : Entity<Group>
     {
         [Key]
-        [Column("id")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Column("name")]
         [StringLength(180)]
         [Display(GroupName = "Group Info")]
-        public string Name { get; set; } = string.Empty;
+        public string? Name { get; set; } = string.Empty;
 
-        [Column("description")]
         [StringLength(256)]
         [Display(GroupName = "Group Info")]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; } = string.Empty;
 
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
-        [Column("deleted")]
         [Display(GroupName = "Extended Info")]
         public bool Deleted { get; set; } = false;
 
         // FOSUserBundle usually stores roles as a serialized array
         // In EF, we can store this as a JSON string or a comma-separated list
-        [Column("roles")]
         public string RolesJson { get; set; } = "[]";
 
         // Logo Relationship
-        [Column("file_id")]
         public int? FileId { get; set; }
 
         [ForeignKey(nameof(FileId))]
@@ -44,7 +37,6 @@ namespace DataLayer.Entities
         public virtual string? LogoHosted { get; set; }
 
         // Self-Referencing Hierarchy (Parent/Subgroups)
-        [Column("parent")]
         public int? ParentId { get; set; }
 
         [ForeignKey(nameof(ParentId))]

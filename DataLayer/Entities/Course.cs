@@ -11,7 +11,6 @@ namespace DataLayer.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; protected set; }
         // Logo Relationship
-        [Column("file_id")]
         public int? FileId { get; set; }
 
         [ForeignKey(nameof(FileId))]
@@ -37,7 +36,6 @@ namespace DataLayer.Entities
 
         [Category("Economics")]
         [Display(Name = "Bundled Price", Description = "Discounted price for purchasing the entire course instead of individual packs")]
-        [Column(TypeName = "decimal(18, 2)")]
         public decimal? Price { get; set; }
 
         [Required]

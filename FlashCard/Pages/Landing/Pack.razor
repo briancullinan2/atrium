@@ -8,6 +8,8 @@
 @inject ITitleService TitleService
 @inject IMenuService MenuService
 @inject IStudyService StudyService
+@inject IQueryManager Query
+@using DataLayer.Utilities
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Services
 @using FlashCard.Controls
@@ -230,8 +232,12 @@
         return "hidden";
     }
 
-
     protected override void OnParametersSet()
+    {
+        _ = SetControlMode();
+    }
+
+    protected async Task SetControlMode()
     {
         var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
 
@@ -243,27 +249,36 @@
         {
             // TODO: if user hasn't logged in, shuffle 5 built in study sauce and then ask for sign up like demo sequence
 
-
-            CurrentQuiz = LoginService.User?.UserPacks.SelectMany(up =>
+            List<DataLayer.Entities.Card> results = [];
+            foreach (var up in LoginService.User?.UserPacks ?? [])
             {
-                var due = up.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key);
-                return up.Pack?.Cards.Where(c => due.Contains(c.Id)) ?? [];
-            }).Shuffle();
+                var due = (await up.Update())?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key);
+                results.AddRange(up.Pack?.Cards.Where(c => due?.Contains(c.Id) == true) ?? []);
+            }
+            CurrentQuiz = results.Shuffle().ToList();
         }
         else if (Id != null)
         {
-            /*if (Id < 0 && Id >= -3)
+            // only show one id quiz
+            var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
+            if (up?.Update() is Task<UserPack> task)
             {
-                Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
-                CurrentQuiz = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault()?.Cards;
-                }*/
-                        // only show one id quiz
-                        var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
-            var due = up?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
-            CurrentQuiz = up?.Pack?.Cards.Where(c => due.Contains(c.Id) == true) ?? [];
+                up = await task;
+                var retention = up.GetRetention();
+                var due = retention.Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
+                var cards = up.Pack?.Cards.Where(c => due.Contains(c.Id) == true).ToList() ?? [];
+                var result = new List<Card>();
+                foreach(var card in cards)
+                {
+                    result.Add(await card.Update());
+                }
+                CurrentQuiz = result;
+            }
+            //var answers = (await Query.Query<Answer>()).ToList();
+            //Console.WriteLine(answers);
         }
 
-        TitleService.UpdateTitle(CurrentQuiz?.ElementAt(QuizStep).Pack?.Title);
+        _ = TitleService.UpdateTitle(CurrentQuiz?.ElementAtOrDefault(QuizStep)?.Pack?.Title);
 
     }
 

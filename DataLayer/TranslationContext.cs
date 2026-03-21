@@ -3,6 +3,7 @@ using DataLayer.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace DataLayer
@@ -79,15 +80,49 @@ namespace DataLayer
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
-
             _ = Task.Run(async () =>
             {
                 var conn = Database.GetDbConnection();
                 if (conn.State != System.Data.ConnectionState.Open) conn.Open();
                 _ = Database.EnsureCreated();
+                EnsureGlobalIdentityStart();
                 _ = SaveChanges();
             });
         }
+
+
+        public void EnsureGlobalIdentityStart()
+        {
+            // 1. Get all entities defined in your DbContext
+            var entityTypes = Model.GetEntityTypes();
+
+            foreach (var entityType in entityTypes)
+            {
+                // 2. Find the Primary Key
+                var primaryKey = entityType.FindPrimaryKey();
+                if (primaryKey == null) continue;
+
+                // 3. Check if any part of the PK is Identity/AutoIncrement
+                var hasIdentity = primaryKey.Properties.Any(p =>
+                    p.ValueGenerated == ValueGenerated.OnAdd);
+
+                if (hasIdentity)
+                {
+                    // 4. Get the actual Table Name (handling schema if necessary)
+                    var tableName = entityType.GetTableName();
+                    if (string.IsNullOrEmpty(tableName)) continue;
+
+                    // 5. Update the SQLite sequence table
+                    // We use INSERT OR IGNORE first to ensure the row exists, 
+                    // then we don't accidentally overwrite a high sequence with 0 
+                    // if there is already data (Safety First).
+                    Database.ExecuteSql(
+                        $"INSERT OR IGNORE INTO sqlite_sequence (name, seq) VALUES ('{tableName}', 0);");
+                }
+            }
+        }
+
+
     }
 
     /*

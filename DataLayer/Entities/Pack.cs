@@ -34,7 +34,6 @@ namespace DataLayer.Entities
         [ForeignKey(nameof(UserId))]
         public virtual User? User { get; set; }
         // Logo Relationship
-        [Column("file_id")]
         public int? FileId { get; set; }
 
         [ForeignKey(nameof(FileId))]
@@ -53,7 +52,6 @@ namespace DataLayer.Entities
 
         [Required]
         [Range(0, 999999.99)]
-        [Column(TypeName = "decimal(18, 2)")]
         [Category("Economics")]
         [DataType(DataType.Currency)]
         [Display(Name = "Price", GroupName = "Pack Status", Description = "Set the purchase price for this pack")]
@@ -77,7 +75,6 @@ namespace DataLayer.Entities
         public int Downloads { get; set; } = 0;
 
         [Range(0, 5)]
-        [Column(TypeName = "decimal(3, 2)")]
         [Category("Stats")]
         [Display(Name = "Rating")]
         public decimal Rating { get; set; } = 0;

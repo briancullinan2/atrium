@@ -10,17 +10,13 @@ namespace DataLayer.Entities
         [Key]
         [Required]
         [MaxLength(128)]
-        [Column("session_id")]
         public string Id { get; set; } = string.Empty;
 
         [Required]
-        [Column("session_value", TypeName = "text")]
         public string Value { get; set; } = string.Empty;
 
-        [Column("session_time")]
         public DateTime Time { get; set; }
 
-        [Column("session_lifetime")]
         public int Lifetime { get; set; } = 31536000;
 
         /// <summary>

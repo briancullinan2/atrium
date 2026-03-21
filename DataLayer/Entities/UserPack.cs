@@ -17,7 +17,6 @@ namespace DataLayer.Entities
         public virtual Pack? Pack { get; set; }
 
         // Columns
-        [Column(TypeName = "decimal(18, 2)")]
         public decimal Priority { get; set; } = 0;
 
         public DateTime? RetryFrom { get; set; }
@@ -52,10 +51,11 @@ namespace DataLayer.Entities
         public Dictionary<int, CardRetention> GetRetention(bool refresh = false)
         {
             // 1. Return cached version if available and not refreshing
-            if (!string.IsNullOrEmpty(RetentionJson) && !refresh)
+            if (!string.IsNullOrEmpty(RetentionJson) && !refresh
+                && JsonSerializer.Deserialize<Dictionary<int, CardRetention>>(RetentionJson) is Dictionary<int, CardRetention> existing
+                && existing.Count == Pack?.Cards.Count(c => !c.Deleted))
             {
-                return JsonSerializer.Deserialize<Dictionary<int, CardRetention>>(RetentionJson)
-                       ?? [];
+                return existing;
             }
 
             var result = new Dictionary<int, CardRetention>();
@@ -116,7 +116,7 @@ namespace DataLayer.Entities
                              (intervalIndex == 0 && !correctAfter) ||
                              lastIntervalDate.Value.Date.AddHours(3).AddDays(currentInterval) <= DateTime.Now.Date.AddHours(3);
 
-                result[card.Id] = new CardRetention(
+                result[(int)card.Id] = new CardRetention(
                     currentInterval,
                     lastIntervalDate,
                     isDue,

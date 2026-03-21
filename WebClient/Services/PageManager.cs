@@ -3,24 +3,21 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using FlashCard.Services;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 
 namespace WebClient.Services
 {
-    public class PageManager(IJSRuntime JS) : object(), IPageManager
+    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) : FlashCard.Services.PageManager(LoggerFactory), IPageManager
     {
         private readonly IJSRuntime _runtime = JS;
-        public event Action<IComponent?>? OnStateChanged;
-        public event Action<Exception?>? OnErrorChanged;
-        public bool IsWebClient { get; } = true;
-        public Dictionary<string, string?> State { get; set; } = [];
 
-        public async Task SetState(IComponent? state)
+        public override async Task SetState(IComponent? state)
         {
-            OnStateChanged?.Invoke(state);
+            await base.SetState(state);
             throw new InvalidOperationException("This probably wont work from the web client.");
         }
 
-        public async Task RestoreState(IComponent component)
+        public override async Task RestoreState(IComponent component)
         {
             var state = await _runtime.InvokeAsync<Dictionary<string, string?>>("eval",
 @"Array.from(document.getElementsByTagName('input')).reduce((acc, input) => { 
@@ -43,11 +40,6 @@ namespace WebClient.Services
             }
             FlashCard.Utilities.Extensions.JsonExtensions.ToProperties(component, deserializedState);
 
-        }
-
-        public async Task SetError(Exception? error)
-        {
-            OnErrorChanged?.Invoke(error);
         }
     }
 }

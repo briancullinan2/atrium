@@ -10,31 +10,24 @@ namespace DataLayer.Entities
     public class File : Entity<File>
     {
         [Key]
-        [Column("id")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Column("filename")]
         [StringLength(256)]
         public string Filename { get; set; } = string.Empty;
 
-        [Column("upload_id")]
         [StringLength(256)]
         public string UploadId { get; set; } = string.Empty;
 
-        [Column("url")]
         [StringLength(256)]
         public string? Url { get; set; }
 
         // Doctrine 'array' type is best handled as a JSON string in EF Core
-        [Column("parts")]
         public string? PartsJson { get; set; } = "[]";
 
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
         // Relationship: Many Files to One User
-        [Column("user_id")]
         public string? UserId { get; set; }
         [JsonIgnore]
         [ForeignKey(nameof(UserId))]

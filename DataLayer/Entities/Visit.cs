@@ -13,17 +13,14 @@ namespace DataLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("id")]
         public int Id { get; set; }
 
         [MaxLength(64)]
-        [Column("session_id")]
         public string? SessionId { get; set; }
 
         [ForeignKey(nameof(SessionId))]
         public virtual Session? Session { get; set; }
 
-        [Column("user_id")]
         public string? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
@@ -31,31 +28,25 @@ namespace DataLayer.Entities
 
         [Required]
         [MaxLength(256)]
-        [Column("path")]
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
         /// Maps Doctrine 'array' to JSON. 
         /// Use 'json' for Postgres/SQL Server 2022, or string for older systems.
         /// </summary>
-        [Column("query", TypeName = "json")]
         public string? Query { get; set; }
 
         [Required]
         [MaxLength(256)]
-        [Column("hash")]
         public string Hash { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(8)]
-        [Column("method")]
         public string Method { get; set; } = string.Empty;
 
-        [Column("ip")]
         public long Ip { get; set; }
 
         [Required]
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
         // Lifecycle Logic: In EF Core, we usually handle this in the 

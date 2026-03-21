@@ -8,58 +8,44 @@ namespace DataLayer.Entities
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("id")]
         public int Id { get; set; }
 
-        [Column("user_id")]
         public string? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
         public virtual User? User { get; set; } = null!;
 
         [MaxLength(256)]
-        [Column("university")]
         public string? University { get; set; }
 
         [MaxLength(10)]
-        [Column("grades")]
         public string? Grades { get; set; }
 
         [MaxLength(10)]
-        [Column("weekends")]
         public string? Weekends { get; set; }
 
-        [Column("sharp6am11am")]
         public int? Sharp6am11am { get; set; }
 
-        [Column("sharp11am4pm")]
         public int? Sharp11am4pm { get; set; }
 
-        [Column("sharp4pm9pm")]
         public int? Sharp4pm9pm { get; set; }
 
-        [Column("sharp9pm2am")]
         public int? Sharp9pm2am { get; set; }
 
         /// <summary>
         /// Doctrine 'array' for alerts. Best mapped to JSON string in modern DBs.
         /// </summary>
-        [Column("alerts", TypeName = "json")]
         public string? Alerts { get; set; }
 
-        [Column("grade_scale_json", TypeName = "json")]
         public string? GradeScaleJson { get; set; } = "";
         /// <summary>
         /// Doctrine 'json_array' for grade scale.
         /// </summary>
-        [Column("grade_scale")]
         public GradeScale GradeScale { get; set; } = GradeScale.Unset;
 
         [Required]
-        [Column("created")]
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
-        [Column("term")]
         public DateTime? Term { get; set; }
 
         // Navigation Properties

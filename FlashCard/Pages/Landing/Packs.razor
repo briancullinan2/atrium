@@ -87,12 +87,16 @@
 
     protected async Task SubscribePack()
     {
+        if (IsStaticRender) return;
+
+
         DataLayer.Entities.Pack? currentPack = null;
         if (Id < 0 && Id >= -3)
         {
             Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
             currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
-            currentPack = await currentPack.Save();
+            if (currentPack?.Save() is Task<DataLayer.Entities.Pack> task)
+                currentPack = await task;
             Id = currentPack?.Id;
         }
 
@@ -103,6 +107,8 @@
             up = await up.Save();
         }
         StateHasChanged();
+
+        //Nav.NavigateTo<Pack>(p => new Pack { Mode = PackMode.Card, Id = Id });
     }
 
     protected bool IsClosing = false;
