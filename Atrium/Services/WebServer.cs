@@ -1,4 +1,5 @@
 ﻿#if WINDOWS
+using Atrium.Logging;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
@@ -21,6 +22,8 @@ namespace Atrium.Services
         {
             try
             {
+                // TODO: get logging working
+                Log.Info("Starting web server.");
                 var webBuilder = WebApplication.CreateBuilder(new WebApplicationOptions
                 {
                     Args = args,

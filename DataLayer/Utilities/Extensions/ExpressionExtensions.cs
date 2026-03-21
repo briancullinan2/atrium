@@ -9,6 +9,79 @@ namespace DataLayer.Utilities.Extensions
 {
     public static class ExpressionExtensions
     {
+        /// <summary>
+        /// Converts a string path (e.g. "User.Address.City") into a MemberExpression.
+        /// Replaces the old GetExpressionRecursive.
+        /// </summary>
+        public static MemberExpression? ToMember(this string columnName)
+        {
+            var parts = columnName.Split('.');
+            // TODO: entity? automatically map to queryable as top level
+
+            foreach (var part in parts)
+            {
+                var type = current.Type;
+
+                // Look for Property then Field
+                var member = type.GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) as MemberInfo
+                             ?? type.GetField(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+
+                if (member == null) return null;
+
+                // Handle the "Collection" logic from your old code
+                // If we hit a collection, we might need a Select or Any, 
+                // but for a simple Accessor, we usually want the property itself.
+                current = Expression.MakeMemberAccess(current, member);
+            }
+
+            return current as MemberExpression;
+        }
+
+
+        public static Expression<Func<object, object?>>? ToAccessor(this string columnName, Type entityType)
+        {
+            // Call the generic version via reflection
+            var genericMethod = typeof(ExpressionExtensions)
+                .GetMethod(nameof(ToAccessor), [typeof(string)])?
+                .MakeGenericMethod(entityType);
+
+            var genericExpr = genericMethod?.Invoke(null, [columnName]);
+
+            if (genericExpr == null) return null;
+
+            // We must transform Expression<Func<TEntity, object>> 
+            // into Expression<Func<object, object>>
+            var param = Expression.Parameter(typeof(object), "ent");
+            var castParam = Expression.Convert(param, entityType);
+
+            // Invoke the generic expression using the casted parameter
+            var invocation = Expression.Invoke((Expression)genericExpr, castParam);
+
+            return Expression.Lambda<Func<object, object?>>(invocation, param);
+        }
+
+        public static Expression<Func<TEntity, object?>> ToAccessor<TEntity>(this string columnName)
+        {
+            var type = typeof(TEntity);
+            var entityParam = Expression.Parameter(type, "ent");
+
+            // 1. Get the MemberInfo (Property or Field)
+            MemberInfo? member = type.GetProperty(columnName) as MemberInfo ?? type.GetField(columnName);
+
+            if (member == null)
+            {
+                return ent => null;
+            }
+
+            // 2. Create the property/field access: ent.ColumnName
+            var access = Expression.MakeMemberAccess(entityParam, member);
+
+            // 3. Box to object (since properties/fields might be ValueTypes)
+            var boxedAccess = Expression.Convert(access, typeof(object));
+
+            return Expression.Lambda<Func<TEntity, object?>>(boxedAccess, entityParam);
+        }
+
 
         private static Dictionary<string, string?> ToDictionary(this MemberInitExpression expression)
         {

@@ -1,9 +1,10 @@
 @page "/hosting"
 @using FlashCard.Controls
 @using FlashCard.Services
+@implements IDisposable
 @inject IMenuService MenuService
 @inject HttpClient HttpClient
-@inject IHostingService StatusService
+@inject IServiceProvider ServiceProvider
 
 <SyncedTitle Title="Hosting"></SyncedTitle>
 
@@ -86,14 +87,20 @@
 @code
 {
 
+    protected static IServiceProvider? Services { get; set; }
+
     protected override void OnInitialized()
     {
+        _cts ??= new();
+        Instance = this;
+        Services = ServiceProvider;
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Hosting />);
         _ = PollTunnelStatusAsync();
     }
 
-    private string? _apiToken;
-    private string? ApiToken {
+    private static string? _apiToken;
+    private static string? ApiToken
+    {
         get => _apiToken;
         set
         {
@@ -101,8 +108,8 @@
             _ = PollTunnelStatusAsync();
         }
     }
-    private string? _tunnelName;
-    private string? TunnelName
+    private static string? _tunnelName;
+    private static string? TunnelName
     {
         get => _tunnelName;
         set
@@ -111,8 +118,8 @@
             _ = PollTunnelStatusAsync();
         }
     }
-    private string? _accountId;
-    private string? AccountId
+    private static string? _accountId;
+    private static string? AccountId
     {
         get => _accountId;
         set
@@ -121,8 +128,8 @@
             _ = PollTunnelStatusAsync();
         }
     }
-    private string? _domain;
-    private string? Domain
+    private static string? _domain;
+    private static string? Domain
     {
         get => _domain;
         set
@@ -132,19 +139,20 @@
         }
     }
 
-    private string? tunnelStatus = "Checking Cloud Flare...";
-    private string lastChecked = "Never"; 
-    private string? hostStatus = "Checking Public Access...";
-    private string hostChecked = "Never";
-    private string? serviceStatus = "Checking Services...";
-    private string serviceChecked = "Never";
-    private PeriodicTimer? _timer;
-    private CancellationTokenSource _cts = new();
-    private bool? IsWorking { get; set; } = null;
-    private bool? IsTunneling { get; set; } = null;
-    private bool? IsServicing { get; set; } = null;
+    private static string? tunnelStatus = "Checking Cloud Flare...";
+    private static string lastChecked = "Never";
+    private static string? hostStatus = "Checking Public Access...";
+    private static string hostChecked = "Never";
+    private static string? serviceStatus = "Checking Services...";
+    private static string serviceChecked = "Never";
+    private static PeriodicTimer? _timer;
+    private static CancellationTokenSource? _cts = new();
+    private static bool? IsWorking { get; set; } = null;
+    private static bool? IsTunneling { get; set; } = null;
+    private static bool? IsServicing { get; set; } = null;
+    protected static Pages.Admin.Hosting? Instance { get; set; }
 
-    private async Task PollTunnelStatusAsync()
+    private static async Task PollTunnelStatusAsync()
     {
 
         if(_timer != null)
@@ -153,24 +161,43 @@
         }
 
         await CheckStatus();
+        if (Instance != null) await Instance.InvokeAsync(ChangeState);
         _timer = new PeriodicTimer(TimeSpan.FromMinutes(3));
 
         try
         {
             // The loop waits here every 300 seconds
-            while (await _timer.WaitForNextTickAsync(_cts.Token))
+            while (await _timer.WaitForNextTickAsync(_cts?.Token ?? (_cts = new CancellationTokenSource()).Token))
             {
                 await CheckStatus();
+                if (Instance != null) await Instance.InvokeAsync(ChangeState);
             }
         }
         catch (OperationCanceledException) { /* Component was disposed */ }
     }
-    
 
-    private async Task CheckStatus()
+    protected static void ChangeState() => Instance?.StateHasChanged();
+
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts = null;
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+
+    private static async Task CheckStatus()
     {
         try
         {
+            var StatusService = Services?.GetService(typeof(IHostingService)) as IHostingService;
+
+            if(StatusService == null)
+            {
+                return;
+            }
 
             var token = await StatusService.GetToken();
             var host = await StatusService.GetHost();
@@ -193,7 +220,6 @@
             if (string.IsNullOrWhiteSpace(Domain))
             {
                 hostStatus = "Domain name not set.";
-                await InvokeAsync(StateHasChanged);
                 return;
             }
 
@@ -210,7 +236,6 @@
             hostChecked = DateTime.Now.ToLongTimeString();
 
             // Required to tell Blazor the data changed outside of a UI event
-            await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {

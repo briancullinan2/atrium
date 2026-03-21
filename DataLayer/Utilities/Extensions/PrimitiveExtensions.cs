@@ -23,6 +23,44 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        private static readonly string[] TrueValues = ["true", "1", "yes", "y", "on", "checked"];
+        private static readonly string[] FalseValues = ["false", "0", "no", "n", "off", "unchecked"];
+
+        public static bool? TryParse(object val)
+        {
+            if (val == null) return null;
+
+            // 1. Check for actual boolean or numeric types first (The 'int love' logic)
+            if (val is bool b) return b;
+
+            var inputString = val.ToString()?.Trim();
+            if (string.IsNullOrEmpty(inputString)) return null;
+
+            if (int.TryParse(inputString, out int intVal))
+            {
+                if (intVal == 1) return true;
+                if (intVal == 0) return false;
+            }
+
+            // 2. Loop through True definitions (Case-Insensitive)
+            foreach (var t in TrueValues)
+            {
+                if (string.Equals(t, inputString, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            // 3. Loop through False definitions (Case-Insensitive)
+            foreach (var f in FalseValues)
+            {
+                if (string.Equals(f, inputString, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return null; // No match found, just like the Enum fallback
+        }
+
+
+
         public static TEnum? TryParse<TEnum>(this string val) where TEnum : struct, Enum
         {
             return TryParse<TEnum>((object)val);

@@ -40,7 +40,7 @@ namespace Atrium.WinUI
         [STAThread]
         public static void Main(string[] args)
         {
-            log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo("log4net.xml"));
+            log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo(Path.Combine(AppContext.BaseDirectory, "log4net.xml")));
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
                 Log.Error(e, e.ExceptionObject as Exception);

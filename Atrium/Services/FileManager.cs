@@ -57,14 +57,21 @@ namespace Atrium.Services
             fileStream.Close();
             localStream.Close();
 
-            var query = _services.GetRequiredService<IQueryManager>();
-            var file = await query.Save(new DataLayer.Entities.File()
+            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager 
+                ?? throw new InvalidOperationException("Could not render query manager.");
+            var task = query.Save(new DataLayer.Entities.File()
             {
                 Filename = savePath,
                 Source = source // TODO: fill in from nav or parameter or something
             });
-            OnFileUploaded?.Invoke(file);
-            return file;
+            if (task != null)
+            {
+                await task;
+                var file = task.Result;
+                OnFileUploaded?.Invoke(file);
+                return file;
+            }
+            return null;
         }
 
 #if WINDOWS
