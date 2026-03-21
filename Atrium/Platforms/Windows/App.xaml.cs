@@ -105,7 +105,13 @@ namespace Atrium.WinUI
 
         internal static void SetTitle(string? title, IEnumerable<Window> windows)
         {
-            windows.FirstOrDefault()?.Title = title;
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                foreach (var window in windows)
+                {
+                    window.Title = title; // This is now safe
+                }
+            });
         }
     }
 }

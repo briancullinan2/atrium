@@ -5,7 +5,7 @@
 		<appender-ref ref="AsyncForwarder" />
 	</root>
 
-	<!--<appender name="AsyncForwarder" type="log4net.Appender.BufferingForwardingAppender">
+	<appender name="AsyncForwarder" type="log4net.Appender.BufferingForwardingAppender">
 		<bufferSize value="1" />
 		<lossy value="false" />
 		<fix value="All" />
@@ -17,12 +17,12 @@
 		<appender-ref ref="EventLogAppender" />
 	</appender>
 
-	<appender name="MessageLogAppender" type="EPIC.ClearView.Utilities.Logging.MessageLogAppender, EPICClearView">
+	<appender name="MessageLogAppender" type="Atrium.Logging.MessageLogAppender, Atrium">
 		<param name="ConnectionStringName" value="MedicalMemory" />
 	</appender>
 
 	<appender name="RollingFileAppender" type="log4net.Appender.RollingFileAppender">
-		<file value="Logs\EPIC_Audit.log" />
+		<file value="Logs\Atrium.log" />
 		<appendToFile value="true" />
 		<rollingStyle value="Composite" />
 		<maxSizeRollBackups value="10" />
@@ -33,13 +33,13 @@
 	</appender>
 
 	<appender name="EventLogAppender" type="log4net.Appender.EventLogAppender">
-		<logName value="EPIC_ClearView_Audit" />
-		<applicationName value="EPIC_Flagstaff_Facility" />
+		<logName value="Atrium_Audit" />
+		<applicationName value="Atrium" />
 		<layout type="log4net.Layout.PatternLayout">
 			<conversionPattern value="%date [%thread] %-5level %logger - %message%newline" />
 		</layout>
 		<filter type="log4net.Filter.LevelRangeFilter">
 			<levelMin value="WARN" />
 		</filter>
-	</appender>-->
+	</appender>
 </log4net>

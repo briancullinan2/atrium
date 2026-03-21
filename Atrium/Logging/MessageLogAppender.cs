@@ -13,14 +13,11 @@ namespace Atrium.Logging
     public class MessageLogAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
     {
         public string Name { get; set; }
-        internal static IServiceProvider Services { get; set; }
+        internal static IServiceProvider? Services { get; set; }
+        internal static List<Tuple<string?, string?>> PreLog { get; set; } = [];
 
         static MessageLogAppender()
         {
-            if (Services == null)
-            {
-                throw new InvalidOperationException("Services not available.");
-            }
         }
 
         public MessageLogAppender()
@@ -53,7 +50,7 @@ namespace Atrium.Logging
 
         public void DoAppend(LoggingEvent loggingEvent)
         {
-            var _ = DoAppendForget(loggingEvent);
+            _ = DoAppendForget(loggingEvent);
         }
 
         public static async Task DoAppendForget(LoggingEvent loggingEvent)
@@ -86,8 +83,15 @@ namespace Atrium.Logging
                     }.Save();
                 }
 
-                var pageManager = Services.GetService<IPageManager>();
-                pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                if(Services == null)
+                {
+                    PreLog.Add(new Tuple<string?, string?>(newMessage.Title, newMessage.Body));
+                }
+                else
+                {
+                    var pageManager = Services.GetService<IPageManager>();
+                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                }
             }
             catch (Exception ex)
             {

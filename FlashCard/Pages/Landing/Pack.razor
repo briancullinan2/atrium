@@ -256,6 +256,7 @@
                 results.AddRange(up.Pack?.Cards.Where(c => due?.Contains(c.Id) == true) ?? []);
             }
             CurrentQuiz = results.Shuffle().ToList();
+            _ = InvokeAsync(StateHasChanged);
         }
         else if (Id != null)
         {
@@ -273,6 +274,7 @@
                     result.Add(await card.Update());
                 }
                 CurrentQuiz = result;
+                _ = InvokeAsync(StateHasChanged);
             }
             //var answers = (await Query.Query<Answer>()).ToList();
             //Console.WriteLine(answers);

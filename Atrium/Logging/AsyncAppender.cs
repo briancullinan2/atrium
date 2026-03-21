@@ -102,7 +102,7 @@ namespace Atrium.Logging
         }
 
         // Token: 0x06000305 RID: 773 RVA: 0x000195BC File Offset: 0x000177BC
-        public IAppender GetAppender(string name)
+        public IAppender GetAppender(string? name)
         {
             IAppender? result;
             lock (this)
