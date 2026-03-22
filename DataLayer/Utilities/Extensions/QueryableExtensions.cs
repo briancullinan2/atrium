@@ -129,13 +129,23 @@ namespace DataLayer.Utilities.Extensions
 
                 // If no column name, you'd iterate through 'searchable' properties here.
                 // For now, let's assume 'name' is provided.
-                if(string.IsNullOrEmpty(name))
+                Expression? resultExpr = null;
+                if (string.IsNullOrEmpty(name) 
+                    && typeof(IEntity).IsAssignableFrom(typeof(T)))
                 {
-                    // search all visible columns
-
+                    // TODO: search all visible columns
+                    var recommended = typeof(Entity<>).GetProperty(nameof(Entity<>.Database))?.GetValue(null, null) as List<PropertyInfo>;
+                    var expressions = recommended?.Select(propertyInfo => parameter.ToMember(propertyInfo.Name, term));
+                    if (expressions == null || !expressions.Any()) return null;
+                    resultExpr = Combine(mode ?? CombineMode.OrElse, false, expressions);
+                }
+                else
+                {
+                    resultExpr = parameter.ToMember(name, term);
                 }
 
-                Expression resultExpr = parameter.ToMember(name, term);
+                if (resultExpr == null) return null;
+                
 
                 // If resultExpr is already a MethodCall (like Any), don't wrap it in Equality again
                 if (resultExpr.Type != typeof(bool))

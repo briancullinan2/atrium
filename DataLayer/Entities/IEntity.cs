@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using DataLayer.Utilities.Extensions;
+using System.Text.Json.Serialization;
 
 namespace DataLayer.Entities
 {
@@ -20,6 +21,13 @@ namespace DataLayer.Entities
         //Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
         //Task<IEntity> Save();
         int? CanonicalFingerprint { get; set; }
+
+        static abstract List<PropertyInfo> Display { get; }
+        public static abstract List<PropertyInfo> ListDisplay(Type type);
+        static abstract List<PropertyInfo> Database { get; }
+        public static abstract List<PropertyInfo> ListDatabase(Type type);
+        static abstract List<PropertyInfo> Interesting { get; }
+        public static abstract List<PropertyInfo> ListInteresting(Type type);
 
     }
 
@@ -38,15 +46,17 @@ namespace DataLayer.Entities
         public int? CanonicalFingerprint { get; set; } = null;
 
         [NotMapped]
-        private static IEnumerable<PropertyInfo> Database { get => ListDatabase(typeof(T)); }
+        public static List<PropertyInfo> Database { get => ListDatabase(typeof(T)); }
         [NotMapped]
-        private static IEnumerable<PropertyInfo> Interesting { get => ListInteresting(typeof(T)); }
-        private static List<PropertyInfo> ListDatabase(Type type)
+        public static List<PropertyInfo> Interesting { get => ListInteresting(typeof(T)); }
+        [NotMapped]
+        public static List<PropertyInfo> Display { get => ListDisplay(typeof(T)); }
+        public static List<PropertyInfo> ListDatabase(Type type)
         {
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
-                    p.GetGetMethod()?.IsVirtual != true
-                    && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
+                    //p.GetGetMethod()?.IsVirtual != true
+                    !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
                     && !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
                 .OrderBy(p => p.Name)
                 .ToList();
@@ -54,9 +64,10 @@ namespace DataLayer.Entities
             return properties;
         }
 
-        private static List<PropertyInfo> ListInteresting(Type type)
+
+
+        public static List<PropertyInfo> ListInteresting(Type type)
         {
-            //var ignoreList = new List<string>(ignore);
             var foreignKeys = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(p => Attribute.GetCustomAttribute(p, typeof(ForeignKeyAttribute))?.TypeId);
 
@@ -64,19 +75,35 @@ namespace DataLayer.Entities
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
                     !foreignKeys.Contains(p.Name) // TODO: skip all FK IDs because they might not match on server
-                    && p.GetGetMethod()?.IsVirtual != true
+                    //&& p.GetGetMethod()?.IsVirtual != true
                     && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
                     && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
+                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
                     && !Attribute.IsDefined(p, typeof(ForeignKeyAttribute)) // comparing id is enough
-                    && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                            //&& !ignoreList.Contains(p.Name)
-                            )
+                    && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType))
                 .OrderBy(p => p.Name)
                 .ToList();
 
             return properties;
         }
 
+        public static List<PropertyInfo> ListDisplay(Type type)
+        {
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =>
+                    (Attribute.IsDefined(p, typeof(CategoryAttribute))
+                    || Attribute.IsDefined(p, typeof(DisplayAttribute)))
+                    && (string.Equals(p.GetCustomAttribute<CategoryAttribute>()?.Category, "Display")
+                    || string.Equals(p.GetCustomAttribute<DisplayAttribute>()?.GroupName, "Display"))
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
+                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
+
+                    )
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            return properties;
+        }
 
 
         public override bool Equals(object? obj)
