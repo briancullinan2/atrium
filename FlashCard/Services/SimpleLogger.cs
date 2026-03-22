@@ -1,4 +1,6 @@
-﻿using System;
+﻿using DataLayer.Utilities.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Reflection;
@@ -11,10 +13,10 @@ namespace FlashCard.Services
 {
     public interface ILog
     {
-        void Info(object message, Exception? ex = null);
-        void Error(object message, Exception? ex = null);
-        void Fatal(object message, Exception? ex = null);
-        void Debug(object message, Exception? ex = null);
+        void Info(object message, Exception? ex = null, [CallerFilePath] string cp = "");
+        void Error(object message, Exception? ex = null, [CallerFilePath] string cp = "");
+        void Fatal(object message, Exception? ex = null, [CallerFilePath] string cp = "");
+        void Debug(object message, Exception? ex = null, [CallerFilePath] string cp = "");
         event Action<object?, Exception?>? OnLogged;
         static abstract SimpleLogger GetLogger(string filePath);
     }
@@ -24,25 +26,50 @@ namespace FlashCard.Services
     {
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
         public event Action<object?, Exception?>? OnLogged;
-        public object? Logger { get; set; }
+        public object? WrappedLogger { get; set; }
+#pragma warning disable IDE1006 // Naming Styles
+        private static IServiceProvider? _services { get; set; }
+#pragma warning restore IDE1006 // Naming Styles
+        internal static IServiceProvider? Services
+        {
+            get
+            {
+                return _services;
+            }
+            set
+            {
+                _services = value;
+                foreach (var pre in PreLog)
+                {
+                    _ = pre.Save();
+                }
+
+                var pageManager = _services?.GetService<IPageManager>();
+                if (PreLog.LastOrDefault() is DataLayer.Entities.Message newMessage)
+                {
+                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                }
+                PreLog.Clear();
+            }
+        }
+        internal static List<DataLayer.Entities.Message> PreLog { get; set; } = [];
+
 
         public static SimpleLogger GetLogger(string filePath)
         {
-            string category = Path.GetFileNameWithoutExtension(filePath);
-            var logger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger() {
-                Filepath = filePath,
-                Category = category
-            });
-            return logger;
+            return GetLogger(filePath, typeof(SimpleLogger));
         }
 
-        public static SimpleLogger GetLogger(string filePath, Type levels, object replacement)
+        public static SimpleLogger GetLogger(string filePath, Type levels, object? replacement = null)
         {
             string category = Path.GetFileNameWithoutExtension(filePath);
             if (_loggerCache.TryGetValue(category, out var logger)) return logger;
 
-            var levelsLogger = GetLogger(filePath);
-            levelsLogger.Logger = replacement ?? levelsLogger;
+            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger() {
+                Filepath = filePath,
+                Category = category
+            });
+            levelsLogger.WrappedLogger = replacement ?? levelsLogger;
 
             var levelFunctions = levels.GetMethods()
                 .Select(m => new Tuple<MethodInfo, ParameterInfo[]>(m, m.GetParameters()))
@@ -67,7 +94,7 @@ namespace FlashCard.Services
                 {
                     var parameters = levelFunction.Item2.Select(p => ParameterToObject(p, obj, ex)).ToArray();
 
-                    levelFunction.Item1.Invoke(levelsLogger.Logger, parameters);
+                    levelFunction.Item1.Invoke(levelsLogger.WrappedLogger, parameters);
                 };
             }
             return levelsLogger;
@@ -94,6 +121,59 @@ namespace FlashCard.Services
         }
 
 
+        public static async Task DoAppendForget(
+            string Source,
+            string Title,
+            Exception? exception
+        )
+        {
+            try
+            {
+                DataLayer.Entities.Message newMessage;
+                if (exception != null)
+                {
+                    newMessage = new DataLayer.Entities.Message
+                    {
+                        Source = Source,
+                        Title = exception.Message.Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
+                        Body = exception.StackTrace?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    };
+                }
+                else
+                {
+                    newMessage = new DataLayer.Entities.Message
+                    {
+                        Source = Source,
+                        Title = Title.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
+                        Body = new System.Diagnostics.StackTrace(true).ToString().Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    };
+                }
+
+                if (Services == null)
+                {
+                    PreLog.Add(newMessage);
+                }
+                else
+                {
+                    _ = newMessage.Save();
+                    var pageManager = Services.GetService<IPageManager>();
+                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+
+
         public virtual Dictionary<string, Action<object, Exception?>> Levels { get; set; } = [];
 
 
@@ -116,36 +196,54 @@ namespace FlashCard.Services
         public string? Filepath { get; set; }
         public string? Category { get; set; }
 
-        public virtual void Debug(object message, Exception? ex = null)
+        public virtual void Info(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Info), msg, ex, cp);
+        public virtual void Error(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Error), msg, ex, cp);
+        public virtual void Fatal(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Fatal), msg, ex, cp);
+        public virtual void Debug(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Debug), msg, ex, cp);
+
+
+        private void InvokeWrappedLogger(string level, object message, Exception? ex)
         {
-            Console.WriteLine(Filepath + " : " + Category);
-            Console.WriteLine(message);
-            if (ex != null) Console.WriteLine(ex);
-            OnLogged?.Invoke(message, ex);
+            if (WrappedLogger != null && Levels.TryGetValue(level, out var Log))
+            {
+                Log(message, ex);
+                return;
+            }
+
+            if (WrappedLogger == null)
+            {
+                Console.WriteLine(Filepath + " : " + Category);
+                Console.WriteLine(message);
+                if (ex != null) Console.WriteLine(ex);
+                OnLogged?.Invoke(message, ex);
+            }
+
         }
 
-        public virtual void Error(object message, Exception? ex = null)
-        {
-            Console.WriteLine(Filepath + " : " + Category);
-            Console.WriteLine(message);
-            if (ex != null) Console.WriteLine(ex);
-            OnLogged?.Invoke(message, ex);
-        }
 
-        public virtual void Fatal(object message, Exception? ex = null)
+        private void WriteLog(string level, object message, Exception? ex, string callerPath)
         {
-            Console.WriteLine(Filepath + " : " + Category);
-            Console.WriteLine(message);
-            if (ex != null) Console.WriteLine(ex);
-            OnLogged?.Invoke(message, ex);
-        }
+            // 1. Incorporate Node-style attributes [Service][Folder][File]
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var folder = Path.GetFileName(Path.GetDirectoryName(callerPath)) ?? "Root";
+            var file = Path.GetFileNameWithoutExtension(callerPath);
 
-        public virtual void Info(object message, Exception? ex = null)
-        {
-            Console.WriteLine(Filepath + " : " + Category);
-            Console.WriteLine(message);
+            // Build the "Pre-pended" message like your Node notebook
+            string formattedPrefix = $"[{timestamp}][{level.ToUpper()}][{folder}][{file}]";
+            string finalMessage = $"{formattedPrefix} {message}";
+
+            // 2. Output to Console (Immediate Feedback)
+            Console.WriteLine(finalMessage);
             if (ex != null) Console.WriteLine(ex);
+
+            // 3. Fire events for UI (IPageManager)
             OnLogged?.Invoke(message, ex);
+
+            // 4. Fire off to Database (Fire and Forget)
+            _ = DoAppendForget(file, message.ToString() ?? "", ex);
+
+            // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
+            InvokeWrappedLogger(level, message, ex);
         }
     }
 

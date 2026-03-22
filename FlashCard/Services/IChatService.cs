@@ -23,7 +23,7 @@
         public string Description { get; set; } = "";
 
 
-        public static List<ChatCommand> CommandRegistry =
+        public static readonly List<ChatCommand> CommandRegistry =
         [
             // --- Navigation & Context ---
             new() {

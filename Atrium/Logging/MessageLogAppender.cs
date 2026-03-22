@@ -13,8 +13,31 @@ namespace Atrium.Logging
     public class MessageLogAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
     {
         public string Name { get; set; }
-        internal static IServiceProvider? Services { get; set; }
-        internal static List<Tuple<string?, string?>> PreLog { get; set; } = [];
+#pragma warning disable IDE1006 // Naming Styles
+        private static IServiceProvider? _services { get; set; }
+#pragma warning restore IDE1006 // Naming Styles
+        internal static IServiceProvider? Services {
+            get
+            {
+                return _services;
+            }
+            set
+            {
+                _services = value;
+                foreach(var pre in PreLog)
+                {
+                    _ = pre.Save();
+                }
+                
+                var pageManager = _services?.GetService<IPageManager>();
+                if (PreLog.LastOrDefault() is DataLayer.Entities.Message newMessage)
+                {
+                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                }
+                PreLog.Clear();
+            }
+        }
+        internal static List<DataLayer.Entities.Message> PreLog { get; set; } = [];
         public string? ConnectionStringName { get; set; }
 
         static MessageLogAppender()
@@ -95,7 +118,7 @@ namespace Atrium.Logging
 
                 if(Services == null)
                 {
-                    PreLog.Add(new Tuple<string?, string?>(newMessage.Title, newMessage.Body));
+                    PreLog.Add(newMessage);
                 }
                 else
                 {

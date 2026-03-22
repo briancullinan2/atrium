@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace Atrium.Logging
 {
-    public class Log : SimpleLogger
+    public static class Log
     {
 #if WINDOWS
         // Use a ConcurrentDictionary to cache loggers for performance
@@ -52,16 +52,18 @@ namespace Atrium.Logging
             GetLogger(callerPath).Levels[nameof(Debug)](message, ex);
         }
 
-#if WINDOWS
-        public new static SimpleLogger GetLogger(string filePath)
+        public static SimpleLogger GetLogger(string filePath)
         {
             // Extracts the class name from the file path to use as the category
             string category = Path.GetFileNameWithoutExtension(filePath);
+#if WINDOWS
             var logger = _loggerCache.GetOrAdd(category, LogManager.GetLogger);
-            var simple = GetLogger(filePath, typeof(log4net.ILog), logger);
+            var simple = SimpleLogger.GetLogger(filePath, typeof(log4net.ILog), logger);
+#else
+            var simple = SimpleLogger.GetLogger(filePath);
+#endif
             return simple;
         }
-#endif
     }
 
 
