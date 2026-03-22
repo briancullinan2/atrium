@@ -13,31 +13,7 @@ namespace Atrium.Logging
     public class MessageLogAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
     {
         public string Name { get; set; }
-#pragma warning disable IDE1006 // Naming Styles
-        private static IServiceProvider? _services { get; set; }
-#pragma warning restore IDE1006 // Naming Styles
-        internal static IServiceProvider? Services {
-            get
-            {
-                return _services;
-            }
-            set
-            {
-                _services = value;
-                foreach(var pre in PreLog)
-                {
-                    _ = pre.Save();
-                }
-                
-                var pageManager = _services?.GetService<IPageManager>();
-                if (PreLog.LastOrDefault() is DataLayer.Entities.Message newMessage)
-                {
-                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
-                }
-                PreLog.Clear();
-            }
-        }
-        internal static List<DataLayer.Entities.Message> PreLog { get; set; } = [];
+
         public string? ConnectionStringName { get; set; }
 
         static MessageLogAppender()
@@ -90,42 +66,15 @@ namespace Atrium.Logging
         {
             try
             {
-                DataLayer.Entities.Message newMessage;
                 if (loggingEvent.ExceptionObject != null)
                 {
-                    newMessage = new DataLayer.Entities.Message
-                    {
-                        Source = loggingEvent.LoggerName,
-                        Title = loggingEvent.ExceptionObject.Message.Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
-                        Body = loggingEvent.ExceptionObject.StackTrace?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
-                        Created = DateTime.UtcNow,
-                        IsActive = true,
-                        MessageType = 4
-                    };
+                    _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), loggingEvent.ExceptionObject.Message, loggingEvent.ExceptionObject);
                 }
                 else
                 {
-                    newMessage = new DataLayer.Entities.Message
-                    {
-                        Source = loggingEvent.LoggerName,
-                        Title = (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage)?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
-                        Body = new System.Diagnostics.StackTrace(true).ToString().Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
-                        Created = DateTime.UtcNow,
-                        IsActive = true,
-                        MessageType = 4
-                    };
+                    _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage) ?? string.Empty, loggingEvent.ExceptionObject);
                 }
 
-                if(Services == null)
-                {
-                    PreLog.Add(newMessage);
-                }
-                else
-                {
-                    _ = newMessage.Save();
-                    var pageManager = Services.GetService<IPageManager>();
-                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
-                }
             }
             catch (Exception ex)
             {

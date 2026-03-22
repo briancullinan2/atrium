@@ -1,10 +1,12 @@
 ﻿using DataLayer;
 using DataLayer.Entities;
+using DataLayer.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DataLayer
 {
@@ -36,6 +38,8 @@ namespace DataLayer
                 return Database.GetDbConnection().ConnectionString;
             }
         }
+
+        public bool NeedsInitialize { get; private set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -80,19 +84,27 @@ namespace DataLayer
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
-            _ = Task.Run(async () =>
-            {
-                var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                _ = Database.EnsureCreated();
-                EnsureGlobalIdentityStart();
-                _ = SaveChanges();
-            });
+            NeedsInitialize = true;
         }
 
 
-        public void EnsureGlobalIdentityStart()
+        public async Task InitializeIfNeeded()
         {
+            if(NeedsInitialize)
+            {
+                NeedsInitialize = false;
+                var conn = Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                await Database.EnsureCreatedAsync();
+                await EnsureGlobalIdentityStart();
+                await SaveChangesAsync();
+            }
+        }
+
+        public async Task EnsureGlobalIdentityStart()
+        {
+            Log.Info("Inserting 0 IDs.");
+
             // 1. Get all entities defined in your DbContext
             var entityTypes = Model.GetEntityTypes();
 

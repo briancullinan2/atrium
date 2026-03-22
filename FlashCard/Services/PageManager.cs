@@ -3,6 +3,7 @@ using FlashCard.Controls;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace FlashCard.Services
 {
@@ -21,6 +22,7 @@ namespace FlashCard.Services
 
     public class PageManager(ILoggerFactory LoggerFactory) : IPageManager
     {
+        internal static ConcurrentQueue<(DateTime Created, Exception Exception)> Immediate { get; set; } = [];
 
         public Dictionary<string, string?> State { get; set; } = [];
 
@@ -46,6 +48,18 @@ namespace FlashCard.Services
 
         public async Task SetError(Exception? error)
         {
+            if(error == null)
+            {
+                Immediate.Clear();
+                return;
+            }
+            Immediate.Enqueue((DateTime.Now, error));
+            if(Immediate.Count > 10 
+                // start deleting old records
+                || !Immediate.IsEmpty && Immediate.First().Created.AddMinutes(3) < DateTime.Now)
+            {
+                Immediate.TryDequeue(out _);
+            }
             OnErrorChanged?.Invoke(error);
         }
 

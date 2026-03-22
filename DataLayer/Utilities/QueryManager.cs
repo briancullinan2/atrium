@@ -163,6 +163,11 @@ namespace DataLayer.Utilities
             return result;
         }
 
+        
+        public async Task Enqueue(Func<Task> callback, int priority = 5)
+        {
+            await Enqueue<bool>(async () => { await callback(); return true; }, priority);
+        }
 
 
         public async Task<TReturn> Enqueue<TReturn>(Func<Task<TReturn>> callback, int priority = 5)
@@ -198,7 +203,7 @@ namespace DataLayer.Utilities
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Log.Error("Managed query failed: " + callback.Method, ex);
                 throw new Exception("holy shit", ex);
             }
             finally
@@ -353,6 +358,11 @@ namespace DataLayer.Utilities
                 {
                     throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
                 }
+                using var transactionFrom = contextFrom.Database.BeginTransaction();
+                using var transactionTo = contextTo.Database.BeginTransaction();
+                await contextFrom.InitializeIfNeeded();
+                await contextTo.InitializeIfNeeded();
+
 
                 var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
 
@@ -371,6 +381,8 @@ namespace DataLayer.Utilities
                 }
 
                 _ = await contextTo.SaveChangesAsync();
+                await transactionTo.CommitAsync();
+                await transactionFrom.DisposeAsync();
 
                 return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
             }, priority);
@@ -489,6 +501,8 @@ namespace DataLayer.Utilities
             {
                 using var scope = Service?.CreateScope();
                 var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                using var transaction = context.Database.BeginTransaction();
+                await context.InitializeIfNeeded();
 
                 var predicate = expression.Predicate();
                 var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
@@ -503,6 +517,8 @@ namespace DataLayer.Utilities
                         prop.SetValue(entity, update.Value);
                     }
                 }
+
+                await transaction.DisposeAsync();
 
                 return await SaveNow(storage, entity);
             }, priority);
@@ -523,6 +539,7 @@ namespace DataLayer.Utilities
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             using var transaction = context.Database.BeginTransaction();
+            await context.InitializeIfNeeded();
             try
             {
                 await ShallowSaveRecursive(context, entity);
@@ -623,6 +640,8 @@ namespace DataLayer.Utilities
                     {
                         using var scope = Service?.CreateScope();
                         var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
+                        using var transaction = context.Database.BeginTransaction();
+                        await context.InitializeIfNeeded();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
                         var invokedExpression = Expression.Invoke(query, set.Expression);
@@ -652,6 +671,8 @@ namespace DataLayer.Utilities
                         {
                             result = (TResult)set?.Provider.Execute(invokedExpression)!;
                         }
+
+                        transaction.Dispose();
 
                         if (result is Task taskResult)
                         {
@@ -877,6 +898,9 @@ namespace DataLayer.Utilities
         {
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
+            using var transaction = context.Database.BeginTransaction();
+            await context.InitializeIfNeeded();
+
             return await UpdateNow(context, entity, predicate, 3);
         }
 

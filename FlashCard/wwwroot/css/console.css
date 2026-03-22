@@ -35,7 +35,7 @@
 
 .console-body {
     height: 360px;
-    overflow-y: auto;
+    overflow: visible;
     padding: 10px;
     font-size: 12px;
 }

@@ -1,4 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Entities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
@@ -20,10 +21,13 @@ namespace FlashCard.Services
         void Debug(object message, Exception? ex = null);
         static event Action<object?, Exception?>? OnLogged;
         static abstract SimpleLogger GetLogger(string filePath);
+        Action<object, Exception?> this[string level] { get; set; }
+        string? Filepath { get; set; }
+        string? Category { get; set; }
     }
 
 
-    public class SimpleLogger() : ILog
+    public class SimpleLogger() : FlashCard.Services.ILog
     {
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
         public static event Action<object?, Exception?>? OnLogged;
@@ -31,7 +35,7 @@ namespace FlashCard.Services
 #pragma warning disable IDE1006 // Naming Styles
         private static IServiceProvider? _services { get; set; }
 #pragma warning restore IDE1006 // Naming Styles
-        internal static IServiceProvider? Services
+        public static IServiceProvider? Services
         {
             get
             {
@@ -40,15 +44,13 @@ namespace FlashCard.Services
             set
             {
                 _services = value;
+                var pageManager = _services?.GetService<IPageManager>();
                 foreach (var pre in PreLog)
                 {
                     _ = pre.Save();
-                }
-
-                var pageManager = _services?.GetService<IPageManager>();
-                if (PreLog.LastOrDefault() is DataLayer.Entities.Message newMessage)
-                {
-                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                    var boringException = new Exception(pre.Title) { Source = pre.Source };
+                    boringException.Data["OriginalStack"] = pre.Body;
+                    pageManager?.SetError(boringException);
                 }
                 PreLog.Clear();
             }
@@ -93,7 +95,7 @@ namespace FlashCard.Services
 
             foreach (var levelFunction in levelFunctions)
             {
-                levelsLogger.Levels[levelFunction.Item1.Name] = (obj, ex) => levelsLogger.WriteLog(levelFunction.Item1.Name, obj, ex, levelFunction.Item1);
+                levelsLogger._levels[levelFunction.Item1.Name] = (obj, ex) => levelsLogger.WriteLog(levelFunction.Item1.Name, obj, ex, levelFunction.Item1);
             }
             return levelsLogger;
         }
@@ -125,6 +127,7 @@ namespace FlashCard.Services
             Exception? exception
         )
         {
+            var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
             try
             {
                 DataLayer.Entities.Message newMessage;
@@ -133,8 +136,8 @@ namespace FlashCard.Services
                     newMessage = new DataLayer.Entities.Message
                     {
                         Source = Source,
-                        Title = exception.Message.Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
-                        Body = exception.StackTrace?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Title = (Title ?? exception.Message).Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
+                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled)?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
@@ -146,7 +149,7 @@ namespace FlashCard.Services
                     {
                         Source = Source,
                         Title = Title.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
-                        Body = new System.Diagnostics.StackTrace(true).ToString().Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Body = stackWhenCalled.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
@@ -161,7 +164,14 @@ namespace FlashCard.Services
                 {
                     _ = newMessage.Save();
                     var pageManager = Services.GetService<IPageManager>();
-                    pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
+                    // so we get a stack trace with it
+                    if (exception != null) pageManager?.SetError(exception);
+                    else
+                    {
+                        var reportEx = exception ?? new Exception(Title) { Source = Source };
+                        reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
+                        pageManager?.SetError(reportEx);
+                    }
                 }
             }
             catch (Exception ex)
@@ -172,20 +182,22 @@ namespace FlashCard.Services
 
 
 
-        private Dictionary<string, Action<object, Exception?>> Levels { get; set; } = [];
+#pragma warning disable IDE1006 // Naming Styles
+        private Dictionary<string, Action<object, Exception?>> _levels { get; set; } = [];
+#pragma warning restore IDE1006 // Naming Styles
 
 
         public virtual Action<object, Exception?> this[string level]
         {
             get
             {
-                if (Levels.TryGetValue(level, out var log)) return log;
-                Levels[level] = (message, ex) => WriteLog(level, message, ex, null, "");
-                return Levels[level];
+                if (_levels.TryGetValue(level, out var log)) return log;
+                _levels[level] = (message, ex) => WriteLog(level, message, ex, null, "");
+                return _levels[level];
             }
             set
             {
-                Levels[level] = value;
+                _levels[level] = value;
             }
         }
 
@@ -215,6 +227,7 @@ namespace FlashCard.Services
 
         private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null, [CallerFilePath] string callerPath = "")
         {
+            var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
             // 1. Incorporate Node-style attributes [Service][Folder][File]
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             var folder = Path.GetFileName(Path.GetDirectoryName(callerPath)) ?? "Root";
@@ -234,7 +247,9 @@ namespace FlashCard.Services
             // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
             if (levelDelegate != null)
             {
-                InvokeWrappedLogger(levelDelegate, /* level, */ message, ex);
+                var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
+                reportEx.Data["OriginalStack"] = stackWhenCalled;
+                InvokeWrappedLogger(levelDelegate, /* level, */ message, reportEx);
             }
         }
     }

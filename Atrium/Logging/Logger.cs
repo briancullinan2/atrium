@@ -4,16 +4,44 @@ using log4net;
 using FlashCard.Services;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Reflection;
 
 
 namespace Atrium.Logging
 {
-    public static class Log
+    public class Log : Log.ILog
     {
 #if WINDOWS
         // Use a ConcurrentDictionary to cache loggers for performance
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, log4net.ILog> _loggerCache = new();
 #endif
+
+        // demonstration for implementors to inject themselves
+        //   instead of making up their own GetLogger
+        public static MethodInfo? WrappedLogger { get; set; }
+        public string? Filepath { get; set; }
+        public string? Category { get; set; }
+
+
+        public interface ILog
+        {
+            static abstract SimpleLogger GetLogger(string filePath);
+            Action<object, Exception?> this[string level] { get; set; }
+            string? Filepath { get; set; }
+            string? Category { get; set; }
+
+        }
+
+        static Log()
+        {
+            WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
+        }
+
+        Action<object, Exception?> ILog.this[string level] {
+            get => GetLogger(Filepath ?? Category ?? string.Empty)[level];
+            set => GetLogger(Filepath ?? Category ?? string.Empty)[level] = value;
+        }
+
 
         public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
@@ -62,7 +90,13 @@ namespace Atrium.Logging
 #else
             var simple = SimpleLogger.GetLogger(filePath);
 #endif
-            return simple;
+            if(!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
+            {
+                var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as Log.ILog;
+                parentLogger?.Category = category;
+                parentLogger?.Filepath = filePath;
+            }
+            return simple!;
         }
     }
 

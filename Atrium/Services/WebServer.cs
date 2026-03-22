@@ -1,6 +1,5 @@
 ﻿#if WINDOWS
 using Atrium.Logging;
-using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -61,7 +60,7 @@ namespace Atrium.Services
                 webBuilder.Services.AddSingleton<IHostingService, HostingService>();
                 webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
                 webBuilder.Services.AddSingleton<IChatService, ChatService>();
-                webBuilder.Services.AddSingleton<IQueryManager, QueryManager>();
+                webBuilder.Services.AddSingleton<DataLayer.Utilities.IQueryManager, DataLayer.Utilities.QueryManager>();
                 webBuilder.Services.AddSingleton<IAuthService, AuthService>();
                 webBuilder.Services.AddSingleton<NavigationTracker>();
 
