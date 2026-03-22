@@ -317,7 +317,6 @@ namespace Atrium.Services
             if (_clientTokens.TryRemove(_client, out var oldCts))
             {
                 oldCts.Cancel();
-                oldCts.Dispose();
             }
 
             // Create a new token for this specific request

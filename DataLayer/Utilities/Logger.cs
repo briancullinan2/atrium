@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace DataLayer.Utilities
 {
-    public class Log : Log.ILog
+    internal class Log : Log.ILog
     {
 
         // demonstration for implementors to inject themselves
@@ -26,6 +26,19 @@ namespace DataLayer.Utilities
         static Log()
         {
             WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
+            if(WrappedLogger == null)
+            {
+                var flashCard = Assembly.GetEntryAssembly()?.GetReferencedAssemblies()
+                    .FirstOrDefault(a => a.FullName.Contains("FlashCard"));
+                Console.WriteLine("Loading assembly: " + flashCard);
+                if(flashCard != null)
+                {
+                    var logger = Assembly.Load(flashCard.FullName).GetType("FlashCard.Services.SimpleLogger");
+                    Console.WriteLine("Using logger: " + logger);
+                    WrappedLogger = logger?.GetMethod(nameof(GetLogger), [typeof(string)]);
+                    Console.WriteLine("Using logger method: " + WrappedLogger);
+                }
+            }
         }
 
 
@@ -66,7 +79,7 @@ namespace DataLayer.Utilities
             string category = Path.GetFileNameWithoutExtension(filePath);
             var parentLogger = (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType)
                 ? WrappedLogger?.Invoke(null, [filePath])
-                : null) ?? throw new InvalidOperationException("Logger not working.");
+                : throw new InvalidOperationException("Logger not implemented.")) ?? throw new InvalidOperationException("Logger not working.");
             var simpleLogger = new Log
             {
                 Category = category,

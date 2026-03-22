@@ -68,7 +68,7 @@ else
         if (chat != ShouldShowChat)
         {
             ShouldShowChat = chat;
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -77,7 +77,7 @@ else
         if (Chat != chat)
         {
             Chat = chat;
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -127,14 +127,14 @@ else
     {
         if (ShowCourse == true) {
             ShowCourse = false;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
             return;
         }
 
         if(ShouldShowChat != true)
         {
             ShowCourse = true;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
             return;
         }
 

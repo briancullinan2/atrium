@@ -30,7 +30,7 @@ namespace FlashCard.Services
     public class SimpleLogger() : FlashCard.Services.ILog
     {
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
-        public static event Action<object?, Exception?>? OnLogged;
+
         public object? WrappedLogger { get; set; }
 #pragma warning disable IDE1006 // Naming Styles
         private static IServiceProvider? _services { get; set; }
@@ -222,16 +222,23 @@ namespace FlashCard.Services
                     levelDelegate?.Invoke(WrappedLogger, parameters);
                 }
             }
+            else
+            {
+                var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
+                // its not wrapped by log4net so try and save the error anyways
+                _ = DoAppendForget(Category ?? "Internal", message.ToString() ?? ex?.Message ?? string.Empty, reportEx);
+            }
         }
 
 
         private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null, [CallerFilePath] string callerPath = "")
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+            ex?.Data["OriginalStack"] = stackWhenCalled;
             // 1. Incorporate Node-style attributes [Service][Folder][File]
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            var folder = Path.GetFileName(Path.GetDirectoryName(callerPath)) ?? "Root";
-            var file = Path.GetFileNameWithoutExtension(callerPath);
+            var folder = Category?.Split('\\').SkipLast(1).LastOrDefault();
+            var file = Category?.Split('\\').LastOrDefault();
 
             // Build the "Pre-pended" message like your Node notebook
             string formattedPrefix = $"[{timestamp}][{level.ToUpper()}][{folder}][{file}]";
@@ -241,8 +248,6 @@ namespace FlashCard.Services
             Console.WriteLine(finalMessage);
             if (ex != null) Console.WriteLine(ex);
 
-            // 3. Fire events for UI (IPageManager)
-            OnLogged?.Invoke(message, ex);
 
             // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
             if (levelDelegate != null)
@@ -251,6 +256,7 @@ namespace FlashCard.Services
                 reportEx.Data["OriginalStack"] = stackWhenCalled;
                 InvokeWrappedLogger(levelDelegate, /* level, */ message, reportEx);
             }
+            
         }
     }
 

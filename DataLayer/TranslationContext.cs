@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DataLayer
@@ -90,14 +91,28 @@ namespace DataLayer
 
         public async Task InitializeIfNeeded()
         {
-            if(NeedsInitialize)
+            using var saveTransaction = await Database.BeginTransactionAsync();
+            try
             {
-                NeedsInitialize = false;
-                var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                await Database.EnsureCreatedAsync();
-                await EnsureGlobalIdentityStart();
-                await SaveChangesAsync();
+                if (NeedsInitialize)
+            {
+                    NeedsInitialize = false;
+                    var conn = Database.GetDbConnection();
+                    if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                    await Database.EnsureCreatedAsync();
+                    await EnsureGlobalIdentityStart();
+                    await SaveChangesAsync();
+                    saveTransaction.Commit();
+            }
+            }
+            catch (Exception ex)
+            {
+                await saveTransaction.RollbackAsync();
+                Log.Error("Creating database failed.", ex);
+            }
+            finally
+            {
+                await saveTransaction.DisposeAsync();
             }
         }
 

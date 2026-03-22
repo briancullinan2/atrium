@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace Atrium.Logging
 {
-    public class Log : Log.ILog
+    internal class Log : Log.ILog
     {
 #if WINDOWS
         // Use a ConcurrentDictionary to cache loggers for performance

@@ -358,10 +358,10 @@ namespace DataLayer.Utilities
                 {
                     throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
                 }
-                using var transactionFrom = contextFrom.Database.BeginTransaction();
-                using var transactionTo = contextTo.Database.BeginTransaction();
                 await contextFrom.InitializeIfNeeded();
                 await contextTo.InitializeIfNeeded();
+                using var transactionFrom = contextFrom.Database.BeginTransaction();
+                using var transactionTo = contextTo.Database.BeginTransaction();
 
 
                 var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
@@ -501,8 +501,8 @@ namespace DataLayer.Utilities
             {
                 using var scope = Service?.CreateScope();
                 var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-                using var transaction = context.Database.BeginTransaction();
                 await context.InitializeIfNeeded();
+                using var transaction = context.Database.BeginTransaction();
 
                 var predicate = expression.Predicate();
                 var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
@@ -538,19 +538,19 @@ namespace DataLayer.Utilities
         {
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
-            using var transaction = context.Database.BeginTransaction();
             await context.InitializeIfNeeded();
+            using var saveTransaction = context.Database.BeginTransaction();
             try
             {
                 await ShallowSaveRecursive(context, entity);
                 entity.CanonicalFingerprint = entity.GetHashCode();
                 _ = await context.SaveChangesAsync();
 
-                transaction.Commit();
+                saveTransaction.Commit();
             }
             catch (Exception ex)
             {
-                transaction.Rollback();
+                saveTransaction.Rollback();
                 throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
             }
 
@@ -640,8 +640,8 @@ namespace DataLayer.Utilities
                     {
                         using var scope = Service?.CreateScope();
                         var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
-                        using var transaction = context.Database.BeginTransaction();
                         await context.InitializeIfNeeded();
+                        using var transaction = context.Database.BeginTransaction();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
                         var invokedExpression = Expression.Invoke(query, set.Expression);
@@ -898,8 +898,8 @@ namespace DataLayer.Utilities
         {
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
-            using var transaction = context.Database.BeginTransaction();
             await context.InitializeIfNeeded();
+            using var transaction = context.Database.BeginTransaction();
 
             return await UpdateNow(context, entity, predicate, 3);
         }

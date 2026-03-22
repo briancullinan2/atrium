@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
+using FlashCard.Services.Logging;
 
 namespace FlashCard.Services
 {
@@ -51,8 +52,9 @@ namespace FlashCard.Services
             }
             catch (Exception ex)
             {
+                Log.Error($"Visit Log Failed: {ex.Message}", ex);
                 // Fail silently so we don't crash the UI on a failed log
-                Console.WriteLine($"Visit Log Failed: {ex.Message}");
+                Console.WriteLine($"Visit Log Failed: {ex.Message}", ex);
             }
         }
 
