@@ -17,17 +17,17 @@ namespace Atrium.Logging
 
         public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Levels[nameof(Info)](message, ex);
+            GetLogger(callerPath)[nameof(Info)](message, ex);
         }
 
         public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Levels[nameof(Error)](message, ex);
+            GetLogger(callerPath)[nameof(Error)](message, ex);
         }
 
         public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Levels[nameof(Fatal)](message, ex);
+            GetLogger(callerPath)[nameof(Fatal)](message, ex);
 //#if WINDOWS
             MainThread.BeginInvokeOnMainThread(() =>
             {
@@ -49,7 +49,7 @@ namespace Atrium.Logging
 
         public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Levels[nameof(Debug)](message, ex);
+            GetLogger(callerPath)[nameof(Debug)](message, ex);
         }
 
         public static SimpleLogger GetLogger(string filePath)

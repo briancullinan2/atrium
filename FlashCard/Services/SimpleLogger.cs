@@ -1,6 +1,7 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Reflection;
@@ -13,19 +14,19 @@ namespace FlashCard.Services
 {
     public interface ILog
     {
-        void Info(object message, Exception? ex = null, [CallerFilePath] string cp = "");
-        void Error(object message, Exception? ex = null, [CallerFilePath] string cp = "");
-        void Fatal(object message, Exception? ex = null, [CallerFilePath] string cp = "");
-        void Debug(object message, Exception? ex = null, [CallerFilePath] string cp = "");
-        event Action<object?, Exception?>? OnLogged;
+        void Info(object message, Exception? ex = null);
+        void Error(object message, Exception? ex = null);
+        void Fatal(object message, Exception? ex = null);
+        void Debug(object message, Exception? ex = null);
+        static event Action<object?, Exception?>? OnLogged;
         static abstract SimpleLogger GetLogger(string filePath);
     }
 
 
     public class SimpleLogger() : ILog
     {
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
-        public event Action<object?, Exception?>? OnLogged;
+        private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
+        public static event Action<object?, Exception?>? OnLogged;
         public object? WrappedLogger { get; set; }
 #pragma warning disable IDE1006 // Naming Styles
         private static IServiceProvider? _services { get; set; }
@@ -52,7 +53,7 @@ namespace FlashCard.Services
                 PreLog.Clear();
             }
         }
-        internal static List<DataLayer.Entities.Message> PreLog { get; set; } = [];
+        internal static ConcurrentStack<DataLayer.Entities.Message> PreLog { get; set; } = [];
 
 
         public static SimpleLogger GetLogger(string filePath)
@@ -88,14 +89,11 @@ namespace FlashCard.Services
                 )
                 .OrderBy(methodInfo => methodInfo.Item2.Length)
                 .DistinctBy(methodInfo => methodInfo.Item1.Name);
+
+
             foreach (var levelFunction in levelFunctions)
             {
-                levelsLogger.Levels[levelFunction.Item1.Name] = (obj, ex) =>
-                {
-                    var parameters = levelFunction.Item2.Select(p => ParameterToObject(p, obj, ex)).ToArray();
-
-                    levelFunction.Item1.Invoke(levelsLogger.WrappedLogger, parameters);
-                };
+                levelsLogger.Levels[levelFunction.Item1.Name] = (obj, ex) => levelsLogger.WriteLog(levelFunction.Item1.Name, obj, ex, levelFunction.Item1);
             }
             return levelsLogger;
         }
@@ -157,7 +155,7 @@ namespace FlashCard.Services
 
                 if (Services == null)
                 {
-                    PreLog.Add(newMessage);
+                    PreLog.Push(newMessage);
                 }
                 else
                 {
@@ -174,7 +172,7 @@ namespace FlashCard.Services
 
 
 
-        public virtual Dictionary<string, Action<object, Exception?>> Levels { get; set; } = [];
+        private Dictionary<string, Action<object, Exception?>> Levels { get; set; } = [];
 
 
         public virtual Action<object, Exception?> this[string level]
@@ -182,9 +180,7 @@ namespace FlashCard.Services
             get
             {
                 if (Levels.TryGetValue(level, out var log)) return log;
-                var levelDelegate = GetType().GetMethod(level);
-                if(levelDelegate == null) GetType().GetMethod(nameof(Debug));
-                Levels[level] = (message, ex) => levelDelegate?.Invoke(this, [message, ex]);
+                Levels[level] = (message, ex) => WriteLog(level, message, ex, null, "");
                 return Levels[level];
             }
             set
@@ -196,32 +192,28 @@ namespace FlashCard.Services
         public string? Filepath { get; set; }
         public string? Category { get; set; }
 
-        public virtual void Info(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Info), msg, ex, cp);
-        public virtual void Error(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Error), msg, ex, cp);
-        public virtual void Fatal(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Fatal), msg, ex, cp);
-        public virtual void Debug(object msg, Exception? ex = null, [CallerFilePath] string cp = "") => WriteLog(nameof(Debug), msg, ex, cp);
+        public virtual void Info(object msg, Exception? ex = null) => WriteLog(nameof(Info), msg, ex);
+        public virtual void Error(object msg, Exception? ex = null) => WriteLog(nameof(Error), msg, ex);
+        public virtual void Fatal(object msg, Exception? ex = null) => WriteLog(nameof(Fatal), msg, ex);
+        public virtual void Debug(object msg, Exception? ex = null) => WriteLog(nameof(Debug), msg, ex);
 
 
-        private void InvokeWrappedLogger(string level, object message, Exception? ex)
+        private void InvokeWrappedLogger(MethodInfo levelDelegate, /* string level, */ object message, Exception? ex)
         {
-            if (WrappedLogger != null && Levels.TryGetValue(level, out var Log))
+            if (WrappedLogger != this && levelDelegate != null)
             {
-                Log(message, ex);
-                return;
+                var parameters = levelDelegate?.GetParameters()
+                    .Select(p => ParameterToObject(p, message, ex)).ToArray();
+                // prevent accidental recursion from implementors, the only way to arrive here is to overload the methods above
+                if (!typeof(SimpleLogger).IsAssignableFrom(levelDelegate?.DeclaringType))
+                {
+                    levelDelegate?.Invoke(WrappedLogger, parameters);
+                }
             }
-
-            if (WrappedLogger == null)
-            {
-                Console.WriteLine(Filepath + " : " + Category);
-                Console.WriteLine(message);
-                if (ex != null) Console.WriteLine(ex);
-                OnLogged?.Invoke(message, ex);
-            }
-
         }
 
 
-        private void WriteLog(string level, object message, Exception? ex, string callerPath)
+        private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null, [CallerFilePath] string callerPath = "")
         {
             // 1. Incorporate Node-style attributes [Service][Folder][File]
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -239,11 +231,11 @@ namespace FlashCard.Services
             // 3. Fire events for UI (IPageManager)
             OnLogged?.Invoke(message, ex);
 
-            // 4. Fire off to Database (Fire and Forget)
-            _ = DoAppendForget(file, message.ToString() ?? "", ex);
-
             // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
-            InvokeWrappedLogger(level, message, ex);
+            if (levelDelegate != null)
+            {
+                InvokeWrappedLogger(levelDelegate, /* level, */ message, ex);
+            }
         }
     }
 
@@ -254,22 +246,22 @@ namespace FlashCard.Services
 
             public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
             {
-                SimpleLogger.GetLogger(callerPath).Levels[nameof(Info)](message, ex);
+                SimpleLogger.GetLogger(callerPath)[nameof(Info)](message, ex);
             }
 
             public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
             {
-                SimpleLogger.GetLogger(callerPath).Levels[nameof(Error)](message, ex);
+                SimpleLogger.GetLogger(callerPath)[nameof(Error)](message, ex);
             }
 
             public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
             {
-                SimpleLogger.GetLogger(callerPath).Levels[nameof(Fatal)](message, ex);
+                SimpleLogger.GetLogger(callerPath)[nameof(Fatal)](message, ex);
             }
 
             public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
             {
-                SimpleLogger.GetLogger(callerPath).Levels[nameof(Debug)](message, ex);
+                SimpleLogger.GetLogger(callerPath)[nameof(Debug)](message, ex);
             }
         }
     }

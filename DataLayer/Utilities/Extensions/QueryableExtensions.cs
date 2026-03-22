@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DataLayer.Entities;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -112,6 +113,8 @@ namespace DataLayer.Utilities.Extensions
         public static Expression ToEquality(this string? search, Expression left) => left.ToEquality(search);
 
 
+
+
         public static IQueryable<T> Search<T>(this IQueryable<T> query, string? search, CombineMode? mode = null)
         {
             if (string.IsNullOrWhiteSpace(search)) return query;
@@ -126,6 +129,12 @@ namespace DataLayer.Utilities.Extensions
 
                 // If no column name, you'd iterate through 'searchable' properties here.
                 // For now, let's assume 'name' is provided.
+                if(string.IsNullOrEmpty(name))
+                {
+                    // search all visible columns
+
+                }
+
                 Expression resultExpr = parameter.ToMember(name, term);
 
                 // If resultExpr is already a MethodCall (like Any), don't wrap it in Equality again

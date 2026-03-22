@@ -37,25 +37,24 @@ namespace DataLayer.Entities
 
         public int? CanonicalFingerprint { get; set; } = null;
 
-        /*
         [NotMapped]
-        public IEnumerable<PropertyInfo> DatabaseProperties { get => ListDatabaseProperties(typeof(T)); }
+        private static IEnumerable<PropertyInfo> Database { get => ListDatabase(typeof(T)); }
         [NotMapped]
-        public IEnumerable<PropertyInfo> InterestingProperties { get => ListInterestingProperties(typeof(T)); }
-        */
-
-        private static IEnumerable<PropertyInfo> ListDatabaseProperties(Type type)
+        private static IEnumerable<PropertyInfo> Interesting { get => ListInteresting(typeof(T)); }
+        private static List<PropertyInfo> ListDatabase(Type type)
         {
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
                     p.GetGetMethod()?.IsVirtual != true
                     && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
-                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute)));
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
+                .OrderBy(p => p.Name)
+                .ToList();
 
             return properties;
         }
 
-        private static IEnumerable<PropertyInfo> ListInterestingProperties(Type type)
+        private static List<PropertyInfo> ListInteresting(Type type)
         {
             //var ignoreList = new List<string>(ignore);
             var foreignKeys = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -71,7 +70,9 @@ namespace DataLayer.Entities
                     && !Attribute.IsDefined(p, typeof(ForeignKeyAttribute)) // comparing id is enough
                     && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
                             //&& !ignoreList.Contains(p.Name)
-                            );
+                            )
+                .OrderBy(p => p.Name)
+                .ToList();
 
             return properties;
         }
@@ -82,10 +83,7 @@ namespace DataLayer.Entities
         {
             if (this == null || obj == null) return this == obj;
 
-            var type = typeof(T);
-            var properties = ListInterestingProperties(type);
-
-            foreach (var prop in properties)
+            foreach (var prop in Interesting)
             {
                 var selfValue = prop.GetValue(this, null);
                 var toValue = prop.GetValue(obj, null);
@@ -103,14 +101,10 @@ namespace DataLayer.Entities
             if (CanonicalFingerprint != null)
                 return (int)CanonicalFingerprint;
 
-            var type = typeof(T);
-            // Sort by name so the hash is deterministic across different runs/platforms
-            var properties = ListInterestingProperties(type).OrderBy(p => p.Name);
-
             uint hash = 2166136261;
             uint prime = 16777619;
 
-            foreach (var prop in properties)
+            foreach (var prop in Database)
             {
                 object? val = prop.GetValue(this, null);
                 if (val == null) continue;
