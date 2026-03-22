@@ -15,6 +15,7 @@ namespace Atrium.Logging
         public string Name { get; set; }
         internal static IServiceProvider? Services { get; set; }
         internal static List<Tuple<string?, string?>> PreLog { get; set; } = [];
+        public string? ConnectionStringName { get; set; }
 
         static MessageLogAppender()
         {
@@ -29,6 +30,7 @@ namespace Atrium.Logging
         public void ActivateOptions()
         {
             if (string.IsNullOrEmpty(Name)) Name = nameof(MessageLogAppender);
+            //base.ActivateOptions();
         }
 
         // Token: 0x060002FF RID: 767 RVA: 0x000193A4 File Offset: 0x000175A4
@@ -39,6 +41,7 @@ namespace Atrium.Logging
                 this._mAppenderAttachedImpl?.RemoveAllAppenders();
             }
         }
+
         public void DoAppend(LoggingEvent[] loggingEvents)
         {
             for (int i = 0; i < loggingEvents.Length; i++)
@@ -53,6 +56,13 @@ namespace Atrium.Logging
             _ = DoAppendForget(loggingEvent);
         }
 
+        /*
+        protected override void Append(LoggingEvent loggingEvent)
+        {
+            _ = DoAppendForget(loggingEvent);
+        }
+        */
+
         public static async Task DoAppendForget(LoggingEvent loggingEvent)
         {
             try
@@ -60,7 +70,7 @@ namespace Atrium.Logging
                 DataLayer.Entities.Message newMessage;
                 if (loggingEvent.ExceptionObject != null)
                 {
-                    newMessage = await new DataLayer.Entities.Message
+                    newMessage = new DataLayer.Entities.Message
                     {
                         Source = loggingEvent.LoggerName,
                         Title = loggingEvent.ExceptionObject.Message.Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
@@ -68,11 +78,11 @@ namespace Atrium.Logging
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
-                    }.Save();
+                    };
                 }
                 else
                 {
-                    newMessage = await new DataLayer.Entities.Message
+                    newMessage = new DataLayer.Entities.Message
                     {
                         Source = loggingEvent.LoggerName,
                         Title = (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage)?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
@@ -80,7 +90,7 @@ namespace Atrium.Logging
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
-                    }.Save();
+                    };
                 }
 
                 if(Services == null)
@@ -89,6 +99,7 @@ namespace Atrium.Logging
                 }
                 else
                 {
+                    _ = newMessage.Save();
                     var pageManager = Services.GetService<IPageManager>();
                     pageManager?.SetError(new Exception(newMessage.Title, new Exception(newMessage.Body)));
                 }
@@ -185,6 +196,7 @@ namespace Atrium.Logging
             }
             return null!;
         }
+
 
         // Token: 0x04000170 RID: 368
         private AppenderAttachedImpl? _mAppenderAttachedImpl;

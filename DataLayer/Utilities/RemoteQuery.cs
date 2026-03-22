@@ -114,7 +114,7 @@ namespace DataLayer.Utilities
                 // Requires 'System.Linq.Async' NuGet package
                 var toAsyncMethod = typeof(AsyncEnumerable)
                     .GetMethods()
-                    .First(m => m.Name == "ToAsyncEnumerable" && m.IsGenericMethod)
+                    .First(m => m.Name == nameof(AsyncEnumerable.ToAsyncEnumerable) && m.IsGenericMethod)
                     .MakeGenericMethod(itemType);
 
                 var result2 = toAsyncMethod.Invoke(null, [list]);

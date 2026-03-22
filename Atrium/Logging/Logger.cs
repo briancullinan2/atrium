@@ -1,40 +1,33 @@
 ﻿#if WINDOWS
 using log4net;
 #endif
+using FlashCard.Services;
 using System.IO;
 using System.Runtime.CompilerServices;
 
 
 namespace Atrium.Logging
 {
-    public static class Log
+    public class Log : SimpleLogger
     {
 #if WINDOWS
         // Use a ConcurrentDictionary to cache loggers for performance
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, ILog> _loggerCache = new();
-#else
-        public interface ILog
-        {
-            void Info(object message, Exception? ex = null);
-            void Error(object message, Exception? ex = null);
-            void Fatal(object message, Exception? ex = null);
-            void Debug(object message, Exception? ex = null);
-        }
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, log4net.ILog> _loggerCache = new();
 #endif
 
         public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Info(message, ex);
+            GetLogger(callerPath).Levels[nameof(Info)](message, ex);
         }
 
         public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Error(message, ex);
+            GetLogger(callerPath).Levels[nameof(Error)](message, ex);
         }
 
         public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Fatal(message, ex);
+            GetLogger(callerPath).Levels[nameof(Fatal)](message, ex);
 //#if WINDOWS
             MainThread.BeginInvokeOnMainThread(() =>
             {
@@ -56,57 +49,25 @@ namespace Atrium.Logging
 
         public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
-            GetLogger(callerPath).Debug(message, ex);
+            GetLogger(callerPath).Levels[nameof(Debug)](message, ex);
         }
 
 #if WINDOWS
-        private static ILog GetLogger(string filePath)
+        public new static SimpleLogger GetLogger(string filePath)
         {
             // Extracts the class name from the file path to use as the category
             string category = Path.GetFileNameWithoutExtension(filePath);
-            return _loggerCache.GetOrAdd(category, LogManager.GetLogger);
+            var logger = _loggerCache.GetOrAdd(category, LogManager.GetLogger);
+            var simple = GetLogger(filePath, typeof(log4net.ILog), logger);
+            return simple;
         }
-#else
-        private static SimpleLogger GetLogger(string filePath)
-        {
-            string category = Path.GetFileNameWithoutExtension(filePath);
-            return new SimpleLogger() { Filepath = filePath, Category = category };
-        }
-
-        public class SimpleLogger() : ILog
-        {
-            public string? Filepath { get; set; }
-            public string? Category { get; set; }
-
-            public void Debug(object message, Exception? ex = null)
-            {
-                Console.WriteLine(Filepath + " : " + Category);
-                Console.WriteLine(message);
-                if (ex != null) Console.WriteLine(ex);
-            }
-
-            public void Error(object message, Exception? ex = null)
-            {
-                Console.WriteLine(Filepath + " : " + Category);
-                Console.WriteLine(message);
-                if (ex != null) Console.WriteLine(ex);
-            }
-
-            public void Fatal(object message, Exception? ex = null)
-            {
-                Console.WriteLine(Filepath + " : " + Category);
-                Console.WriteLine(message);
-                if (ex != null) Console.WriteLine(ex);
-            }
-
-            public void Info(object message, Exception? ex = null)
-            {
-                Console.WriteLine(Filepath + " : " + Category);
-                Console.WriteLine(message);
-                if (ex != null) Console.WriteLine(ex);
-            }
-        }
-        
 #endif
     }
+
+
+    public static class LoggingExtensions
+    {
+
+    }
+
 }
