@@ -222,8 +222,8 @@ namespace DataLayer.Utilities.Extensions
                 {ExpressionType.Equal, BuildLeftRight},
                 {ExpressionType.Convert, BuildUnary},
                 {ExpressionType.MemberAccess, BuildProperty},
-                {ExpressionType.OrElse, BuildLeftRight}
-                //{ExpressionType.Index }
+                {ExpressionType.OrElse, BuildLeftRight},
+                {ExpressionType.Index, BuildIndex },
                 //{ExpressionType.Extension, BuildExtension}
             };
 
@@ -289,6 +289,43 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("Unary operation not implemented");
             }
         }
+
+        private static Expression BuildIndex(XElement el, Func<XElement, Expression?> ToExpression)
+        {
+            // 1. Resolve the target object (the thing being indexed)
+            var instanceEl = el.Element("Object")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("IndexExpression missing Object target.");
+            var instance = ToExpression(instanceEl)!;
+
+            // 2. Resolve the Indexer (PropertyInfo)
+            var indexerEl = el.Element("Indexer")?.Element("Runtimepropertyinfo")
+                    ?? throw new InvalidOperationException("IndexExpression missing Indexer info.");
+            var declaringTypeName = indexerEl.Element("DeclaringType")?.Attribute("AssemblyQualifiedName")?.Value;
+            var declaringType = Type.GetType(declaringTypeName!) 
+                ?? throw new InvalidOperationException("IndexExpression missing declaring type.");
+
+            if (instance.Type != declaringType)
+            {
+                instance = Expression.Convert(instance, declaringType);
+            }
+
+            var propertyName = indexerEl.Attribute("Name")?.Value ?? "Item";
+            var reflectedTypeName = indexerEl.Element("ReflectedType")?.Attribute("AssemblyQualifiedName")?.Value;
+            var reflectedType = Type.GetType(reflectedTypeName!)
+                ?? throw new InvalidOperationException($"Could not resolve ReflectedType: {reflectedTypeName}");
+
+            // Use reflection to get the PropertyInfo for the indexer
+            var propertyInfo = reflectedType.GetProperty(propertyName);
+
+            // 3. Resolve the Arguments (the index values)
+            var argumentsEl = el.Element("Arguments")?.Elements() ?? [];
+            var arguments = argumentsEl.Select(x => ToExpression(x)!).ToList();
+
+            // 4. Build the Index node
+            return Expression.MakeIndex(instance, propertyInfo, arguments);
+        }
+
+
 
         private static Expression? BuildMethodCall(XElement el, Func<XElement, Expression?> ToExpression)
         {
@@ -475,7 +512,7 @@ namespace DataLayer.Utilities.Extensions
             return ToXDocument(query.Expression).ToString();
         }
 
-        public static object? ToQueryable(string query, StorageType? persist = StorageType.Ephemeral)
+        public static async Task<object?> ToQueryable(string query, StorageType? persist = StorageType.Ephemeral)
         {
             if (QueryManager.Service == null)
             {
@@ -483,7 +520,12 @@ namespace DataLayer.Utilities.Extensions
             }
             using var scope = QueryManager.Service.CreateScope();
             var manager = QueryManager.Service.GetRequiredService<IQueryManager>();
-            var context = manager.GetContext(persist ?? StorageType.Ephemeral) ?? throw new InvalidOperationException("Database context failed.");
+            var context = manager.GetContext(persist ?? StorageType.Ephemeral) 
+                ?? throw new InvalidOperationException("Database context failed.");
+
+
+            await context.InitializeIfNeeded();
+
             var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
 
             using XmlReader reader = XmlReader.Create(new StringReader(query));

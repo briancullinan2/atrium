@@ -27,7 +27,7 @@ namespace Atrium.Services
 
                 // TODO: add marshalling rules here
 
-                var results = DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml);
+                var results = await DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml);
 
                 var json = JsonSerializer.Serialize(results, JsonHelper.Default);
 
