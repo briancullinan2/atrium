@@ -1,13 +1,9 @@
-﻿using DataLayer;
-using DataLayer.Entities;
+﻿using DataLayer.Entities;
 using DataLayer.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DataLayer
 {
@@ -40,7 +36,7 @@ namespace DataLayer
             }
         }
 
-        public bool NeedsInitialize { get; private set; }
+        public bool NeedsInitialize { get; protected set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -89,13 +85,13 @@ namespace DataLayer
         }
 
 
-        public async Task InitializeIfNeeded()
+        public virtual async Task InitializeIfNeeded()
         {
             using var saveTransaction = await Database.BeginTransactionAsync();
             try
             {
                 if (NeedsInitialize)
-            {
+                {
                     NeedsInitialize = false;
                     var conn = Database.GetDbConnection();
                     if (conn.State != System.Data.ConnectionState.Open) conn.Open();
@@ -103,7 +99,7 @@ namespace DataLayer
                     await EnsureGlobalIdentityStart();
                     await SaveChangesAsync();
                     saveTransaction.Commit();
-            }
+                }
             }
             catch (Exception ex)
             {
@@ -116,7 +112,7 @@ namespace DataLayer
             }
         }
 
-        public async Task EnsureGlobalIdentityStart()
+        public virtual async Task EnsureGlobalIdentityStart()
         {
             Log.Info("Inserting 0 IDs.");
 
@@ -212,10 +208,25 @@ namespace DataLayer
             base.OnConfiguring(options);
 
             _ = options.UseInMemoryDatabase("RemoteShell");
-
+            _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
 #pragma warning disable EF1001 // Internal EF Core API usage.
             _ = options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>();
 #pragma warning restore EF1001 // Internal EF Core API usage.
+        }
+
+
+        public override async Task InitializeIfNeeded()
+        {
+            if (NeedsInitialize)
+            {
+                NeedsInitialize = false;
+                var conn = Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                await Database.EnsureCreatedAsync();
+            }
+        }
+        public override async Task EnsureGlobalIdentityStart()
+        {
         }
     }
 
@@ -228,6 +239,22 @@ namespace DataLayer
             base.OnConfiguring(options);
 
             _ = options.UseInMemoryDatabase("TestShell");
+            _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+        }
+
+        public override async Task EnsureGlobalIdentityStart()
+        {
+        }
+
+        public override async Task InitializeIfNeeded()
+        {
+            if (NeedsInitialize)
+            {
+                NeedsInitialize = false;
+                var conn = Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                await Database.EnsureCreatedAsync();
+            }
         }
     }
 }

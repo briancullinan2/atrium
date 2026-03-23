@@ -223,6 +223,7 @@ namespace DataLayer.Utilities.Extensions
                 {ExpressionType.Convert, BuildUnary},
                 {ExpressionType.MemberAccess, BuildProperty},
                 {ExpressionType.OrElse, BuildLeftRight}
+                //{ExpressionType.Index }
                 //{ExpressionType.Extension, BuildExtension}
             };
 

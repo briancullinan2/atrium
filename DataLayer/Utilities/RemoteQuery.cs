@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
+using System.Reflection;
 
 namespace DataLayer.Utilities
 {
@@ -44,7 +45,7 @@ namespace DataLayer.Utilities
             var typeT = typeof(TResult);
 
             // If TResult is IAsyncEnumerable<File>, we need to fetch List<File>
-            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            if (typeT.IsGenericType && typeof(IAsyncEnumerable<>).IsAssignableFrom(typeT.GetGenericTypeDefinition()))
             {
                 var itemType = typeT.GetGenericArguments()[0];
 
@@ -72,8 +73,10 @@ namespace DataLayer.Utilities
         private object CreateAsyncEnumerableFromTask(Task task, Type itemType)
         {
             var method = (typeof(RemoteQuery)
-                .GetMethod(nameof(ToAsyncEnumerableInternal), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.MakeGenericMethod(itemType)) ?? throw new InvalidOperationException("Couldn't resolve method type.");
+                .GetMethod(nameof(ToAsyncEnumerableInternal),
+                BindingFlags.Static | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                ?.MakeGenericMethod(itemType))
+                ?? throw new InvalidOperationException("Couldn't resolve method type.");
             return method.Invoke(this, [task])!;
         }
 
@@ -102,7 +105,7 @@ namespace DataLayer.Utilities
             var typeT = typeof(T);
 
             // If the caller (EF Core) is asking for IAsyncEnumerable<File>
-            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            if (typeT.IsGenericType && typeof(IAsyncEnumerable<>).IsAssignableFrom(typeT.GetGenericTypeDefinition()))
             {
                 var itemType = typeT.GetGenericArguments()[0];
                 var listType = typeof(List<>).MakeGenericType(itemType);

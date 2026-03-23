@@ -2,6 +2,7 @@
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -644,7 +645,18 @@ namespace DataLayer.Utilities
                         }
                         else
                         {
-                            result = (TResult)set?.Provider.Execute(invokedExpression)!;
+                            if (set?.Provider is IAsyncQueryProvider asyncProvider)
+                            {
+                                result = await asyncProvider.ExecuteAsync<Task<TResult>>(
+                                    invokedExpression
+                                //cancellationToken // Always good practice to pass a token if available
+                                );
+                            }
+                            else
+                            {
+                                // Fallback if the provider doesn't support async (e.g., Linq-to-Objects)
+                                result = (TResult)set?.Provider.Execute(invokedExpression)!;
+                            }
                         }
 
                         transaction.Dispose();
@@ -881,6 +893,7 @@ namespace DataLayer.Utilities
             {
                 Console.WriteLine("Update entity failed.");
                 Console.WriteLine(ex);
+                throw new InvalidOperationException("Update entity failed.");
             }
 
             return entity;

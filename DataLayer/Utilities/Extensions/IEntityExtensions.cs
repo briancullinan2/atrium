@@ -1,7 +1,6 @@
 ﻿using DataLayer.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq.Expressions;
@@ -26,7 +25,8 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("No service provider.");
             }
 
-            return await QueryManager.Service.GetRequiredService<IQueryManager>().Update(false, entity);
+            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            return await Query.Update(Query.EphemeralStorage, entity);
         }
 
         /*
@@ -72,8 +72,8 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("No service provider.");
             }
-
-            return await QueryManager.Service.GetRequiredService<IQueryManager>().Save(false, ent);
+            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            return await Query.Save(Query.EphemeralStorage, ent);
         }
 
         //public static T Wrap<T>(this T target) where T : class, IEntity<T>
