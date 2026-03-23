@@ -520,7 +520,7 @@ namespace DataLayer.Utilities.Extensions
             }
             using var scope = QueryManager.Service.CreateScope();
             var manager = QueryManager.Service.GetRequiredService<IQueryManager>();
-            var context = manager.GetContext(persist ?? StorageType.Ephemeral) 
+            var context = manager.GetContext(persist ?? manager.EphemeralStorage) 
                 ?? throw new InvalidOperationException("Database context failed.");
 
 

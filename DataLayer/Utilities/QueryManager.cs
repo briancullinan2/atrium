@@ -838,7 +838,6 @@ namespace DataLayer.Utilities
             using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
             await context.InitializeIfNeeded();
-            using var transaction = context.Database.BeginTransaction();
 
             return await UpdateNow(context, entity, predicate, 3);
         }

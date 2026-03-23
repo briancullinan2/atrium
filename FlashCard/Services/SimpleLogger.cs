@@ -114,6 +114,10 @@ namespace FlashCard.Services
         }
 
 
+        public static int LoggingErrorCount { get; set; } = 0;
+        public static bool StopSavingLogs { get; set; } = false;
+
+
         public static async Task DoAppendForget(
             string Source,
             string Title,
@@ -121,6 +125,13 @@ namespace FlashCard.Services
         )
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+            //if(StopSavingLogs)
+            {
+                //Console.WriteLine(Source + " : " + Title + " - " + exception?.Message);
+                //if (exception != null) Console.WriteLine(exception);
+                //Console.WriteLine(stackWhenCalled);
+                return;
+            }
             try
             {
                 DataLayer.Entities.Message newMessage;
@@ -169,7 +180,15 @@ namespace FlashCard.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                LoggingErrorCount++;
+                if (LoggingErrorCount >= 5)
+                {
+                    StopSavingLogs = true;
+                }
+
+                //Console.WriteLine(Source + " : " + Title + " - " + exception?.Message);
+                //if (exception != null) Console.WriteLine(exception);
+                //Console.WriteLine(ex);
             }
         }
 
@@ -185,7 +204,7 @@ namespace FlashCard.Services
             get
             {
                 if (_levels.TryGetValue(level, out var log)) return log;
-                _levels[level] = (message, ex) => WriteLog(level, message, ex, null, "");
+                _levels[level] = (message, ex) => WriteLog(level, message, ex, null);
                 return _levels[level];
             }
             set
@@ -224,7 +243,7 @@ namespace FlashCard.Services
         }
 
 
-        private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null, [CallerFilePath] string callerPath = "")
+        private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null)
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
             ex?.Data["OriginalStack"] = stackWhenCalled;
@@ -238,8 +257,9 @@ namespace FlashCard.Services
             string finalMessage = $"{formattedPrefix} {message}";
 
             // 2. Output to Console (Immediate Feedback)
-            Console.WriteLine(finalMessage);
-            if (ex != null) Console.WriteLine(ex);
+            
+            //Console.WriteLine(finalMessage);
+            //if (ex != null) Console.WriteLine(ex);
 
 
             // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
