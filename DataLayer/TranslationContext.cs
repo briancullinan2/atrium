@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DataLayer
 {
@@ -36,7 +37,6 @@ namespace DataLayer
             }
         }
 
-        public bool NeedsInitialize { get; protected set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -54,6 +54,10 @@ namespace DataLayer
             _ = configurationBuilder.Properties<GradeScale>().HaveConversion<int>();
             _ = configurationBuilder.Properties<DefaultPermissions>().HaveConversion<string>();
         }
+
+        private static readonly Lock _initLock = new();
+        public bool NeedsInitialize { get; protected set; }
+        private static readonly SemaphoreSlim _asyncLock = new(1, 1);
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -81,36 +85,50 @@ namespace DataLayer
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
-            NeedsInitialize = true;
+            lock(_initLock)
+            {
+                NeedsInitialize = true;
+            }
         }
+
 
 
         public virtual async Task InitializeIfNeeded()
         {
-            using var saveTransaction = await Database.BeginTransactionAsync();
+            IDbContextTransaction? transaction = null;
             try
             {
+                transaction = await Database.BeginTransactionAsync();
+
+                if (!NeedsInitialize) return;
+
+                await _asyncLock.WaitAsync();
+
                 if (NeedsInitialize)
                 {
-                    NeedsInitialize = false;
                     var conn = Database.GetDbConnection();
                     if (conn.State != System.Data.ConnectionState.Open) conn.Open();
                     await Database.EnsureCreatedAsync();
                     await EnsureGlobalIdentityStart();
                     await SaveChangesAsync();
-                    saveTransaction.Commit();
+                    transaction.Commit();
                 }
             }
             catch (Exception ex)
             {
-                await saveTransaction.RollbackAsync();
-                Log.Error("Creating database failed.", ex);
+                transaction?.Rollback();
+                NeedsInitialize = true; // Reset so we can try again
+                throw new InvalidOperationException("Database creation failed.", ex);
             }
             finally
             {
-                await saveTransaction.DisposeAsync();
+                transaction?.Dispose();
+                _asyncLock.Release();
             }
         }
+
+
+
 
         public virtual async Task EnsureGlobalIdentityStart()
         {

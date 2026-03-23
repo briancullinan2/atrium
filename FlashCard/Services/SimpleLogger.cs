@@ -125,11 +125,8 @@ namespace FlashCard.Services
         )
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
-            //if(StopSavingLogs)
+            if(StopSavingLogs)
             {
-                //Console.WriteLine(Source + " : " + Title + " - " + exception?.Message);
-                //if (exception != null) Console.WriteLine(exception);
-                //Console.WriteLine(stackWhenCalled);
                 return;
             }
             try
@@ -185,10 +182,6 @@ namespace FlashCard.Services
                 {
                     StopSavingLogs = true;
                 }
-
-                //Console.WriteLine(Source + " : " + Title + " - " + exception?.Message);
-                //if (exception != null) Console.WriteLine(exception);
-                //Console.WriteLine(ex);
             }
         }
 
@@ -236,9 +229,10 @@ namespace FlashCard.Services
             }
             else
             {
-                var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
+                // TODO: I don't know if this is wise, it generates loops of errors
+                //var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
                 // its not wrapped by log4net so try and save the error anyways
-                _ = DoAppendForget(Category ?? "Internal", message.ToString() ?? ex?.Message ?? string.Empty, reportEx);
+                //_ = DoAppendForget(Category ?? "Internal", message.ToString() ?? ex?.Message ?? string.Empty, reportEx);
             }
         }
 

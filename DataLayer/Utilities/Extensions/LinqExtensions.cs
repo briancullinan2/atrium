@@ -223,7 +223,9 @@ namespace DataLayer.Utilities.Extensions
                 {ExpressionType.Convert, BuildUnary},
                 {ExpressionType.MemberAccess, BuildProperty},
                 {ExpressionType.OrElse, BuildLeftRight},
-                {ExpressionType.Index, BuildIndex },
+                {ExpressionType.Index, BuildIndex},
+                {ExpressionType.Invoke, BuildInvocation},
+
                 //{ExpressionType.Extension, BuildExtension}
             };
 
@@ -327,65 +329,135 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        private static Expression? BuildMethodCall(XElement el, Func<XElement, Expression?> ToExpression)
+
+        private static T? RebuildMember<T>(XElement el) where T : MemberInfo
         {
-            var argsEl = el.Element("Arguments");
-            var methodCall = _factoryMap[ExpressionType.Call].First(mi => mi.Item2.Count == 1 + argsEl?.Elements().Count());
-            var args = new List<object>();
-            var methodEl = el.Element("Method");
-            if (methodEl == null || argsEl == null)
+            // 1. Metadata Extraction (Your logic, cleaned up)
+            var declEl = el.Element("DeclaringType");
+            var methodName = el.Attribute("Name")?.Value;
+            var typeName = declEl?.Attribute("AssemblyQualifiedName")?.Value ?? declEl?.Value;
+
+            if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(typeName))
+                throw new InvalidOperationException($"Incomplete method metadata: {el}");
+
+            var declaringType = Type.GetType(typeName)
+                ?? throw new InvalidOperationException($"Could not load type: {typeName}");
+
+            // 2. Parameter Count Extraction
+            var paramsCount = int.TryParse(el.Attribute("ParamsCount")?.Value, out var pc)
+                ? pc
+                : el.Element("Parameters")?.Elements().Count() ?? 0;
+
+
+            if (typeof(PropertyInfo).IsAssignableFrom(typeof(T)))
             {
-                throw new InvalidOperationException("Could not resolve method elements on " + el);
+                var properties = declaringType.GetProperties()
+                    .Where(m => m.Name == methodName && paramsCount == 0 || m.GetIndexParameters().Length == paramsCount)
+                    .ToList();
+
+                if (properties.Count == 0)
+                    throw new InvalidOperationException($"Method {methodName} with {paramsCount} params not found on {typeName}");
+
+                return properties.First() as T;
             }
-            MethodInfo? methodInfo = ResolveMetadata(typeof(MethodInfo), methodEl.Value, methodEl.Elements().First()) as MethodInfo ?? throw new InvalidOperationException("Could not resolve method info on " + el);
-            args.Add(methodInfo);
-            for (var i = 0; i < argsEl.Elements().Count(); i++)
+            else if (typeof(MethodInfo).IsAssignableFrom(typeof(T)))
             {
-                var argEl = argsEl.Elements().ElementAt(i);
-                var requiredArg = ToExpression(argEl) ?? throw new InvalidOperationException("Could not resolve expression argument on " + el);
-                args.Add(requiredArg);
-            }
-            return methodCall.Item1.Invoke(null, [.. args]) as Expression;
-        }
 
-        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, IQueryProvider context)
-        {
-            var result = ToExpression(el, context, out var outish);
-            return new Tuple<Expression?, IQueryable?>(result, outish);
-        }
+                // 3. Smart Method Selection
+                // We filter by name and count, but we prioritize Generic Method Definitions
+                // because that's what Select/Where/FirstOrDefault are.
+                var methods = declaringType.GetMethods()
+                    .Where(m => m.Name == methodName && m.GetParameters().Length == paramsCount)
+                    .ToList();
 
-        public static Expression? ToExpression(this XElement el, IQueryProvider context, out IQueryable? set)
-        {
-            set = null;
-            var typeStr = el.Attribute("NodeType")?.Value;
-            if (typeStr == null || !_nodeTypeLookup.TryGetValue(typeStr, out var nodeType))
-                return null;
+                if (methods.Count == 0)
+                    throw new InvalidOperationException($"Method {methodName} with {paramsCount} params not found on {typeName}");
 
-            // Special cases: Parameters and Constants usually need manual handling 
-            // because they don't follow the "Children as Expressions" rule perfectly.
-            if (nodeType == ExpressionType.Extension)
-            {
-                var typeName = el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value;
-                if (typeName?.Contains("DataLayer") == true)
+                // If there's an ambiguity (e.g., Select vs Select with index), 
+                // the XML's GenericArguments will tell us if we're looking for the generic one.
+                var genericsEl = el.Element("GenericArguments");
+                MethodInfo method;
+
+                if (genericsEl != null && genericsEl.HasElements)
                 {
-                    return BuildExtension(el, context, out set); // Swap placeholder for Real DB source
+                    method = methods.FirstOrDefault(m => m.IsGenericMethodDefinition)
+                        ?? methods.First();
+
+                    var genericTypes = genericsEl.Elements()
+                        .Select(g => Type.GetType(g.Attribute("AssemblyQualifiedName")?.Value ?? g.Value))
+                        .Cast<Type>()
+                        .ToArray();
+
+                    method = method.MakeGenericMethod(genericTypes);
                 }
-            }
-            IQueryable? outish = null;
-            if (_elementMap.TryGetValue(nodeType, out var factoryMethod))
-            {
-                var result = factoryMethod.Invoke(el, el2 =>
+                else
                 {
-                    var result = DumbToExpressionOutWrapper(el2, context);
-                    if (result.Item2 != null) outish = result.Item2;
-                    return result.Item1 as Expression;
-                }) as Expression;
-                if (outish != null) set = outish;
-                return result;
-            }
+                    method = methods.First();
+                }
 
-            throw new NotSupportedException($"No factory found for {nodeType}");
+                return method as T;
+            }
+            else throw new InvalidOperationException("Don't know this sort of member.");
         }
+
+
+
+        private static InvocationExpression BuildInvocation(XElement el, Func<XElement, Expression?> ToExpression)
+        {
+            // The 'Expression' being invoked (usually a Lambda)
+            var expressionEl = el.Element("Expression")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("Invoke missing target expression");
+            var target = ToExpression(expressionEl)!;
+
+            // The arguments being passed to that lambda
+            var args = el.Element("Arguments")?.Elements()
+                .Select(x => ToExpression(x)!)
+                .ToList() ?? [];
+
+            return Expression.Invoke(target, args);
+        }
+
+
+        /*
+        public static Expression? RebuildInvoker(XElement el, Func<XElement, Expression?> ToExpression)
+        {
+            string nodeType = el.Attribute("NodeType")?.Value ?? "";
+
+            return nodeType switch
+            {
+                "Call" => BuildMethodCall(el, ToExpression),
+                "Invoke" => BuildInvocation(el, ToExpression),
+                "Lambda" => BuildLambda(el, ToExpression),
+                "Constant" => BuildConstant(el, ToExpression), // etc...
+                _ => throw new NotSupportedException($"NodeType {nodeType} not implemented.")
+            };
+        }
+        */
+
+
+        private static Expression BuildMethodCall(XElement el, Func<XElement, Expression?> ToExpression)
+        {
+            // 1. Resolve the actual MethodInfo (Where, Select, etc.)
+            var methodEl = el.Element("Method")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("Missing Method metadata");
+
+            var methodInfo = ResolveMetadata(typeof(MethodInfo), null, methodEl) as MethodInfo
+                ?? throw new InvalidOperationException("MethodInfo resolution failed");
+
+            // 2. Resolve the Instance (The 'Object' attribute in your XML)
+            // For LINQ extensions (static), this is usually null.
+            var instanceEl = el.Element("Object")?.Elements().FirstOrDefault();
+            var instance = instanceEl != null ? ToExpression(instanceEl) : null;
+
+            // 3. Resolve Arguments
+            var args = el.Element("Arguments")?.Elements()
+                .Select(x => ToExpression(x)!)
+                .ToList() ?? [];
+
+            // 4. Use the static factory directly - much cleaner than a factoryMap
+            return Expression.Call(instance, methodInfo, args);
+        }
+
 
         private static object? ResolveMetadata(Type targetType, string? value, XElement el)
         {
@@ -399,64 +471,12 @@ namespace DataLayer.Utilities.Extensions
                 return Enum.Parse<ExpressionType>(value);
 
             if (targetType == typeof(MethodInfo))
-            {
-                var declEl = el.Element("DeclaringType");
-                var paramsCount = int.TryParse(el.Attribute("ParamsCount")?.Value, out var pc) ? pc : el.Element("Parameters")?.Elements().Count();
-                var methodSourceType = declEl?.Attribute("AssemblyQualifiedName")?.Value ?? declEl?.Value;
-                var methodName = el.Attribute("Name")?.Value;
-                if (methodSourceType == null || methodName == null)
-                {
-                    throw new InvalidOperationException("Cannot find type name on " + el.ToString());
-                }
-                var declaringType = Type.GetType(methodSourceType);
-                var method = (declaringType?.GetMethods()
-                    // TODO: fix arg count when i test Packs.CountAsync(p => p.Qualifier)
-                    .FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == (paramsCount ?? 0))) ?? throw new InvalidOperationException("Cannot find method on " + el.ToString());
-                if (method.ContainsGenericParameters)
-                {
-                    var genericsEl = el.Element("GenericArguments") ?? throw new InvalidOperationException("Cannot resolve generic arguments on " + el.ToString());
-                    var genericTypes = genericsEl.Elements()
-                        .Select(el2 => Type.GetType(el2.Attribute("AssemblyQualifiedName")?.Value ?? ""))
-                        .Cast<Type>().ToArray();
-                    method = method.MakeGenericMethod(genericTypes);
-
-                }
-                return method;
-            }
+                return RebuildMember<MethodInfo>(el);
+            
 
             if (targetType == typeof(PropertyInfo))
-            {
-                var declEl = el.Element("DeclaringType");
-                var paramsCount = int.TryParse(el.Attribute("ParamsCount")?.Value, out var pc) ? pc : el.Element("Parameters")?.Elements().Count();
-                var methodSourceType = declEl?.Attribute("AssemblyQualifiedName")?.Value ?? declEl?.Value;
-                var methodName = el.Attribute("Name")?.Value;
-                if (methodSourceType == null || methodName == null)
-                {
-                    throw new InvalidOperationException("Cannot find type name on " + el.ToString());
-                }
-                var declaringType = Type.GetType(methodSourceType);
-                var property = (declaringType?.GetProperties()
-                    // TODO: fix arg count when i test Packs.CountAsync(p => p.Qualifier)
-                    .FirstOrDefault(m => m.Name == methodName /*&& m.GetIndexParameters().Length == (paramsCount ?? 0)*/)) ?? throw new InvalidOperationException("Cannot find property on " + el.ToString());
-                /*
-                TODO: ???
-                if (method.ContainsGenericParameters)
-                {
-                    var genericsEl = el.Element("GenericArguments");
-                    if (genericsEl == null)
-                    {
-                        throw new InvalidOperationException("Cannot resolve generic arguments on " + el.ToString());
-                    }
-                    var genericTypes = genericsEl.Elements()
-                        .Select(el2 => Type.GetType(el2.Attribute("AssemblyQualifiedName")?.Value ?? ""))
-                        .Cast<Type>().ToArray();
-                    method = method.MakeGenericMethod(genericTypes);
+                return RebuildMember<PropertyInfo>(el);
 
-                }
-                */
-                return property;
-
-            }
 
             return null;
         }
@@ -506,6 +526,50 @@ namespace DataLayer.Utilities.Extensions
             }
             return parameter;
         }
+
+
+
+
+        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, IQueryProvider context)
+        {
+            var result = ToExpression(el, context, out var outish);
+            return new Tuple<Expression?, IQueryable?>(result, outish);
+        }
+
+        public static Expression? ToExpression(this XElement el, IQueryProvider context, out IQueryable? set)
+        {
+            set = null;
+            var typeStr = el.Attribute("NodeType")?.Value;
+            if (typeStr == null || !_nodeTypeLookup.TryGetValue(typeStr, out var nodeType))
+                return null;
+
+            // Special cases: Parameters and Constants usually need manual handling 
+            // because they don't follow the "Children as Expressions" rule perfectly.
+            if (nodeType == ExpressionType.Extension)
+            {
+                var typeName = el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value;
+                if (typeName?.Contains("DataLayer") == true)
+                {
+                    return BuildExtension(el, context, out set); // Swap placeholder for Real DB source
+                }
+            }
+            IQueryable? outish = null;
+            if (_elementMap.TryGetValue(nodeType, out var factoryMethod))
+            {
+                var result = factoryMethod.Invoke(el, el2 =>
+                {
+                    var result = DumbToExpressionOutWrapper(el2, context);
+                    if (result.Item2 != null) outish = result.Item2;
+                    return result.Item1 as Expression;
+                }) as Expression;
+                if (outish != null) set = outish;
+                return result;
+            }
+
+            throw new NotSupportedException($"No factory found for {nodeType}");
+        }
+
+
 
         public static string ToSerialized(IQueryable query)
         {

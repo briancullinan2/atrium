@@ -114,30 +114,17 @@ namespace DataLayer.Utilities.Extensions
         }
         */
 
-        public static async Task Sync<TFrom, TTo, TSet>(this TFrom memoryContext, TTo persistentContext, Expression<Func<TSet, bool>> qualifier)
+        public static async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(this TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
             where TFrom : TranslationContext
             where TTo : TranslationContext
             where TSet : Entity<TSet>
         {
-            // 1. Get the "Dirty" or all entities from memory
-            var entities = await memoryContext.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
-
-            foreach (var entity in entities)
+            if (QueryManager.Service == null)
             {
-                // 2. Upsert logic: Check if it exists in the persistent store
-                var exists = persistentContext.EntryAsync(entity);
-
-                if (exists != null)
-                {
-                    _ = persistentContext.Set<TSet>().Update(entity);
-                }
-                else
-                {
-                    _ = persistentContext.Set<TSet>().Add(entity);
-                }
+                throw new InvalidOperationException("No service provider.");
             }
-
-            _ = await persistentContext.SaveChangesAsync();
+            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            return await Query.Synchronize(contextFrom, contextTo, qualifier);
         }
 
 

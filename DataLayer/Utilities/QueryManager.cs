@@ -26,9 +26,15 @@ namespace DataLayer.Utilities
         Type? PersistentContext { get; set; }
 
 
-        Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
-        Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
+        Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+            where TSet : Entity<TSet>;
+        Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+            where TSet : Entity<TSet>;
 
+        Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier, int priority = 10)
+            where TSet : Entity<TSet>
+            where TFrom : TranslationContext
+            where TTo : TranslationContext;
 
         Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
@@ -334,7 +340,8 @@ namespace DataLayer.Utilities
             return await Synchronize(PersistentStorage, EphemeralStorage, qualifier, priority);
         }
 
-        public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+        public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+            where TSet : Entity<TSet>
         {
             return await Enqueue(async () =>
             {
@@ -347,33 +354,56 @@ namespace DataLayer.Utilities
                 }
                 await contextFrom.InitializeIfNeeded();
                 await contextTo.InitializeIfNeeded();
-                using var transactionFrom = contextFrom.Database.BeginTransaction();
-                using var transactionTo = contextTo.Database.BeginTransaction();
 
-
-                var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
-
-                foreach (var entity in entities)
-                {
-                    var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
-
-                    if (exists)
-                    {
-                        _ = contextTo.Set<TSet>().Update(entity);
-                    }
-                    else
-                    {
-                        _ = contextTo.Set<TSet>().Add(entity);
-                    }
-                }
-
-                _ = await contextTo.SaveChangesAsync();
-                await transactionTo.CommitAsync();
-                await transactionFrom.DisposeAsync();
-
-                return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
+                return await SynchronizeNow(contextFrom, contextTo, qualifier);
             }, priority);
         }
+
+
+        public virtual async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier, int priority = 10)
+            where TSet : Entity<TSet>
+            where TFrom : TranslationContext
+            where TTo : TranslationContext
+        {
+            return await Enqueue(async () =>
+            {
+                return await SynchronizeNow(contextFrom, contextTo, qualifier);
+            }, priority);
+        }
+
+
+        protected virtual async Task<List<TSet>> SynchronizeNow<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier) 
+            where TSet : Entity<TSet>
+            where TFrom : TranslationContext
+            where TTo : TranslationContext
+        {
+            using var transactionFrom = contextFrom.Database.BeginTransaction();
+            using var transactionTo = contextTo.Database.BeginTransaction();
+
+            var entities = await contextFrom.Set<TSet>().AsNoTracking().Where(qualifier).ToListAsync();
+
+            foreach (var entity in entities)
+            {
+                var exists = await contextTo.Set<TSet>().AnyAsync(qualifier);
+
+                if (exists)
+                {
+                    _ = contextTo.Set<TSet>().Update(entity);
+                }
+                else
+                {
+                    _ = contextTo.Set<TSet>().Add(entity);
+                }
+            }
+
+            _ = await contextTo.SaveChangesAsync();
+            await transactionTo.CommitAsync();
+            await transactionFrom.DisposeAsync();
+
+            return await contextTo.Set<TSet>().Where(qualifier).ToListAsync();
+        }
+
+
 
         public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
