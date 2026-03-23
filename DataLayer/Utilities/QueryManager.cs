@@ -1,21 +1,15 @@
 ﻿using DataLayer.Entities;
-using DataLayer.Generators;
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Linq.Expressions;
-using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace DataLayer.Utilities
 {
@@ -33,7 +27,6 @@ namespace DataLayer.Utilities
 
         Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
         Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
-        Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>;
 
 
         Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
@@ -42,8 +35,6 @@ namespace DataLayer.Utilities
         Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
-        Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
-        Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
 
         //Task<IEntity> Save(bool persistent, IEntity entity, int priority = 10);
@@ -52,7 +43,6 @@ namespace DataLayer.Utilities
         Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
-        Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
 
 
 
@@ -61,11 +51,6 @@ namespace DataLayer.Utilities
         Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
-
-        Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
-        Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
-        //Task<object?> Update(bool persistent, object key, int priority = 10);
-        Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
 
         Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
@@ -163,7 +148,7 @@ namespace DataLayer.Utilities
             return result;
         }
 
-        
+
         public async Task Enqueue(Func<Task> callback, int priority = 5)
         {
             await Enqueue<bool>(async () => { await callback(); return true; }, priority);
@@ -189,21 +174,21 @@ namespace DataLayer.Utilities
             {
                 var result = await callback();
 
-                if (result is IQueryable queryable)
-                {
-                    // Use reflection or 'dynamic' to call ToList() 
-                    // This pulls the data into memory while the DbContext is still alive
-                    var list = Enumerable.ToList((dynamic)queryable);
-                    var finalResult = (TReturn)Queryable.AsQueryable(list);
-                    var finalType = typeof(TReturn);
-                    return (TReturn)finalResult;
-                }
+                //if (result is IQueryable queryable)
+                //{
+                // Use reflection or 'dynamic' to call ToList() 
+                // This pulls the data into memory while the DbContext is still alive
+                //    var list = await AsyncEnumerable.ToListAsync<TReturn>((dynamic)queryable);
+                //    var finalResult = (TReturn)Queryable.AsQueryable(list);
+                //    var finalType = typeof(TReturn);
+                //    return (TReturn)finalResult;
+                //}
 
                 return result;
             }
             catch (Exception ex)
             {
-                Log.Error("Managed query failed: " + callback.Method, ex);
+                Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
                 throw new Exception("holy shit", ex);
             }
             finally
@@ -299,39 +284,40 @@ namespace DataLayer.Utilities
 
         public IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
         {
-            return Service?.GetService<IDbContextFactory<TContext>>();
+            return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
         public IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
         {
-            return Service?.GetService(contextType) as IDbContextFactory<TContext>;
+            return Service?.GetService(contextType) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
         public TContext? GetContext<TContext>() where TContext : DbContext
         {
-            return GetContextFactory<TContext>()?.CreateDbContext();
+            return GetContextFactory<TContext>()?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
         public TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
         {
-            return GetContextFactory<TContext>(contextType)?.CreateDbContext();
+            return GetContextFactory<TContext>(contextType)?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
         public TranslationContext? GetContext(Type contextType)
         {
-            return typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])?.Invoke(null, [contextType]) as TranslationContext;
+            return typeof(QueryManager).GetMethod(nameof(GetContext), 1, [typeof(Type)])
+                ?.MakeGenericMethod(contextType.GenericTypeArguments[0])
+                .Invoke(this, [contextType]) as TranslationContext
+                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
         public TranslationContext? GetContext(StorageType type)
         {
             var contextType = GetStorageType(type);
-            var factoryType = GetContextType(contextType);
-            var contextMethod = typeof(QueryManager)
-                .GetMethod(nameof(GetContext), 1, [typeof(Type)])
-                ?.MakeGenericMethod(contextType);
+            var factoryType = GetContextType(contextType) ?? throw new InvalidOperationException("Couldn't render context factory: " + type);
+
             try
             {
-                return contextMethod?.Invoke(this, [factoryType]) as TranslationContext;
+                return GetContext(factoryType) as TranslationContext;
             }
             catch (Exception ex)
             {
@@ -344,7 +330,7 @@ namespace DataLayer.Utilities
 
         public async Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
         {
-            return await Synchronize(true, false, qualifier, priority);
+            return await Synchronize(PersistentStorage, EphemeralStorage, qualifier, priority);
         }
 
         public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
@@ -388,22 +374,14 @@ namespace DataLayer.Utilities
             }, priority);
         }
 
-        public async Task<List<TSet>> Synchronize<TSet>(bool FromPersistent, bool ToPersistent, Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
-        {
-            return await Synchronize(
-                FromPersistent ? StorageType.Persistent : StorageType.Ephemeral,
-                ToPersistent ? StorageType.Persistent : StorageType.Ephemeral,
-                qualifier, priority);
-        }
-
         public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Save(false, expression, priority);
+            return await Save(EphemeralStorage, expression, priority);
         }
 
         public async Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Save(false, entity, priority);
+            return await Save(EphemeralStorage, entity, priority);
         }
 
         public async Task ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = true) where T : Entity<T>
@@ -588,24 +566,14 @@ namespace DataLayer.Utilities
         */
 
 
-        public async Task<TEntity> Save<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return await Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, expression, priority);
-        }
-
-        public async Task<TEntity> Save<TEntity>(bool persistent, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return await Save(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
-        }
-
         public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Query(false, (IQueryable<TEntity> entities) => query != null ? entities.Where(query) : entities, priority);
+            return await Query(EphemeralStorage, (IQueryable<TEntity> entities) => query != null ? entities.Where(query) : entities, priority);
         }
 
         public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Query(false, query, priority);
+            return await Query(EphemeralStorage, query, priority);
         }
 
 
@@ -645,7 +613,8 @@ namespace DataLayer.Utilities
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
                         var invokedExpression = Expression.Invoke(query, set.Expression);
-                        TResult result;
+
+                        TResult? result = default;
 
                         if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
                         {
@@ -653,18 +622,24 @@ namespace DataLayer.Utilities
                             var finalQueryable = set.Provider.CreateQuery(invokedExpression);
 
                             // Force ToList to materialize it before the context is disposed
-                            var forcedList = typeof(Enumerable)
-                                .GetMethod(nameof(Enumerable.ToList))
-                                ?.MakeGenericMethod(typeof(TEntity)) // Or the target type
-                                .Invoke(null, [finalQueryable])!;
+                            var typeParameter = typeof(TResult).GetGenericArguments()[0];
+                            var toListMethod = typeof(AsyncEnumerable)
+                                .GetMethod(nameof(AsyncEnumerable.ToListAsync))
+                                ?.MakeGenericMethod(typeParameter) ?? throw new InvalidOperationException("Couldn't render ToListAsync");
+                            var forcedTask = toListMethod.Invoke(null, [finalQueryable, null]) as dynamic;
 
-                            if (typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
+                            if (forcedTask?.AsTask() is Task task)
                             {
-                                result = (TResult)Queryable.AsQueryable((IEnumerable)forcedList)!;
-                            }
-                            else
-                            {
-                                result = (TResult)forcedList;
+                                await forcedTask;
+                                var forcedList = (forcedTask as dynamic).Result;
+                                if (typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
+                                {
+                                    result = (TResult)Queryable.AsQueryable((IEnumerable)forcedList)!;
+                                }
+                                else
+                                {
+                                    result = (TResult)forcedList;
+                                }
                             }
                         }
                         else
@@ -785,67 +760,19 @@ namespace DataLayer.Utilities
 
 
 
-        /*
-        public int Update<T>(this T entity, IDbConnection conn, string keyName = "Id") where T : class, IEntity<T>
-        {
-            var type = typeof(T);
-            var props = type.GetProperties();
-            var tableName = type.Name; // Assumes Table Name = Class Name
-
-            // 1. Build the SET clause (skipping the Primary Key)
-            var setClauses = props
-                .Where(p => p.Name != keyName)
-                .Select(p => $"[{p.Name}] = @{p.Name}");
-
-            string sql = $"UPDATE [{tableName}] SET {string.Join(", ", setClauses)} WHERE [{keyName}] = @{keyName}";
-
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = sql;
-
-            // 2. Map values to Parameters (Prevents SQL Injection)
-            foreach (var prop in props)
-            {
-                var param = cmd.CreateParameter();
-                param.ParameterName = "@" + prop.Name;
-                param.Value = prop.GetValue(entity) ?? DBNull.Value;
-                _ = cmd.Parameters.Add(param);
-            }
-
-            if (conn.State != ConnectionState.Open) conn.Open();
-            return cmd.ExecuteNonQuery();
-        }
-        */
-
-
-        public async Task<TResult> Query<TEntity, TResult>(bool persistent, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10)
-            where TEntity : Entity<TEntity>
-        {
-            return await Query(persistent ? StorageType.Persistent : StorageType.Ephemeral, query, priority);
-        }
 
         public async Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
             where TEntity : Entity<TEntity>
         {
-            return await Update(false, key, priority);
+            return await Update<TEntity, TEntity>(EphemeralStorage, key, priority);
         }
 
         public async Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10)
             where TEntity : Entity<TEntity>
         {
-            return await Update(false, entity, priority);
+            return await Update(EphemeralStorage, entity, priority);
         }
 
-        public async Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, TEntity>> key, int priority = 10)
-            where TEntity : Entity<TEntity>
-        {
-            return await Update<TEntity, TEntity>(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
-        }
-
-        public async Task<TEntity> Update<TEntity>(bool persistent, TEntity entity, int priority = 10)
-            where TEntity : Entity<TEntity>
-        {
-            return await Update(persistent ? StorageType.Persistent : StorageType.Ephemeral, entity, priority);
-        }
 
         public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10)
             where TEntity : Entity<TEntity>
@@ -950,9 +877,10 @@ namespace DataLayer.Utilities
             {
                 await context.Entry(entity).ReloadAsync();
             }
-            catch
+            catch (Exception ex)
             {
-
+                Console.WriteLine("Update entity failed.");
+                Console.WriteLine(ex);
             }
 
             return entity;
@@ -960,13 +888,9 @@ namespace DataLayer.Utilities
 
         public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Update<TEntity>(StorageType.Ephemeral, key, priority);
+            return Update<TEntity>(EphemeralStorage, key, priority);
         }
 
-        public Task<TEntity> Update<TEntity>(bool persistent, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
-        {
-            return Update<TEntity>(persistent ? StorageType.Persistent : StorageType.Ephemeral, key, priority);
-        }
 
         public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>
         {
@@ -983,8 +907,18 @@ namespace DataLayer.Utilities
         public RemoteManager()
         {
             PersistentStorage = StorageType.Test;
-            PersistentStorage = StorageType.Remote;
+            EphemeralStorage = StorageType.Remote;
             _httpClient = Service?.GetRequiredService<HttpClient>();
+        }
+
+        public override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
+        {
+            var serialized = new XDocument(LinqExtensions.VisitToXml(entity, 0, 0));
+
+            Console.WriteLine("Save Object: " + serialized);
+            Log.Debug("Save Object: " + serialized);
+
+            return await UpdateNow(storage, entity);
         }
     }
 }

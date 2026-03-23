@@ -1,15 +1,8 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data.Common;
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Xml.Linq;
 
 namespace FlashCard.Services
 {
@@ -19,7 +12,6 @@ namespace FlashCard.Services
         void Error(object message, Exception? ex = null);
         void Fatal(object message, Exception? ex = null);
         void Debug(object message, Exception? ex = null);
-        static event Action<object?, Exception?>? OnLogged;
         static abstract SimpleLogger GetLogger(string filePath);
         Action<object, Exception?> this[string level] { get; set; }
         string? Filepath { get; set; }
@@ -68,7 +60,8 @@ namespace FlashCard.Services
             string category = Path.GetFileNameWithoutExtension(filePath);
             if (_loggerCache.TryGetValue(category, out var logger)) return logger;
 
-            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger() {
+            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger()
+            {
                 Filepath = filePath,
                 Category = category
             });
@@ -101,7 +94,7 @@ namespace FlashCard.Services
         }
 
 
-        public static object? ParameterToObject(ParameterInfo p, object? obj, Exception? ex) 
+        public static object? ParameterToObject(ParameterInfo p, object? obj, Exception? ex)
         {
             // 1. If the parameter is an Exception, give it 'ex'
             if (typeof(Exception).IsAssignableFrom(p.ParameterType))
@@ -256,7 +249,7 @@ namespace FlashCard.Services
                 reportEx.Data["OriginalStack"] = stackWhenCalled;
                 InvokeWrappedLogger(levelDelegate, /* level, */ message, reportEx);
             }
-            
+
         }
     }
 
