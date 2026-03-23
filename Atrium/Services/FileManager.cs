@@ -1,10 +1,7 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities.Extensions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using FlashCard.Services;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Stream = System.IO.Stream;
 using DataLayer.Utilities;
 
@@ -57,13 +54,15 @@ namespace Atrium.Services
             fileStream.Close();
             localStream.Close();
 
-            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager 
+            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager
                 ?? throw new InvalidOperationException("Could not render query manager.");
             var task = query.Save(new DataLayer.Entities.File()
             {
                 Filename = savePath,
                 Source = source // TODO: fill in from nav or parameter or something
             });
+
+
             if (task != null)
             {
                 await task;
@@ -115,6 +114,7 @@ namespace Atrium.Services
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
+                context.Response.StatusCode = 500;
                 var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }

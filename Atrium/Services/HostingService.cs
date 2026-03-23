@@ -83,7 +83,7 @@ namespace Atrium.Services
             }
 
             context.Response.ContentType = "application/json";
-
+            context.Response.StatusCode = 500;
             var json = JsonSerializer.Serialize(new StatusResponse()
             {
                 Host = Settings?.Domain,

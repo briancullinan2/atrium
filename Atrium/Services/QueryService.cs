@@ -3,7 +3,6 @@
 using Microsoft.AspNetCore.Http;
 #endif
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
@@ -11,7 +10,7 @@ namespace Atrium.Services
     {
 
 #if WINDOWS
-        public async static Task RespondQuery(HttpContext context, IServiceProvider _service)
+        public async static Task RespondQuery(HttpContext context)
         {
             try
             {
@@ -23,9 +22,7 @@ namespace Atrium.Services
 
                 if (string.IsNullOrWhiteSpace(rawXml))
                 {
-                    var json2 = JsonSerializer.Serialize("");
-                    await context.Response.WriteAsync(json2);
-                    return;
+                    throw new InvalidOperationException("Query not received, try again, or not at all, I don't care.");
                 }
 
                 // TODO: add marshalling rules here
@@ -41,6 +38,7 @@ namespace Atrium.Services
                 try
                 {
                     context.Response.ContentType = "application/json";
+                    context.Response.StatusCode = 500;
                     var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                     await context.Response.WriteAsync(json);
                 }

@@ -1,12 +1,9 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
@@ -17,7 +14,7 @@ namespace Atrium.Services
 
         public AnkiService()
         {
-            _httpClient = _services?.GetRequiredService<HttpClient>();
+            _httpClient = _services?.GetService(typeof(HttpClient)) as HttpClient;
         }
 
         public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>> InspectFile(string ankiPackage)
@@ -218,6 +215,7 @@ namespace Atrium.Services
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
+                context.Response.StatusCode = 500;
                 var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
@@ -242,6 +240,7 @@ namespace Atrium.Services
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
+                context.Response.StatusCode = 500;
                 var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
@@ -283,12 +282,15 @@ namespace Atrium.Services
             // We pass the stream directly to our generalized upload function
             // Using the URL's filename as the local path hint
             var fileName = Path.GetFileName(new Uri(ankiPackageUrl).LocalPath);
-            var manager = _services.GetRequiredService<FileManager>();
-            _ = await manager.UploadFile(remoteStream, fileName, "AnkiDownloads");
+            var manager = _services.GetService(typeof(FileManager)) as FileManager;
+            Task? task = manager?.UploadFile(remoteStream, fileName, "AnkiDownloads");
+            if (task is Task wait) await wait;
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
-            var query = _services.GetRequiredService<IQueryManager>();
-            return await query.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
+            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager;
+            Task<List<DataLayer.Entities.File>>? syncTask = query?.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
+            if (syncTask is Task wait2) await wait2;
+            return syncTask?.Result;
         }
 
 

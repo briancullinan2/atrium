@@ -14,6 +14,7 @@ namespace DataLayer.Utilities
     {
         private readonly HttpClient? _httpClient;
         public static IServiceProvider? Service { get; set; } = null;
+        public static MethodInfo ExecuteRemote { get; }
 
         public RemoteQuery()
         {
@@ -21,8 +22,11 @@ namespace DataLayer.Utilities
         }
 
 
+
         public TResult Execute<TResult>(Expression query)
         {
+            throw new InvalidOperationException("Synchronous not supported, evaluate then use ToQueryable to convert back.");
+            /*
             if (_httpClient == null)
             {
                 throw new InvalidOperationException("No Http client.");
@@ -37,36 +41,59 @@ namespace DataLayer.Utilities
             var response = _httpClient.PostAsJsonAsync("/api/query", serialized).Result;
 
             return response.Content.ReadFromJsonAsync<TResult>().Result!;
+            */
         }
+
+        static RemoteQuery()
+        {
+            ExecuteRemote = typeof(RemoteQuery)
+                    .GetMethod(nameof(ExecuteRemoteAsync),
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("Failed to find ExecuteRemoteAsync");
+        }
+
 
         // You must also implement ExecuteAsync for ToListAsync() support
         public TResult ExecuteAsync<TResult>(Expression query, CancellationToken cancellationToken = default)
         {
             var typeT = typeof(TResult);
 
-            // If TResult is IAsyncEnumerable<File>, we need to fetch List<File>
-            if (typeT.IsGenericType && typeof(IAsyncEnumerable<>).IsAssignableFrom(typeT.GetGenericTypeDefinition()))
+            // 1. Handle IAsyncEnumerable (same as your current logic)
+            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
             {
                 var itemType = typeT.GetGenericArguments()[0];
-
-                // Use reflection to call ExecuteRemoteAsync<List<File>>
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
-                Task? task2 = typeof(RemoteQuery)
-                    .GetMethod(nameof(ExecuteRemoteAsync))
-                    ?.MakeGenericMethod(listType) // THIS IS THE KEY: Ask for the List
-                    .Invoke(this, [query, cancellationToken]) as Task ?? throw new InvalidOperationException("Couldn't resolve task type.");
+                var task = ExecuteRemote.MakeGenericMethod(listType)
+                    .Invoke(this, [query, cancellationToken]) as Task
+                    ?? throw new InvalidOperationException("Failed to invoke ExecuteRemoteAsync");
 
-                // Bridge the Task<List<File>> to IAsyncEnumerable<File>
-                return (TResult)CreateAsyncEnumerableFromTask(task2, itemType);
+                return (TResult)CreateAsyncEnumerableFromTask(task, itemType);
             }
 
-            // Fallback for scalars (Count, Any, etc.)
-            Task? task = typeof(RemoteQuery)
-                .GetMethod(nameof(ExecuteRemoteAsync))
-                ?.MakeGenericMethod(typeT)
-                .Invoke(this, [query, cancellationToken]) as Task ?? throw new InvalidOperationException("Couldn't resolve task type.");
-            return (TResult)CreateAsyncEnumerableFromTask(task, typeT);
+            // 2. Handle Tasks (Scalars like CountAsync, ToListAsync, etc.)
+            if (typeof(Task).IsAssignableFrom(typeT))
+            {
+                // Extract the 'int' from 'Task<int>'
+                var innerType = typeT.IsGenericType ? typeT.GetGenericArguments()[0] : typeof(object);
+
+                // Call ExecuteRemoteAsync<int>(...)
+                var task = ExecuteRemote.MakeGenericMethod(innerType)
+                    .Invoke(this, [query, cancellationToken])
+                    ?? throw new InvalidOperationException("Failed to create object query task: " + typeT);
+
+                // 'task' is already the Task<int> EF Core wants. 
+                // We just cast it to TResult (which is Task<int>) and return.
+                return (TResult)task!;
+            }
+            else
+            {
+                var task = ExecuteRemote.MakeGenericMethod(typeT)
+                    .Invoke(this, [query, cancellationToken]) as Task<TResult>
+                    ?? throw new InvalidOperationException("Failed to create TResult query task: " + typeT);
+
+                return (TResult)task.Result!;
+            }
         }
 
         // Helper to wrap the Task into a stream EF Core can read
@@ -112,6 +139,10 @@ namespace DataLayer.Utilities
 
                 // 1. Deserialize as a concrete List first
                 var list = await response.Content.ReadFromJsonAsync(listType, cancellationToken: cancellationToken);
+                if (list == null && Nullable.GetUnderlyingType(typeof(T)) == null)
+                {
+                    throw new InvalidOperationException("Server returned null and nobody knows why.");
+                }
 
                 // 2. Convert List to IAsyncEnumerable (using .ToAsyncEnumerable())
                 // Requires 'System.Linq.Async' NuGet package
@@ -147,5 +178,6 @@ namespace DataLayer.Utilities
 
             return (queryContext) => this.Execute<TResult>(query);
         }
+
     }
 }

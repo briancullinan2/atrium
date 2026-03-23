@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Atrium.Services
 {
@@ -74,7 +73,8 @@ namespace Atrium.Services
                 result = parsed?.TryGetValue("response", out var response) == true
                     && string.Equals(response?.ToString(), "Supercalifragilisticexpialidocious", StringComparison.InvariantCultureIgnoreCase);
 
-            } catch (Exception) { }
+            }
+            catch (Exception) { }
 
 
             if (result == true && Settings != null && !string.IsNullOrWhiteSpace(ServiceUrl))
@@ -227,7 +227,7 @@ namespace Atrium.Services
             catch (Exception ex)
             {
                 var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
-
+                context.Response.StatusCode = 500;
                 await context.Response.WriteAsync(json);
             }
 
@@ -262,7 +262,7 @@ namespace Atrium.Services
             catch (Exception ex)
             {
                 var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
-
+                context.Response.StatusCode = 500;
                 await context.Response.WriteAsync(json);
             }
         }
