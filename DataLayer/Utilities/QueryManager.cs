@@ -343,7 +343,7 @@ namespace DataLayer.Utilities
         public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) 
             where TSet : Entity<TSet>
         {
-            return await Enqueue(async () =>
+            await Enqueue(async () =>
             {
                 using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(From);
@@ -354,7 +354,17 @@ namespace DataLayer.Utilities
                 }
                 await contextFrom.InitializeIfNeeded();
                 await contextTo.InitializeIfNeeded();
+            }, 0);
 
+            return await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(From);
+                var contextTo = GetContext(To);
+                if (contextFrom == null || contextTo == null)
+                {
+                    throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
+                }
                 return await SynchronizeNow(contextFrom, contextTo, qualifier);
             }, priority);
         }
@@ -365,6 +375,17 @@ namespace DataLayer.Utilities
             where TFrom : TranslationContext
             where TTo : TranslationContext
         {
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                if (contextFrom == null || contextTo == null)
+                {
+                    throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
+                }
+                await contextFrom.InitializeIfNeeded();
+                await contextTo.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () =>
             {
                 return await SynchronizeNow(contextFrom, contextTo, qualifier);
@@ -506,6 +527,14 @@ namespace DataLayer.Utilities
 
         public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
         {
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () =>
             {
                 using var scope = Service?.CreateScope();
@@ -536,6 +565,14 @@ namespace DataLayer.Utilities
 
         public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
         {
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () =>
             {
                 return await SaveNow(storage, entity);
@@ -546,8 +583,8 @@ namespace DataLayer.Utilities
         public virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
         {
             using var scope = Service?.CreateScope();
-            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
-            await context.InitializeIfNeeded();
+            var context = GetContext(storage) 
+                ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             using var saveTransaction = context.Database.BeginTransaction();
             try
             {
@@ -630,8 +667,16 @@ namespace DataLayer.Utilities
 
             // 2. Check if this exact query is already "in flight"
             // GetOrAdd ensures that only one Task is created for the same key.
-            var task = _pendingQueries.GetOrAdd(queryKey, _ =>
+            var task = _pendingQueries.GetOrAdd(queryKey, _k =>
             {
+                _ = Enqueue(async () =>
+                {
+                    using var scope = Service?.CreateScope();
+                    var contextFrom = GetContext(storage)
+                        ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                    await contextFrom.InitializeIfNeeded();
+                }, 0);
+
                 // This inner block only runs ONCE for the same queryKey
                 return Enqueue(async () =>
                 {
@@ -828,6 +873,15 @@ namespace DataLayer.Utilities
                     prop.SetValue(entity, update.Value);
                 }
             }
+
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
 
@@ -844,12 +898,29 @@ namespace DataLayer.Utilities
                     prop.SetValue(entity, update.Value);
                 }
             }
+
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
 
         public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
             where TEntity : Entity<TEntity>
         {
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
             return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
 

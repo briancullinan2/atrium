@@ -179,13 +179,16 @@
 
     private string? contextKey;
 
-    protected async Task UnvaluedTask()
+    protected async Task UnvaluedTask(CancellationToken ct = default)
     {
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
         await Task.Delay(100);
 
         _isTransitioning = true;
-        StateHasChanged(); // Now _previousBody is "locked" to the old content
+        if (!ct.IsCancellationRequested)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
 
         await Task.Delay(400);
 
@@ -197,12 +200,17 @@
         _isTransitioning = false;
         _previousList.Clear();
         _previousBody = null;
-        if(_nextBody != null)
+        if (_nextBody != null && !ct.IsCancellationRequested)
         {
             _activeBody = _nextBody;
         }
         _nextBody = null;
-        StateHasChanged();
+        _cts?.Dispose();
+        _cts = null;
+        if (!ct.IsCancellationRequested)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async ValueTask HandleLocationChanging(LocationChangingContext context)
@@ -238,7 +246,7 @@
             return;
         }
 
-        
+
         _previousList.AddLast(await PageManager.Copy(_activeBody, Services));
     }
 
@@ -294,7 +302,7 @@
         }
         InvokeAsync(StateHasChanged);
     }
-    
+
     public void SetError(Exception? error)
     {
         _lastException = error;
@@ -410,6 +418,8 @@
         }
     }
 
+    CancellationTokenSource? _cts = null;
+
     protected override void OnParametersSet()
     {
         _errorBoundary?.Recover();
@@ -423,7 +433,12 @@
         {
             _nextBody = Body;
         }
-        _ = UnvaluedTask();
+        if(_cts != null)
+        {
+            _cts?.Cancel();
+        }
+        _cts = new CancellationTokenSource();
+        _ = UnvaluedTask(_cts.Token);
     }
 
     public void Dispose()

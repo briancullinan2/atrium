@@ -124,7 +124,7 @@ namespace DataLayer.Utilities
                 throw new InvalidOperationException("No Http client.");
             }
 
-            Log.Debug("Querying serialized: " + query.ToString());
+            Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
             var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
             _ = response.EnsureSuccessStatusCode();

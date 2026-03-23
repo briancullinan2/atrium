@@ -37,6 +37,7 @@ namespace DataLayer
             }
         }
 
+        public bool NeedsInitialize { get; protected set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -55,9 +56,6 @@ namespace DataLayer
             _ = configurationBuilder.Properties<DefaultPermissions>().HaveConversion<string>();
         }
 
-        private static readonly Lock _initLock = new();
-        public bool NeedsInitialize { get; protected set; }
-        private static readonly SemaphoreSlim _asyncLock = new(1, 1);
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -85,10 +83,7 @@ namespace DataLayer
             _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
             _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
 
-            lock(_initLock)
-            {
-                NeedsInitialize = true;
-            }
+            NeedsInitialize = true;
         }
 
 
@@ -99,31 +94,22 @@ namespace DataLayer
             try
             {
                 transaction = await Database.BeginTransactionAsync();
-
                 if (!NeedsInitialize) return;
-
-                await _asyncLock.WaitAsync();
-
-                if (NeedsInitialize)
-                {
-                    var conn = Database.GetDbConnection();
-                    if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                    await Database.EnsureCreatedAsync();
-                    await EnsureGlobalIdentityStart();
-                    await SaveChangesAsync();
-                    transaction.Commit();
-                }
+                var conn = Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                await Database.EnsureCreatedAsync();
+                await EnsureGlobalIdentityStart();
+                await SaveChangesAsync();
+                await transaction.CommitAsync();
             }
             catch (Exception ex)
             {
-                transaction?.Rollback();
-                NeedsInitialize = true; // Reset so we can try again
+                if(transaction != null) await transaction.RollbackAsync();
                 throw new InvalidOperationException("Database creation failed.", ex);
             }
             finally
             {
-                transaction?.Dispose();
-                _asyncLock.Release();
+                if (transaction != null) await transaction.DisposeAsync();
             }
         }
 
