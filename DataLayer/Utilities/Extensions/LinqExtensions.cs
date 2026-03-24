@@ -560,7 +560,8 @@ namespace DataLayer.Utilities.Extensions
 
 
             if (targetType == typeof(ValueBuffer)
-                || typeof(IEnumerable).IsAssignableFrom(targetType))
+                || (typeof(IEnumerable).IsAssignableFrom(targetType) 
+                    && targetType != typeof(string)))
             {
                 var values = el.Elements().Select(e => {
                     if (e.Name == "Null") return null;
@@ -575,14 +576,39 @@ namespace DataLayer.Utilities.Extensions
                     else 
                         return ResolveMetadata(entityType, e.Attribute("Value")?.Value, e);
                 }).ToArray();
-                
-                
-                if (typeof(Array).IsAssignableFrom(targetType))
-                    return values.ToArray();
-                if (typeof(IEnumerable).IsAssignableFrom(targetType))
-                    return values.ToList();
-                if(targetType == typeof(ValueBuffer))
+
+                if (targetType == typeof(ValueBuffer))
                     return new ValueBuffer(values);
+
+                var itemType = targetType.IsArray
+                    ? targetType.GetElementType() ?? typeof(object)
+                    : targetType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+
+                // 1. Convert our 'values' (which is likely List<object>) to IEnumerable<TItem>
+                var castMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.Cast))
+                    ?.MakeGenericMethod(itemType)
+                    ?? throw new InvalidOperationException("Cast failed");
+
+                var castedValues = castMethod.Invoke(null, [values]);
+
+                // 2. Handle Arrays
+                if (targetType.IsArray)
+                {
+                    var toArrayMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToArray))
+                        ?.MakeGenericMethod(itemType);
+                    return toArrayMethod!.Invoke(null, [castedValues]);
+                }
+
+                // 3. Handle Lists (List<T>)
+                if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    var toListMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToList))
+                        ?.MakeGenericMethod(itemType);
+                    return toListMethod!.Invoke(null, [castedValues]);
+                }
+
+                // Fallback for other IEnumerables
+                return castedValues;
             }
 
 
@@ -632,7 +658,17 @@ namespace DataLayer.Utilities.Extensions
             {
                 // TODO: 
                 var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex);
-                return Expression.Constant(Convert.ChangeType(val, type), type);
+                if(val?.GetType().IsSimple() == true
+                    && val?.GetType() != type)
+                {
+                    return Expression.Constant(Convert.ChangeType(val, type), type);
+                }
+                
+                if (val?.GetType() != type)
+                {
+                    Console.WriteLine("ArgumentTypesMustMatch is dumbass error that doesn't tell me this type " + val?.GetType() + " or this type: " + type);
+                }
+                return Expression.Constant(val, type);
             } 
             else if (el.Attribute("Value")?.Value is string val)
             {
@@ -640,7 +676,14 @@ namespace DataLayer.Utilities.Extensions
                 {
                     return Expression.Constant(val.TryParse(type), type);
                 }
-                return Expression.Constant(Convert.ChangeType(val, type), type);
+                else if (type.IsSimple() && val.GetType() != type)
+                {
+                    return Expression.Constant(Convert.ChangeType(val, type), type);
+                }
+                else
+                {
+                    return Expression.Constant(val, type);
+                }
             }
             throw new InvalidOperationException("Cannot extract constant value.");
         }
@@ -718,26 +761,15 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("No service provider.");
             }
-            using var scope = QueryManager.Service.CreateScope();
-            var manager = QueryManager.Service.GetRequiredService<IQueryManager>();
-            var context = manager.GetContext(persist ?? manager.EphemeralStorage) 
-                ?? throw new InvalidOperationException("Database context failed.");
-
-
-            await context.InitializeIfNeeded();
-
-            //var provider = ((IQueryable)context.Set<Entities.User>()).Provider;
-
-            using XmlReader reader = XmlReader.Create(new StringReader(query));
-            _ = reader.MoveToContent();
-            XElement root = (XElement)XNode.ReadFrom(reader);
 
             // 1. Clear the parameter cache for this specific run
             _parameters.Clear();
 
-            // 2. Reconstruct the raw Expression tree
+            using var scope = QueryManager.Service.CreateScope();
+            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+
             // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
-            Expression? finalExpression = root.ToExpression(context, out IQueryable? set) 
+            Expression? finalExpression = Query.ToExpression(persist, query, out IQueryable? set) 
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
             if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
                 && !finalExpression.Type.IsArray

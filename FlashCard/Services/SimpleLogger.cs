@@ -177,6 +177,7 @@ namespace FlashCard.Services
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 LoggingErrorCount++;
                 if (LoggingErrorCount >= 5)
                 {
@@ -229,6 +230,12 @@ namespace FlashCard.Services
             }
             else
             {
+                Task.Run(() =>
+                {
+                    var pageManager = Services?.GetService<IPageManager>();
+                    if (ex != null) pageManager?.SetError(ex);
+                });
+
                 // TODO: I don't know if this is wise, it generates loops of errors
                 //var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
                 // its not wrapped by log4net so try and save the error anyways
@@ -252,7 +259,7 @@ namespace FlashCard.Services
 
             // 2. Output to Console (Immediate Feedback)
             
-            //Console.WriteLine(finalMessage);
+            Console.WriteLine(finalMessage);
             //if (ex != null) Console.WriteLine(ex);
 
 

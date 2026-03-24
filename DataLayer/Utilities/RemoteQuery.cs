@@ -137,19 +137,16 @@ namespace DataLayer.Utilities
 
             Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
-            var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("/api/query", serialized, cancellationToken);
             _ = response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
 
-            using XmlReader reader = XmlReader.Create(new StringReader(content ?? string.Empty));
-            _ = reader.MoveToContent();
-            XElement root = (XElement)XNode.ReadFrom(reader);
-
-            var context = Service.GetRequiredService<IQueryManager>().GetContext<RemoteStorage>()
-                ?? throw new InvalidOperationException("Unable to render remote context.");
+            
+            var Query = Service.GetRequiredService<IQueryManager>()
+                ?? throw new InvalidOperationException("Unable to render query manager.");
 
 
-            ConstantExpression? finalExpression = root.ToExpression(context, out IQueryable? set) as ConstantExpression
+            ConstantExpression? finalExpression = Query.ToExpression(content ?? string.Empty, out IQueryable? set) as ConstantExpression
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
 
 

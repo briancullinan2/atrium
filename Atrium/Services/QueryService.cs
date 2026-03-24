@@ -29,7 +29,7 @@ namespace Atrium.Services
 
                 // TODO: add marshalling rules here
 
-                var results = await DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml);
+                var results = await LinqExtensions.ToQueryable(rawXml);
 
                 context.Response.ContentType = "application/json";
                 var xml = Expression.Constant(results).ToXDocument().ToString();
