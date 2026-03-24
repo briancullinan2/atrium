@@ -86,12 +86,16 @@ namespace WebClient.Services
 
         public async Task<List<ServicePreset>> ListPresets()
         {
+            if(_httpClient == null)
+            {
+                throw new InvalidOperationException("Http client unavailable.");
+            }
             if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return recentResult;
             }
 
-            var response = _httpClient?.PostAsJsonAsync("/api/chat/presets", new StringContent("", System.Text.Encoding.UTF8, "application/json")).Result;
+            var response = await _httpClient.PostAsJsonAsync("/api/chat/presets", new StringContent("", System.Text.Encoding.UTF8, "application/json"));
             if (response == null) return [];
             var result = await response.Content.ReadFromJsonAsync<List<ServicePreset>>();
             if (result == null) return [];
@@ -102,24 +106,31 @@ namespace WebClient.Services
 
         public async Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("Http client unavailable.");
+            }
+
+
             if (recentPing != null && recentPinged + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return recentPing;
             }
 
 
-            var response = _httpClient?.PostAsJsonAsync("/api/chat/ping", new StringContent(JsonSerializer.Serialize(new ServicePreset()
+            var response = await _httpClient.PostAsJsonAsync("/api/chat/ping", new StringContent(JsonSerializer.Serialize(new ServicePreset()
             {
                 ApiKey = ApiKey,
                 DefaultModel = ModelName,
                 Url = ServiceUrl,
                 Params = Parameters,
                 ResponsePath = Response
-            }), System.Text.Encoding.UTF8, "application/json")).Result;
-            if (response == null) return new Tuple<bool?, string?>(null, null);
+            }), System.Text.Encoding.UTF8, "application/json"));
+
             var result = await response.Content.ReadFromJsonAsync<Tuple<bool?, string?>>();
             recentPing = result;
             recentPinged = DateTime.Now;
+            Console.WriteLine("Chat working: " + result);
             OnChatWorking?.Invoke(recentPing?.Item1);
             return recentPing ?? new Tuple<bool?, string?>(null, null);
 
@@ -127,6 +138,10 @@ namespace WebClient.Services
 
         public async Task<string?> SendMessage(string message)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("Http client unavailable.");
+            }
 
             Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
             OnChatMessage?.Invoke();
@@ -140,7 +155,7 @@ namespace WebClient.Services
             }
             recentMessaged = DateTime.Now;
 
-            var response = _httpClient?.PostAsJsonAsync("/api/chat", new StringContent(JsonSerializer.Serialize(message), System.Text.Encoding.UTF8, "application/json")).Result;
+            var response = await _httpClient.PostAsJsonAsync("/api/chat", new StringContent(JsonSerializer.Serialize(message), System.Text.Encoding.UTF8, "application/json"));
             if (response == null) return null;
             var result = await response.Content.ReadFromJsonAsync<string>();
             if (result == null) return null;

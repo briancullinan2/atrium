@@ -216,7 +216,7 @@ namespace Atrium.Services
                 // TODO: save preset settings in json file
                 var service = JsonSerializer.Deserialize<ServicePreset>(jsonQuery) ?? throw new InvalidOperationException("Request body failed to render.");
 
-                var _chat = (_services?.GetRequiredService<ChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
+                var _chat = (_services?.GetRequiredService<IChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Params);
 
                 var json = JsonSerializer.Serialize(result, JsonHelper.Default);
@@ -247,7 +247,7 @@ namespace Atrium.Services
                 // TODO: save preset settings in json file
                 var message = JsonSerializer.Deserialize<string>(jsonQuery) ?? throw new InvalidOperationException("Request message failed to render.");
 
-                var _chat = (_services?.GetRequiredService<ChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
+                var _chat = (_services?.GetRequiredService<IChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
 

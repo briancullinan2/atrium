@@ -33,17 +33,22 @@ namespace WebClient.Services
 
         public async Task<string?> GetToken(string? Account = null, string? Tunnel = null, string? Api = null)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("Http client unavailable.");
+            }
+
             if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
             {
                 return StatusResponse.ItWorks?[0];
             }
-            var response = _httpClient?.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
+            var response = await _httpClient.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
             new HostingSettings()
             {
                 AccountId = Account,
                 TunnelName = Tunnel,
                 ApiToken = Api
-            }), System.Text.Encoding.UTF8, "application/json")).Result;
+            }), System.Text.Encoding.UTF8, "application/json"));
             if (response == null) return null;
             var result = await response.Content.ReadFromJsonAsync<StatusResponse>();
             if (result == null) return null;
