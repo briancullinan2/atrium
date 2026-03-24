@@ -78,7 +78,7 @@ namespace DataLayer.Utilities
         Task<object?> ToQueryable(string query);
 
         Task<object?> ToQueryable(string query, StorageType? storage);
-        
+
         /*
         IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
 
@@ -96,7 +96,7 @@ namespace DataLayer.Utilities
 
         TranslationContext? GetContext(StorageType type);
         */
-
+        //IServiceProvider Service { get; set; }
     }
 
     /*
@@ -113,9 +113,9 @@ namespace DataLayer.Utilities
 
     */
 
-    public class QueryManager(IServiceProvider service) : IQueryManager
+    public class QueryManager : IQueryManager
     {
-        protected IServiceProvider Service { get; set; } = service;
+        public static IServiceProvider? Service { get; set; }
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
         protected static PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         private static readonly SemaphoreSlim _processorLock = new(1, 1);
@@ -302,22 +302,26 @@ namespace DataLayer.Utilities
 
         protected IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
         {
-            return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
+            return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> 
+                ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
         protected IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
         {
-            return Service?.GetService(contextType) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
+            return Service?.GetService(contextType) as IDbContextFactory<TContext> 
+                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
         protected TContext? GetContext<TContext>() where TContext : DbContext
         {
-            return GetContextFactory<TContext>()?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
+            return GetContextFactory<TContext>()?.CreateDbContext() 
+                ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
         protected TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
         {
-            return GetContextFactory<TContext>(contextType)?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
+            return GetContextFactory<TContext>(contextType)?.CreateDbContext() 
+                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
         protected TranslationContext? GetContext(Type contextType)
@@ -1008,7 +1012,7 @@ namespace DataLayer.Utilities
                 }
 
 
-                context.Attach(entity);
+                //context.Attach(entity);
             }
             else
             {
@@ -1090,7 +1094,7 @@ namespace DataLayer.Utilities
     {
         private readonly HttpClient? _httpClient;
 
-        public RemoteManager(IServiceProvider service) : base(service)
+        public RemoteManager()
         {
             PersistentStorage = StorageType.Test;
             EphemeralStorage = StorageType.Remote;
@@ -1098,14 +1102,18 @@ namespace DataLayer.Utilities
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
 
 
-            _httpClient = Service.GetRequiredService<HttpClient>();
+            _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
         protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
         {
             var serialized = new XDocument(LinqExtensions.VisitToXml(entity, 0, 0));
-
             Console.WriteLine("Save Object: " + serialized);
+
+            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
+            await context.InitializeIfNeeded();
+
+            context.Entry(entity).State = EntityState.Detached;
 
             return await UpdateNow(storage, entity);
         }

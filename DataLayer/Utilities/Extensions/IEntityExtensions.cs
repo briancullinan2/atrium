@@ -20,12 +20,10 @@ namespace DataLayer.Utilities.Extensions
             {
                 return default!;
             }
-            if (entity.Service == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
+            var Query = entity.QueryManager
+                ?? QueryManager.Service?.GetService(typeof(IQueryManager)) as IQueryManager
+                ?? throw new InvalidOperationException("No service provider.");
 
-            var Query = entity.Service.GetRequiredService<IQueryManager>();
             return await Query.Update(Query.EphemeralStorage, entity);
         }
 
@@ -68,7 +66,7 @@ namespace DataLayer.Utilities.Extensions
                 ?? throw new InvalidOperationException($"Could not instantiate {typeof(T).Name}");
 
             // Inject the context (The "Stamp")
-            entity.Service = context.Service;
+            entity.QueryManager = context.Query;
             entity.ContextType = context.GetType();
 
             // Track it immediately
@@ -84,13 +82,33 @@ namespace DataLayer.Utilities.Extensions
             {
                 return default!;
             }
-            if (ent.Service == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
-            var Query = ent.Service.GetRequiredService<IQueryManager>();
+            var Query = ent.QueryManager
+                ?? QueryManager.Service?.GetService(typeof(IQueryManager)) as IQueryManager
+                ?? throw new InvalidOperationException("No service provider.");
             return await Query.Save(Query.EphemeralStorage, ent);
         }
+
+        public static async Task<T> Save<T>(this T? ent, IServiceProvider? Service = null) where T : Entity<T>, IEntity<T>, IEntity
+        {
+            if (ent == null)
+            {
+                return default!;
+            }
+            var Query = Service?.GetService<IQueryManager>() ?? ent.QueryManager
+                ?? throw new InvalidOperationException("No query manager.");
+            return await Query.Save(Query.EphemeralStorage, ent);
+        }
+
+        public static async Task<T> Save<T>(this T? ent, IQueryManager? query = null) where T : Entity<T>, IEntity<T>, IEntity
+        {
+            if (ent == null)
+            {
+                return default!;
+            }
+            var Query = query ?? ent.QueryManager ?? throw new InvalidOperationException("No query manager.");
+            return await Query.Save(Query.EphemeralStorage, ent);
+        }
+
 
         //public static T Wrap<T>(this T target) where T : class, IEntity<T>
         //{
@@ -149,12 +167,12 @@ namespace DataLayer.Utilities.Extensions
             where TTo : TranslationContext
             where TSet : Entity<TSet>
         {
-            if (contextFrom.Service == null)
+            if (contextFrom.Query == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }
-            var Query = contextFrom.Service.GetRequiredService<IQueryManager>();
-            return await Query.Synchronize(contextFrom, contextTo, qualifier);
+            // TODO: contextTO?
+            return await contextFrom.Query.Synchronize(contextFrom, contextTo, qualifier);
         }
 
 

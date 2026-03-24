@@ -10,9 +10,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace DataLayer
 {
     // This context never connects to a DB; it just holds your Entity mappings
-    public class TranslationContext(IServiceProvider service, DbContextOptions ctx) : DbContext(ctx)
+    public class TranslationContext(IQueryManager query, DbContextOptions ctx) : DbContext(ctx)
     {
-        public IServiceProvider Service { get; set; } = service;
+        public IQueryManager Query { get; set; } = query;
         public DbSet<Permission>? Permissions { get; set; }
         public DbSet<Role>? Roles { get; set; }
         public DbSet<User>? Users { get; set; }
@@ -39,12 +39,12 @@ namespace DataLayer
             }
         }
 
-        public bool NeedsInitialize { get; protected set; }
+        public bool NeedsInitialize { get; protected set; } = true;
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
-            options.AddInterceptors(new WrapperInterceptor());
+            options.AddInterceptors(WrapperInterceptor.Instance);
         }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -89,39 +89,68 @@ namespace DataLayer
             NeedsInitialize = true;
         }
 
+        private Task? _initializeTask;
+        private readonly SemaphoreSlim _initLock = new(1, 1);
 
-
-        public virtual async Task InitializeIfNeeded()
+        public virtual Task InitializeIfNeeded()
         {
-            IDbContextTransaction? transaction = null;
+            // 1. Fast path: if already done, return completed task
+            if (!NeedsInitialize && _initializeTask?.IsCompletedSuccessfully == true)
+            {
+                return Task.CompletedTask;
+            }
+
+            // 2. Lock to ensure only one thread creates the task
+            lock (_initLock)
+            {
+                if (_initializeTask == null || _initializeTask.IsFaulted)
+                {
+                    _initializeTask = PerformInitialization();
+                }
+                return _initializeTask;
+            }
+        }
+
+        protected virtual async Task PerformInitialization()
+        {
+            // Use the Semaphore to ensure even with the lock above, 
+            // the actual async work is serialized.
+            await _initLock.WaitAsync();
             try
             {
-                transaction = await Database.BeginTransactionAsync();
+                // Re-check inside the lock
+                NeedsInitialize = false;
+                using var transaction = Database.BeginTransaction();
                 if (!NeedsInitialize) return;
+
                 var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
                 await Database.EnsureCreatedAsync();
                 await EnsureGlobalIdentityStart();
                 await SaveChangesAsync();
+
                 await transaction.CommitAsync();
+                NeedsInitialize = false;
+
             }
             catch (Exception ex)
             {
-                if(transaction != null) await transaction.RollbackAsync();
+                // Reset the task so a retry can occur later
+                _initializeTask = null;
                 throw new InvalidOperationException("Database creation failed.", ex);
             }
             finally
             {
-                if (transaction != null) await transaction.DisposeAsync();
+                _initLock.Release();
             }
         }
 
 
 
-
         public virtual async Task EnsureGlobalIdentityStart()
         {
-            Log.Info("Inserting 0 IDs.");
+            Console.WriteLine("Inserting 0 IDs.");
 
             // 1. Get all entities defined in your DbContext
             var entityTypes = Model.GetEntityTypes();
@@ -155,17 +184,18 @@ namespace DataLayer
 
     }
 
-    public class WrapperInterceptor() : IMaterializationInterceptor
+    public class WrapperInterceptor : IMaterializationInterceptor
     {
+        public static readonly WrapperInterceptor Instance = new();
+        private WrapperInterceptor() { }
         public object InitializedInstance(MaterializationInterceptionData materializationData, object instance)
         {
-            // If it's one of our entities, wrap it in the Smart Proxy
-            if (instance is IEntity entity)
+            if (instance is IEntity entity && materializationData.Context is TranslationContext transCtx)
             {
-                var serviceProvider = materializationData.Context.GetService<IServiceProvider>();
-                entity.Service = serviceProvider;
-                entity.ContextType = materializationData.Context.GetType();
-                //var result = Entity.Wrap(entity, serviceProvider) ?? throw new InvalidOperationException("Failed to wrap object: " + instance);
+                // Pull the Query manager directly from the context instance 
+                // that is currently doing the materializing.
+                entity.QueryManager = transCtx.Query;
+                entity.ContextType = transCtx.GetType();
                 return entity;
             }
             return instance;
@@ -196,19 +226,19 @@ namespace DataLayer
 
 
     // expected to reset only the first time the application runs and be persistent on disk
-    public class PersistentStorage(IServiceProvider service, DbContextOptions<PersistentStorage> ctx) : TranslationContext(service, ctx)
+    public class PersistentStorage(IQueryManager service, DbContextOptions<PersistentStorage> ctx) : TranslationContext(service, ctx)
     {
     }
 
 
     // expected to reset once at the beginning of application load
-    public class EphemeralStorage(IServiceProvider service, DbContextOptions<EphemeralStorage> ctx) : TranslationContext(service, ctx)
+    public class EphemeralStorage(IQueryManager service, DbContextOptions<EphemeralStorage> ctx) : TranslationContext(service, ctx)
     {
     }
 
 
     // default interface between web client and http host server
-    public class RemoteStorage(IServiceProvider service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
+    public class RemoteStorage(IQueryManager service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
     {
         public string? BaseAddress { get; set; } = null;
         protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -235,13 +265,11 @@ namespace DataLayer
         }
 
 
-        public override async Task InitializeIfNeeded()
+        protected override async Task PerformInitialization()
         {
             if (NeedsInitialize)
             {
                 NeedsInitialize = false;
-                var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
                 await Database.EnsureCreatedAsync();
             }
         }
@@ -252,7 +280,7 @@ namespace DataLayer
 
 
     // expected to reset multiple times per instance run
-    public class TestStorage(IServiceProvider service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
+    public class TestStorage(IQueryManager service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
     {
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -266,13 +294,11 @@ namespace DataLayer
         {
         }
 
-        public override async Task InitializeIfNeeded()
+        protected override async Task PerformInitialization()
         {
             if (NeedsInitialize)
             {
                 NeedsInitialize = false;
-                var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
                 await Database.EnsureCreatedAsync();
             }
         }

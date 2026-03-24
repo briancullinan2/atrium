@@ -28,7 +28,7 @@ namespace DataLayer.Utilities
             //Console.WriteLine("I hate DI: " + dbContext);
             //Console.WriteLine("I hate DI: " + internalServiceProvider);
             _current = context;
-            var Service = (_current.Context as TranslationContext)?.Service;
+            var Service = Utilities.QueryManager.Service; //(_current.Context as TranslationContext)?.Query.Service;
             //Console.WriteLine("I hate DI: " + Service);
 
             _httpClient = Service?.GetRequiredService<HttpClient>();

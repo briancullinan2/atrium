@@ -47,7 +47,7 @@ namespace Atrium.WinUI
             // 2. Catch exceptions in 'set and forget' tasks (Async)
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                Log.Error(e, e.Exception.InnerException ?? e.Exception);
+                 Log.Error(e, e.Exception.InnerException ?? e.Exception);
                 e.SetObserved(); // Prevents process crash if you want, but logs it
             };
 

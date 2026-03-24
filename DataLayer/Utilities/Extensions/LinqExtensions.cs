@@ -32,7 +32,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
         private static readonly int _maxDepth = 2;
-        private static readonly int _maxExpressionDepth = 10;
+        private static readonly int _maxExpressionDepth = 20;
 
         public static XDocument ToXDocument(this Expression expression)
         {
@@ -297,12 +297,24 @@ namespace DataLayer.Utilities.Extensions
             return Expression.Condition(test, ifTrue, ifFalse);
         }
 
+
         private static Expression? BuildProperty(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var expressionEl = (el.Element("Expression")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve property expression on " + el);
+            var expressionEl = el.Element("Expression")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("Missing expression");
             var expression = ToExpression(expressionEl);
-            var memberInfo = (el.Element("Member")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve property member on " + el);
-            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberInfo.Value, memberInfo) as PropertyInfo ?? throw new InvalidOperationException("Could not resolve method info on " + el);
+
+            // Get the actual Metadata node (Runtimepropertyinfo)
+            var memberEl = el.Element("Member")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("Missing member node");
+
+            // Pull the 'Name' attribute specifically!
+            string memberName = memberEl.Attribute("Name")?.Value
+                ?? throw new InvalidOperationException("Member name attribute missing");
+
+            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberName, memberEl) as PropertyInfo 
+                ?? throw new InvalidOperationException("Could not resolve method info on " + el);
+
             return Expression.MakeMemberAccess(expression, propertyInfo);
         }
 
@@ -332,14 +344,35 @@ namespace DataLayer.Utilities.Extensions
             throw new InvalidOperationException("Node Type not supported." + el.Attribute("NodeType"));
         }
 
+
         private static Expression? BuildLambda(XElement el, Func<XElement, Expression?> ToExpression)
         {
             var parametersEl = el.Element("Parameters")?.Elements();
-            var bodyEl = (el.Element("Body")?.Elements().FirstOrDefault()) ?? throw new InvalidOperationException("Could not resolve lambda body on " + el);
-            IEnumerable<ParameterExpression>? parameters = parametersEl?.Select(p => ToExpression(p)).Cast<ParameterExpression>();
-            var realBody = ToExpression(bodyEl) ?? throw new InvalidOperationException("Could not resolve lambda body on " + el);
+            var bodyEl = el.Element("Body")?.Elements().FirstOrDefault()
+                ?? throw new InvalidOperationException("Missing body");
+
+            var parameters = parametersEl?.Select(p => ToExpression(p)).Cast<ParameterExpression>().ToList() ?? [];
+            var realBody = ToExpression(bodyEl)
+                ?? throw new InvalidOperationException("Body resolution failed");
+
+            // 1. Get the intended Delegate Type (e.g., Func<Role, IEnumerable<Group>>)
+            var typeName = el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value
+                          ?? el.Element("Type")?.Value;
+
+            if (!string.IsNullOrEmpty(typeName))
+            {
+                var delegateType = Type.GetType(typeName);
+                if (delegateType != null)
+                {
+                    // 2. Force the lambda to implement this specific delegate
+                    return Expression.Lambda(delegateType, realBody, parameters);
+                }
+            }
+
+            // Fallback to inference if Type metadata is missing
             return Expression.Lambda(realBody, parameters);
         }
+
 
 
         private static Expression? BuildUnary(XElement el, Func<XElement, Expression?> ToExpression)
@@ -416,6 +449,11 @@ namespace DataLayer.Utilities.Extensions
             // 1. Metadata Extraction (Your logic, cleaned up)
             var declEl = el.Element("DeclaringType");
             var methodName = el.Attribute("Name")?.Value;
+            // SHIM: Turn EF internal markers back into public extensions
+            if (methodName == "NotQuiteInclude")
+            {
+                methodName = "Include";
+            }
             var typeName = declEl?.Attribute("AssemblyQualifiedName")?.Value ?? declEl?.Value;
 
             if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(typeName))
@@ -432,8 +470,8 @@ namespace DataLayer.Utilities.Extensions
 
             if (typeof(PropertyInfo).IsAssignableFrom(typeof(T)))
             {
-                var properties = declaringType.GetProperties()
-                    .Where(m => m.Name == methodName && paramsCount == 0 || m.GetIndexParameters().Length == paramsCount)
+                var properties = declaringType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                    .Where(m => m.Name == methodName && (paramsCount == 0 || m.GetIndexParameters().Length == paramsCount))
                     .ToList();
 
                 var paramsEl = el.Element("Parameters")?.Elements().ToList();
@@ -474,17 +512,22 @@ namespace DataLayer.Utilities.Extensions
                 // 3. Smart Method Selection
                 // We filter by name and count, but we prioritize Generic Method Definitions
                 // because that's what Select/Where/FirstOrDefault are.
-                var methods = declaringType.GetMethods()
+                var methods = declaringType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
                     .Where(m => m.Name == methodName && m.GetParameters().Length == paramsCount)
                     .ToList();
-
-                if (methods.Count == 0)
-                    throw new InvalidOperationException($"Method {methodName} with {paramsCount} params not found on {typeName}");
 
                 // If there's an ambiguity (e.g., Select vs Select with index), 
                 // the XML's GenericArguments will tell us if we're looking for the generic one.
                 var paramsEl = el.Element("Parameters")?.Elements().ToList();
-                if (methods.Count > 1 && paramsEl != null)
+                var expectedTypeParams = paramsEl?.Select(e =>
+                {
+                    var expectedTypeStr = e.Attribute("Type")?.Value;
+                    var expectedType = Type.GetType(expectedTypeStr!);
+                    return expectedType;
+                });
+
+
+                if (methods.Count > 1 && paramsEl != null && paramsEl.Count > 0)
                 {
                     // reduce by parameter type matching
                     methods = [.. methods.Where(m =>
@@ -494,21 +537,60 @@ namespace DataLayer.Utilities.Extensions
 
                         for (int i = 0; i < methodParams.Length; i++)
                         {
-                            var expectedTypeStr = paramsEl[i].Attribute("Type")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
-                            var expectedType = Type.GetType(expectedTypeStr) ?? throw new InvalidOperationException("Parameter not know to disambiguate.");
-
-                            // Get the actual parameter type name (handles generics like TSource)
                             var actualParamType = methodParams[i].ParameterType;
+                            var expectedType = expectedTypeParams?.ElementAtOrDefault(i);
+                            if (expectedType == null) return false;
 
-                            // We check if the XML's type string 'contains' the ParameterType name.
-                            // This handles the discrepancy between "System.Linq.IQueryable`1" 
-                            // and the fully qualified version in your XML.
-                            if (actualParamType != expectedType)
-                                return false;
+                            // HARD FILTER: If both are concrete, they must be assignable
+                            if (!actualParamType.IsGenericParameter && !actualParamType.ContainsGenericParameters)
+                            {
+                                if (!actualParamType.IsAssignableFrom(expectedType)) return false;
+                            }
+        
+                            // HARD FILTER: Generic Arity Check (The "Select Index" Killer)
+                            // If both are Generic Types (e.g., Func<..>), they must have the same number of T arguments
+                            if (actualParamType.IsGenericType && expectedType.IsGenericType)
+                            {
+                                if (actualParamType.GetGenericArguments().Length != expectedType.GetGenericArguments().Length)
+                                    return false;
+                            }
                         }
                         return true;
                     })];
                 }
+
+
+                if (methods.Count > 1 && paramsEl != null && paramsEl.Count > 0)
+                {
+                    methods = [..methods.OrderByDescending(m =>
+                    {
+                        var methodParams = m.GetParameters();
+                        int score = 0;
+
+                        for (int i = 0; i < methodParams.Length; i++)
+                        {
+                            var expectedType = expectedTypeParams?.ElementAtOrDefault(i);
+                            var actualParamType = methodParams[i].ParameterType;
+
+                            // Perfect match (usually for non-generic params like 'int' or 'string')
+                            if (actualParamType == expectedType) score += 1000;
+
+                            // Generic Definition Match (e.g., both are Expression<TDelegate>)
+                            if (actualParamType.IsGenericType && expectedType!.IsGenericType &&
+                                actualParamType.GetGenericTypeDefinition() == expectedType.GetGenericTypeDefinition())
+                            {
+                                score += 500;
+                            }
+
+                            // Name match is a good tie-breaker for IQueryable vs IEnumerable
+                            if (actualParamType.Name == expectedType?.Name) score += 100;
+                        }
+                        return score;
+                    })];
+                }
+
+                if (methods.Count == 0)
+                    throw new InvalidOperationException($"Method {methodName} with {paramsCount} params not found on {typeName}");
 
 
                 MethodInfo method;
@@ -589,6 +671,11 @@ namespace DataLayer.Utilities.Extensions
                 .Select(x => {
                     var expr = ToExpression(x)!;
 
+                    //if (expr is LambdaExpression)
+                    //{
+                        // EF Core needs the 'Quote' to treat the lambda as data, not code
+                    //    return Expression.Quote(expr);
+                    //}
                     // UNWRAP QUOTES: If the node is a Quote, we often need the 
                     // underlying Lambda for the method call to validate types correctly.
                     if (expr is UnaryExpression unary && expr.NodeType == ExpressionType.Quote)
@@ -685,34 +772,6 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        private static Expression? BuildExtension(XElement el, DbContext context, out IQueryable? set)
-        {
-            var typeName = (el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value)
-                ?? throw new InvalidOperationException("Could not resolve extension type on: " + el);
-            
-            var entityType = Type.GetType(typeName)
-                ?? throw new InvalidOperationException("Could not resolve type on: " + el);
-
-            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), [])
-                    ?.MakeGenericMethod(entityType)
-                    ?? throw new InvalidOperationException("Could not render set creator in context: " + el);
-            set = setMethod.Invoke(context, []) as IQueryable;
-            return set?.Expression;
-            /*
-
-    #pragma warning disable EF1001 // Internal EF Core API usage.
-                var entityQueryableType = typeof(EntityQueryable<>).MakeGenericType(entityType);
-    #pragma warning restore EF1001 // Internal EF Core API usage.
-
-                set = (IQueryable)Activator.CreateInstance(
-                    entityQueryableType,
-                    [context, Expression.Constant(null, entityQueryableType)] // Root expression
-                )!;
-
-                return set.Expression;
-            */
-        }
-
 
 
         private static ConstantExpression BuildConstant(XElement el, Func<XElement, Expression?> ToExpression)
@@ -725,6 +784,10 @@ namespace DataLayer.Utilities.Extensions
             if(el.Element("Value") is XElement complex)
             {
                 // TODO: 
+                if(complex.Element("Null") is not null)
+                {
+                    return Expression.Constant(null, type);
+                }
                 var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex);
                 if(val?.GetType().IsSimple() == true
                     && val?.GetType() != type)
@@ -740,7 +803,11 @@ namespace DataLayer.Utilities.Extensions
             } 
             else if (el.Attribute("Value")?.Value is string val)
             {
-                if(type.IsEnum)
+                if(type == typeof(object) && val == "null")
+                {
+                    return Expression.Constant(null, type);
+                }
+                else if(type.IsEnum)
                 {
                     return Expression.Constant(val.TryParse(type), type);
                 }
@@ -758,23 +825,44 @@ namespace DataLayer.Utilities.Extensions
 
         // Keep a cache of parameters during a single Reconstruction pass
         private static readonly Dictionary<string, ParameterExpression> _parameters = [];
-
         private static ParameterExpression BuildParameter(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var name = el.Element("Name")?.Value ?? "x";
-            var typeName = (el.Element("Type")?.Attribute("FullName")?.Value) ?? throw new InvalidOperationException("Could not resolve parameter type on: " + el); // From your 'fluffy' reflection
+            // 1. Extract Name and Type accurately from the XML
+            var name = el.Attribute("Name")?.Value ?? "x";
+            var typeEl = el.Element("Type");
+            var typeName = typeEl?.Attribute("AssemblyQualifiedName")?.Value
+                          ?? typeEl?.Attribute("FullName")?.Value
+                          ?? throw new InvalidOperationException("Could not resolve parameter type");
+
             var type = Type.GetType(typeName) ?? typeof(object);
 
-            // Important: Re-use the same ParameterExpression object for the same name
-            if (!_parameters.TryGetValue(name, out var parameter))
+            // 2. Create a unique key using BOTH Name and Type
+            var key = $"{name}_{type.FullName}";
+
+            if (!_parameters.TryGetValue(key, out var parameter))
             {
                 parameter = Expression.Parameter(type, name);
-                _parameters.Add(name, parameter);
+                _parameters.Add(key, parameter);
             }
             return parameter;
         }
 
 
+
+        private static Expression? BuildExtension(XElement el, DbContext context, out IQueryable? set)
+        {
+            var typeName = (el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value)
+                ?? throw new InvalidOperationException("Could not resolve extension type on: " + el);
+
+            var entityType = Type.GetType(typeName)
+                ?? throw new InvalidOperationException("Could not resolve type on: " + el);
+
+            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), [])
+                    ?.MakeGenericMethod(entityType)
+                    ?? throw new InvalidOperationException("Could not render set creator in context: " + el);
+            set = setMethod.Invoke(context, []) as IQueryable;
+            return set?.Expression;
+        }
 
 
         private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, DbContext context)

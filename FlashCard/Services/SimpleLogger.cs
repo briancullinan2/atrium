@@ -39,7 +39,7 @@ namespace FlashCard.Services
                 var pageManager = _services?.GetService<IPageManager>();
                 foreach (var pre in PreLog)
                 {
-                    _ = pre.Save();
+                    _ = pre.Save(_services);
                     var boringException = new Exception(pre.Title) { Source = pre.Source };
                     boringException.Data["OriginalStack"] = pre.Body;
                     pageManager?.SetError(boringException);
@@ -163,7 +163,7 @@ namespace FlashCard.Services
                 }
                 else
                 {
-                    _ = newMessage.Save();
+                    _ = newMessage.Save(_services);
                     var pageManager = Services.GetService<IPageManager>();
                     // so we get a stack trace with it
                     if (exception != null) pageManager?.SetError(exception);

@@ -70,7 +70,7 @@
         {
             //await user.Roles.First().Update();
             user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == DefaultRoles.Admin.ToString()));
-            await user.Save();
+            await user.Save(QueryManager);
         }
 
         // 1. Create the Claims for this user

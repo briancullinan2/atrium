@@ -21,7 +21,7 @@ namespace DataLayer.Entities
         //Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
         //Task<IEntity> Save();
         int? CanonicalFingerprint { get; set; }
-        internal IServiceProvider? Service { get; set; }
+        internal IQueryManager? QueryManager { get; set; }
         internal Type? ContextType { get; set; }
 
         static abstract List<PropertyInfo> Display { get; }
@@ -36,14 +36,18 @@ namespace DataLayer.Entities
     public interface IEntity<T> : IEntity where T : Entity<T>, IEntity<T>
     {
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
-        Task<T> Save();
+        Task<T> Save(IServiceProvider service);
+        Task<T> Save(IQueryManager? query = null);
     }
 
 
     public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity, IDisposable
     {
-        public IServiceProvider? Service { get; set; } = null;
+        [NotMapped]
+        public IQueryManager? QueryManager { get; set; } = null;
+        [NotMapped]
         public Type? ContextType { get; set; } = null;
+        [NotMapped]
 
         public static EntityMetadata<T> Metadata => new();
 
@@ -54,7 +58,7 @@ namespace DataLayer.Entities
 
         public void Dispose()
         {
-            Service = null;
+            QueryManager = null;
             ContextType = null;
             GC.SuppressFinalize(this);
         }
@@ -174,11 +178,15 @@ namespace DataLayer.Entities
             return (int)hash;
         }
 
-        public async Task<T> Save()
+        public async Task<T> Save(IServiceProvider? service)
         {
-            return (T)(await IEntityExtensions.Save(this as T));
+            return (T)(await IEntityExtensions.Save(this as T, service ?? Utilities.QueryManager.Service));
         }
 
+        public async Task<T> Save(IQueryManager? query = null)
+        {
+            return (T)(await IEntityExtensions.Save(this as T, query ?? QueryManager));
+        }
         /*
 
         async Task<IEntity> IEntity.Save()
