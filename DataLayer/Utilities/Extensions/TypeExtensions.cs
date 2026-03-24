@@ -98,7 +98,8 @@
             typeof(Guid)
                 }.Contains(type) ||
                 Convert.GetTypeCode(type) != TypeCode.Object ||
-                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && IsSimple(type.GetGenericArguments()[0]));
+                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) 
+                    && type.GetGenericArguments().FirstOrDefault()?.IsSimple() == true);
         }
     }
 

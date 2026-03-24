@@ -114,7 +114,7 @@ namespace Atrium
             AnkiService._services = mauiApp.Services;
             HostingService._services = mauiApp.Services;
             ChatService._services = mauiApp.Services;
-            QueryManager.Service = mauiApp.Services;
+            //QueryManager.Service = mauiApp.Services;
             SimpleLogger.Services = mauiApp.Services;
 
             // 3. Return the built app

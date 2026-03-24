@@ -29,7 +29,7 @@ namespace DataLayer.Utilities
             //Console.WriteLine("I hate DI: " + internalServiceProvider);
             _current = context;
             var Service = (_current.Context as TranslationContext)?.Service;
-            Console.WriteLine("I hate DI: " + Service);
+            //Console.WriteLine("I hate DI: " + Service);
 
             _httpClient = Service?.GetRequiredService<HttpClient>();
         }
@@ -74,7 +74,8 @@ namespace DataLayer.Utilities
             // 1. Handle IAsyncEnumerable (same as your current logic)
             if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
             {
-                var itemType = typeT.GetGenericArguments()[0];
+                var itemType = typeT.GetGenericArguments().FirstOrDefault()
+                    ?? throw new InvalidOperationException("Could not extract generic arugments.");
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
                 var task = ExecuteRemote.MakeGenericMethod(listType)
@@ -88,7 +89,7 @@ namespace DataLayer.Utilities
             if (typeof(Task).IsAssignableFrom(typeT))
             {
                 // Extract the 'int' from 'Task<int>'
-                var innerType = typeT.IsGenericType ? typeT.GetGenericArguments()[0] : typeof(object);
+                var innerType = typeT.IsGenericType ? typeT.GetGenericArguments().FirstOrDefault() ?? typeof(object) : typeof(object);
 
                 // Call ExecuteRemoteAsync<int>(...)
                 var task = ExecuteRemote.MakeGenericMethod(innerType)
@@ -173,7 +174,8 @@ namespace DataLayer.Utilities
             // If the caller (EF Core) is asking for IAsyncEnumerable<File>
             if (typeT.IsGenericType && typeof(IAsyncEnumerable<>).IsAssignableFrom(typeT.GetGenericTypeDefinition()))
             {
-                var itemType = typeT.GetGenericArguments()[0];
+                var itemType = typeT.GetGenericArguments().FirstOrDefault() 
+                    ?? throw new InvalidOperationException("Could not extract generic arugments.");
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
                 // 1. Deserialize as a concrete List first
@@ -190,10 +192,18 @@ namespace DataLayer.Utilities
                     .MakeGenericMethod(itemType);
 
                 var result2 = toAsyncMethod.Invoke(null, [finalExpression.Value]);
+                if(result2?.GetType() != typeT)
+                {
+                    Console.WriteLine("Invalid cast: " + result2?.GetType() + " to " + typeT);
+                }
                 return (T)result2!;
             }
 
             //var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+            if (finalExpression.Value?.GetType() != typeT)
+            {
+                Console.WriteLine("Invalid cast: " + finalExpression.Value?.GetType() + " to " + typeT);
+            }
             return (T)finalExpression.Value!;
         }
 

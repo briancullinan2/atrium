@@ -70,18 +70,15 @@ namespace DataLayer.Utilities
 
 
 
-        StorageType GetStorageType(Type type);
-        Type GetStorageType(StorageType type);
-
-        Type GetContextType(StorageType type);
-
-        Type? GetContextType(Type? type);
-
 
 
         Expression? ToExpression(string query, out IQueryable? set);
         Expression? ToExpression(StorageType? storage, string query, out IQueryable? set);
 
+        Task<object?> ToQueryable(string query);
+
+        Task<object?> ToQueryable(string query, StorageType? storage);
+        
         /*
         IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
 
@@ -102,11 +99,23 @@ namespace DataLayer.Utilities
 
     }
 
-
-
-    public class QueryManager : IQueryManager
+    /*
+    public static class QueryContext
     {
-        public static IServiceProvider? Service { get; set; } = null;
+
+        static abstract StorageType GetStorageType(Type type);
+        static abstract Type GetStorageType(StorageType type);
+
+        static abstract Type GetContextType(StorageType type);
+
+        static abstract Type? GetContextType(Type? type);
+    }
+
+    */
+
+    public class QueryManager(IServiceProvider service) : IQueryManager
+    {
+        protected IServiceProvider Service { get; set; } = service;
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
         protected static PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         private static readonly SemaphoreSlim _processorLock = new(1, 1);
@@ -129,12 +138,12 @@ namespace DataLayer.Utilities
         public virtual Type? EphemeralContext
         {
             get => GetContextType(_ephemeral) ?? GetContextType(EphemeralType);
-            set => _ephemeral = value?.GetType().GetGenericArguments()[0];
+            set => _ephemeral = value?.GetType().GetGenericArguments().FirstOrDefault();
         }
         public virtual Type? PersistentContext
         {
             get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
-            set => _persistent = value?.GetType().GetGenericArguments()[0];
+            set => _persistent = value?.GetType().GetGenericArguments().FirstOrDefault();
         }
         public static MethodInfo UpdateGeneric { get; }
 
@@ -149,10 +158,6 @@ namespace DataLayer.Utilities
         }
 
 
-        public QueryManager()
-        {
-
-        }
 
 
         public static async Task<object?> DetypeTask<TReturn>(Task<TReturn> Callback)
@@ -249,7 +254,7 @@ namespace DataLayer.Utilities
 
 
 
-        public Type GetStorageType(StorageType type)
+        public static Type GetStorageType(StorageType type)
         {
             return type switch
             {
@@ -263,7 +268,7 @@ namespace DataLayer.Utilities
 
 
 
-        public StorageType GetStorageType(Type type)
+        public static StorageType GetStorageType(Type type)
         {
             if (typeof(IDbContextFactory<EphemeralStorage>).IsAssignableFrom(type) || type == typeof(EphemeralStorage))
                 return StorageType.Ephemeral;
@@ -276,7 +281,7 @@ namespace DataLayer.Utilities
             throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.");
         }
 
-        public Type GetContextType(StorageType type)
+        public static Type GetContextType(StorageType type)
         {
             return type switch
             {
@@ -288,29 +293,29 @@ namespace DataLayer.Utilities
             };
         }
 
-        public Type? GetContextType(Type? type)
+        public static Type? GetContextType(Type? type)
         {
             if (type == null) return null;
             return typeof(IDbContextFactory<>).MakeGenericType(type);
         }
 
 
-        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
+        protected IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
         {
             return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
+        protected IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
         {
             return Service?.GetService(contextType) as IDbContextFactory<TContext> ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
-        protected static TContext? GetContext<TContext>() where TContext : DbContext
+        protected TContext? GetContext<TContext>() where TContext : DbContext
         {
             return GetContextFactory<TContext>()?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected static TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
+        protected TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
         {
             return GetContextFactory<TContext>(contextType)?.CreateDbContext() ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
@@ -723,7 +728,8 @@ namespace DataLayer.Utilities
                             var finalQueryable = set.Provider.CreateQuery(invokedExpression);
 
                             // Force ToList to materialize it before the context is disposed
-                            var typeParameter = typeof(TResult).GetGenericArguments()[0];
+                            var typeParameter = typeof(TResult).GetGenericArguments().FirstOrDefault()
+                                ?? throw new InvalidOperationException("Couldn't extract generic type.");
                             var toListMethod = typeof(AsyncEnumerable)
                                 .GetMethod(nameof(AsyncEnumerable.ToListAsync))
                                 ?.MakeGenericMethod(typeParameter) ?? throw new InvalidOperationException("Couldn't render ToListAsync");
@@ -991,7 +997,7 @@ namespace DataLayer.Utilities
                     var existingEntity = context.Set<TEntity>().Local.AsQueryable().FirstOrDefault(predicate);
                     // TODO: make this an overload that accepts an IEnumberable as an output and iterates over all matches?
                     existingEntity ??= context.ChangeTracker.Entries<TEntity>().AsQueryable().Select(e => e.Entity).FirstOrDefault(predicate);
-                    existingEntity ??= context.Set<TEntity>().FirstOrDefault(predicate);
+                    existingEntity ??= await context.Set<TEntity>().FirstOrDefaultAsync(predicate);
 
                     await LoadAllNavigations(context, entity, predicate, --depth);
 
@@ -1061,6 +1067,22 @@ namespace DataLayer.Utilities
             return finalExpression;
         }
 
+
+        public async Task<object?> ToQueryable(string query)
+        {
+            var context = GetContext(EphemeralStorage)
+                ?? throw new InvalidOperationException("Database context failed.");
+            return await LinqExtensions.ToQueryable(query, context);
+        }
+
+
+        public async Task<object?> ToQueryable(string query, StorageType? storage)
+        {
+            var context = GetContext(storage ?? EphemeralStorage)
+               ?? throw new InvalidOperationException("Database context failed.");
+            return await LinqExtensions.ToQueryable(query, context);
+        }
+
     }
 
 
@@ -1068,7 +1090,7 @@ namespace DataLayer.Utilities
     {
         private readonly HttpClient? _httpClient;
 
-        public RemoteManager()
+        public RemoteManager(IServiceProvider service) : base(service)
         {
             PersistentStorage = StorageType.Test;
             EphemeralStorage = StorageType.Remote;
@@ -1076,7 +1098,7 @@ namespace DataLayer.Utilities
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
 
 
-            _httpClient = Service?.GetRequiredService<HttpClient>();
+            _httpClient = Service.GetRequiredService<HttpClient>();
         }
 
         protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)

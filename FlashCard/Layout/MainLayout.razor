@@ -85,13 +85,15 @@
                 </article>
             </ChildContent>
             <ErrorContent>
-                <div class="hip-error-trace">
-                    <h3>Something went sideways in Flagstaff.</h3>
-                    <p>The Task failed successfully.</p>
-                    <button @onclick="() => _errorBoundary?.Recover()">Try Again</button>
+                <article class="content course-container">
+                    <div class="flash-card hip-error-trace">
+                        <h3>Something went sideways.</h3>
+                        <p>the Task failed successfully.</p>
+                        <button @onclick="() => _errorBoundary?.Recover()">Try Again</button>
                     
-                    <pre>@_lastException?.StackTrace</pre>
-                </div>
+                        <pre>@_lastException?.StackTrace</pre>
+                    </div>
+                </article>
             </ErrorContent>
         </ErrorBoundary>
 

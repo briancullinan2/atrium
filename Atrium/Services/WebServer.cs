@@ -97,6 +97,21 @@ namespace Atrium.Services
                     webBuilder.Environment,
                     webBuilder.Configuration);
 
+
+                string myAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+                webBuilder.Services.AddCors(options =>
+                {
+                    options.AddPolicy(name: myAllowSpecificOrigins,
+                                      policy =>
+                                      {
+                                          policy.WithOrigins("https://study.pryor.games",
+                                                              "http://localhost:8080") // Your local dev port
+                                                .AllowAnyHeader()
+                                                .AllowAnyMethod();
+                                      });
+                });
+
                 var webApp = webBuilder.Build();
 
                 var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();

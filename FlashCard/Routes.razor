@@ -11,7 +11,14 @@
                     <RedirectToLogin />
                 </NotAuthorized>
                 <Authorizing>
-                    <div class="loading-shimmer">Verifying Identity...</div>
+                    <main>
+                        <article class="content course-container">
+                            <div class="flash-card hip-error-trace">
+                                <h3 class="loading-shimmer">Verifying Identity...</h3>
+                                <p>If you are not redirected automatically, <a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Click here</a>.</p>
+                            </div>
+                        </article>
+                    </main>
                 </Authorizing>
             </AuthorizeRouteView>
             @*<RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />*@

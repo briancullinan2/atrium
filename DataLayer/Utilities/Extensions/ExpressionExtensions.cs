@@ -119,7 +119,7 @@ namespace DataLayer.Utilities.Extensions
             if (type.IsArray) return type.GetElementType();
             return type.GetInterfaces()
                        .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                       ?.GetGenericArguments()[0];
+                       ?.GetGenericArguments().FirstOrDefault();
         }
 
 

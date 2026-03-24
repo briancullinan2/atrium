@@ -10,11 +10,10 @@ using System.Text.Json;
 
 namespace Atrium.Services
 {
-    internal class QueryService : QueryManager
+    internal static class QueryService //: QueryManager
     {
-
 #if WINDOWS
-        public async static Task RespondQuery(HttpContext context)
+        public async static Task RespondQuery(HttpContext context, IQueryManager Query)
         {
             try
             {
@@ -28,8 +27,8 @@ namespace Atrium.Services
                 }
 
                 // TODO: add marshalling rules here
-
-                var results = await LinqExtensions.ToQueryable(rawXml);
+                var queryManager = QueryManager.GetContextType(Query.EphemeralStorage);
+                var results = await Query.ToQueryable(rawXml);
 
                 context.Response.ContentType = "application/json";
                 var xml = Expression.Constant(results).ToXDocument().ToString();

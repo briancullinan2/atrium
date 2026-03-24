@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 namespace DataLayer.Entities
 {
 
-    public interface IEntity
+    public interface IEntity : IDisposable
     {
         //abstract internal static IEntity Create(IEntity target);
         //abstract internal static IEntity Wrap(IEntity target);
@@ -21,6 +21,8 @@ namespace DataLayer.Entities
         //Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
         //Task<IEntity> Save();
         int? CanonicalFingerprint { get; set; }
+        internal IServiceProvider? Service { get; set; }
+        internal Type? ContextType { get; set; }
 
         static abstract List<PropertyInfo> Display { get; }
         public static abstract List<PropertyInfo> ListDisplay(Type type);
@@ -38,12 +40,24 @@ namespace DataLayer.Entities
     }
 
 
-    public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity
+    public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity, IDisposable
     {
+        public IServiceProvider? Service { get; set; } = null;
+        public Type? ContextType { get; set; } = null;
 
         public static EntityMetadata<T> Metadata => new();
 
         public int? CanonicalFingerprint { get; set; } = null;
+
+        //[Obsolete("Use context.Create<Role>() to ensure the RemoteQuery bridge is initialized.", error: true)] 
+        protected Entity() { }
+
+        public void Dispose()
+        {
+            Service = null;
+            ContextType = null;
+            GC.SuppressFinalize(this);
+        }
 
         [NotMapped]
         public static List<PropertyInfo> Database { get => ListDatabase(typeof(T)); }

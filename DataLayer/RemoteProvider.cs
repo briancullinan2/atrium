@@ -13,7 +13,8 @@ namespace DataLayer
         public IQueryable CreateQuery(Expression expression)
         {
             // This creates a new IQueryable tied to THIS provider
-            var elementType = expression.Type.GetGenericArguments()[0];
+            var elementType = expression.Type.GetGenericArguments().FirstOrDefault()
+                ?? throw new InvalidOperationException("Could not extract generic arugments.");
             return (IQueryable)Activator.CreateInstance(
                 typeof(EntityQueryable<>).MakeGenericType(elementType),
                 [this, expression]
@@ -22,7 +23,8 @@ namespace DataLayer
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
         {
-            var elementType = expression.Type.GetGenericArguments()[0];
+            var elementType = expression.Type.GetGenericArguments().FirstOrDefault()
+                ?? throw new InvalidOperationException("Could not extract generic arugments.");
             return (IQueryable<TElement>)Activator.CreateInstance(
                 typeof(EntityQueryable<>).MakeGenericType(elementType),
                 [this, expression]

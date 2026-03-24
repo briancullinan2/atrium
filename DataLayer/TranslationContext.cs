@@ -2,6 +2,7 @@
 using DataLayer.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -43,6 +44,7 @@ namespace DataLayer
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
+            options.AddInterceptors(new WrapperInterceptor());
         }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -153,8 +155,7 @@ namespace DataLayer
 
     }
 
-    /*
-    public class WrapperInterceptor : IMaterializationInterceptor
+    public class WrapperInterceptor() : IMaterializationInterceptor
     {
         public object InitializedInstance(MaterializationInterceptionData materializationData, object instance)
         {
@@ -162,13 +163,14 @@ namespace DataLayer
             if (instance is IEntity entity)
             {
                 var serviceProvider = materializationData.Context.GetService<IServiceProvider>();
-                var result = Entity.Wrap(entity, serviceProvider) ?? throw new InvalidOperationException("Failed to wrap object: " + instance);
-                return result;
+                entity.Service = serviceProvider;
+                entity.ContextType = materializationData.Context.GetType();
+                //var result = Entity.Wrap(entity, serviceProvider) ?? throw new InvalidOperationException("Failed to wrap object: " + instance);
+                return entity;
             }
             return instance;
         }
     }
-    */
 
 
     public partial class EntityMetadata

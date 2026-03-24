@@ -20,12 +20,12 @@ namespace DataLayer.Utilities.Extensions
             {
                 return default!;
             }
-            if (QueryManager.Service == null)
+            if (entity.Service == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }
 
-            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            var Query = entity.Service.GetRequiredService<IQueryManager>();
             return await Query.Update(Query.EphemeralStorage, entity);
         }
 
@@ -61,6 +61,22 @@ namespace DataLayer.Utilities.Extensions
         }
         */
 
+        public static T Create<T>(this TranslationContext context) where T : Entity<T>, IEntity<T>, IEntity
+        {
+            // Use reflection to hit the protected/private constructor
+            var entity = Activator.CreateInstance(typeof(T), nonPublic: true) as T
+                ?? throw new InvalidOperationException($"Could not instantiate {typeof(T).Name}");
+
+            // Inject the context (The "Stamp")
+            entity.Service = context.Service;
+            entity.ContextType = context.GetType();
+
+            // Track it immediately
+            context.Set<T>().Add(entity);
+
+            return entity;
+        }
+
 
         public static async Task<T> Save<T>(this T? ent) where T : Entity<T>, IEntity<T>, IEntity
         {
@@ -68,11 +84,11 @@ namespace DataLayer.Utilities.Extensions
             {
                 return default!;
             }
-            if (QueryManager.Service == null)
+            if (ent.Service == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }
-            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            var Query = ent.Service.GetRequiredService<IQueryManager>();
             return await Query.Save(Query.EphemeralStorage, ent);
         }
 
@@ -113,17 +129,31 @@ namespace DataLayer.Utilities.Extensions
             return results;
         }
         */
+        /*
+        public static async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(Expression<Func<TSet, bool>> qualifier)
+            where TFrom : TranslationContext
+            where TTo : TranslationContext
+            where TSet : Entity<TSet>
+        {
+            if (contextFrom.Service == null)
+            {
+                throw new InvalidOperationException("No service provider.");
+            }
+            var Query = contextFrom.Service.GetRequiredService<IQueryManager>();
+            return await Query.Synchronize(contextFrom, contextTo, qualifier);
+        }
+        */
 
         public static async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(this TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
             where TFrom : TranslationContext
             where TTo : TranslationContext
             where TSet : Entity<TSet>
         {
-            if (QueryManager.Service == null)
+            if (contextFrom.Service == null)
             {
                 throw new InvalidOperationException("No service provider.");
             }
-            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            var Query = contextFrom.Service.GetRequiredService<IQueryManager>();
             return await Query.Synchronize(contextFrom, contextTo, qualifier);
         }
 

@@ -436,6 +436,33 @@ namespace DataLayer.Utilities.Extensions
                     .Where(m => m.Name == methodName && paramsCount == 0 || m.GetIndexParameters().Length == paramsCount)
                     .ToList();
 
+                var paramsEl = el.Element("Parameters")?.Elements().ToList();
+                if (properties.Count > 1 && paramsEl != null)
+                {
+                    // reduce by parameter type matching
+                    properties = [.. properties.Where(m =>
+                    {
+                        var methodParams = m.GetIndexParameters();
+                        if (methodParams.Length != paramsEl.Count) return false;
+
+                        for (int i = 0; i < methodParams.Length; i++)
+                        {
+                            var expectedTypeStr = paramsEl[i].Attribute("Type")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
+                            var expectedType = Type.GetType(expectedTypeStr) ?? throw new InvalidOperationException("Parameter not know to disambiguate.");
+
+                            // Get the actual parameter type name (handles generics like TSource)
+                            var actualParamType = methodParams[i].ParameterType;
+
+                            // We check if the XML's type string 'contains' the ParameterType name.
+                            // This handles the discrepancy between "System.Linq.IQueryable`1" 
+                            // and the fully qualified version in your XML.
+                            if (actualParamType != expectedType)
+                                return false;
+                        }
+                        return true;
+                    })];
+                }
+
                 if (properties.Count == 0)
                     throw new InvalidOperationException($"Method {methodName} with {paramsCount} params not found on {typeName}");
 
@@ -456,13 +483,40 @@ namespace DataLayer.Utilities.Extensions
 
                 // If there's an ambiguity (e.g., Select vs Select with index), 
                 // the XML's GenericArguments will tell us if we're looking for the generic one.
-                var genericsEl = el.Element("GenericArguments");
-                MethodInfo method;
+                var paramsEl = el.Element("Parameters")?.Elements().ToList();
+                if (methods.Count > 1 && paramsEl != null)
+                {
+                    // reduce by parameter type matching
+                    methods = [.. methods.Where(m =>
+                    {
+                        var methodParams = m.GetParameters();
+                        if (methodParams.Length != paramsEl.Count) return false;
 
+                        for (int i = 0; i < methodParams.Length; i++)
+                        {
+                            var expectedTypeStr = paramsEl[i].Attribute("Type")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
+                            var expectedType = Type.GetType(expectedTypeStr) ?? throw new InvalidOperationException("Parameter not know to disambiguate.");
+
+                            // Get the actual parameter type name (handles generics like TSource)
+                            var actualParamType = methodParams[i].ParameterType;
+
+                            // We check if the XML's type string 'contains' the ParameterType name.
+                            // This handles the discrepancy between "System.Linq.IQueryable`1" 
+                            // and the fully qualified version in your XML.
+                            if (actualParamType != expectedType)
+                                return false;
+                        }
+                        return true;
+                    })];
+                }
+
+
+                MethodInfo method;
+                var genericsEl = el.Element("GenericArguments");
                 if (genericsEl != null && genericsEl.HasElements)
                 {
                     method = methods.FirstOrDefault(m => m.IsGenericMethodDefinition)
-                        ?? methods.First();
+                        ?? methods.FirstOrDefault() ?? throw new InvalidOperationException("Could not resolve method: " + el);
 
                     var genericTypes = genericsEl.Elements()
                         .Select(g => Type.GetType(g.Attribute("AssemblyQualifiedName")?.Value ?? g.Value))
@@ -473,7 +527,7 @@ namespace DataLayer.Utilities.Extensions
                 }
                 else
                 {
-                    method = methods.First();
+                    method = methods.FirstOrDefault() ?? throw new InvalidOperationException("Could not resolve method: " + el);
                 }
 
                 return method as T;
@@ -532,7 +586,18 @@ namespace DataLayer.Utilities.Extensions
 
             // 3. Resolve Arguments
             var args = el.Element("Arguments")?.Elements()
-                .Select(x => ToExpression(x)!)
+                .Select(x => {
+                    var expr = ToExpression(x)!;
+
+                    // UNWRAP QUOTES: If the node is a Quote, we often need the 
+                    // underlying Lambda for the method call to validate types correctly.
+                    if (expr is UnaryExpression unary && expr.NodeType == ExpressionType.Quote)
+                    {
+                        return unary.Operand;
+                    }
+
+                    return expr;
+                })
                 .ToList() ?? [];
 
             // 4. Use the static factory directly - much cleaner than a factoryMap
@@ -563,11 +628,14 @@ namespace DataLayer.Utilities.Extensions
                 || (typeof(IEnumerable).IsAssignableFrom(targetType) 
                     && targetType != typeof(string)))
             {
+                var typeArgument = targetType.GetGenericArguments().FirstOrDefault();
+
                 var values = el.Elements().Select(e => {
                     if (e.Name == "Null") return null;
                     var typeName = e.Attribute("ValueType")?.Value
                         ?? throw new InvalidOperationException("Could not resolve type name on: " + e);
                     var entityType = Type.GetType(typeName)
+                        ?? typeArgument
                         ?? throw new InvalidOperationException("Could not resolve type on: " + e);
                     if (e.Attribute("Value")?.Value == "Null")
                         return null;
@@ -755,21 +823,18 @@ namespace DataLayer.Utilities.Extensions
             return ToXDocument(query.Expression).ToString();
         }
 
-        public static async Task<object?> ToQueryable(string query, StorageType? persist = StorageType.Ephemeral)
+        public static async Task<object?> ToQueryable(string query, DbContext context)
         {
-            if (QueryManager.Service == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
-
             // 1. Clear the parameter cache for this specific run
             _parameters.Clear();
 
-            using var scope = QueryManager.Service.CreateScope();
-            var Query = QueryManager.Service.GetRequiredService<IQueryManager>();
+            using XmlReader reader = XmlReader.Create(new StringReader(query));
+            _ = reader.MoveToContent();
+            XElement root = (XElement)XNode.ReadFrom(reader);
 
             // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
-            Expression? finalExpression = Query.ToExpression(persist, query, out IQueryable? set) 
+            Expression? finalExpression = ToExpression(root, context, out IQueryable ? set)
+
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
             if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
                 && !finalExpression.Type.IsArray
