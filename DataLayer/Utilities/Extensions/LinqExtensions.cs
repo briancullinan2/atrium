@@ -199,7 +199,17 @@ namespace DataLayer.Utilities.Extensions
                         var propElement = new XElement(prop.Name);
                         foreach (var item in list)
                         {
-                            propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
+                            if (item == null || item.GetType().IsSimple() == true)
+                            {
+                                propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
+                                    new XAttribute("Value", item?.ToString() ?? string.Empty),
+                                    new XAttribute("ValueType", item?.GetType().AssemblyQualifiedName ?? "")
+                                ));
+                            }
+                            else
+                            {
+                                propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
+                            }
                         }
                         element.Add(propElement);
 
@@ -549,13 +559,15 @@ namespace DataLayer.Utilities.Extensions
                 return RebuildMember<PropertyInfo>(el);
 
 
-            if (targetType == typeof(ValueBuffer))
+            if (targetType == typeof(ValueBuffer)
+                || typeof(IEnumerable).IsAssignableFrom(targetType))
             {
                 var values = el.Elements().Select(e => {
+                    if (e.Name == "Null") return null;
                     var typeName = e.Attribute("ValueType")?.Value
                         ?? throw new InvalidOperationException("Could not resolve type name on: " + e);
                     var entityType = Type.GetType(typeName)
-                        ?? throw new InvalidOperationException("Could not resolve type on: " + el);
+                        ?? throw new InvalidOperationException("Could not resolve type on: " + e);
                     if (e.Attribute("Value")?.Value == "Null")
                         return null;
                     else if (entityType.IsSimple())
@@ -563,7 +575,14 @@ namespace DataLayer.Utilities.Extensions
                     else 
                         return ResolveMetadata(entityType, e.Attribute("Value")?.Value, e);
                 }).ToArray();
-                return new ValueBuffer(values);
+                
+                
+                if (typeof(Array).IsAssignableFrom(targetType))
+                    return values.ToArray();
+                if (typeof(IEnumerable).IsAssignableFrom(targetType))
+                    return values.ToList();
+                if(targetType == typeof(ValueBuffer))
+                    return new ValueBuffer(values);
             }
 
 
