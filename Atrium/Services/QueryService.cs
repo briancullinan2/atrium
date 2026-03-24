@@ -1,6 +1,10 @@
 ﻿using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
+
 #if WINDOWS
 using Microsoft.AspNetCore.Http;
+using System.Linq.Expressions;
+
 #endif
 using System.Text.Json;
 
@@ -14,8 +18,6 @@ namespace Atrium.Services
         {
             try
             {
-                context.Response.ContentType = "application/json";
-
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
                 string? rawXml = JsonSerializer.Deserialize<string>(jsonQuery);
@@ -29,8 +31,9 @@ namespace Atrium.Services
 
                 var results = await DataLayer.Utilities.Extensions.LinqExtensions.ToQueryable(rawXml);
 
-                var json = JsonSerializer.Serialize(results, JsonHelper.Default);
-
+                context.Response.ContentType = "application/json";
+                var xml = Expression.Constant(results).ToXDocument().ToString();
+                var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)

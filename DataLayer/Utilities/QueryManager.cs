@@ -633,15 +633,58 @@ namespace DataLayer.Utilities
         }
         */
 
-
-        public async Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>
+        public async Task<IQueryable<TEntity>> Query<TEntity>(
+            Expression<Func<TEntity, bool>>? query = null,
+            int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Query(EphemeralStorage, (IQueryable<TEntity> entities) => query != null ? entities.Where(query) : entities, priority);
+            if (query == null)
+            {
+                // Return a simple identity: entities => entities
+                return await Query(EphemeralStorage, (IQueryable<TEntity> entities) => entities, priority);
+            }
+
+            // MANUALLY build the call to .Where(query) 
+            // This prevents the compiler from wrapping 'query' in a DisplayClass lookup.
+            var parameter = Expression.Parameter(typeof(IQueryable<TEntity>), "entities");
+
+            // This creates: entities.Where(query)
+            var whereCall = Expression.Call(
+                typeof(Queryable),
+                nameof(Queryable.Where),
+                [typeof(TEntity)],
+                parameter,
+                Expression.Quote(query) // Quote ensures the Lambda is treated as data/logic
+            );
+
+            // This creates the final Lambda: (IQueryable<TEntity> entities) => entities.Where(query)
+            var lambda = Expression.Lambda<Func<IQueryable<TEntity>, IQueryable<TEntity>>>(whereCall, parameter);
+
+            return await Query(EphemeralStorage, lambda, priority);
         }
+
+
 
         public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Query(EphemeralStorage, query, priority);
+        }
+
+        public class ParameterUpdateVisitor : ExpressionVisitor
+        {
+            private readonly ParameterExpression _oldParam;
+            private readonly Expression _newExpression;
+
+            public ParameterUpdateVisitor(ParameterExpression oldParam, Expression newExpression)
+            {
+                _oldParam = oldParam;
+                _newExpression = newExpression;
+            }
+
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                if (node == _oldParam) return _newExpression;
+                return base.VisitParameter(node);
+            }
         }
 
 
@@ -688,7 +731,10 @@ namespace DataLayer.Utilities
                         using var transaction = context.Database.BeginTransaction();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-                        var invokedExpression = Expression.Invoke(query, set.Expression);
+                        var visitor = new ParameterUpdateVisitor(query.Parameters[0], set.Expression);
+                        var bodyWithSetInlined = visitor.Visit(query.Body);
+                        var invokedExpression = bodyWithSetInlined;
+                        //var invokedExpression = Expression.Invoke(query, set.Expression);
 
                         TResult? result = default;
 

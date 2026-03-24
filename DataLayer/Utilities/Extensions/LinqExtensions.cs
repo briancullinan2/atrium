@@ -245,6 +245,7 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.Quote, BuildUnary },
                 { ExpressionType.Lambda, BuildLambda },
                 { ExpressionType.Equal, BuildLeftRight },
+                { ExpressionType.NotEqual, BuildLeftRight },
                 { ExpressionType.Convert, BuildUnary },
                 { ExpressionType.MemberAccess, BuildProperty },
                 { ExpressionType.OrElse, BuildLeftRight },
@@ -252,6 +253,7 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.Invoke, BuildInvocation },
                 { ExpressionType.Conditional, BuildConditional },
                 { ExpressionType.NewArrayInit, BuildNewArrayInit },
+                { ExpressionType.AndAlso, BuildLeftRight }
 
                 //{ExpressionType.Extension, BuildExtension}
             };
@@ -309,6 +311,10 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("Could not resolve right expression on " + el);
             }
+            if (el.Attribute("NodeType")?.Value == "AndAlso")
+                return Expression.AndAlso(leftOperand, rightOperand);
+            if (el.Attribute("NodeType")?.Value == "NotEqual")
+                return Expression.NotEqual(leftOperand, rightOperand);
             if (el.Attribute("NodeType")?.Value == "Equal")
                 return Expression.Equal(leftOperand, rightOperand);
             if (el.Attribute("NodeType")?.Value == "OrElse")
@@ -574,7 +580,7 @@ namespace DataLayer.Utilities.Extensions
             var entityType = Type.GetType(typeName)
                 ?? throw new InvalidOperationException("Could not resolve type on: " + el);
 
-            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set))
+            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), [])
                     ?.MakeGenericMethod(entityType)
                     ?? throw new InvalidOperationException("Could not render set creator in context: " + el);
             set = setMethod.Invoke(context, []) as IQueryable;
@@ -608,8 +614,13 @@ namespace DataLayer.Utilities.Extensions
                 // TODO: 
                 var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex);
                 return Expression.Constant(Convert.ChangeType(val, type), type);
-            } else if (el.Attribute("Value")?.Value is string val)
+            } 
+            else if (el.Attribute("Value")?.Value is string val)
             {
+                if(type.IsEnum)
+                {
+                    return Expression.Constant(val.TryParse(type), type);
+                }
                 return Expression.Constant(Convert.ChangeType(val, type), type);
             }
             throw new InvalidOperationException("Cannot extract constant value.");
@@ -709,7 +720,9 @@ namespace DataLayer.Utilities.Extensions
             // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
             Expression? finalExpression = root.ToExpression(context, out IQueryable? set) 
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
-            if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type) && finalExpression.Type != typeof(string))
+            if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
+                && !finalExpression.Type.IsArray
+                && finalExpression.Type != typeof(string))
             {
                 // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
                 var finalQueryable = set?.Provider.CreateQuery(finalExpression);

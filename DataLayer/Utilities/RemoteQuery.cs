@@ -1,10 +1,13 @@
 ﻿using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace DataLayer.Utilities
 {
@@ -16,8 +19,10 @@ namespace DataLayer.Utilities
         public static IServiceProvider? Service { get; set; } = null;
         public static MethodInfo ExecuteRemote { get; }
 
+
         public RemoteQuery()
         {
+            //_context = context;
             _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
@@ -117,17 +122,36 @@ namespace DataLayer.Utilities
             }
         }
 
+
+
         public async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken cancellationToken = default)
         {
             if (_httpClient == null)
             {
                 throw new InvalidOperationException("No Http client.");
             }
+            if (Service == null)
+            {
+                throw new InvalidOperationException("No DbContext provider.");
+            }
 
             Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
             var response = await _httpClient.PostAsJsonAsync("api/query", serialized, cancellationToken);
             _ = response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
+
+            using XmlReader reader = XmlReader.Create(new StringReader(content ?? string.Empty));
+            _ = reader.MoveToContent();
+            XElement root = (XElement)XNode.ReadFrom(reader);
+
+            var context = Service.GetRequiredService<IQueryManager>().GetContext<RemoteStorage>()
+                ?? throw new InvalidOperationException("Unable to render remote context.");
+
+
+            ConstantExpression? finalExpression = root.ToExpression(context, out IQueryable? set) as ConstantExpression
+                ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
+
 
             // The key is checking the requested type T
             var typeT = typeof(T);
@@ -139,8 +163,7 @@ namespace DataLayer.Utilities
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
                 // 1. Deserialize as a concrete List first
-                var list = await response.Content.ReadFromJsonAsync(listType, cancellationToken: cancellationToken);
-                if (list == null && Nullable.GetUnderlyingType(typeof(T)) == null)
+                if (finalExpression.Value == null && Nullable.GetUnderlyingType(typeof(T)) == null)
                 {
                     throw new InvalidOperationException("Server returned null and nobody knows why.");
                 }
@@ -152,12 +175,12 @@ namespace DataLayer.Utilities
                     .First(m => m.Name == nameof(AsyncEnumerable.ToAsyncEnumerable) && m.IsGenericMethod)
                     .MakeGenericMethod(itemType);
 
-                var result2 = toAsyncMethod.Invoke(null, [list]);
+                var result2 = toAsyncMethod.Invoke(null, [finalExpression.Value]);
                 return (T)result2!;
             }
 
-            var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
-            return result!;
+            //var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+            return (T)finalExpression.Value!;
         }
 
         public Func<QueryContext, TResult> CreateCompiledAsyncQuery<TResult>(Expression query)
