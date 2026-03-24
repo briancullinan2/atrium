@@ -164,7 +164,7 @@ namespace DataLayer.Utilities
 
         public async Task Enqueue(Func<Task> callback, int priority = 5)
         {
-            await Enqueue<bool>(async () => { await callback(); return true; }, priority);
+            await Enqueue(async () => { await callback(); return true; }, priority);
         }
 
 
@@ -1026,7 +1026,7 @@ namespace DataLayer.Utilities
 
         public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Update<TEntity>(EphemeralStorage, key, priority);
+            return Update(EphemeralStorage, key, priority);
         }
 
 

@@ -92,7 +92,7 @@ namespace Atrium.Logging
 #endif
             if(!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
             {
-                var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as Log.ILog;
+                var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as ILog;
                 parentLogger?.Category = category;
                 parentLogger?.Filepath = filePath;
             }

@@ -9,8 +9,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace DataLayer
 {
     // This context never connects to a DB; it just holds your Entity mappings
-    public class TranslationContext(DbContextOptions ctx) : DbContext(ctx)
+    public class TranslationContext(IServiceProvider service, DbContextOptions ctx) : DbContext(ctx)
     {
+        public IServiceProvider Service { get; set; } = service;
         public DbSet<Permission>? Permissions { get; set; }
         public DbSet<Role>? Roles { get; set; }
         public DbSet<User>? Users { get; set; }
@@ -193,20 +194,21 @@ namespace DataLayer
 
 
     // expected to reset only the first time the application runs and be persistent on disk
-    public class PersistentStorage(DbContextOptions<PersistentStorage> ctx) : TranslationContext(ctx)
+    public class PersistentStorage(IServiceProvider service, DbContextOptions<PersistentStorage> ctx) : TranslationContext(service, ctx)
     {
     }
 
 
     // expected to reset once at the beginning of application load
-    public class EphemeralStorage(DbContextOptions<EphemeralStorage> ctx) : TranslationContext(ctx)
+    public class EphemeralStorage(IServiceProvider service, DbContextOptions<EphemeralStorage> ctx) : TranslationContext(service, ctx)
     {
     }
 
 
     // default interface between web client and http host server
-    public class RemoteStorage(DbContextOptions<RemoteStorage> ctx) : TranslationContext(ctx)
+    public class RemoteStorage(IServiceProvider service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
     {
+        public string? BaseAddress { get; set; } = null;
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
@@ -214,8 +216,20 @@ namespace DataLayer
             _ = options.UseInMemoryDatabase("RemoteShell");
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
 #pragma warning disable EF1001 // Internal EF Core API usage.
-            _ = options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>();
+            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
 #pragma warning restore EF1001 // Internal EF Core API usage.
+            /*options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>(
+            (IServiceProvider internalServiceProvider, IQueryCompiler originalCompiler) =>
+            {
+                var currentContext = internalServiceProvider.GetRequiredService<ICurrentDbContext>();
+
+                return new Utilities.RemoteQuery(
+                    originalCompiler,
+                    currentContext,
+                    remoteUrl
+                );
+            });
+            */
         }
 
 
@@ -236,7 +250,7 @@ namespace DataLayer
 
 
     // expected to reset multiple times per instance run
-    public class TestStorage(DbContextOptions<TestStorage> ctx) : TranslationContext(ctx)
+    public class TestStorage(IServiceProvider service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
     {
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {

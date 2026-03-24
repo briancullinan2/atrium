@@ -227,7 +227,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
         public static IEnumerable<string> ToSearch<TEntity>(this TEntity _, int maxDepth = 2, string prefix = "")
-            where TEntity : Entities.Entity<TEntity>
+            where TEntity : Entity<TEntity>
         {
             return ToSearch(typeof(TEntity), maxDepth, prefix);
         }

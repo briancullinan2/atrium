@@ -7,7 +7,7 @@ namespace DataLayer.Generators
 {
     public class Permissions : IGenerator<Permission>
     {
-        public static IEnumerable<Entities.Permission> Generate()
+        public static IEnumerable<Permission> Generate()
         {
             return [
                 // Display Definitions
@@ -78,14 +78,14 @@ namespace DataLayer.Generators
             ];
         }
 
-        private static Entities.Permission Create(DefaultPermissions permission, string description, Type? type = null)
+        private static Permission Create(DefaultPermissions permission, string description, Type? type = null)
         {
             return Create(permission, description, true, type);
         }
 
-        private static Entities.Permission Create(DefaultPermissions permission, string description, bool isActionable, Type? type = null)
+        private static Permission Create(DefaultPermissions permission, string description, bool isActionable, Type? type = null)
         {
-            return new Entities.Permission
+            return new Permission
             {
                 Name = permission.ToString(),
                 Description = description,

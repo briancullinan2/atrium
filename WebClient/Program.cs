@@ -44,7 +44,7 @@ builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
 
 var app = builder.Build();
 // FUCK DI
-RemoteQuery.Service = app.Services;
+//RemoteQuery.Service = app.Services;
 FileManager._service = app.Services;
 AnkiService._service = app.Services;
 HostingService._service = app.Services;

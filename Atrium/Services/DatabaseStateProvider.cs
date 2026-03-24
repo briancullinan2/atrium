@@ -40,13 +40,13 @@ namespace Atrium.Services
             else
 #endif
             {
-                var currentSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
+                var currentSetting = await _query.Query<Setting>(s =>
                     s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString());
                 sessionId = currentSetting?.FirstOrDefault()?.Value;
 
                 if (sessionId == null)
                 {
-                    var autoLoginSetting = await _query.Query<DataLayer.Entities.Setting>(s =>
+                    var autoLoginSetting = await _query.Query<Setting>(s =>
                         s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString());
                     sessionId = autoLoginSetting?.FirstOrDefault()?.Value;
                 }
@@ -56,7 +56,7 @@ namespace Atrium.Services
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
 
             // 2. Fetch the session from your DataLayer.Entities.Session table
-            var session = await _query.Query<DataLayer.Entities.Session>(s =>
+            var session = await _query.Query<Session>(s =>
                 s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow);
 
             if (session.FirstOrDefault() == null)
@@ -235,7 +235,7 @@ namespace Atrium.Services
                             }
 
                             // Query your Session entity
-                            var session = await query.Query<DataLayer.Entities.Session>(s => s.Id == sessionId);
+                            var session = await query.Query<Session>(s => s.Id == sessionId);
                             var activeSession = session.FirstOrDefault();
 
                             if (activeSession == null || (activeSession.Time + TimeSpan.FromSeconds(activeSession.Lifetime)) < DateTimeOffset.UtcNow)

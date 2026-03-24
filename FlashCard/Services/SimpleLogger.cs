@@ -19,7 +19,7 @@ namespace FlashCard.Services
     }
 
 
-    public class SimpleLogger() : FlashCard.Services.ILog
+    public class SimpleLogger() : ILog
     {
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
 

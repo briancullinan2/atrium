@@ -162,7 +162,7 @@ namespace DataLayer.Entities
 
         public async Task<T> Save()
         {
-            return (T)(await IEntityExtensions.Save<T>(this as T));
+            return (T)(await IEntityExtensions.Save(this as T));
         }
 
         /*

@@ -1,5 +1,6 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,14 +16,21 @@ namespace DataLayer.Utilities
     public class RemoteQuery : IQueryCompiler
 #pragma warning restore EF1001 // Internal EF Core API usage.
     {
+        private readonly ICurrentDbContext _current;
         private readonly HttpClient? _httpClient;
-        public static IServiceProvider? Service { get; set; } = null;
+        //public static IServiceProvider? Service { get; set; } = null;
         public static MethodInfo ExecuteRemote { get; }
 
 
-        public RemoteQuery()
+        public RemoteQuery(ICurrentDbContext context)
         {
             //_context = context;
+            //Console.WriteLine("I hate DI: " + dbContext);
+            //Console.WriteLine("I hate DI: " + internalServiceProvider);
+            _current = context;
+            var Service = (_current.Context as TranslationContext)?.Service;
+            Console.WriteLine("I hate DI: " + Service);
+
             _httpClient = Service?.GetRequiredService<HttpClient>();
         }
 
@@ -97,7 +105,7 @@ namespace DataLayer.Utilities
                     .Invoke(this, [query, cancellationToken]) as Task<TResult>
                     ?? throw new InvalidOperationException("Failed to create TResult query task: " + typeT);
 
-                return (TResult)task.Result!;
+                return task.Result;
             }
         }
 
@@ -130,24 +138,33 @@ namespace DataLayer.Utilities
             {
                 throw new InvalidOperationException("No Http client.");
             }
-            if (Service == null)
-            {
-                throw new InvalidOperationException("No DbContext provider.");
-            }
+            //if (Service == null)
+            //{
+            //    throw new InvalidOperationException("No DbContext provider.");
+            //}
 
             Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
-            var response = await _httpClient.PostAsJsonAsync("/api/query", serialized, cancellationToken);
+            var baseAddress = (_current.Context as RemoteStorage)?.BaseAddress;
+            var queryAddress = (!string.IsNullOrEmpty(baseAddress) ? (baseAddress + (!baseAddress.EndsWith('/') ? '/' : "")) : "") + "/api/query";
+
+            var response = await _httpClient.PostAsJsonAsync(queryAddress, serialized, cancellationToken);
+
             _ = response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
 
-            
-            var Query = Service.GetRequiredService<IQueryManager>()
-                ?? throw new InvalidOperationException("Unable to render query manager.");
+            using XmlReader reader = XmlReader.Create(new StringReader(content ?? string.Empty));
+            _ = reader.MoveToContent();
+            XElement root = (XElement)XNode.ReadFrom(reader);
 
-
-            ConstantExpression? finalExpression = Query.ToExpression(content ?? string.Empty, out IQueryable? set) as ConstantExpression
+            ConstantExpression? finalExpression = root.ToExpression(_current.Context, out IQueryable? set) as ConstantExpression
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
+
+            //var Query = Service.GetRequiredService<IQueryManager>()
+            //    ?? throw new InvalidOperationException("Unable to render query manager.");
+
+            //ConstantExpression? finalExpression = Query.ToExpression(content ?? string.Empty, out IQueryable? set) as ConstantExpression
+            //    ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
 
 
             // The key is checking the requested type T
