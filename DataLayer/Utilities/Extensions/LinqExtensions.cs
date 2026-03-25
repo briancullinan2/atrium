@@ -1,5 +1,6 @@
 ﻿using DataLayer.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -1045,10 +1046,16 @@ namespace DataLayer.Utilities.Extensions
                     ?.MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]) // Or the target type
                     .Invoke(null, [finalQueryable])!;
             }
+            else if (set?.Provider is IAsyncQueryProvider asyncProvider)
+            {
+                return asyncProvider.ExecuteAsync<object?>(finalExpression);
+            }
             else
             {
                 return set?.Provider.Execute(finalExpression);
             }
+
+
         }
 
 

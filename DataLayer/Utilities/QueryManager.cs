@@ -149,18 +149,9 @@ namespace DataLayer.Utilities
             get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
             set => _persistent = value?.GetType().GetGenericArguments().FirstOrDefault();
         }
-        public static MethodInfo UpdateGeneric { get; }
 
-        static QueryManager()
-        {
 
-            var methods = typeof(QueryManager)
-                .GetMethods();
-            
-            UpdateGeneric = methods
-                .FirstOrDefault(m => m.Name == nameof(UpdateNow) && m.IsGenericMethod && m.GetParameters().First().ParameterType == typeof(DbContext))
-                ?? throw new Exception("UpdateNow method definition not found.");
-        }
+
 
 
 
@@ -334,8 +325,8 @@ namespace DataLayer.Utilities
 
         protected TranslationContext? GetContext(Type contextType)
         {
-            return typeof(QueryManager)
-                .GetMethod(nameof(GetContext), 1, BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy,  [typeof(Type)])
+            return GetType().GetMethods(nameof(GetContext), 1, [typeof(Type)])
+                .FirstOrDefault()
                 ?.MakeGenericMethod(contextType.GenericTypeArguments[0])
                 .Invoke(this, [contextType]) as TranslationContext
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
@@ -489,7 +480,7 @@ namespace DataLayer.Utilities
                     .Where(n => n.IsCollection || n is IReadOnlySkipNavigation)
                     .ToList() ?? [];
 
-
+            var UpdateGeneric = GetType().GetMethods(nameof(UpdateNow), 1, [typeof(DbContext)]).FirstOrDefault();
 
             foreach (var nav in navigations)
             {
@@ -510,7 +501,8 @@ namespace DataLayer.Utilities
                 }
 
 
-                var genericMethod = UpdateGeneric.MakeGenericMethod(nav.TargetEntityType.ClrType);
+                var genericMethod = UpdateGeneric?.MakeGenericMethod(nav.TargetEntityType.ClrType)
+                    ?? throw new InvalidOperationException("Could not render non-generic UpdateNow method.");
 
                 var resolvedItems = new List<object>();
                 foreach (var child in incomingList.Cast<object>().ToList() ?? Enumerable.Empty<object>())
@@ -634,7 +626,8 @@ namespace DataLayer.Utilities
 
         protected virtual async Task<IEntity> SaveNow(StorageType storage, IEntity entity)
         {
-            var RealSave = GetType().GetMethod(nameof(SaveNow), 1, [typeof(StorageType), typeof(object)])
+            var RealSave = GetType().GetMethods(nameof(SaveNow), 1, [typeof(StorageType), typeof(object)])
+                .FirstOrDefault()
                 ?.MakeGenericMethod(entity.GetType())
                 ?? throw new InvalidOperationException("Failed to render save now function.");
             var result = RealSave.Invoke(this, [storage, entity]);
@@ -841,6 +834,9 @@ namespace DataLayer.Utilities
             var navigations = entry.Metadata.GetNavigations()
                 .Concat<INavigationBase>(entry.Metadata.GetSkipNavigations());
 
+            var UpdateGeneric = GetType().GetMethods(nameof(UpdateNow), 1, [typeof(DbContext)]).FirstOrDefault();
+
+
             foreach (var navigation in navigations)
             {
                 var navEntry = entry.Navigation(navigation.Name);
@@ -855,7 +851,9 @@ namespace DataLayer.Utilities
                 if ((navigation.IsCollection || navigation is IReadOnlySkipNavigation) && navValue is IEnumerable collection)
                 {
                     var resolvedItems = new List<object>();
-                    var genericMethod = UpdateGeneric.MakeGenericMethod(navigation.TargetEntityType.ClrType);
+                    var genericMethod = UpdateGeneric?.MakeGenericMethod(navigation.TargetEntityType.ClrType)
+                        ?? throw new InvalidOperationException("Could not render non-generic UpdateNow method.");
+
                     foreach (var item in collection)
                     {
                         // This is where the recursive magic happens
@@ -893,7 +891,9 @@ namespace DataLayer.Utilities
                 }
                 else if (navValue != null)
                 {
-                    var genericMethod = UpdateGeneric.MakeGenericMethod(navigation.TargetEntityType.ClrType);
+                    var genericMethod = UpdateGeneric?.MakeGenericMethod(navigation.TargetEntityType.ClrType)
+                        ?? throw new InvalidOperationException("Could not render non-generic UpdateNow method.");
+
                     var member = navigation.GetMemberInfo(false, true);
 
                     // 3. Invoke it (Note: You must pass all 4 arguments because Reflection doesn't 'see' defaults)

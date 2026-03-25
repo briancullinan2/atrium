@@ -1,11 +1,10 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
+using System.Linq.Expressions;
 
 #if WINDOWS
 using Microsoft.AspNetCore.Http;
-using System.Linq.Expressions;
-
 #endif
 using System.Text.Json;
 
@@ -13,35 +12,8 @@ namespace Atrium.Services
 {
     internal static class QueryService //: QueryManager
     {
-        public static IEnumerable<Expression> FirewallSet(string userId, Type targetTable)
-        {
-            // looks up what to do based on cross table associations
-            //   Where(setting => setting.SetterId == UserId)
-            return [];
-        }
+        
 
-
-        public static IQueryable<TEntity> FirewallSet<TEntity>(this IQueryable<TEntity> target, string userId)
-        {
-            // looks up what to do based on cross table associations
-            //   Where(setting => setting.SetterId == UserId)
-            var expressions = FirewallSet(userId, typeof(TEntity));
-            return 
-        }
-
-
-        public static IEnumerable<Expression> FirewallSave(string userId, Type targetTable)
-        {
-            // looks up what to do based on the id associations
-            //   setting.SetterId == UserId
-            return [];
-        }
-
-        public static IQueryable<TEntity> FirewallSave<TEntity>(this IQueryable<TEntity> target, string userId)
-        {
-            // looks up what to do based on the id associations
-            //   setting.SetterId == UserId
-        }
 
 #if WINDOWS
 

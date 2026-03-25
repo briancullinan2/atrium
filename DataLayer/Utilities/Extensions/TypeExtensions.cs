@@ -88,16 +88,18 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        public static MethodInfo? GetMethod(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
+        public static IEnumerable<MethodInfo> GetMethods(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
         {
             var method = type
                 .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-                .FirstOrDefault(m => m.Name == name
+                .Where(m => m.Name == name
                     && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic))
                     && (extendedTypes == null
-                        || m.GetParameters().Select((p, i) => p.ParameterType.Extends(extendedTypes.ElementAtOrDefault(i) ?? typeof(object))).Count() == extendedTypes.Length)
+                        || m.GetParameters().Where((p, i) => 
+                            extendedTypes.ElementAtOrDefault(i) is Type testTest 
+                            && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
                     );
-            return method;
+            return [.. method];
         }
 
 
