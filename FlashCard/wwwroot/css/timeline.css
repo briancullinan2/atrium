@@ -20,6 +20,13 @@
     display:flex;
 }
 
+.timeline-grid .key
+{
+    position: fixed;
+    right: 2rem;
+    top: 2rem;
+}
+
 .timeline-grid .y-axis
 {
     display:flex;

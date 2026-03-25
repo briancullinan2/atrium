@@ -1,4 +1,21 @@
-﻿
+﻿:root {
+    --global-line-height: 1.6em;
+}
+
+body, html
+{
+    line-height: var(--global-line-height);
+}
+
+.timeline-grid {
+    background-size: 100% var(--global-line-height); /* 25px per hour */
+}
+
+.btn-primary,
+a.cta,
+button.cta {
+    line-height: 1.5rem;
+}
 
 .sidebar.theme-ivory,
 .page, .theme-ivory {

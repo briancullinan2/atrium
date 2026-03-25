@@ -14,12 +14,20 @@
     min-height: unset;
 }
 
+.dev-console.collapsed .entry-header {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
 .page.Error .dev-console,
 .page.Console .dev-console {
-    position:static;
-    right:unset;
-    bottom:unset;
-    width:unset;
+    position: static;
+    right: unset;
+    bottom: unset;
+    width: unset;
 }
 
 .page.chatting .dev-console {

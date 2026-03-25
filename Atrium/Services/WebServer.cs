@@ -17,7 +17,7 @@ namespace Atrium.Services
 {
     internal static class WebServer
     {
-        private static KeepAlive? _keepAlive;
+
 
         public static async Task StartWebServer(string[] args)
         {

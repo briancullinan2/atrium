@@ -50,3 +50,22 @@ window.isScrolledToBottom = (elementId) => {
 };
 
 
+window.getLineHeight = (element) => {
+    const style = window.getComputedStyle(element || document.body);
+    return style.lineHeight; // Returns a string like "24px" or "normal"
+};
+
+
+window.getLineHeightInt = (element) => {
+    const lineHeight = getLineHeight(element);
+
+    if (lineHeight === 'normal') {
+        // Fallback: Default browser line-height is usually ~1.2 * font-size
+        const fontSize = parseFloat(style.fontSize);
+        return Math.round(fontSize * 1.2);
+    }
+
+    return Math.round(parseFloat(lineHeight));
+};
+
+

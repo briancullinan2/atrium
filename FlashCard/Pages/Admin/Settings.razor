@@ -21,6 +21,21 @@
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
 <div class="flash-card app-settings @GetDisplayClass(DataLayer.ControlMode.Edit)">
+    <h2>Login Setting</h2>
+    <div class="form-row">
+        <span>Enable the Guest account.</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Enable the Automatic Login.</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Default user account for auto login.</span>
+        @*TODO: make a user/entity select control*@
+    </div>
+
+
     <h2>Display Settings</h2>
     <div class="form-row">
         <span>Show animated background from packs</span>

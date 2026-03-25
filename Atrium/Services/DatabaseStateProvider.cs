@@ -53,43 +53,54 @@ namespace Atrium.Services
             }
 
             if (string.IsNullOrEmpty(sessionId))
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+                return LoginService.Guest();
 
             // 2. Fetch the session from your DataLayer.Entities.Session table
             var session = await _query.Query<Session>(s =>
                 s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow);
 
             if (session.FirstOrDefault() == null)
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+                return LoginService.Guest();
 
             // 3. Deserialize the 'Value' (JSON) into Claims
             var sessionEntity = session.First();
             var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(sessionEntity.Value) ?? [];
 
-            // 4. Sync Logic
+            // 4. Sync Logic with Throttling (e.g., once every 30 minutes)
             var token = storedClaims.FirstOrDefault(c => c.Type == "access_token")?.Value;
             var providerStr = storedClaims.FirstOrDefault(c => c.Type == "urn:atrium:provider")?.Value;
 
-            if (!string.IsNullOrEmpty(token) && Enum.TryParse<AuthID>(providerStr, out var providerId))
+            // Calculate how long since the last sync
+            var lastSync = sessionEntity.Time;
+            var needsSync = (DateTime.UtcNow - lastSync).TotalMinutes > 30;
+
+            if (needsSync && !string.IsNullOrEmpty(token) && Enum.TryParse<AuthID>(providerStr, out var providerId))
             {
-                var authService = _services.GetRequiredService<AuthService>();
-                using var json = await GetFreshUserInfo(providerId, token);
-
-                if (json != null)
+                try
                 {
-                    // Update claims with fresh data from the JSON
-                    // You can loop through your existing MapJsonKey logic or do it manually:
-                    var freshName = json.RootElement.TryGetProperty("name", out var n) ? n.GetString() : null;
-                    if (freshName != null)
-                    {
-                        storedClaims.RemoveAll(c => c.Type == ClaimTypes.Name);
-                        storedClaims.Add(new UserClaim(ClaimTypes.Name, freshName));
-                    }
+                    var authService = _services.GetRequiredService<AuthService>();
+                    using var json = await GetFreshUserInfo(providerId, token);
 
-                    // Update the DB session so we don't sync again for another hour
-                    sessionEntity.Value = JsonSerializer.Serialize(storedClaims);
-                    sessionEntity.Time = DateTime.UtcNow; // Reset the sync timer
-                    await _query.Save(sessionEntity);
+                    if (json != null)
+                    {
+                        var freshName = json.RootElement.TryGetProperty("name", out var n) ? n.GetString() : null;
+                        if (freshName != null)
+                        {
+                            storedClaims.RemoveAll(c => c.Type == ClaimTypes.Name);
+                            storedClaims.Add(new UserClaim(ClaimTypes.Name, freshName));
+                        }
+
+                        // Update the DB session and reset the timer
+                        sessionEntity.Value = JsonSerializer.Serialize(storedClaims);
+                        sessionEntity.Time = DateTime.UtcNow;
+                        await _query.Save(sessionEntity);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't kill the session; let them use the cached claims
+                    // to prevent an auth loop if the external provider is down.
+                    Console.WriteLine($"Sync failed: {ex.Message}");
                 }
             }
 
@@ -211,6 +222,9 @@ namespace Atrium.Services
 #if WINDOWS
         public static AuthenticationBuilder BuildAuthentication(IHostApplicationBuilder builder)
         {
+            // Define a constant for the claim type to avoid naming mismatches
+            const string SessionIdClaimType = "atrium_sid";
+
             return builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
@@ -218,29 +232,38 @@ namespace Atrium.Services
                     options.LogoutPath = "/logout";
                     options.AccessDeniedPath = "/access-denied";
 
-                    var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
-                    options.Cookie.Name = cookieName;
+                    // Use a distinct name for the Auth Cookie vs your internal Session ID
+                    var product = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Atrium";
+                    options.Cookie.Name = $"{product}_Auth";
+
                     options.Events = new CookieAuthenticationEvents
                     {
                         OnValidatePrincipal = async context =>
                         {
-                            // This runs on every request to 'Sync' the cookie with the DB
                             var query = context.HttpContext.RequestServices.GetRequiredService<IQueryManager>();
-                            var sessionId = context.Principal?.FindFirst(nameof(SessionId))?.Value;
+
+                            // Look for the specific claim we injected during MarkUserAsAuthenticated
+                            var sessionId = context.Principal?.FindFirst(SessionIdClaimType)?.Value;
 
                             if (string.IsNullOrEmpty(sessionId))
                             {
+                                // No session ID found in the claims? The cookie is invalid for our DB logic.
                                 context.RejectPrincipal();
+                                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                                 return;
                             }
 
-                            // Query your Session entity
+                            // Query the database to see if this session is still "Live"
                             var session = await query.Query<Session>(s => s.Id == sessionId);
                             var activeSession = session.FirstOrDefault();
 
-                            if (activeSession == null || (activeSession.Time + TimeSpan.FromSeconds(activeSession.Lifetime)) < DateTimeOffset.UtcNow)
+                            // Validation Logic:
+                            // 1. Does the session exist?
+                            // 2. Has it expired based on the DB 'Time' + 'Lifetime'?
+                            if (activeSession == null || (activeSession.Time.AddSeconds(activeSession.Lifetime)) < DateTime.UtcNow)
                             {
-                                context.RejectPrincipal(); // Force Logout if DB session is gone or expired
+                                context.RejectPrincipal();
+                                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                             }
                         }
                     };

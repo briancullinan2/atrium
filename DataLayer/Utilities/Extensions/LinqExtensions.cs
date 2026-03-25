@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
 using System.ComponentModel;
 using System.Linq.Expressions;
+using System.Numerics;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.Serialization;
@@ -167,16 +168,21 @@ namespace DataLayer.Utilities.Extensions
                         for (var i = 0; i < buffer.Count; i++)
                         {
                             var item = buffer[0];
-                            if(item == null || item.GetType().IsSimple() == true)
+                            
+                            if (item == null)
+                            {
+                                propElement.Add(new XElement("Null", new XAttribute("Value", string.Empty)));
+                            }
+                            else if (item.GetType().IsIterable() || !item.GetType().IsSimple())
+                            {
+                                propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
+                            }
+                            else
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
                                     new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
-                            }
-                            else
-                            {
-                                propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
                             }
                         }
                         element.Add(propElement);
@@ -236,17 +242,22 @@ namespace DataLayer.Utilities.Extensions
                         var propElement = new XElement(prop.Name);
                         foreach (var item in list)
                         {
-                            if (item == null || item.GetType().IsSimple() == true)
+                            if (item == null)
+                            {
+                                propElement.Add(new XElement("Null", new XAttribute("Value", string.Empty)));
+                            }
+                            else if (item.GetType().IsIterable() || !item.GetType().IsSimple())
+                            {
+                                propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
+                            }
+                            else
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
                                     new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
-                            else
-                            {
-                                propElement.Add(VisitToXml(item, currentDepth, expressionDepth + 1));
-                            }
+                            
                         }
                         element.Add(propElement);
 
@@ -852,17 +863,48 @@ namespace DataLayer.Utilities.Extensions
                 var entity = Activator.CreateInstance(targetType);
                 foreach(var prop in props)
                 {
-                    if(prop.PropertyType.IsSimple())
+                    if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                        continue;
+
+
+                    var baseType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+                    if((el.Attribute(prop.Name)?.Value == "Null"
+                        || el.Element(prop.Name)?.Attribute("Value")?.Value == "Null")
+                        && prop.IsNullable())
                     {
-                        var converter = TypeDescriptor.GetConverter(prop.PropertyType);
-                        var simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)?.Value ?? string.Empty);
-                        prop.SetValue(entity, simpleValue);
+                        prop.SetValue(entity, null);
                     }
-                    else if (el.Element(prop.Name) is XElement complex)
+
+                    else if (baseType.IsIterable()
+                        && el.Element(prop.Name) is XElement complex)
                     {
-                        var complexValue = ResolveMetadata(prop.PropertyType, el.Attribute(prop.Name)?.Value, complex);
+                        var complexValue = ResolveMetadata(baseType, el.Attribute(prop.Name)?.Value, complex);
+                        complexValue = CollectionConverter.ConvertAsync(complexValue, baseType);
+                        if (complexValue?.GetType() != baseType) 
+                            throw new InvalidOperationException("Iterable types don't match: " + complexValue?.GetType() + " and " + baseType);
                         prop.SetValue(entity, complexValue);
                     }
+
+                    else if (baseType.IsSimple())
+                    {
+                        var converter = TypeDescriptor.GetConverter(baseType);
+                        var simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)?.Value ?? string.Empty);
+                        if (simpleValue?.GetType() != baseType)
+                            throw new InvalidOperationException("Simple types don't match: " + simpleValue?.GetType() + " and " + baseType);
+                        prop.SetValue(entity, simpleValue);
+                    }
+
+                    else if (el.Element(prop.Name) is XElement complex2)
+                    {
+                        var complexValue = ResolveMetadata(baseType, el.Attribute(prop.Name)?.Value, complex2);
+                        if (complexValue?.GetType() != baseType)
+                            throw new InvalidOperationException("Complex types don't match: " + complexValue?.GetType() + " and " + baseType);
+                        prop.SetValue(entity, complexValue);
+                    }
+
+                    else
+                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType);
                 }
                 return entity;
             }
@@ -1046,9 +1088,20 @@ namespace DataLayer.Utilities.Extensions
                     ?.MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]) // Or the target type
                     .Invoke(null, [finalQueryable])!;
             }
-            else if (set?.Provider is IAsyncQueryProvider asyncProvider)
+            else if (set?.Provider is IAsyncQueryProvider asyncProvider
+                && finalExpression.Type.Extends(typeof(Task)))
             {
-                return await asyncProvider.ExecuteAsync<Task<object?>>(finalExpression);
+                var callAsync = asyncProvider.GetType().GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync), 1, [typeof(Expression)])
+                    .FirstOrDefault()
+                    ?.MakeGenericMethod(finalExpression.Type)
+                    ?? throw new InvalidOperationException("Could not render generic ExecuteAsync");
+                var result = callAsync.Invoke(asyncProvider, [finalExpression, null]);
+                if(result is Task task)
+                {
+                    await task;
+                    return (result as dynamic).Result;
+                }
+                return result;
             }
             else
             {

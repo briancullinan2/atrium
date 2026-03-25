@@ -88,6 +88,59 @@ namespace DataLayer.Utilities.Extensions
 
 
 
+        private static readonly NullabilityInfoContext context;
+        static TypeExtensions()
+        {
+            context = new NullabilityInfoContext();
+        }
+
+        public static bool IsNullable(this MethodInfo method)
+        {
+            var context = new NullabilityInfoContext();
+
+            // 1. Check the Return Type (e.g., public string? GetName())
+            var returnInfo = context.Create(method.ReturnParameter);
+            if (returnInfo.ReadState == NullabilityState.Nullable)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        public static bool IsNullable(this ParameterInfo parameter)
+        {
+            var context = new NullabilityInfoContext();
+
+            var paramInfo = context.Create(parameter);
+            if (paramInfo.WriteState == NullabilityState.Nullable)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+        public static bool IsNullable(this Type type)
+        {
+            return Nullable.GetUnderlyingType(type) != null;
+        }
+
+
+        public static bool IsNullable(this PropertyInfo property)
+        {
+            var info = context.Create(property);
+
+            if (info.WriteState == NullabilityState.Nullable ||
+                info.ReadState == NullabilityState.Nullable)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
+
         public static IEnumerable<MethodInfo> GetMethods(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
         {
             var method = type

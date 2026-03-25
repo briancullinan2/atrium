@@ -2,6 +2,7 @@
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -89,5 +90,24 @@ namespace FlashCard.Services
             User = user;
             OnUserChanged?.Invoke(user);
         }
+
+        private static AuthenticationState Anonymous() => new(new ClaimsPrincipal(new ClaimsIdentity()));
+
+
+        public static AuthenticationState Guest()
+        {
+            var guestClaims = new List<Claim>
+            {
+                new(ClaimTypes.Name, "Guest User"),
+                new(ClaimTypes.Role, "Guest"),
+                new("urn:atrium:guest", "true")
+            };
+
+            // IMPORTANT: Providing "Guest" as the second argument makes IsAuthenticated = true
+            var identity = new ClaimsIdentity(guestClaims, "Guest");
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+        }
+
     }
+
 }

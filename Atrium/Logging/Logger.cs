@@ -58,7 +58,7 @@ namespace Atrium.Logging
             GetLogger(callerPath)[nameof(Fatal)](message, ex);
             // TODO: crash the app softly like it does on web and redirect to /error after its beem inserted
 #if false
-            //#if WINDOWS
+//#if WINDOWS
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 // On Windows/Mac, this closes the main window

@@ -1,6 +1,7 @@
 ﻿using DataLayer;
 using DataLayer.Entities;
 using DataLayer.Utilities;
+using FlashCard.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
@@ -42,7 +43,7 @@ namespace WebClient.Services
             string? sessionId = currentSetting?.FirstOrDefault()?.Value;
 
             if (string.IsNullOrEmpty(sessionId))
-                return Anonymous();
+                return LoginService.Guest();
 
             // 2. Fetch from local/remote node
             var sessions = await _query.Query<Session>(s => s.Id == sessionId);
@@ -50,7 +51,7 @@ namespace WebClient.Services
 
             // Arizona: Check expiration locally
             if (session == null || session.Time.AddSeconds(session.Lifetime) < DateTime.UtcNow)
-                return Anonymous();
+                return LoginService.Guest();
 
             // 3. Hydrate Claims
             var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(session.Value) ?? [];
@@ -60,8 +61,6 @@ namespace WebClient.Services
             var identity = new ClaimsIdentity(storedClaims.Select(c => new Claim(c.Type, c.Value)), SessionId);
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
-
-        private static AuthenticationState Anonymous() => new(new ClaimsPrincipal(new ClaimsIdentity()));
 
         public record UserClaim(string Type, string Value);
         public async Task MarkUserAsAuthenticated(ClaimsPrincipal user)

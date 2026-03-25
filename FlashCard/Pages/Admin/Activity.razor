@@ -27,13 +27,16 @@
          @onmouseup="() => Dragging = false"
          @onmousemove="HandleMove"
          class="timeline-grid track" style="width: @(TotalWidth)px;">
-        <div class="y-axis">
+        <div class="key">
             <button @onclick="() => { ViewportOffset = 0; StateHasChanged(); }">Today</button>
+            <div>Zoom: @(ZoomLevel)</div>
+            <div>Line: @(CalculatedHeight)</div>
+        </div>
+        <div class="y-axis">
             @for (int i = 0; i < 24; i++)
             {
                 <div class="hour-label">@($"{i:D2}:00")</div>
             }
-            <div>Zoom: @(ZoomLevel)</div>
         </div>
 
         <div class="content-area">
@@ -50,7 +53,7 @@
                     <div class="events-layer">
                         @foreach (var ev in GetEventsForDay(day.Date))
                         {
-                            <div class="event-pill"
+                            <div data-hour="@(ev.Created.Hour)" class="event-pill"
                                  style="top: @(GetYPosition(ev.Created))px;"
                                  @onclick="() => NavigateToEvent(ev)">
                                 @ev?.Path
@@ -143,6 +146,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        CalculatedHeight = await JS.InvokeAsync<int>("getLineHeightInt");
+
     //    if (firstRender)
     //    {
     //        var dotNetHelper = DotNetObjectReference.Create(this);
@@ -237,7 +242,12 @@
             .Select(i => centerDate.Date.AddDays(i));
     }
 
-    private double GetYPosition(DateTime time) => time.Hour * ZoomLevel + (time.Minute / 60.0 * ZoomLevel);
+    public int CalculatedHeight { get; set; } = 18;
+
+    private double GetYPosition(DateTime time) 
+    {
+        return (24 - time.Hour) * CalculatedHeight * ZoomLevel + (time.Minute / 60.0 * ZoomLevel);
+    }
 
     public void Dispose()
     {
