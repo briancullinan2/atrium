@@ -56,7 +56,9 @@ namespace Atrium.Logging
         public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
         {
             GetLogger(callerPath)[nameof(Fatal)](message, ex);
-//#if WINDOWS
+            // TODO: crash the app softly like it does on web and redirect to /error after its beem inserted
+#if false
+            //#if WINDOWS
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 // On Windows/Mac, this closes the main window
@@ -73,6 +75,7 @@ namespace Atrium.Logging
                 });
             });
 //#endif
+#endif
         }
 
         public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")

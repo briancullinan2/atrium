@@ -9,6 +9,7 @@
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.Security.Claims
+@using FlashCard.Services.Logging
 @attribute [AllowAnonymous]
 @inject IMenuService MenuService
 @inject ILoginService LoginService
@@ -65,12 +66,20 @@
     protected async Task HandleLogin(DataLayer.Entities.User user)
     {
         // save the built ins on first login
-        if(user.CanonicalFingerprint == null
-            && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
+        try
         {
-            //await user.Roles.First().Update();
-            user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == DefaultRoles.Admin.ToString()));
-            await user.Save(QueryManager);
+            if (user.CanonicalFingerprint == null
+                && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
+            {
+                //await user.Roles.First().Update();
+                user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == DefaultRoles.Admin.ToString()));
+                await user.Save(QueryManager);
+            }
+
+        } 
+        catch (Exception ex)
+        {
+            Log.Error("Role init failed." + ex.Message);
         }
 
         // 1. Create the Claims for this user

@@ -84,6 +84,8 @@ namespace Atrium.Services
                 var queryManager = QueryManager.GetContextType(Query.EphemeralStorage);
                 var results = await Query.ToQueryable(rawXml);
 
+
+
                 context.Response.ContentType = "application/json";
                 var xml = Expression.Constant(results).ToXDocument().ToString();
                 var json = JsonSerializer.Serialize(xml, JsonHelper.Default);

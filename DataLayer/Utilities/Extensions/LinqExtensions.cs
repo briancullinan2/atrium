@@ -1048,7 +1048,7 @@ namespace DataLayer.Utilities.Extensions
             }
             else if (set?.Provider is IAsyncQueryProvider asyncProvider)
             {
-                return asyncProvider.ExecuteAsync<object?>(finalExpression);
+                return await asyncProvider.ExecuteAsync<Task<object?>>(finalExpression);
             }
             else
             {

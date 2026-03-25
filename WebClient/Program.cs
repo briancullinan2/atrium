@@ -1,5 +1,6 @@
 using DataLayer.Utilities;
 using FlashCard.Services;
+using FlashCard.Services.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -8,6 +9,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.JSInterop;
 using WebClient.Services;
+
+
+
+AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+    Log.Error(e, e.ExceptionObject as Exception);
+
+// 2. Catch exceptions in 'set and forget' tasks (Async)
+TaskScheduler.UnobservedTaskException += (s, e) =>
+{
+    Log.Error(e, e.Exception.InnerException ?? e.Exception);
+    e.SetObserved(); // Prevents process crash if you want, but logs it
+};
+
+
+
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddCascadingValue(sp => new ErrorBoundary());
