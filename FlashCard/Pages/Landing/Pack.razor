@@ -28,12 +28,12 @@
 @for(var i = 0; i < CurrentQuiz?.Count(); i++)
 {
     var card = CurrentQuiz?.ElementAt(i);
-
-    <div class="flash-card @(GetDisplayClass(i * 2))" style="@(QuizStep == i * 2 ? CurrentManualTransform : "") user-select:none;"
-         @ondragstart="DragStart"
+    @*@ondragstart="DragStart"
          @ondragstart:preventDefault="true"
          @ondragstart:stopPropagation="true"
-         @ondragend="DragStop"
+         @ondragend="DragStop"*@
+    <div class="flash-card @(GetDisplayClass(i * 2))" 
+         style="@(QuizStep == i * 2 ? CurrentManualTransform : "") user-select:none;"
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">

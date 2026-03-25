@@ -43,9 +43,11 @@ namespace DataLayer.Entities
 
     public class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity, IDisposable
     {
+        [JsonIgnore]
         [NotMapped]
         public IQueryManager? QueryManager { get; set; } = null;
         [NotMapped]
+        [JsonIgnore]
         public Type? ContextType { get; set; } = null;
         [NotMapped]
 

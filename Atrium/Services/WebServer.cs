@@ -1,5 +1,7 @@
 ﻿#if WINDOWS
 using Atrium.Logging;
+using DataLayer;
+using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -78,11 +80,8 @@ namespace Atrium.Services
 
                 // FUCK DI
                 webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
-                _keepAlive = new KeepAlive("Data Source=:memory:");
-                _keepAlive.Open();
-                webBuilder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
-                    options.UseSqlite(_keepAlive));
 
+                webBuilder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
                 webBuilder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
                     options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
 
@@ -121,6 +120,15 @@ namespace Atrium.Services
                 });
 
                 var webApp = webBuilder.Build();
+                MainPage._services = webApp.Services;
+                FileManager._services = webApp.Services;
+                AnkiService._services = webApp.Services;
+                HostingService._services = webApp.Services;
+                ChatService._services = webApp.Services;
+                QueryManager.Service = webApp.Services;
+                SimpleLogger.Services = webApp.Services;
+
+
 
                 var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();
                 localServer.Initialize(webApp);

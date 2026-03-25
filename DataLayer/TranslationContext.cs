@@ -1,5 +1,6 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -232,6 +233,18 @@ namespace DataLayer
     // expected to reset once at the beginning of application load
     public class EphemeralStorage(IQueryManager service, DbContextOptions<EphemeralStorage> ctx) : TranslationContext(service, ctx)
     {
+        private static KeepAlive? _keepAliveConnection;
+
+        protected override void OnConfiguring(DbContextOptionsBuilder options)
+        {
+            base.OnConfiguring(options);
+            if (_keepAliveConnection == null)
+            {
+                _keepAliveConnection = new KeepAlive("Data Source=:memory:");
+                _keepAliveConnection.Open(); // The DB is born
+            }
+            options.UseSqlite(_keepAliveConnection);
+        }
     }
 
 
@@ -301,4 +314,24 @@ namespace DataLayer
             }
         }
     }
+
+    public class KeepAlive(string conn) : SqliteConnection(conn)
+    {
+        public override void Close()
+        {
+
+        }
+
+        public override Task CloseAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+
+        }
+    }
+
+
 }

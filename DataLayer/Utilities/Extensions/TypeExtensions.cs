@@ -129,8 +129,9 @@ namespace DataLayer.Utilities.Extensions
             return value[..(Math.Min(value.Length, maxLength) - 3)] + "...";
         }
 
-        public static bool IsSimple(this Type type)
+        public static bool IsSimple(this Type anyType)
         {
+            var type = Nullable.GetUnderlyingType(anyType) ?? anyType;
             return type.IsPrimitive ||
                 type.IsEnum ||
                 new[] {
@@ -142,7 +143,8 @@ namespace DataLayer.Utilities.Extensions
             typeof(Guid)
                 }.Contains(type) ||
                 Convert.GetTypeCode(type) != TypeCode.Object ||
-                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) 
+                (type.IsGenericType 
+                    && type.GetGenericTypeDefinition() == typeof(Nullable<>) 
                     && type.GetGenericArguments().FirstOrDefault()?.IsSimple() == true);
         }
     }

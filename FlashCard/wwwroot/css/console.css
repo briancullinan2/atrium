@@ -11,6 +11,7 @@
     font-family: 'Consolas', monospace;
     z-index: 9999;
     border-top-left-radius: 8px;
+    min-height: unset;
 }
 
 .page.Error .dev-console,
@@ -29,14 +30,6 @@
     bottom: 20px;
 }
 
-.expanded {
-    height: 400px;
-}
-
-.collapsed {
-    height: 40px;
-}
-
 .console-header {
     padding: 10px;
     cursor: pointer;
@@ -45,7 +38,6 @@
 }
 
 .console-body {
-    height: 360px;
     overflow: visible;
     padding: 10px;
     font-size: 12px;

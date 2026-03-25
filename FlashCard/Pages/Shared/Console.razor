@@ -7,7 +7,7 @@
 
 <div class="flash-card dev-console @(Embedded == true ? "embedded" : "") animate-in @(_isExpanded ? "expanded" : "collapsed")">
     <div class="console-header" @onclick="Toggle">
-        <span>Dev Console @Services.PageManager.Immediate.Count</span>
+        <span>Dev Console (@Services.PageManager.Immediate.Count)</span>
         <button class="cta" @onclick:stopPropagation @onclick="Clear">Clear</button>
     </div>
 

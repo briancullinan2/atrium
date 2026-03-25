@@ -267,8 +267,12 @@
 
     private void SetPageClass()
     {
-        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
-        PageClass = string.IsNullOrWhiteSpace(relativePath) ? "home" : relativePath.ToSafe();
+        if(string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClass = "Home";
+        else
+        {
+            var relativePath = string.Join(' ', Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0]).Split('/')
+                .Select(seg => seg.ToSafe()));
+        }
         StateHasChanged();
     }
 

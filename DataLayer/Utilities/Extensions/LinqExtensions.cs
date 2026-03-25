@@ -1,11 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataLayer.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -44,7 +48,8 @@ namespace DataLayer.Utilities.Extensions
             if (node == null) return new XElement("Null");
 
             var type = node.GetType();
-            var element = new XElement(type.Name.ToSafe());
+            var element = new XElement(type.Name.ToSafe(),
+                new XAttribute("AssemblyQualifiedName", type.AssemblyQualifiedName ?? ""));
 
             if (expressionDepth >= _maxExpressionDepth)
             {
@@ -81,15 +86,46 @@ namespace DataLayer.Utilities.Extensions
             {
                 if (prop.GetIndexParameters().Length > 0) continue;
 
+                if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null) continue;
+
                 if (prop.Name == "ImplementedInterfaces" || prop.Name == "DeclaredProperties"
+                    || prop.Name == "QueryManager"
                     || prop.Name == "DeclaredMethods" || prop.Name == "CanReduce" || prop.Name == "TailCall") continue;
 
                 try
                 {
                     var value = prop.GetValue(node);
 
+                    if (value is MemberExpression memberExpression
+                        && memberExpression.Expression is ConstantExpression constant 
+                        && constant.Value?.GetType().Name.Contains("<>c__DisplayClass") == true)
+                    {
+                        // Access the field on the specific instance of the closure
+                        //var field = (FieldInfo)memberExpression.Member;
+                        //var actualValue = field.GetValue(constant.Value);
+                        //Console.WriteLine("DisplayClass: " + constant.Value);
+                        var lambda = Expression.Lambda(memberExpression);
+                        var result = lambda.Compile().DynamicInvoke();
+                        //Console.WriteLine(result);
+                        var propElement = new XElement(prop.Name);
+                        propElement.Add(VisitToXml(Expression.Constant(result), currentDepth, expressionDepth + 1));
+                        element.Add(propElement);
+                    }
+
                     // Treat Expression, MethodInfo, and Type as "Complex" to recurse into them
-                    if (value is Expression)
+                    /*else if (value is ConstantExpression constant2 
+                        && constant2.Value?.GetType().Name.Contains("<>c__DisplayClass") == true
+                        // && constant.Value is ISerializable
+                    ) {
+                        Console.WriteLine("DisplayClass: " + constant2.Value);
+                        var lambda = Expression.Lambda(constant2);
+                        var result = lambda.Compile().DynamicInvoke();
+                        Console.WriteLine(result);
+                        var propElement = new XElement(prop.Name);
+                        propElement.Add(VisitToXml(Expression.Constant(result), currentDepth, expressionDepth + 1));
+                        element.Add(propElement);
+                    }*/
+                    else if (value is Expression)
                     {
                         var propElement = new XElement(prop.Name);
                         propElement.Add(VisitToXml(value, currentDepth, expressionDepth + 1));
@@ -117,7 +153,7 @@ namespace DataLayer.Utilities.Extensions
                         foreach (var p in parameters)
                         {
                             paramsEl.Add(new XElement("Parameter",
-                                new XAttribute("Type", p.ParameterType.AssemblyQualifiedName ?? "")));
+                                new XAttribute("AssemblyQualifiedName", p.ParameterType.AssemblyQualifiedName ?? "")));
                         }
                         methodInfo.Add(paramsEl);
                         element.Add(propElement);
@@ -134,7 +170,7 @@ namespace DataLayer.Utilities.Extensions
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
-                                    new XAttribute("ValueType", item?.GetType().AssemblyQualifiedName ?? "")
+                                    new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
                             else
@@ -203,7 +239,7 @@ namespace DataLayer.Utilities.Extensions
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
-                                    new XAttribute("ValueType", item?.GetType().AssemblyQualifiedName ?? "")
+                                    new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
                             else
@@ -216,7 +252,7 @@ namespace DataLayer.Utilities.Extensions
                     }
                     else if (value == null || value.GetType().IsSimple() == true)
                     {
-                        element.Add(new XAttribute(prop.Name, value?.ToString() ?? "null"));
+                        element.Add(new XAttribute(prop.Name, value?.ToString() ?? "Null"));
                     }
                     else
                     {
@@ -263,7 +299,30 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.Invoke, BuildInvocation },
                 { ExpressionType.Conditional, BuildConditional },
                 { ExpressionType.NewArrayInit, BuildNewArrayInit },
-                { ExpressionType.AndAlso, BuildLeftRight }
+                { ExpressionType.AndAlso, BuildLeftRight },
+                { ExpressionType.LessThan, BuildLeftRight },
+                { ExpressionType.LessThanOrEqual, BuildLeftRight },
+                { ExpressionType.GreaterThan, BuildLeftRight },
+                { ExpressionType.GreaterThanOrEqual, BuildLeftRight },
+                
+                // Arithmetic
+                { ExpressionType.Add, BuildLeftRight },
+                { ExpressionType.Subtract, BuildLeftRight },
+                { ExpressionType.Multiply, BuildLeftRight },
+                { ExpressionType.Divide, BuildLeftRight },
+                { ExpressionType.Modulo, BuildLeftRight },
+
+                // Bitwise
+                { ExpressionType.And, BuildLeftRight },
+                { ExpressionType.Or, BuildLeftRight },
+                { ExpressionType.ExclusiveOr, BuildLeftRight },
+
+                // Null Handling (Essential for your 'Atrium' entities)
+                { ExpressionType.Coalesce, BuildLeftRight },
+
+                // Comparisons (You already have most, but don't forget these)
+                //{ ExpressionType.TypeIs, BuildLeftRight } // Used for "is" keyword checks
+
 
                 //{ExpressionType.Extension, BuildExtension}
             };
@@ -333,15 +392,35 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("Could not resolve right expression on " + el);
             }
-            if (el.Attribute("NodeType")?.Value == "AndAlso")
-                return Expression.AndAlso(leftOperand, rightOperand);
-            if (el.Attribute("NodeType")?.Value == "NotEqual")
-                return Expression.NotEqual(leftOperand, rightOperand);
-            if (el.Attribute("NodeType")?.Value == "Equal")
-                return Expression.Equal(leftOperand, rightOperand);
-            if (el.Attribute("NodeType")?.Value == "OrElse")
-                return Expression.OrElse(leftOperand, rightOperand);
-            throw new InvalidOperationException("Node Type not supported." + el.Attribute("NodeType"));
+            
+            var nodeType = el.Attribute("NodeType")?.Value;
+
+            return nodeType switch
+            {
+                "Equal" => Expression.Equal(leftOperand, rightOperand),
+                "NotEqual" => Expression.NotEqual(leftOperand, rightOperand),
+                "AndAlso" => Expression.AndAlso(leftOperand, rightOperand),
+                "OrElse" => Expression.OrElse(leftOperand, rightOperand),
+                "LessThan" => Expression.LessThan(leftOperand, rightOperand),
+                "LessThanOrEqual" => Expression.LessThanOrEqual(leftOperand, rightOperand),
+                "GreaterThan" => Expression.GreaterThan(leftOperand, rightOperand),
+                "GreaterThanOrEqual" => Expression.GreaterThanOrEqual(leftOperand, rightOperand),
+
+                // The New Arithmetic Peers
+                "Add" => Expression.Add(leftOperand, rightOperand),
+                "Subtract" => Expression.Subtract(leftOperand, rightOperand),
+                "Multiply" => Expression.Multiply(leftOperand, rightOperand),
+                "Divide" => Expression.Divide(leftOperand, rightOperand),
+                "Modulo" => Expression.Modulo(leftOperand, rightOperand),
+
+                // The Bitwise & Null-Safety Peers
+                "And" => Expression.And(leftOperand, rightOperand),
+                "Or" => Expression.Or(leftOperand, rightOperand),
+                "Coalesce" => Expression.Coalesce(leftOperand, rightOperand),
+                "ExclusiveOr" => Expression.ExclusiveOr(leftOperand, rightOperand),
+
+                _ => throw new InvalidOperationException($"Node Type '{nodeType}' not supported on host.")
+            };
         }
 
 
@@ -485,7 +564,7 @@ namespace DataLayer.Utilities.Extensions
 
                         for (int i = 0; i < methodParams.Length; i++)
                         {
-                            var expectedTypeStr = paramsEl[i].Attribute("Type")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
+                            var expectedTypeStr = paramsEl[i].Attribute("AssemblyQualifiedName")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
                             var expectedType = Type.GetType(expectedTypeStr) ?? throw new InvalidOperationException("Parameter not know to disambiguate.");
 
                             // Get the actual parameter type name (handles generics like TSource)
@@ -521,7 +600,7 @@ namespace DataLayer.Utilities.Extensions
                 var paramsEl = el.Element("Parameters")?.Elements().ToList();
                 var expectedTypeParams = paramsEl?.Select(e =>
                 {
-                    var expectedTypeStr = e.Attribute("Type")?.Value;
+                    var expectedTypeStr = e.Attribute("AssemblyQualifiedName")?.Value;
                     var expectedType = Type.GetType(expectedTypeStr!);
                     return expectedType;
                 });
@@ -719,7 +798,7 @@ namespace DataLayer.Utilities.Extensions
 
                 var values = el.Elements().Select(e => {
                     if (e.Name == "Null") return null;
-                    var typeName = e.Attribute("ValueType")?.Value
+                    var typeName = e.Attribute("AssemblyQualifiedName")?.Value
                         ?? throw new InvalidOperationException("Could not resolve type name on: " + e);
                     var entityType = Type.GetType(typeName)
                         ?? typeArgument
@@ -766,6 +845,27 @@ namespace DataLayer.Utilities.Extensions
                 return castedValues;
             }
 
+            if(typeof(IEntity).IsAssignableFrom(targetType))
+            {
+                var props = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                var entity = Activator.CreateInstance(targetType);
+                foreach(var prop in props)
+                {
+                    if(prop.PropertyType.IsSimple())
+                    {
+                        var converter = TypeDescriptor.GetConverter(prop.PropertyType);
+                        var simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)?.Value ?? string.Empty);
+                        prop.SetValue(entity, simpleValue);
+                    }
+                    else if (el.Element(prop.Name) is XElement complex)
+                    {
+                        var complexValue = ResolveMetadata(prop.PropertyType, el.Attribute(prop.Name)?.Value, complex);
+                        prop.SetValue(entity, complexValue);
+                    }
+                }
+                return entity;
+            }
+
 
             throw new InvalidOperationException("Don't know that type: " + targetType);
         }
@@ -803,7 +903,7 @@ namespace DataLayer.Utilities.Extensions
             } 
             else if (el.Attribute("Value")?.Value is string val)
             {
-                if(type == typeof(object) && val == "null")
+                if(type == typeof(object) && val == "Null")
                 {
                     return Expression.Constant(null, type);
                 }

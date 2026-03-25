@@ -77,7 +77,12 @@
     <div class="flex-row">
         <span></span>
         <span>Atrium</span>
-        <span>@hostStatus</span>
+        <span>@hostStatus
+            @if(IsWorking == true)
+            {
+                <span> site is <a href="https://@(Domain)/">live and accessible.</a></span>
+            }
+        </span>
         <span>@hostChecked</span>
         <span><span class="bi @(IsWorking == true ? "bi-check-circle" : IsWorking == false ? "bi-x-circle" : "bi-clock")"></span></span>
     </div>
@@ -227,7 +232,7 @@
 
             if (StatusResponse.ItWorks?[0] == token)
             {
-                hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
+                hostStatus = $"Tokens match, ";
                 IsWorking = true;
             } else
             {

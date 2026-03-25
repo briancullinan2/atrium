@@ -17,10 +17,12 @@
     <span class="instructions">See a list of program interactions on a timeline.</span>
     <div class="now-indicator"></div> @* Fixed line in the middle *@
 
-    <div @ondragstart="() => Dragging = true" 
+    @*ondragstart="() => Dragging = true" 
          @ondragstart:preventDefault="true" 
          @ondragstart:stopPropagation="true" 
-         @ondragend="() => Dragging = false" 
+         @ondragend="() => Dragging = false"*@
+
+    <div 
          @onmousedown="() => Dragging = true" 
          @onmouseup="() => Dragging = false"
          @onmousemove="HandleMove"
@@ -92,16 +94,41 @@
         return rawX + ViewportOffset;
     }
 
+
+    private CancellationTokenSource? _movects;
+
     protected async Task HandleMove(MouseEventArgs e)
     {
-        if (Dragging)
+        if (!Dragging) return;
+
+        // 1. Accumulate the movement immediately (The "Snap" feel)
+        // We update the local state so the UI feels responsive
+        ViewportOffset += e.MovementX;
+
+        // 2. Cancel the previous "Server/State Sync" timer
+        _movects?.Cancel();
+        _movects = new CancellationTokenSource();
+        var token = _movects.Token;
+
+        try
         {
-            // Removed the "/ ZoomLevel" here to keep the 1:1 feel of dragging
-            // If it feels too slow, you can add a multiplier
-            ViewportOffset += e.MovementX;
+            // 3. The 50ms Wait Window
+            await Task.Delay(50, token);
+
+            // 4. If we made it here without being cancelled,
+            // finally trigger the heavy lifting (StateHasChanged / Server Sync)
             StateHasChanged();
+        
+            // If you were syncing to a remote node in Flagstaff:
+            // await SaveViewportPosition(ViewportOffset);
+        }
+        catch (TaskCanceledException)
+        {
+            // Silently swallowed: Another move happened within 50ms
         }
     }
+
+
     
     private void NavigateToEvent(DataLayer.Entities.Visit visit)
     {
@@ -135,28 +162,59 @@
     private Dictionary<DateTime, IEnumerable<DataLayer.Entities.Visit>> Events = new();
     
     
-    private async Task UpdateEvents(DateTime day)
+    private Dictionary<DateTime, CancellationTokenSource?> _loadcts = new();
+
+    protected async Task UpdateEvents(DateTime day)
     {
-        // Temporary Wide Query: Get everything from the last 48 hours
-        var wideStart = day.Date.ToUniversalTime();
-        var wideEnd = day.Date.AddDays(1).ToUniversalTime();
+        if (!Dragging) return;
 
-        var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created >= wideStart && v.Created < wideEnd)).ToList();
-
-        if (!Events.TryGetValue(day.Date, out var existing) || existing.Count() != allRecent.Count)
+        // 2. Cancel the previous "Server/State Sync" timer
+        if(_loadcts.TryGetValue(day.Date, out var cts))
         {
-            Events[day.Date] = allRecent;
-            if (allRecent.Count != 0) StateHasChanged();
+            cts?.Cancel();
+        }
+        ;
+        var token = (_loadcts[day.Date] = new CancellationTokenSource()).Token;
+
+        try
+        {
+            // 3. The 50ms Wait Window
+            await Task.Delay(50, token);
+
+            // Temporary Wide Query: Get everything from the last 48 hours
+            var wideStart = day.Date.ToUniversalTime();
+            var wideEnd = day.Date.AddDays(1).ToUniversalTime();
+
+            if (!Events.TryGetValue(day.Date, out var _))
+            {
+        
+                var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created >= wideStart && v.Created < wideEnd)).ToList();
+                if (allRecent.Count > 0)
+                {
+                    Events[day.Date] = allRecent;
+                    if (allRecent.Count != 0) StateHasChanged();
+                }
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Silently swallowed: Another move happened within 50ms
         }
     }
 
 
-
+    private int delayCount = 0;
     private IEnumerable<DataLayer.Entities.Visit> GetEventsForDay(DateTime day)
     {
         var localDate = day.Date;
+
+        if (Events.TryGetValue(localDate, out var events))
+        {
+            return events;
+        }
+        delayCount++;
         _ = UpdateEvents(localDate);
-        return Events.TryGetValue(localDate, out var events) ? events : [];
+        return [];
     }
 
     [JSInvokable]

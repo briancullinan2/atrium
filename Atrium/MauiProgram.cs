@@ -11,26 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using DataLayer.Utilities;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
+using DataLayer;
 
 namespace Atrium
 {
-    public partial class KeepAlive(string conn) : SqliteConnection(conn)
-    {
-        public override void Close()
-        {
-
-        }
-
-        public override Task CloseAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-
-        }
-    }
+   
 
     public static class MauiProgram
     {
@@ -81,11 +66,7 @@ namespace Atrium
                 BaseAddress = new Uri("https://0.0.0.1")
             });
 
-            _keepAliveConnection = new KeepAlive("Data Source=:memory:");
-            _keepAliveConnection.Open(); // The DB is born
-            builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>(options =>
-                options.UseSqlite(_keepAliveConnection));
-
+            builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
             builder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
                 options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
 

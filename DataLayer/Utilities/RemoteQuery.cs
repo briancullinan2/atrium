@@ -214,7 +214,7 @@ namespace DataLayer.Utilities
             }
 
             //var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
-            if (finalExpression.Value?.GetType() != typeT)
+            if (finalExpression.Value != null && finalExpression.Value?.GetType() != typeT)
             {
                 Console.WriteLine("Invalid cast: " + finalExpression.Value?.GetType() + " to " + typeT);
             }
