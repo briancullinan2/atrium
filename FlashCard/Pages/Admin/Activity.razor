@@ -189,9 +189,9 @@
             {
         
                 var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created >= wideStart && v.Created < wideEnd)).ToList();
+                Events[day.Date] = allRecent;
                 if (allRecent.Count > 0)
                 {
-                    Events[day.Date] = allRecent;
                     if (allRecent.Count != 0) StateHasChanged();
                 }
             }

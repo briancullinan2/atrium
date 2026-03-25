@@ -24,17 +24,21 @@ namespace DataLayer.Entities
         internal IQueryManager? QueryManager { get; set; }
         internal Type? ContextType { get; set; }
 
-        static abstract List<PropertyInfo> Display { get; }
-        public static abstract List<PropertyInfo> ListDisplay(Type type);
-        static abstract List<PropertyInfo> Database { get; }
-        public static abstract List<PropertyInfo> ListDatabase(Type type);
-        static abstract List<PropertyInfo> Interesting { get; }
-        public static abstract List<PropertyInfo> ListInteresting(Type type);
+
 
     }
 
     public interface IEntity<T> : IEntity where T : Entity<T>, IEntity<T>
     {
+
+        static abstract List<PropertyInfo> Display { get; }
+        static abstract List<PropertyInfo> ListDisplay(Type type);
+        static abstract List<PropertyInfo> Database { get; }
+        static abstract List<PropertyInfo> ListDatabase(Type type);
+        static abstract List<PropertyInfo> Interesting { get; }
+        static abstract List<PropertyInfo> ListInteresting(Type type);
+        static abstract EntityMetadata<T> Metadata { get; }
+
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
         Task<T> Save(IServiceProvider service);
         Task<T> Save(IQueryManager? query = null);
@@ -51,7 +55,7 @@ namespace DataLayer.Entities
         public Type? ContextType { get; set; } = null;
         [NotMapped]
 
-        public static EntityMetadata<T> Metadata => new();
+        public static EntityMetadata<T> Metadata { get; } = new();
 
         public int? CanonicalFingerprint { get; set; } = null;
 

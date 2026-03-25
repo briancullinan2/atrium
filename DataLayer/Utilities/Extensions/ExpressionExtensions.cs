@@ -282,6 +282,30 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static bool IsScalar(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                var name = m.Method.Name;
+                return name == "Count" || name == "LongCount" ||
+                       name == "Min" || name == "Max" ||
+                       name == "Sum" || name == "Average" ||
+                       name == "Any" || name == "All" ||
+                       name == "Contains";
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the expression produces a single result 
+        /// (Scalar, Element operator, or Boolean check).
+        /// </summary>
+        public static bool IsTerminal(this Expression expression)
+        {
+            return expression.IsSingular() || expression.IsScalar();
+        }
+
+
         public static bool IsDefault(this Expression expression)
         {
             if (expression is MethodCallExpression m)

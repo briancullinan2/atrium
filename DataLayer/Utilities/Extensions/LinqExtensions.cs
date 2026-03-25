@@ -1000,6 +1000,11 @@ namespace DataLayer.Utilities.Extensions
                 if (outish != null) set = outish;
                 return result;
             }
+            if(el.Attribute("AssemblyQualifiedName") is XAttribute typeAttr
+                && Type.GetType(typeAttr.Value) is Type targetType)
+            {
+                return Expression.Constant(ResolveMetadata(targetType, el.ToString(), el));
+            }
 
             throw new NotSupportedException($"No factory found for {nodeType}");
         }

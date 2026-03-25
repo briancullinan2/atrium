@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Reflection;
 
 namespace DataLayer.Utilities.Extensions
 {
@@ -83,6 +84,28 @@ namespace DataLayer.Utilities.Extensions
                 i == typeof(IEnumerable) ||
                 (i.IsGenericType && IterableBaseTypes.Contains(i.GetGenericTypeDefinition()))
             );
+        }
+
+
+
+        public static MethodInfo? GetMethod(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
+        {
+            var method = type
+                .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                .FirstOrDefault(m => m.Name == name
+                    && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic))
+                    && (extendedTypes == null
+                        || m.GetParameters().Select((p, i) => p.ParameterType.Extends(extendedTypes.ElementAtOrDefault(i) ?? typeof(object))).Count() == extendedTypes.Length)
+                    );
+            return method;
+        }
+
+
+
+
+        public static bool Extends(this Type type, Type genericDefinition)
+        {
+            return genericDefinition.IsAssignableFrom(type) || IsCompatibleWith(type, genericDefinition);
         }
 
 

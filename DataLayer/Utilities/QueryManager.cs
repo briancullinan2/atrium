@@ -39,7 +39,8 @@ namespace DataLayer.Utilities
 
         Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
-
+        Task<IEntity> Save(IEntity entity, int priority = 10);
+        Task<IEntity> Save(StorageType storage, IEntity entity, int priority = 10);
         Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
@@ -71,6 +72,9 @@ namespace DataLayer.Utilities
 
 
 
+
+        Expression? ToExpression(string query);
+        Expression? ToExpression(StorageType? storage, string query);
 
         Expression? ToExpression(string query, out IQueryable? set);
         Expression? ToExpression(StorageType? storage, string query, out IQueryable? set);
@@ -151,7 +155,8 @@ namespace DataLayer.Utilities
         {
 
             var methods = typeof(QueryManager)
-                .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                .GetMethods();
+            
             UpdateGeneric = methods
                 .FirstOrDefault(m => m.Name == nameof(UpdateNow) && m.IsGenericMethod && m.GetParameters().First().ParameterType == typeof(DbContext))
                 ?? throw new Exception("UpdateNow method definition not found.");
@@ -303,27 +308,27 @@ namespace DataLayer.Utilities
         }
 
 
-        protected IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
+        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
         {
             return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> 
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
+        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
         {
             return Service?.GetService(contextType) as IDbContextFactory<TContext> 
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
-        protected TContext? GetContext<TContext>() where TContext : DbContext
+        protected static TContext? GetContext<TContext>() where TContext : DbContext
         {
-            return GetContextFactory<TContext>()?.CreateDbContext() 
+            return QueryManager.GetContextFactory<TContext>()?.CreateDbContext() 
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
+        protected static TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
         {
-            return GetContextFactory<TContext>(contextType)?.CreateDbContext() 
+            return QueryManager.GetContextFactory<TContext>(contextType)?.CreateDbContext() 
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
@@ -604,6 +609,44 @@ namespace DataLayer.Utilities
         }
 
 
+        public virtual async Task<IEntity> Save(IEntity entity, int priority = 10)
+        {
+            return await Save(EphemeralStorage, entity, priority);
+        }
+
+
+        public virtual async Task<IEntity> Save(StorageType storage, IEntity entity, int priority = 10)
+        {
+            await Enqueue(async () =>
+            {
+                using var scope = Service?.CreateScope();
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
+            return await Enqueue(async () =>
+            {
+                return await SaveNow(storage, entity);
+            }, priority);
+        }
+
+
+        protected virtual async Task<IEntity> SaveNow(StorageType storage, IEntity entity)
+        {
+            var RealSave = GetType().GetMethod(nameof(SaveNow), 1, [typeof(StorageType), typeof(object)])
+                ?.MakeGenericMethod(entity.GetType())
+                ?? throw new InvalidOperationException("Failed to render save now function.");
+            var result = RealSave.Invoke(this, [storage, entity]);
+            if(result is Task task)
+            {
+                await task;
+                return (IEntity)(result as dynamic).Result;
+            }
+            throw new InvalidOperationException("Failed to render IEntity.");
+        }
+
+
         protected virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
         {
             using var scope = Service?.CreateScope();
@@ -664,18 +707,6 @@ namespace DataLayer.Utilities
         public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
             return await Query(EphemeralStorage, query, priority);
-        }
-
-        public class ParameterUpdateVisitor(ParameterExpression oldParam, Expression newExpression) : ExpressionVisitor
-        {
-            private readonly ParameterExpression _oldParam = oldParam;
-            private readonly Expression _newExpression = newExpression;
-
-            protected override Expression VisitParameter(ParameterExpression node)
-            {
-                if (node == _oldParam) return _newExpression;
-                return base.VisitParameter(node);
-            }
         }
 
 
@@ -1054,6 +1085,16 @@ namespace DataLayer.Utilities
         }
 
 
+        public Expression? ToExpression(string query)
+        {
+            return ToExpression(EphemeralStorage, query, out _);
+        }
+
+        public Expression? ToExpression(StorageType? storage, string query)
+        {
+            return ToExpression(EphemeralStorage, query, out _);
+        }
+
         public Expression? ToExpression(StorageType? storage, string query, out IQueryable? set)
         {
             var context = GetContext(storage ?? EphemeralStorage)
@@ -1093,32 +1134,4 @@ namespace DataLayer.Utilities
     }
 
 
-    public class RemoteManager : QueryManager
-    {
-        private readonly HttpClient? _httpClient;
-
-        public RemoteManager()
-        {
-            PersistentStorage = StorageType.Test;
-            EphemeralStorage = StorageType.Remote;
-
-            // TODO: supply a value for http to automatically replace with a specific address for remote managing
-
-
-            _httpClient = Service?.GetRequiredService<HttpClient>();
-        }
-
-        protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
-        {
-            var serialized = new XDocument(LinqExtensions.VisitToXml(entity, 0, 0));
-            Console.WriteLine("Save Object: " + serialized);
-
-            var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
-            await context.InitializeIfNeeded();
-
-            context.Entry(entity).State = EntityState.Detached;
-
-            return await UpdateNow(storage, entity);
-        }
-    }
 }
