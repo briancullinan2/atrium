@@ -13,6 +13,14 @@
     border-top-left-radius: 8px;
 }
 
+.page.Error .dev-console,
+.page.Console .dev-console {
+    position:static;
+    right:unset;
+    bottom:unset;
+    width:unset;
+}
+
 .page.chatting .dev-console {
     bottom: 6rem;
 }
@@ -31,7 +39,6 @@
 
 .console-header {
     padding: 10px;
-    background: #333;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -50,18 +57,12 @@
     margin-bottom: 10px;
 }
 
-pre {
-    background: #000;
+.dev-console pre {
     padding: 5px;
-    color: #9cdcfe;
     white-space: pre-wrap;
 }
 
-.clear-btn {
-    background: #ce9178;
-    border: none;
-    color: white;
+.dev-console summary {
     cursor: pointer;
-    border-radius: 4px;
-    padding: 2px 8px;
 }
+

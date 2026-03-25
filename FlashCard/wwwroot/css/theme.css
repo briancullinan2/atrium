@@ -924,3 +924,14 @@ a.deemphasize, button.deemphasize {
 .chat-message.from *:nth-child(1) {
     background: rgb(from var(--text-sidebar) r g b / 10%);
 }
+
+
+.dev-console {
+    background: var(--text-main);
+    color: var(--slate-bg);
+    border: 1px solid var(--text-muted);
+}
+
+.error-entry {
+    border-bottom: 1px solid var(--slate-border);
+}

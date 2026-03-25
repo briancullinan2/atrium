@@ -237,6 +237,10 @@
 
             // Required to tell Blazor the data changed outside of a UI event
         }
+        catch (System.Text.Json.JsonException ex)
+        {
+            hostStatus = "Response parse error: " + ex.Message;
+        }
         catch (Exception ex)
         {
             hostStatus = "Error: " + ex.Message;

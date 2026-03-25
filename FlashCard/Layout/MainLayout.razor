@@ -100,8 +100,11 @@
 
     </main>
 
-
-    <FlashCard.Pages.Shared.Console Embedded="true" />
+    @if (Nav.Uri != "/error" && Nav.Uri != "/console"
+        && NavigationExtensions.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console))
+    {
+        <FlashCard.Pages.Shared.Console Embedded="true" />
+    }
 
     @if (ShowChat == true)
     {

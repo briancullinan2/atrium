@@ -179,8 +179,12 @@ namespace Atrium.Services
                 webApp.UsePathBase("/");
                 webApp.UseStaticFiles(); // Move this UP
                 webApp.UseBlazorFrameworkFiles();
-                webApp.UseAntiforgery();
+
                 webApp.UseRouting();     // Move this UP
+
+                webApp.UseCors("_myAllowSpecificOrigins");
+
+                webApp.UseAntiforgery();
                 webApp.UseAuthorization();
 
                 // 2. Mapping happens AFTER routing is configured
