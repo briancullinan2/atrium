@@ -39,6 +39,7 @@ namespace FlashCard.Services
         public string? Host { get; set; }
         public string? Tunnel { get; set; }
         public bool? Installed { get; set; }
+        public string? Error { get; set; }
         public StatusResponse()
         {
             Now = DateTime.Now;

@@ -77,7 +77,7 @@
     <div class="flex-row">
         <span></span>
         <span>Atrium</span>
-        <span>@((MarkupString)(hostStatus ?? ""))</span>
+        <span>@hostStatus</span>
         <span>@hostChecked</span>
         <span><span class="bi @(IsWorking == true ? "bi-check-circle" : IsWorking == false ? "bi-x-circle" : "bi-clock")"></span></span>
     </div>

@@ -60,6 +60,7 @@ namespace Atrium.Services
         public static async Task OnStatusCheck(HttpContext context)
         {
             string? tunnel = null;
+            Exception? error = null;
             try
             {
 
@@ -77,18 +78,19 @@ namespace Atrium.Services
                     tunnel = await CheckTunnelStatus();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                context.Response.StatusCode = 500;
+                error = ex;
             }
 
             context.Response.ContentType = "application/json";
-            context.Response.StatusCode = 500;
             var json = JsonSerializer.Serialize(new StatusResponse()
             {
                 Host = Settings?.Domain,
                 Tunnel = tunnel,
-                Installed = CheckServiceInstalled()
+                Installed = CheckServiceInstalled(),
+                Error = error?.Message
             }, JsonHelper.Default);
 
             await context.Response.WriteAsync(json);
@@ -159,7 +161,7 @@ namespace Atrium.Services
             }
             catch (Exception ex)
             {
-                return "Error: " + ex.Message;
+                throw new Exception("Status check error: " + ex.Message, ex);
             }
         }
 

@@ -234,6 +234,7 @@ namespace FlashCard.Services
                 {
                     var pageManager = Services?.GetService<IPageManager>();
                     if (ex != null) pageManager?.SetError(ex);
+                    else pageManager?.SetError(new Exception(message.ToString()) { Source = Category });
                 });
 
                 // TODO: I don't know if this is wise, it generates loops of errors

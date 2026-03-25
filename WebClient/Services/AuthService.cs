@@ -1,4 +1,5 @@
 ﻿using FlashCard.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
 namespace WebClient.Services
@@ -7,9 +8,10 @@ namespace WebClient.Services
     //   into an encrypted field and only the "****" will be returned here for display
     public class AuthService(IServiceProvider _service) : FlashCard.Services.AuthService(_service)
     {
-        public override Task MarkUserAsAuthenticated(ClaimsPrincipal user)
+        public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
         {
-            throw new NotImplementedException();
+            var task = (Service?.GetService<AuthenticationStateProvider>() as BrowserStateProvider)?.MarkUserAsAuthenticated(user);
+            if (task != null) await task;
         }
     }
 }

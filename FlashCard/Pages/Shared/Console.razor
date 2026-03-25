@@ -1,5 +1,6 @@
 @page "/error"
 @page "/console"
+@attribute [AllowAnonymous]
 @using FlashCard.Services
 @implements IDisposable
 @inject IPageManager PageManager
@@ -10,8 +11,6 @@
         <button class="clear-btn" @onclick:stopPropagation @onclick="Clear">Clear</button>
     </div>
 
-    @if (_isExpanded)
-    {
         <div class="console-body">
             @foreach (var error in /*Logger.Errors.OrderByDescending(e => e.Timestamp)*/ Services.PageManager.Immediate.TakeLast(3))
             {
@@ -19,6 +18,8 @@
                     <div class="entry-header">
                         <strong>@error.Created.ToString("HH:mm:ss")</strong> - @error.Exception.Message
                     </div>
+                @if (_isExpanded)
+                {
                     <div class="entry-details">
                         <p><strong>Type:</strong> @error.Exception.Source</p>
                         <p><strong>Source:</strong> <pre>@error.Exception.Source</pre></p>
@@ -27,10 +28,10 @@
                             <pre>@(error.Exception.Data["OriginalStack"] as string ?? error.Exception.StackTrace)</pre>
                         </details>
                     </div>
+                }
                 </div>
             }
         </div>
-    }
 </div>
 
 @code {

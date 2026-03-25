@@ -180,8 +180,6 @@ namespace DataLayer
                 }
             }
         }
-
-
     }
 
     public class WrapperInterceptor : IMaterializationInterceptor

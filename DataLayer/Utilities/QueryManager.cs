@@ -175,6 +175,8 @@ namespace DataLayer.Utilities
 
         public async Task<TReturn> Enqueue<TReturn>(Func<Task<TReturn>> callback, int priority = 5)
         {
+            var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+
             var myTurn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             lock (TaskQueue)
@@ -207,6 +209,7 @@ namespace DataLayer.Utilities
             catch (Exception ex)
             {
                 Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
+                Console.WriteLine("Stack when called: " + stackWhenCalled);
                 throw new Exception("holy shit", ex);
             }
             finally

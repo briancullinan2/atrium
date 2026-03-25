@@ -99,17 +99,25 @@ namespace Atrium.Services
 
 
                 string myAllowSpecificOrigins = "_myAllowSpecificOrigins";
-
                 webBuilder.Services.AddCors(options =>
                 {
                     options.AddPolicy(name: myAllowSpecificOrigins,
-                                      policy =>
-                                      {
-                                          policy.WithOrigins("https://study.pryor.games",
-                                                              "http://localhost:8080") // Your local dev port
-                                                .AllowAnyHeader()
-                                                .AllowAnyMethod();
-                                      });
+                        policy =>
+                        {
+                            policy.SetIsOriginAllowed(origin =>
+                            {
+                                // This is the "Per Request Callback"
+                                var host = new Uri(origin).Host;
+
+                                // Allow anything on your games domain or localhost
+                                return host.EndsWith("pryor.games") ||
+                                       host == "localhost" ||
+                                       host == "127.0.0.1";
+                            })
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials(); // Necessary if you want to send Cookies/Auth headers
+                        });
                 });
 
                 var webApp = webBuilder.Build();
@@ -126,6 +134,21 @@ namespace Atrium.Services
                     context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                     context.Response.Headers.Append("Pragma", "no-cache");
                     context.Response.Headers.Append("Expires", "0");
+                    // Check if the request is the browser asking for permission
+                    if (context.Request.Method == "OPTIONS")
+                    {
+                        var origin = context.Request.Headers.Origin.ToString();
+                        // Arizona Law: Verify the origin is one we trust
+                        if (origin.Contains("pryor.games") || origin.Contains("localhost"))
+                        {
+                            context.Response.Headers.AccessControlAllowOrigin = origin;
+                            context.Response.Headers.AccessControlAllowMethods = "GET, POST, OPTIONS";
+                            context.Response.Headers.AccessControlAllowHeaders = "Content-Type, Authorization, Accept";
+                            context.Response.Headers.AccessControlAllowCredentials = "true";
+                            context.Response.StatusCode = 200; // Return OK immediately
+                            return Task.CompletedTask;
+                        }
+                    }
                     return next();
                 });
 
@@ -164,15 +187,15 @@ namespace Atrium.Services
                 //webApp.MapBlazorHub();
                 webApp.UseExceptionHandler("/error", createScopeForErrors: true);
 
-                webApp.MapPost("/api/query", QueryService.RespondQuery);
-                webApp.MapPost("/api/upload", FileManager.OnUploadFile);
-                webApp.MapPost("/api/inspect", AnkiService.OnInspectFile);
-                webApp.MapPost("/api/search", AnkiService.OnSearchAnki);
-                webApp.MapPost("/api/download", AnkiService.OnDownloadAnki);
-                webApp.MapPost("/api/status", HostingService.OnStatusCheck);
-                webApp.MapPost("/api/chat/presets", ChatService.OnPresets);
-                webApp.MapPost("/api/chat/ping", ChatService.OnPing);
-                webApp.MapPost("/api/chat", ChatService.OnChat);
+                webApp.MapPost("/api/query", QueryService.RespondQuery).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/upload", FileManager.OnUploadFile).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/inspect", AnkiService.OnInspectFile).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/search", AnkiService.OnSearchAnki).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/download", AnkiService.OnDownloadAnki).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/status", HostingService.OnStatusCheck).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/chat/presets", ChatService.OnPresets).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/chat/ping", ChatService.OnPing).RequireCors(myAllowSpecificOrigins);
+                webApp.MapPost("/api/chat", ChatService.OnChat).RequireCors(myAllowSpecificOrigins);
 
                 webApp.MapRazorComponents<Components.App>()
                     .AddInteractiveServerRenderMode()

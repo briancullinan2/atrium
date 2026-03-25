@@ -282,6 +282,32 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static bool IsDefault(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                var name = m.Method.Name;
+                return name == "FirstOrDefault" ||
+                       name == "SingleOrDefault" ||
+                       name == "LastOrDefault";
+            }
+            return false;
+        }
+
+
+        public static bool IsSingular(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                var name = m.Method.Name;
+                return name == "FirstOrDefault" || name == "First" ||
+                       name == "SingleOrDefault" || name == "Single" ||
+                       name == "LastOrDefault" || name == "Last";
+            }
+            return false;
+        }
+
+
         private static void ParseExpression(Expression? expr, Dictionary<MemberInfo, object?> values)
         {
             if (expr == null) return;

@@ -17,6 +17,10 @@
     bottom: 6rem;
 }
 
+.page.login-mode .dev-console {
+    bottom: 20px;
+}
+
 .expanded {
     height: 400px;
 }

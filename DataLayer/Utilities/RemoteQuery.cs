@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -132,6 +133,19 @@ namespace DataLayer.Utilities
         }
 
 
+        public static object? GetDefault(Type type)
+        {
+            // 1. If it's a Value Type (int, DateTime, struct, etc.)
+            if (type.IsValueType)
+            {
+                return Activator.CreateInstance(type);
+            }
+
+            // 2. If it's a Reference Type (class, string, interface)
+            return null;
+        }
+
+
 
         public async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken cancellationToken = default)
         {
@@ -144,6 +158,9 @@ namespace DataLayer.Utilities
             //    throw new InvalidOperationException("No DbContext provider.");
             //}
 
+            // The key is checking the requested type T
+            var typeT = typeof(T);
+
             Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
             var baseAddress = (_current.Context as RemoteStorage)?.BaseAddress;
@@ -151,7 +168,24 @@ namespace DataLayer.Utilities
 
             var response = await _httpClient.PostAsJsonAsync(queryAddress, serialized, cancellationToken);
 
-            _ = response.EnsureSuccessStatusCode();
+            if(response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                object? defaultObject;
+                if (typeT.IsIterable() && !query.IsDefault())
+                {
+                    defaultObject = CollectionConverter.ConvertAsync(null, typeT);
+                    if (defaultObject is Task task)
+                        defaultObject = (task as dynamic).Result;
+                }
+                else
+                {
+                    defaultObject = GetDefault(typeT)!;
+                }
+
+                return (T)defaultObject!;
+            }
+
+
             var content = await response.Content.ReadFromJsonAsync<string>(cancellationToken: cancellationToken);
 
             using XmlReader reader = XmlReader.Create(new StringReader(content ?? string.Empty));
@@ -161,18 +195,10 @@ namespace DataLayer.Utilities
             ConstantExpression? finalExpression = root.ToExpression(_current.Context, out IQueryable? set) as ConstantExpression
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
 
-            //var Query = Service.GetRequiredService<IQueryManager>()
-            //    ?? throw new InvalidOperationException("Unable to render query manager.");
 
-            //ConstantExpression? finalExpression = Query.ToExpression(content ?? string.Empty, out IQueryable? set) as ConstantExpression
-            //    ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
-
-
-            // The key is checking the requested type T
-            var typeT = typeof(T);
 
             // If the caller (EF Core) is asking for IAsyncEnumerable<File>
-            if (typeT.IsGenericType && typeof(IAsyncEnumerable<>).IsAssignableFrom(typeT.GetGenericTypeDefinition()))
+            if (typeT.IsGenericType && typeT.IsIterable())
             {
                 var itemType = typeT.GetGenericArguments().FirstOrDefault() 
                     ?? throw new InvalidOperationException("Could not extract generic arugments.");
@@ -184,19 +210,7 @@ namespace DataLayer.Utilities
                     throw new InvalidOperationException("Server returned null and nobody knows why.");
                 }
 
-                // 2. Convert List to IAsyncEnumerable (using .ToAsyncEnumerable())
-                // Requires 'System.Linq.Async' NuGet package
-                var toAsyncMethod = typeof(AsyncEnumerable)
-                    .GetMethods()
-                    .First(m => m.Name == nameof(AsyncEnumerable.ToAsyncEnumerable) && m.IsGenericMethod)
-                    .MakeGenericMethod(itemType);
-
-                var result2 = toAsyncMethod.Invoke(null, [finalExpression.Value]);
-                if(result2?.GetType() != typeT)
-                {
-                    Console.WriteLine("Invalid cast: " + result2?.GetType() + " to " + typeT);
-                }
-                return (T)result2!;
+                return (T)CollectionConverter.ConvertAsync(finalExpression.Value, typeT)!;
             }
 
             //var result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
