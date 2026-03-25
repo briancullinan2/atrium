@@ -249,8 +249,9 @@ namespace DataLayer
 
 
     // default interface between web client and http host server
-    public class RemoteStorage(IQueryManager service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
+    public class RemoteStorage(HttpClient client, IQueryManager service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
     {
+        public HttpClient Client { get; set; } = client;
         public string? BaseAddress { get; set; } = null;
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {

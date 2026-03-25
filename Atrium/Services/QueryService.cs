@@ -12,7 +12,7 @@ namespace Atrium.Services
 {
     internal static class QueryService //: QueryManager
     {
-        
+
 
 
 #if WINDOWS

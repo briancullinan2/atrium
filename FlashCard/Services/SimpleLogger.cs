@@ -19,34 +19,29 @@ namespace FlashCard.Services
     }
 
 
-    public class SimpleLogger() : ILog
+    public class SimpleLogger : ILog
     {
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
 
-        public object? WrappedLogger { get; set; }
-#pragma warning disable IDE1006 // Naming Styles
-        private static IServiceProvider? _services { get; set; }
-#pragma warning restore IDE1006 // Naming Styles
-        public static IServiceProvider? Services
+        public static IPageManager? Manager { get; set; }
+
+        public SimpleLogger(IPageManager? page = null)
         {
-            get
+            Manager ??= page;
+            foreach (var pre in PreLog)
             {
-                return _services;
+                _ = pre.Save();
+                var boringException = new Exception(pre.Title) { Source = pre.Source };
+                boringException.Data["OriginalStack"] = pre.Body;
+                Manager?.SetError(boringException);
             }
-            set
-            {
-                _services = value;
-                var pageManager = _services?.GetService<IPageManager>();
-                foreach (var pre in PreLog)
-                {
-                    _ = pre.Save(_services);
-                    var boringException = new Exception(pre.Title) { Source = pre.Source };
-                    boringException.Data["OriginalStack"] = pre.Body;
-                    pageManager?.SetError(boringException);
-                }
-                PreLog.Clear();
-            }
+            PreLog.Clear();
         }
+
+
+        public object? WrappedLogger { get; set; }
+
+
         internal static ConcurrentStack<DataLayer.Entities.Message> PreLog { get; set; } = [];
 
 
@@ -125,7 +120,7 @@ namespace FlashCard.Services
         )
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
-            if(StopSavingLogs)
+            if (StopSavingLogs)
             {
                 return;
             }
@@ -157,21 +152,20 @@ namespace FlashCard.Services
                     };
                 }
 
-                if (Services == null)
+                if (Manager == null)
                 {
                     PreLog.Push(newMessage);
                 }
                 else
                 {
-                    _ = newMessage.Save(_services);
-                    var pageManager = Services.GetService<IPageManager>();
+                    _ = newMessage.Save();
                     // so we get a stack trace with it
-                    if (exception != null) pageManager?.SetError(exception);
+                    if (exception != null) Manager?.SetError(exception);
                     else
                     {
                         var reportEx = exception ?? new Exception(Title) { Source = Source };
                         reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
-                        pageManager?.SetError(reportEx);
+                        Manager?.SetError(reportEx);
                     }
                 }
             }
@@ -232,9 +226,8 @@ namespace FlashCard.Services
             {
                 Task.Run(() =>
                 {
-                    var pageManager = Services?.GetService<IPageManager>();
-                    if (ex != null) pageManager?.SetError(ex);
-                    else pageManager?.SetError(new Exception(message.ToString()) { Source = Category });
+                    if (ex != null) Manager?.SetError(ex);
+                    else Manager?.SetError(new Exception(message.ToString()) { Source = Category });
                 });
 
                 // TODO: I don't know if this is wise, it generates loops of errors
@@ -259,7 +252,7 @@ namespace FlashCard.Services
             string finalMessage = $"{formattedPrefix} {message}";
 
             // 2. Output to Console (Immediate Feedback)
-            
+
             Console.WriteLine(finalMessage);
             //if (ex != null) Console.WriteLine(ex);
 

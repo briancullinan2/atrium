@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
 using FlashCard.Services.Logging;
+using DataLayer.Utilities.Extensions;
 
 namespace FlashCard.Services
 {
@@ -37,6 +38,7 @@ namespace FlashCard.Services
 
                 var uri = new Uri(e.Location);
 
+                //query.Create<Visit>();
                 var visit = new Visit
                 {
                     Path = uri.AbsolutePath,

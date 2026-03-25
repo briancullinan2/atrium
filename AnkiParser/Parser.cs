@@ -15,7 +15,7 @@ namespace AnkiParser
     public static partial class Parser
     {
 
-        public static async Task<List<DataLayer.Entities.File>> ListFiles(string? ankiPackage, IServiceProvider Services)
+        public static async Task<List<DataLayer.Entities.File>> ListFiles(string? ankiPackage, IQueryManager Query)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -28,11 +28,10 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var query = Services.GetRequiredService<IQueryManager>();
-            var alreadyLoaded = await query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage);
+            var alreadyLoaded = await Query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage);
             if (alreadyLoaded.Any())
             {
-                results = [.. await query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName))];
+                results = [.. await Query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName))];
                 if (results.Count != 0)
                 {
                     return results;
@@ -47,7 +46,7 @@ namespace AnkiParser
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                var newFile = await query.Save(new DataLayer.Entities.File()
+                var newFile = await Query.Save(new DataLayer.Entities.File()
                 {
                     Filename = entry.FullName,
                     Source = simpleName,
@@ -60,7 +59,7 @@ namespace AnkiParser
             return results;
         }
 
-        public static async Task<List<DataLayer.Entities.Card>> ParseCards(string? ankiPackage, IServiceProvider Services)
+        public static async Task<List<DataLayer.Entities.Card>> ParseCards(string? ankiPackage, IQueryManager Query)
         {
             if (!File.Exists(ankiPackage))
             {
@@ -71,8 +70,7 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var query = Services.GetRequiredService<IQueryManager>();
-            var alreadyLoaded = await query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName);
+            var alreadyLoaded = await Query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName);
             if (alreadyLoaded.Any())
             {
                 return [.. alreadyLoaded];
@@ -94,13 +92,13 @@ namespace AnkiParser
             {
                 if (entry.FullName.EndsWith(".anki2"))
                 {
-                    return await ParseCards(entry.Open(), simpleName, Services);
+                    return await ParseCards(entry.Open(), simpleName, Query);
                 }
             }
             return [];
         }
 
-        private static async Task<List<DataLayer.Entities.Card>> ParseCards(Stream anki2Database, string source, IServiceProvider Services)
+        private static async Task<List<DataLayer.Entities.Card>> ParseCards(Stream anki2Database, string source, IQueryManager Query)
         {
             var tempPath = Path.GetTempFileName();
             using (var fs = File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
@@ -118,11 +116,11 @@ namespace AnkiParser
 
             // 1. Get the Note Models (Col.models JSON) 
             // Anki stores deck configs and note models in the 'col' table 'models' column
-            var collection = context.Collections.First();
+            var collection = context.Set<Entities.Collection>().First();
             var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonHelper.Default);
 
             var results = new List<DataLayer.Entities.Card>();
-            var cards = context.Cards.Include(c => c.Note).ToList();
+            var cards = context.Set<Entities.Card>().Include(c => c.Note).ToList();
 
             foreach (var card in cards)
             {
@@ -138,8 +136,7 @@ namespace AnkiParser
                 var template = model.Tmpls?.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
-                var query = Services.GetRequiredService<IQueryManager>();
-                var newCard = await query.Save(new DataLayer.Entities.Card()
+                var newCard = await Query.Save(new DataLayer.Entities.Card()
                 {
                     // Inject the field values into the Mustache brackets
                     Content = ReplaceAnkiTags(template.QFmt ?? "", model.Flds ?? [], fieldValues),

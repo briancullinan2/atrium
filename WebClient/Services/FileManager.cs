@@ -6,16 +6,14 @@ namespace WebClient.Services
 {
     public class FileManager : IFileManager
     {
-        private readonly HttpClient? _httpClient;
+        private static HttpClient? _httpClient;
         internal int currentProgress = 0;
         public event Action<DataLayer.Entities.File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
 
-        internal static IServiceProvider? _service;
-
-        public FileManager()
+        public FileManager(HttpClient client)
         {
-            _httpClient = _service?.GetRequiredService<HttpClient>();
+            _httpClient ??= client;
         }
 
         public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
@@ -82,11 +80,11 @@ namespace WebClient.Services
 
             while (true)
             {
-                var length = await _fileStream.ReadAsync(buffer, 0, buffer.Length);
+                var length = await _fileStream.ReadAsync(buffer);
                 if (length <= 0) break;
 
                 uploaded += length;
-                await stream.WriteAsync(buffer, 0, length);
+                await stream.WriteAsync(buffer.AsMemory(0, length));
                 _onProgress(uploaded); // Trigger progress update
             }
         }

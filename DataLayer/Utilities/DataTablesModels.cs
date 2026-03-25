@@ -36,7 +36,7 @@ namespace DataLayer.Utilities
             Compiled = ColumnName.ToAccessor<TEntity>().Compile();
         }
 
-       
+
 
         /// <summary>
         /// Indicates if the column is sortable.
@@ -97,36 +97,37 @@ namespace DataLayer.Utilities
         {
         }
 
-        public void Add<TValue>(Expression<Func<TEntity, TValue>> expression, 
-            string? header = null, 
-            Expression<Func<TEntity, object?>>? format = null, 
-            bool canSort = true, 
-            string? style = null, 
-            bool visible = true, 
-            string? toggle = null, 
+        public void Add<TValue>(Expression<Func<TEntity, TValue>> expression,
+            string? header = null,
+            Expression<Func<TEntity, object?>>? format = null,
+            bool canSort = true,
+            string? style = null,
+            bool visible = true,
+            string? toggle = null,
             bool canSearch = true)
         {
             var item = expression.ToDictionary().Keys.FirstOrDefault() ?? expression.ToString();
             Add(item, header, format, canSort, style, visible, toggle, canSearch);
         }
 
-        public void Add(string item, string? header = null, 
-            Expression<Func<TEntity, object?>>? format = null, 
-            bool canSort = true, 
-            string? style = null, 
-            bool visible = true, 
-            string? toggle = null, 
+        public void Add(string item, string? header = null,
+            Expression<Func<TEntity, object?>>? format = null,
+            bool canSort = true,
+            string? style = null,
+            bool visible = true,
+            string? toggle = null,
             bool canSearch = true)
         {
-            Add(new DataTableColumn<TEntity> { 
-                ColumnName = item, 
-                Format = format ?? (_ => null), 
-                Header = header ?? string.Empty, 
-                CanSort = canSort, 
-                Style = style ?? string.Empty, 
-                Visible = visible, 
-                Toggle = toggle ?? string.Empty, 
-                CanSearch = canSearch 
+            Add(new DataTableColumn<TEntity>
+            {
+                ColumnName = item,
+                Format = format ?? (_ => null),
+                Header = header ?? string.Empty,
+                CanSort = canSort,
+                Style = style ?? string.Empty,
+                Visible = visible,
+                Toggle = toggle ?? string.Empty,
+                CanSearch = canSearch
             });
         }
     }
@@ -472,5 +473,5 @@ namespace DataLayer.Utilities
             return row;
         }
     }
-    
+
 }

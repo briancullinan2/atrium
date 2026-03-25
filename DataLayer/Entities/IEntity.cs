@@ -40,7 +40,7 @@ namespace DataLayer.Entities
         static abstract EntityMetadata<T> Metadata { get; }
 
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
-        Task<T> Save(IServiceProvider service);
+        //Task<T> Save(IServiceProvider service);
         Task<T> Save(IQueryManager? query = null);
     }
 
@@ -99,7 +99,7 @@ namespace DataLayer.Entities
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
                     !foreignKeys.Contains(p.Name) // TODO: skip all FK IDs because they might not match on server
-                    //&& p.GetGetMethod()?.IsVirtual != true
+                                                  //&& p.GetGetMethod()?.IsVirtual != true
                     && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
                     && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
                     && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
@@ -184,10 +184,10 @@ namespace DataLayer.Entities
             return (int)hash;
         }
 
-        public async Task<T> Save(IServiceProvider? service)
-        {
-            return (T)(await IEntityExtensions.Save(this as T, service ?? Utilities.QueryManager.Service));
-        }
+        //public async Task<T> Save(IServiceProvider? service)
+        //{
+        //    return (T)(await IEntityExtensions.Save(this as T, service ?? Utilities.QueryManager.Service));
+        //}
 
         public async Task<T> Save(IQueryManager? query = null)
         {

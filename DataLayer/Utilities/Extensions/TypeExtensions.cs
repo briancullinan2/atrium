@@ -148,8 +148,8 @@ namespace DataLayer.Utilities.Extensions
                 .Where(m => m.Name == name
                     && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic))
                     && (extendedTypes == null
-                        || m.GetParameters().Where((p, i) => 
-                            extendedTypes.ElementAtOrDefault(i) is Type testTest 
+                        || m.GetParameters().Where((p, i) =>
+                            extendedTypes.ElementAtOrDefault(i) is Type testTest
                             && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
                     );
             return [.. method];
@@ -221,8 +221,8 @@ namespace DataLayer.Utilities.Extensions
             typeof(Guid)
                 }.Contains(type) ||
                 Convert.GetTypeCode(type) != TypeCode.Object ||
-                (type.IsGenericType 
-                    && type.GetGenericTypeDefinition() == typeof(Nullable<>) 
+                (type.IsGenericType
+                    && type.GetGenericTypeDefinition() == typeof(Nullable<>)
                     && type.GetGenericArguments().FirstOrDefault()?.IsSimple() == true);
         }
     }

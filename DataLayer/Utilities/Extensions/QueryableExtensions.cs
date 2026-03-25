@@ -30,7 +30,8 @@ namespace DataLayer.Utilities.Extensions
             CombineMode mode = CombineMode.OrElse,
             bool isNegated = false,
             params IEnumerable<Expression> expressions
-        ) {
+        )
+        {
             if (expressions == null || !expressions.Any())
                 return null;
 
@@ -90,8 +91,8 @@ namespace DataLayer.Utilities.Extensions
                 var t when typeof(Enum).IsAssignableFrom(t) => Expression.Constant(Term.TryParse(t.GetType())),
                 var t when typeof(string).IsAssignableFrom(t) => Expression.Constant(Term),
                 var t when typeof(bool).IsAssignableFrom(t) => Expression.Constant(Term.TryParse()),
-                var t when TypeDescriptor.GetConverter(t) is TypeConverter converter 
-                    && converter.CanConvertFrom(typeof(string)) 
+                var t when TypeDescriptor.GetConverter(t) is TypeConverter converter
+                    && converter.CanConvertFrom(typeof(string))
                     => Expression.Constant(converter.ConvertFromInvariantString(Term), left),
 
 
@@ -102,7 +103,8 @@ namespace DataLayer.Utilities.Extensions
         public static ConstantExpression? ToConstant(this string Term, Type left) => left.ToConstant(Term);
 
         public static Expression ToEquality(this Expression left, string? search)
-            => ParseSearch(search) switch {
+            => ParseSearch(search) switch
+            {
                 // TODO: add ToMember from left to Name
                 (var Name, var Term, false) when string.IsNullOrWhiteSpace(Name) => Expression.Equal(left, left.Type.ToConstant(Term)),
                 (var Name, var Term, true) when string.IsNullOrWhiteSpace(Name) => Expression.NotEqual(left, left.Type.ToConstant(Term)),
@@ -130,7 +132,7 @@ namespace DataLayer.Utilities.Extensions
                 // If no column name, you'd iterate through 'searchable' properties here.
                 // For now, let's assume 'name' is provided.
                 Expression? resultExpr = null;
-                if (string.IsNullOrEmpty(name) 
+                if (string.IsNullOrEmpty(name)
                     && typeof(IEntity).IsAssignableFrom(typeof(T)))
                 {
                     // TODO: search all visible columns
@@ -145,7 +147,7 @@ namespace DataLayer.Utilities.Extensions
                 }
 
                 if (resultExpr == null) return null;
-                
+
 
                 // If resultExpr is already a MethodCall (like Any), don't wrap it in Equality again
                 if (resultExpr.Type != typeof(bool))

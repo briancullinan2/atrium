@@ -48,13 +48,13 @@ namespace FlashCard.Services
 
         public async Task SetError(Exception? error)
         {
-            if(error == null)
+            if (error == null)
             {
                 Immediate.Clear();
                 return;
             }
             Immediate.Enqueue((DateTime.Now, error));
-            if(Immediate.Count > 10 
+            if (Immediate.Count > 10
                 // start deleting old records
                 || !Immediate.IsEmpty && Immediate.First().Created.AddMinutes(3) < DateTime.Now)
             {

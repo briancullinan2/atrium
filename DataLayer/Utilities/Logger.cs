@@ -26,12 +26,12 @@ namespace DataLayer.Utilities
         static Log()
         {
             WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
-            if(WrappedLogger == null)
+            if (WrappedLogger == null)
             {
                 var flashCard = Assembly.GetEntryAssembly()?.GetReferencedAssemblies()
                     .FirstOrDefault(a => a.FullName.Contains("FlashCard"));
                 Console.WriteLine("Loading assembly: " + flashCard);
-                if(flashCard != null)
+                if (flashCard != null)
                 {
                     var logger = Assembly.Load(flashCard.FullName).GetType("FlashCard.Services.SimpleLogger");
                     Console.WriteLine("Using logger: " + logger);
@@ -47,9 +47,9 @@ namespace DataLayer.Utilities
 
         public Action<object, Exception?> this[string level]
         {
-            get => MappedLevels?.GetValue(WrappedInstance, [ level ]) as Action<object, Exception?>
+            get => MappedLevels?.GetValue(WrappedInstance, [level]) as Action<object, Exception?>
                 ?? throw new InvalidOperationException("Log level doesn't exist");
-            set => MappedLevels?.SetValue(WrappedInstance, value, [ level ]);
+            set => MappedLevels?.SetValue(WrappedInstance, value, [level]);
         }
 
 

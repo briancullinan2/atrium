@@ -10,7 +10,7 @@ namespace DataLayer.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-// Keeping original DB column name
+        // Keeping original DB column name
         public int? SubjectId { get; set; }
 
         [ForeignKey(nameof(SubjectId))]

@@ -54,19 +54,12 @@ builder.Services.AddSingleton<AuthenticationStateProvider, BrowserStateProvider>
 
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>((serviceProvider, options) =>
 {
-    
+
 });
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
 
 var app = builder.Build();
 // FUCK DI
-//RemoteQuery.Service = app.Services;
-FileManager._service = app.Services;
-AnkiService._service = app.Services;
-HostingService._service = app.Services;
-ChatService._service = app.Services;
-QueryManager.Service = app.Services;
-SimpleLogger.Services = app.Services;
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();
 var navigation = app.Services.GetRequiredService<NavigationManager>();

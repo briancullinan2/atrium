@@ -14,7 +14,7 @@ namespace Atrium.Services
     {
         private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static HostingSettings? Settings { get; set; }
-        internal static IServiceProvider? _services;
+        public static Task<bool?>? Working { get; set; }
 
         static HostingService()
         {
@@ -27,15 +27,13 @@ namespace Atrium.Services
                 }
                 catch (Exception) { }
             }
-
-            var _status = _services?.GetService(typeof(HostingService)) as HostingService;
-            _ = _status?.IsWorking();
         }
 
-        protected static HttpClient? _httpClient;
-        public HostingService()
+        private static HttpClient? _httpClient;
+        public HostingService(HttpClient client)
         {
-            _httpClient ??= _services?.GetService(typeof(HttpClient)) as HttpClient;
+            _httpClient ??= client;
+            Working ??= IsWorking();
         }
 
         public async Task<bool?> CheckInstalled()

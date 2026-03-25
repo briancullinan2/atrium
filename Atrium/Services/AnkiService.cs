@@ -7,27 +7,16 @@ using System.Text.Json;
 
 namespace Atrium.Services
 {
-    public partial class AnkiService : IAnkiService
+    public partial class AnkiService(HttpClient _httpClient, IFileManager FileManager, IQueryManager Query) : IAnkiService
     {
-        internal static IServiceProvider? _services;
-        private readonly HttpClient? _httpClient;
-
-        public AnkiService()
-        {
-            _httpClient = _services?.GetService(typeof(HttpClient)) as HttpClient;
-        }
 
         public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>> InspectFile(string ankiPackage)
         {
-            if (_services == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
 
             try
             {
-                var files = await AnkiParser.Parser.ListFiles(ankiPackage, _services);
-                var cards = await AnkiParser.Parser.ParseCards(ankiPackage, _services);
+                var files = await AnkiParser.Parser.ListFiles(ankiPackage, Query);
+                var cards = await AnkiParser.Parser.ParseCards(ankiPackage, Query);
                 return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>(files, cards);
             }
             catch (Exception ex)
@@ -179,31 +168,21 @@ namespace Atrium.Services
         }
 
 #if WINDOWS
-        public static async Task OnDownloadAnki(HttpContext context)
+        public static async Task OnDownloadAnki(HttpContext context, AnkiService AnkiService)
         {
-            if (_services == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
-            var ankiService = _services.GetRequiredService<AnkiService>();
             var ankiPackage = context.Request.Query["anki"].ToString() ?? "";
-            var results = await ankiService.Download(ankiPackage);
+            var results = await AnkiService.Download(ankiPackage);
             context.Response.ContentType = "application/json";
             var json = JsonSerializer.Serialize(results, JsonHelper.Default);
             await context.Response.WriteAsync(json);
         }
 
 
-        public static async Task OnSearchAnki(HttpContext context)
+        public static async Task OnSearchAnki(HttpContext context, HttpClient _httpClient)
         {
-            if (_services == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
             try
             {
                 var searchTerm = context.Request.Query["term"].ToString() ?? "";
-                var _httpClient = (_services.GetRequiredService<HttpClient>()) ?? throw new InvalidOperationException("HttpClient unavailable");
                 // Unique ID for the client (IP or Session)
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
@@ -222,12 +201,12 @@ namespace Atrium.Services
         }
 
 
-        public static async Task OnInspectFile(HttpContext context, IServiceProvider Service)
+        public static async Task OnInspectFile(HttpContext context, IQueryManager Query)
         {
             try
             {
-                var files = await AnkiParser.Parser.ListFiles(context.Request.Query["anki"], Service);
-                var cards = await AnkiParser.Parser.ParseCards(context.Request.Query["anki"], Service);
+                var files = await AnkiParser.Parser.ListFiles(context.Request.Query["anki"], Query);
+                var cards = await AnkiParser.Parser.ParseCards(context.Request.Query["anki"], Query);
                 context.Response.ContentType = "application/json";
                 var json = JsonSerializer.Serialize(new Inspection()
                 {
@@ -259,14 +238,6 @@ namespace Atrium.Services
 
         public async Task<IEnumerable<DataLayer.Entities.File>?> Download(string? ankiPackageUrl)
         {
-            if (_httpClient == null)
-            {
-                throw new InvalidOperationException("No Http client.");
-            }
-            if (_services == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
             if (string.IsNullOrWhiteSpace(ankiPackageUrl))
             {
                 throw new InvalidOperationException("Must enter a package name.");
@@ -282,13 +253,11 @@ namespace Atrium.Services
             // We pass the stream directly to our generalized upload function
             // Using the URL's filename as the local path hint
             var fileName = Path.GetFileName(new Uri(ankiPackageUrl).LocalPath);
-            var manager = _services.GetService(typeof(FileManager)) as FileManager;
-            Task? task = manager?.UploadFile(remoteStream, fileName, "AnkiDownloads");
+            Task? task = FileManager.UploadFile(remoteStream, fileName, "AnkiDownloads");
             if (task is Task wait) await wait;
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
-            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager;
-            Task<List<DataLayer.Entities.File>>? syncTask = query?.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
+            Task<List<DataLayer.Entities.File>>? syncTask = Query.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
             if (syncTask is Task wait2) await wait2;
             return syncTask?.Result;
         }

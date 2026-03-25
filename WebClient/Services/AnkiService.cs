@@ -6,20 +6,19 @@ namespace WebClient.Services
 {
     public class AnkiService : IAnkiService
     {
-        internal static IServiceProvider? _service;
-        private readonly HttpClient _httpClient;
+        private static HttpClient? _httpClient;
 
-        public AnkiService()
+        public AnkiService(HttpClient client)
         {
-            if (_service == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
-            _httpClient = _service.GetRequiredService<HttpClient>();
+            _httpClient ??= client;
         }
 
         public async Task<IEnumerable<DataLayer.Entities.File>?> Download(string? ankiPackage)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("No http client.");
+            }
             if (string.IsNullOrWhiteSpace(ankiPackage))
             {
                 throw new InvalidOperationException("Must enter a package name.");
@@ -31,6 +30,10 @@ namespace WebClient.Services
 
         public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>> InspectFile(string? ankiPackage)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("No http client.");
+            }
             var response = await _httpClient.PostAsync("api/inspect?anki=" + ankiPackage, new StringContent("", System.Text.Encoding.UTF8, "application/json"));
 
             var result = await response.Content.ReadFromJsonAsync<Inspection>();
@@ -43,6 +46,10 @@ namespace WebClient.Services
 
         public async Task<IEnumerable<DataLayer.Entities.File>?> Search(string? term)
         {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("No http client.");
+            }
             var response = await _httpClient.PostAsync("api/search?term=" + term, new StringContent("", System.Text.Encoding.UTF8, "application/json"));
             var result = await response.Content.ReadFromJsonAsync<List<DataLayer.Entities.File>>();
             return result;

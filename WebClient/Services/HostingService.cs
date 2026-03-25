@@ -6,18 +6,19 @@ namespace WebClient.Services
 {
     public class HostingService : IHostingService
     {
-        private readonly HttpClient? _httpClient;
-        internal static IServiceProvider? _service;
+        private static HttpClient? _httpClient;
         private StatusResponse? recentResult;
         private DateTime? recentChecked;
         private StatusResponse? statusResult;
         private DateTime? statusChecked;
 
         public event Action<bool?>? OnHttpWorking;
+        public static Task<bool?>? Working { get; set; }
 
-        public HostingService()
+        public HostingService(HttpClient client)
         {
-            _httpClient = _service?.GetRequiredService<HttpClient>();
+            _httpClient ??= client;
+            Working ??= IsWorking();
         }
 
         public async Task<string?> GetToken()
@@ -25,11 +26,6 @@ namespace WebClient.Services
             return await GetToken(null, null, null);
         }
 
-        static HostingService()
-        {
-            var _status = _service?.GetRequiredService<HostingService>();
-            _ = _status?.IsWorking();
-        }
 
         public async Task<string?> GetToken(string? Account = null, string? Tunnel = null, string? Api = null)
         {

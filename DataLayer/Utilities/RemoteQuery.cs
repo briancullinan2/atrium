@@ -17,22 +17,22 @@ namespace DataLayer.Utilities
     public class RemoteQuery : IQueryCompiler
 #pragma warning restore EF1001 // Internal EF Core API usage.
     {
-        private readonly ICurrentDbContext _current;
-        private readonly HttpClient? _httpClient;
-        //public static IServiceProvider? Service { get; set; } = null;
+        //private readonly ICurrentDbContext _current;
+        private readonly HttpClient Client;
+
         public static MethodInfo ExecuteRemote { get; }
 
-
+        private RemoteStorage Context { get; set; }
+        
         public RemoteQuery(ICurrentDbContext context)
         {
             //_context = context;
             //Console.WriteLine("I hate DI: " + dbContext);
             //Console.WriteLine("I hate DI: " + internalServiceProvider);
-            _current = context;
-            var Service = Utilities.QueryManager.Service; //(_current.Context as TranslationContext)?.Query.Service;
-            //Console.WriteLine("I hate DI: " + Service);
-
-            _httpClient = Service?.GetRequiredService<HttpClient>();
+            Context = context.Context as RemoteStorage 
+                ?? throw new InvalidOperationException("Remote parent context is unexpected type: " + context.Context.GetType() + context.Context.ToString());
+            
+            Client = Context.Client;
         }
 
 
@@ -149,7 +149,7 @@ namespace DataLayer.Utilities
 
         public async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken cancellationToken = default)
         {
-            if (_httpClient == null)
+            if (Client == null)
             {
                 throw new InvalidOperationException("No Http client.");
             }
@@ -163,13 +163,13 @@ namespace DataLayer.Utilities
 
             Console.WriteLine("Querying serialized: " + query.ToString());
             var serialized = query.ToXDocument().ToString();
-            var baseAddress = (_current.Context as RemoteStorage)?.BaseAddress;
+            var baseAddress = Context.BaseAddress;
             var queryAddress = (!string.IsNullOrEmpty(baseAddress) ? (baseAddress + (!baseAddress.EndsWith('/') ? '/' : "")) : "")
                 + "/api/query";
 
-            var response = await _httpClient.PostAsJsonAsync(queryAddress, serialized, cancellationToken);
+            var response = await Client.PostAsJsonAsync(queryAddress, serialized, cancellationToken);
 
-            if(response.StatusCode != System.Net.HttpStatusCode.OK)
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 object? defaultObject;
                 if (typeT.IsIterable() && !query.IsDefault())
@@ -193,7 +193,7 @@ namespace DataLayer.Utilities
             _ = reader.MoveToContent();
             XElement root = (XElement)XNode.ReadFrom(reader);
 
-            ConstantExpression? finalExpression = root.ToExpression(_current.Context, out IQueryable? set) as ConstantExpression
+            ConstantExpression? finalExpression = root.ToExpression(Context, out IQueryable? set) as ConstantExpression
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
 
 
@@ -201,7 +201,7 @@ namespace DataLayer.Utilities
             // If the caller (EF Core) is asking for IAsyncEnumerable<File>
             if (typeT.IsGenericType && typeT.IsIterable())
             {
-                var itemType = typeT.GetGenericArguments().FirstOrDefault() 
+                var itemType = typeT.GetGenericArguments().FirstOrDefault()
                     ?? throw new InvalidOperationException("Could not extract generic arugments.");
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
@@ -246,9 +246,9 @@ namespace DataLayer.Utilities
 
     public class RemoteManager : QueryManager
     {
-        private readonly HttpClient? _httpClient;
+        private readonly HttpClient _httpClient;
 
-        public RemoteManager()
+        public RemoteManager(HttpClient client, IServiceProvider Service) : base(Service)
         {
             PersistentStorage = StorageType.Test;
             EphemeralStorage = StorageType.Remote;
@@ -256,7 +256,7 @@ namespace DataLayer.Utilities
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
 
 
-            _httpClient = Service?.GetRequiredService<HttpClient>();
+            _httpClient = client;
         }
 
         protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
@@ -269,7 +269,6 @@ namespace DataLayer.Utilities
                 throw new InvalidOperationException("No Http client.");
             }
 
-            using var scope = Service?.CreateScope();
             var context = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             //var xml = Expression.Constant(results).ToXDocument().ToString();

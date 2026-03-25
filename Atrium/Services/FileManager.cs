@@ -11,11 +11,10 @@ using Atrium.Platforms.Windows;
 
 namespace Atrium.Services
 {
-    internal class FileManager : IFileManager
+    internal class FileManager(IQueryManager Query) : IFileManager
     {
         public event Action<DataLayer.Entities.File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
-        internal static IServiceProvider? _services;
 
         public static string UploadDirectory = Path.Combine(AppContext.BaseDirectory, "Uploads");
 
@@ -41,12 +40,6 @@ namespace Atrium.Services
 
         public async Task<DataLayer.Entities.File?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
         {
-
-            if (_services == null)
-            {
-                throw new InvalidOperationException("No service provider.");
-            }
-
             var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
             using var fileStream = System.IO.File.Create(savePath);
             await localStream.CopyToAsync(fileStream);
@@ -54,9 +47,7 @@ namespace Atrium.Services
             fileStream.Close();
             localStream.Close();
 
-            var query = _services.GetService(typeof(IQueryManager)) as IQueryManager
-                ?? throw new InvalidOperationException("Could not render query manager.");
-            var task = query.Save(new DataLayer.Entities.File()
+            var task = Query.Save(new DataLayer.Entities.File()
             {
                 Filename = savePath,
                 Source = source // TODO: fill in from nav or parameter or something
@@ -75,15 +66,10 @@ namespace Atrium.Services
 
 #if WINDOWS
         //[HttpPost("upload")]
-        public static async Task OnUploadFile(HttpContext context)
+        public static async Task OnUploadFile(HttpContext context, IFileManager FileManager)
         {
             try
             {
-                if (_services == null)
-                {
-                    throw new InvalidOperationException("No service provider.");
-                }
-
                 if (!context.Request.HasFormContentType || !context.Request.Form.Files.Any())
                 {
                     throw new InvalidOperationException("No files provided.");
@@ -96,9 +82,7 @@ namespace Atrium.Services
                     using var stream = file.OpenReadStream();
 
                     // Example: Save to disk in Arizona-based storage
-                    using var scope = _services.CreateScope();
-                    var manager = scope.ServiceProvider.GetRequiredService<IFileManager>();
-                    var databaseFile = await manager.UploadFile(stream, file.FileName);
+                    var databaseFile = await FileManager.UploadFile(stream, file.FileName);
 
                     if (!first) continue;
                     first = false;
@@ -139,9 +123,7 @@ namespace Atrium.Services
                 {
                     // You get the ABSOLUTE path immediately! 
                     // No more "browser sandbox" stream restrictions.
-                    using var scope = _services?.CreateScope();
-                    var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                    _ = manager?.UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
+                    _ = UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
                 }
             }
             catch (Exception)
@@ -175,7 +157,7 @@ namespace Atrium.Services
         private static nint _oldWndProc;
         private static bool _isFileDragging;
 
-        internal static void InitializeWndProc(Microsoft.Maui.Handlers.IWindowHandler h)
+        internal void InitializeWndProc(Microsoft.Maui.Handlers.IWindowHandler h)
         {
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(h.PlatformView);
             // 0x0233 is WM_DROPFILES
@@ -187,7 +169,7 @@ namespace Atrium.Services
 
         }
 
-        private static nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
+        private nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
         {
             if (msg == Shell32.WM_DROPFILES) // WM_DROPFILES
             {
@@ -213,10 +195,8 @@ namespace Atrium.Services
                 if (!_isFileDragging)
                 {
                     _isFileDragging = true;
-                    using var scope = _services?.CreateScope();
                     // Notify the front end UI of the upload
-                    var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                    _ = (manager?.SetDragging(true));
+                    _ = SetDragging(true);
                 }
             }
 
@@ -249,37 +229,36 @@ namespace Atrium.Services
         }
 
 
-        private static void HandleNativeDrop(nint hDrop)
+        private void HandleNativeDrop(nint hDrop)
         {
             // Get count of dropped files
             uint fileCount = Shell32.DragQueryFile(hDrop, 0xFFFFFFFF, nint.Zero, 0);
 
-            using (var scope = _services?.CreateScope())
+            // Notify the front end UI of the upload
+            _ = SetDragging(false);
+
+            // TODO: whatever HandleNativeDrop sets up services
+
+            for (uint i = 0; i < fileCount; i++)
             {
-                // Notify the front end UI of the upload
-                var manager = scope?.ServiceProvider.GetRequiredService<IFileManager>();
-                _ = (manager?.SetDragging(false));
-                for (uint i = 0; i < fileCount; i++)
+                // 1. Get required length (returns length without null terminator)
+                uint length = Shell32.DragQueryFile(hDrop, i, nint.Zero, 0) + 1;
+
+                // 2. Allocate buffer and pin it
+                char[] buffer = new char[length];
+                unsafe
                 {
-                    // 1. Get required length (returns length without null terminator)
-                    uint length = Shell32.DragQueryFile(hDrop, i, nint.Zero, 0) + 1;
-
-                    // 2. Allocate buffer and pin it
-                    char[] buffer = new char[length];
-                    unsafe
+                    fixed (char* pBuffer = buffer)
                     {
-                        fixed (char* pBuffer = buffer)
-                        {
-                            // 3. Fill the buffer
-                            _ = Shell32.DragQueryFile(hDrop, i, (nint)pBuffer, length);
-                        }
+                        // 3. Fill the buffer
+                        _ = Shell32.DragQueryFile(hDrop, i, (nint)pBuffer, length);
                     }
-
-                    // 4. Convert to C# string
-                    string filePath = new string(buffer).TrimEnd('\0');
-
-                    _ = (manager?.UploadFile(filePath));
                 }
+
+                // 4. Convert to C# string
+                string filePath = new string(buffer).TrimEnd('\0');
+
+                _ = UploadFile(filePath);
             }
 
             Shell32.DragFinish(hDrop);

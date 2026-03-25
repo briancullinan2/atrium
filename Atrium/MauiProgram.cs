@@ -15,7 +15,7 @@ using DataLayer;
 
 namespace Atrium
 {
-   
+
 
     public static class MauiProgram
     {
@@ -90,13 +90,6 @@ namespace Atrium
 
             // 1. Build the app
             var mauiApp = builder.Build();
-            MainPage._services = mauiApp.Services;
-            FileManager._services = mauiApp.Services;
-            AnkiService._services = mauiApp.Services;
-            HostingService._services = mauiApp.Services;
-            ChatService._services = mauiApp.Services;
-            QueryManager.Service = mauiApp.Services;
-            SimpleLogger.Services = mauiApp.Services;
 
             // 3. Return the built app
             return mauiApp;

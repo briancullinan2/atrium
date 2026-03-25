@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
+using static System.Net.WebRequestMethods;
 
 namespace Atrium.Services
 {
@@ -14,28 +15,27 @@ namespace Atrium.Services
         private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static readonly string savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-chat.json");
 
-        internal static IServiceProvider? _services;
-        //private readonly HttpClient? _httpClient;
-
         protected static List<ServicePreset>? Settings { get; set; } = [];
+        public readonly HttpClient Http;
+        public static Task<bool?>? Working { get; set; }
 
-        public ChatService()
+        public ChatService(HttpClient client)
         {
-            //_httpClient = _services?.GetRequiredService<HttpClient>();
+            Http = client;
+            Working ??= IsWorking();
         }
+
 
         static ChatService()
         {
-            if (File.Exists(savedSettings))
+            if (System.IO.File.Exists(savedSettings))
             {
                 try
                 {
-                    Settings = JsonSerializer.Deserialize<List<ServicePreset>>(File.ReadAllText(savedSettings));
+                    Settings = JsonSerializer.Deserialize<List<ServicePreset>>(System.IO.File.ReadAllText(savedSettings));
                 }
                 catch (Exception) { }
             }
-            var _chat = _services?.GetService(typeof(ChatService)) as ChatService;
-            _ = _chat?.IsWorking();
         }
 
         private const string PingMessage = "Please respond quickly and succinctly, you are learning tool with access to many functions. Please respond with the word Supercalifragilisticexpialidocious inside JSON format { \"response\" : \"...\" }. Only respond with the JSON and the word no other explanations needed. ";
@@ -64,7 +64,7 @@ namespace Atrium.Services
                 return recentPing;
             }
 
-            var json = await ExecutePost("", ServiceUrl, ModelName, ApiKey, Response, Parameters, PingMessage);
+            var json = await ExecutePost(Http, "", ServiceUrl, ModelName, ApiKey, Response, Parameters, PingMessage);
             bool? result = null;
             try
             {
@@ -106,7 +106,7 @@ namespace Atrium.Services
                 }
 
                 var validSettings = JsonSerializer.Serialize(Settings, JsonHelper.Default);
-                File.WriteAllText(savedSettings, validSettings);
+                System.IO.File.WriteAllText(savedSettings, validSettings);
             }
             recentPing = new Tuple<bool?, string?>(result, json);
             recentPinged = DateTime.Now;
@@ -134,7 +134,7 @@ namespace Atrium.Services
             Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
             OnChatMessage?.Invoke();
 
-            var result = await StandardResponse("", message);
+            var result = await StandardResponse(Http, "", message);
 
             Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, result ?? ""));
             OnChatMessage?.Invoke();
@@ -203,7 +203,7 @@ namespace Atrium.Services
         }
 
 
-        public static async Task OnPing(HttpContext context)
+        public static async Task OnPing(HttpContext context, IChatService _chat)
         {
 
             context.Response.ContentType = "application/json";
@@ -216,7 +216,6 @@ namespace Atrium.Services
                 // TODO: save preset settings in json file
                 var service = JsonSerializer.Deserialize<ServicePreset>(jsonQuery) ?? throw new InvalidOperationException("Request body failed to render.");
 
-                var _chat = (_services?.GetRequiredService<IChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Params);
 
                 var json = JsonSerializer.Serialize(result, JsonHelper.Default);
@@ -234,7 +233,7 @@ namespace Atrium.Services
         }
 
 
-        public static async Task OnChat(HttpContext context)
+        public static async Task OnChat(HttpContext context, HttpClient Http)
         {
 
             context.Response.ContentType = "application/json";
@@ -247,12 +246,11 @@ namespace Atrium.Services
                 // TODO: save preset settings in json file
                 var message = JsonSerializer.Deserialize<string>(jsonQuery) ?? throw new InvalidOperationException("Request message failed to render.");
 
-                var _chat = (_services?.GetRequiredService<IChatService>()) ?? throw new InvalidOperationException("Chat Service failed to render.");
                 string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
 
 
-                var result = await StandardResponse(clientId, message);
+                var result = await StandardResponse(Http, clientId, message);
 
                 var json = JsonSerializer.Serialize(result, JsonHelper.Default);
 
@@ -268,7 +266,7 @@ namespace Atrium.Services
         }
 
 #endif
-        public static async Task<string?> StandardResponse(string clientId, string message)
+        public static async Task<string?> StandardResponse(HttpClient Http, string clientId, string message)
         {
 
             Dictionary<DateTime, Tuple<bool, string>>? _recents = null;
@@ -292,7 +290,7 @@ namespace Atrium.Services
                 Content = r.Value.Item2
             }));
 
-            var result = await ExecutePost(clientId, "", "", "", "", [], "The user writes:\n" + message
+            var result = await ExecutePost(Http, clientId, "", "", "", "", [], "The user writes:\n" + message
                 + "\n\nIf it's directly related to a command, respond with JSON only like "
                 + "{\"Function\": \"...\", \"Param1\" : \"...\"}. If you need to chain informational "
                 + "commands together, use a list []:\n" + CommandString + "\n\nHistory for Context:\n"
@@ -307,10 +305,8 @@ namespace Atrium.Services
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _clientTokens = new();
 
 
-        public static async Task<string?> ExecutePost(string _client, string _service, string _model, string _key, string _response, List<DynamicParam> _parameters, string FirstMessage)
+        public static async Task<string?> ExecutePost(HttpClient Http, string _client, string _service, string _model, string _key, string _response, List<DynamicParam> _parameters, string FirstMessage)
         {
-            if (_services == null) throw new InvalidOperationException("Assign services after app is created.");
-            var Http = _services.GetService(typeof(HttpClient)) as HttpClient;
 
             // --- Cancellation Logic ---
             // Cancel and dispose of any existing request for this client

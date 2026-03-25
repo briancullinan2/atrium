@@ -4,6 +4,7 @@
 using Atrium.Logging;
 using Atrium.Platforms.Windows;
 using Atrium.Services;
+using FlashCard.Services;
 
 namespace Atrium.WinUI
 {
@@ -21,18 +22,17 @@ namespace Atrium.WinUI
         public App()
         {
             InitializeComponent();
-
-#if WINDOWS
-            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
-            {
-                FileManager.InitializeWndProc(h);
-            });
-#endif
         }
 
         protected override MauiApp CreateMauiApp()
         {
             var app = MauiProgram.CreateMauiApp();
+#if WINDOWS
+            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
+            {
+                (app.Services.GetService(typeof(IFileManager)) as FileManager)?.InitializeWndProc(h);
+            });
+#endif
             return app;
         }
 
@@ -47,7 +47,7 @@ namespace Atrium.WinUI
             // 2. Catch exceptions in 'set and forget' tasks (Async)
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                 Log.Error(e, e.Exception.InnerException ?? e.Exception);
+                Log.Error(e, e.Exception.InnerException ?? e.Exception);
                 e.SetObserved(); // Prevents process crash if you want, but logs it
             };
 

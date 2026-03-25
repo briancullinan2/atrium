@@ -6,7 +6,7 @@ namespace Atrium
 {
     public partial class MainPage : ContentPage
     {
-        internal static IServiceProvider? _services;
+
 
         public MainPage()
         {
@@ -31,6 +31,7 @@ namespace Atrium
                         "window.addEventListener('drop', e => e.preventDefault());");
                 };
 
+#if false
                 // These events exist on the Control level, not the Core level
                 webView.DragEnter += (s, e) =>
                 {
@@ -74,9 +75,9 @@ namespace Atrium
                         }
                     }
                 };
-
+#endif
             }
 #endif
-        }
+            }
     }
 }

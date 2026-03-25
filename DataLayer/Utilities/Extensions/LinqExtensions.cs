@@ -99,7 +99,7 @@ namespace DataLayer.Utilities.Extensions
                     var value = prop.GetValue(node);
 
                     if (value is MemberExpression memberExpression
-                        && memberExpression.Expression is ConstantExpression constant 
+                        && memberExpression.Expression is ConstantExpression constant
                         && constant.Value?.GetType().Name.Contains("<>c__DisplayClass") == true)
                     {
                         // Access the field on the specific instance of the closure
@@ -162,13 +162,13 @@ namespace DataLayer.Utilities.Extensions
                     }
                     else if (value is ValueBuffer buffer)
                     {
-                        var propElement = new XElement(prop.Name, 
+                        var propElement = new XElement(prop.Name,
                             new XAttribute("Count", buffer.Count
                         ));
                         for (var i = 0; i < buffer.Count; i++)
                         {
                             var item = buffer[0];
-                            
+
                             if (item == null)
                             {
                                 propElement.Add(new XElement("Null", new XAttribute("Value", string.Empty)));
@@ -257,7 +257,7 @@ namespace DataLayer.Utilities.Extensions
                                     new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
-                            
+
                         }
                         element.Add(propElement);
 
@@ -383,7 +383,7 @@ namespace DataLayer.Utilities.Extensions
             string memberName = memberEl.Attribute("Name")?.Value
                 ?? throw new InvalidOperationException("Member name attribute missing");
 
-            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberName, memberEl) as PropertyInfo 
+            PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberName, memberEl) as PropertyInfo
                 ?? throw new InvalidOperationException("Could not resolve method info on " + el);
 
             return Expression.MakeMemberAccess(expression, propertyInfo);
@@ -404,7 +404,7 @@ namespace DataLayer.Utilities.Extensions
             {
                 throw new InvalidOperationException("Could not resolve right expression on " + el);
             }
-            
+
             var nodeType = el.Attribute("NodeType")?.Value;
 
             return nodeType switch
@@ -513,7 +513,7 @@ namespace DataLayer.Utilities.Extensions
             var indexerEl = el.Element("Indexer")?.Element("Runtimepropertyinfo")
                     ?? throw new InvalidOperationException("IndexExpression missing Indexer info.");
             var declaringTypeName = indexerEl.Element("DeclaringType")?.Attribute("AssemblyQualifiedName")?.Value;
-            var declaringType = Type.GetType(declaringTypeName!) 
+            var declaringType = Type.GetType(declaringTypeName!)
                 ?? throw new InvalidOperationException("IndexExpression missing declaring type.");
 
             var propertyName = indexerEl.Attribute("Name")?.Value ?? "Item";
@@ -759,12 +759,13 @@ namespace DataLayer.Utilities.Extensions
 
             // 3. Resolve Arguments
             var args = el.Element("Arguments")?.Elements()
-                .Select(x => {
+                .Select(x =>
+                {
                     var expr = ToExpression(x)!;
 
                     //if (expr is LambdaExpression)
                     //{
-                        // EF Core needs the 'Quote' to treat the lambda as data, not code
+                    // EF Core needs the 'Quote' to treat the lambda as data, not code
                     //    return Expression.Quote(expr);
                     //}
                     // UNWRAP QUOTES: If the node is a Quote, we often need the 
@@ -796,19 +797,20 @@ namespace DataLayer.Utilities.Extensions
 
             if (targetType == typeof(MethodInfo))
                 return RebuildMember<MethodInfo>(el);
-            
+
 
             if (targetType == typeof(PropertyInfo))
                 return RebuildMember<PropertyInfo>(el);
 
 
             if (targetType == typeof(ValueBuffer)
-                || (typeof(IEnumerable).IsAssignableFrom(targetType) 
+                || (typeof(IEnumerable).IsAssignableFrom(targetType)
                     && targetType != typeof(string)))
             {
                 var typeArgument = targetType.GetGenericArguments().FirstOrDefault();
 
-                var values = el.Elements().Select(e => {
+                var values = el.Elements().Select(e =>
+                {
                     if (e.Name == "Null") return null;
                     var typeName = e.Attribute("AssemblyQualifiedName")?.Value
                         ?? throw new InvalidOperationException("Could not resolve type name on: " + e);
@@ -819,7 +821,7 @@ namespace DataLayer.Utilities.Extensions
                         return null;
                     else if (entityType.IsSimple())
                         return Convert.ChangeType(e.Attribute("Value")?.Value, entityType);
-                    else 
+                    else
                         return ResolveMetadata(entityType, e.Attribute("Value")?.Value, e);
                 }).ToArray();
 
@@ -857,11 +859,11 @@ namespace DataLayer.Utilities.Extensions
                 return castedValues;
             }
 
-            if(typeof(IEntity).IsAssignableFrom(targetType))
+            if (typeof(IEntity).IsAssignableFrom(targetType))
             {
                 var props = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
                 var entity = Activator.CreateInstance(targetType);
-                foreach(var prop in props)
+                foreach (var prop in props)
                 {
                     if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
                         continue;
@@ -869,7 +871,7 @@ namespace DataLayer.Utilities.Extensions
 
                     var baseType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
-                    if((el.Attribute(prop.Name)?.Value == "Null"
+                    if ((el.Attribute(prop.Name)?.Value == "Null"
                         || el.Element(prop.Name)?.Attribute("Value")?.Value == "Null")
                         && prop.IsNullable())
                     {
@@ -881,7 +883,7 @@ namespace DataLayer.Utilities.Extensions
                     {
                         var complexValue = ResolveMetadata(baseType, el.Attribute(prop.Name)?.Value, complex);
                         complexValue = CollectionConverter.ConvertAsync(complexValue, baseType);
-                        if (complexValue?.GetType() != baseType) 
+                        if (complexValue?.GetType() != baseType)
                             throw new InvalidOperationException("Iterable types don't match: " + complexValue?.GetType() + " and " + baseType);
                         prop.SetValue(entity, complexValue);
                     }
@@ -919,38 +921,38 @@ namespace DataLayer.Utilities.Extensions
 
         private static ConstantExpression BuildConstant(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var typeName = (el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value) 
+            var typeName = (el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value)
                 ?? throw new InvalidOperationException("Could not resolve constant type attribute on: " + el);
             var type = Type.GetType(typeName)
                 ?? throw new InvalidOperationException("Could not resolve constant type on: " + el);
 
-            if(el.Element("Value") is XElement complex)
+            if (el.Element("Value") is XElement complex)
             {
                 // TODO: 
-                if(complex.Element("Null") is not null)
+                if (complex.Element("Null") is not null)
                 {
                     return Expression.Constant(null, type);
                 }
                 var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex);
-                if(val?.GetType().IsSimple() == true
+                if (val?.GetType().IsSimple() == true
                     && val?.GetType() != type)
                 {
                     return Expression.Constant(Convert.ChangeType(val, type), type);
                 }
-                
+
                 if (val?.GetType() != type)
                 {
                     Console.WriteLine("ArgumentTypesMustMatch is dumbass error that doesn't tell me this type " + val?.GetType() + " or this type: " + type);
                 }
                 return Expression.Constant(val, type);
-            } 
+            }
             else if (el.Attribute("Value")?.Value is string val)
             {
-                if(type == typeof(object) && val == "Null")
+                if (type == typeof(object) && val == "Null")
                 {
                     return Expression.Constant(null, type);
                 }
-                else if(type.IsEnum)
+                else if (type.IsEnum)
                 {
                     return Expression.Constant(val.TryParse(type), type);
                 }
@@ -1043,7 +1045,7 @@ namespace DataLayer.Utilities.Extensions
                 if (outish != null) set = outish;
                 return result;
             }
-            if(el.Attribute("AssemblyQualifiedName") is XAttribute typeAttr
+            if (el.Attribute("AssemblyQualifiedName") is XAttribute typeAttr
                 && Type.GetType(typeAttr.Value) is Type targetType)
             {
                 return Expression.Constant(ResolveMetadata(targetType, el.ToString(), el));
@@ -1069,7 +1071,7 @@ namespace DataLayer.Utilities.Extensions
             XElement root = (XElement)XNode.ReadFrom(reader);
 
             // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
-            Expression? finalExpression = ToExpression(root, context, out IQueryable ? set)
+            Expression? finalExpression = ToExpression(root, context, out IQueryable? set)
 
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
             if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
@@ -1096,7 +1098,7 @@ namespace DataLayer.Utilities.Extensions
                     ?.MakeGenericMethod(finalExpression.Type)
                     ?? throw new InvalidOperationException("Could not render generic ExecuteAsync");
                 var result = callAsync.Invoke(asyncProvider, [finalExpression, null]);
-                if(result is Task task)
+                if (result is Task task)
                 {
                     await task;
                     return (result as dynamic).Result;

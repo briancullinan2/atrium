@@ -119,15 +119,9 @@ namespace Atrium.Services
                         });
                 });
 
-                var webApp = webBuilder.Build();
-                MainPage._services = webApp.Services;
-                FileManager._services = webApp.Services;
-                AnkiService._services = webApp.Services;
-                HostingService._services = webApp.Services;
-                ChatService._services = webApp.Services;
-                QueryManager.Service = webApp.Services;
-                SimpleLogger.Services = webApp.Services;
 
+
+                var webApp = webBuilder.Build();
 
 
                 var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();

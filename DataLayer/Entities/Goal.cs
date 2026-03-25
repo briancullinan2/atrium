@@ -25,7 +25,7 @@ namespace DataLayer.Entities
 
         [Required]
         [MaxLength(256)]
-// Keep DB column name as 'goal'
+        // Keep DB column name as 'goal'
         public string? Description { get; set; } = string.Empty;
 
         [Required]

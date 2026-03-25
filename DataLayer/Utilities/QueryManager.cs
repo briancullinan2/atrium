@@ -27,9 +27,9 @@ namespace DataLayer.Utilities
         Type? PersistentContext { get; set; }
 
 
-        Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+        Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10)
             where TSet : Entity<TSet>;
-        Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+        Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10)
             where TSet : Entity<TSet>;
 
         Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier, int priority = 10)
@@ -83,6 +83,8 @@ namespace DataLayer.Utilities
 
         Task<object?> ToQueryable(string query, StorageType? storage);
 
+        TranslationContext? GetContext(StorageType type);
+
         /*
         IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
 
@@ -98,7 +100,6 @@ namespace DataLayer.Utilities
 
         TranslationContext? GetContext(Type contextType);
 
-        TranslationContext? GetContext(StorageType type);
         */
         //IServiceProvider Service { get; set; }
     }
@@ -117,9 +118,9 @@ namespace DataLayer.Utilities
 
     */
 
-    public class QueryManager : IQueryManager
+    public class QueryManager(IServiceProvider Service) : IQueryManager
     {
-        public static IServiceProvider? Service { get; set; }
+
         // Priority 0 = High (UI updates), 10 = Low (Background sync)
         protected static PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         private static readonly SemaphoreSlim _processorLock = new(1, 1);
@@ -299,27 +300,27 @@ namespace DataLayer.Utilities
         }
 
 
-        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
+        protected IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
         {
-            return Service?.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext> 
+            return Service.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext>
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected static IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
+        protected IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
         {
-            return Service?.GetService(contextType) as IDbContextFactory<TContext> 
+            return Service.GetService(contextType) as IDbContextFactory<TContext>
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
-        protected static TContext? GetContext<TContext>() where TContext : DbContext
+        protected TContext? GetContext<TContext>() where TContext : DbContext
         {
-            return QueryManager.GetContextFactory<TContext>()?.CreateDbContext() 
+            return GetContextFactory<TContext>()?.CreateDbContext()
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
         }
 
-        protected static TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
+        protected TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
         {
-            return QueryManager.GetContextFactory<TContext>(contextType)?.CreateDbContext() 
+            return GetContextFactory<TContext>(contextType)?.CreateDbContext()
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
@@ -332,7 +333,7 @@ namespace DataLayer.Utilities
                 ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
         }
 
-        protected TranslationContext? GetContext(StorageType type)
+        public TranslationContext? GetContext(StorageType type)
         {
             var contextType = GetStorageType(type);
             var factoryType = GetContextType(contextType) ?? throw new InvalidOperationException("Couldn't render context factory: " + type);
@@ -355,12 +356,11 @@ namespace DataLayer.Utilities
             return await Synchronize(PersistentStorage, EphemeralStorage, qualifier, priority);
         }
 
-        public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+        public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10)
             where TSet : Entity<TSet>
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(From);
                 var contextTo = GetContext(To);
                 if (contextFrom == null || contextTo == null)
@@ -373,7 +373,6 @@ namespace DataLayer.Utilities
 
             return await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(From);
                 var contextTo = GetContext(To);
                 if (contextFrom == null || contextTo == null)
@@ -392,7 +391,6 @@ namespace DataLayer.Utilities
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 if (contextFrom == null || contextTo == null)
                 {
                     throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
@@ -408,7 +406,7 @@ namespace DataLayer.Utilities
         }
 
 
-        protected virtual async Task<List<TSet>> SynchronizeNow<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier) 
+        protected virtual async Task<List<TSet>> SynchronizeNow<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
             where TSet : Entity<TSet>
             where TFrom : TranslationContext
             where TTo : TranslationContext
@@ -549,7 +547,6 @@ namespace DataLayer.Utilities
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -557,8 +554,7 @@ namespace DataLayer.Utilities
 
             return await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
-                var context = GetContext(storage) 
+                var context = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await context.InitializeIfNeeded();
                 using var transaction = context.Database.BeginTransaction();
@@ -588,7 +584,6 @@ namespace DataLayer.Utilities
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -611,7 +606,6 @@ namespace DataLayer.Utilities
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -631,7 +625,7 @@ namespace DataLayer.Utilities
                 ?.MakeGenericMethod(entity.GetType())
                 ?? throw new InvalidOperationException("Failed to render save now function.");
             var result = RealSave.Invoke(this, [storage, entity]);
-            if(result is Task task)
+            if (result is Task task)
             {
                 await task;
                 return (IEntity)(result as dynamic).Result;
@@ -642,8 +636,7 @@ namespace DataLayer.Utilities
 
         protected virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
         {
-            using var scope = Service?.CreateScope();
-            var context = GetContext(storage) 
+            var context = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             using var saveTransaction = context.Database.BeginTransaction();
             try
@@ -729,7 +722,6 @@ namespace DataLayer.Utilities
             {
                 _ = Enqueue(async () =>
                 {
-                    using var scope = Service?.CreateScope();
                     var contextFrom = GetContext(storage)
                         ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                     await contextFrom.InitializeIfNeeded();
@@ -740,7 +732,6 @@ namespace DataLayer.Utilities
                 {
                     try
                     {
-                        using var scope = Service?.CreateScope();
                         var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
                         await context.InitializeIfNeeded();
                         using var transaction = context.Database.BeginTransaction();
@@ -945,7 +936,6 @@ namespace DataLayer.Utilities
 
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -970,7 +960,6 @@ namespace DataLayer.Utilities
 
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -984,7 +973,6 @@ namespace DataLayer.Utilities
         {
             await Enqueue(async () =>
             {
-                using var scope = Service?.CreateScope();
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 await contextFrom.InitializeIfNeeded();
@@ -1005,7 +993,6 @@ namespace DataLayer.Utilities
             where TEntity : Entity<TEntity>
 
         {
-            using var scope = Service?.CreateScope();
             var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
             await context.InitializeIfNeeded();
 

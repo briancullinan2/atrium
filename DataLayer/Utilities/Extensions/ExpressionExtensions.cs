@@ -31,9 +31,9 @@ namespace DataLayer.Utilities.Extensions
                 // 1. Resolve the Member (Property/Field)
                 var member = current.Type.GetMember(name,
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
-                    .FirstOrDefault() 
+                    .FirstOrDefault()
                     ?? throw new ArgumentException($"Member {name} not found on {current.Type.Name}");
-                
+
                 current = Expression.MakeMemberAccess(current, member);
 
                 // 2. Resolve the Indexer if [n] was provided
@@ -49,7 +49,7 @@ namespace DataLayer.Utilities.Extensions
                         var indexer = current.Type.GetProperty("Item");
                         if (indexer != null)
                         {
-                            current = Expression.MakeIndex(current, indexer, [ Expression.Constant(index) ]);
+                            current = Expression.MakeIndex(current, indexer, [Expression.Constant(index)]);
                         }
                     }
                 }
@@ -104,7 +104,7 @@ namespace DataLayer.Utilities.Extensions
 
                     // Return Enumerable.Any(current, anyLambda)
                     return Expression.Call(
-                        typeof(Enumerable), "Any", [ elementType ],
+                        typeof(Enumerable), "Any", [elementType],
                         current, anyLambda
                     );
                 }

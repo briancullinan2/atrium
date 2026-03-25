@@ -10,6 +10,40 @@ namespace DataLayer.Utilities.Extensions
 {
     public static class IEntityExtensions
     {
+
+        public static T Create<T>(this IQueryManager Query) where T : Entity<T>, IEntity
+        {
+            return Create<T>(Query, Query.EphemeralStorage);
+        }
+
+        public static T Create<T>(this IQueryManager Query, StorageType storage) where T : Entity<T>, IEntity
+        {
+            var context = Query.GetContext(storage) 
+                ?? throw new InvalidOperationException("Could not render context: " + storage);
+
+            var type = typeof(T);
+
+            // Look for any parameterless constructor (Public or Private)
+            var constructor = type.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: Type.EmptyTypes, // Ensures it's the parameterless one
+                modifiers: null)
+                ?? throw new InvalidOperationException(
+                    $"No parameterless constructor found for {type.Name}.");
+
+            var entity = constructor.Invoke(null) as T
+                ?? throw new InvalidOperationException("Could not render entity: " + typeof(T));
+
+            entity.QueryManager = Query;
+            entity.ContextType = context.GetType();
+
+            // Optionally: Automatically add it to the ChangeTracker
+            context.Set<T>().Add(entity);
+
+            return entity;
+        }
+
         /// <summary>
         /// Rehydrates the entity by discarding local changes and fetching 
         /// the latest data from the database.
@@ -21,7 +55,6 @@ namespace DataLayer.Utilities.Extensions
                 return default!;
             }
             var Query = entity.QueryManager
-                ?? QueryManager.Service?.GetService(typeof(IQueryManager)) as IQueryManager
                 ?? throw new InvalidOperationException("No service provider.");
 
             return await Query.Update(Query.EphemeralStorage, entity);
@@ -75,7 +108,7 @@ namespace DataLayer.Utilities.Extensions
             return entity;
         }
 
-
+        /*
         public static async Task<T> Save<T>(this T? ent) where T : Entity<T>, IEntity<T>, IEntity
         {
             if (ent == null)
@@ -87,6 +120,7 @@ namespace DataLayer.Utilities.Extensions
                 ?? throw new InvalidOperationException("No service provider.");
             return await Query.Save(Query.EphemeralStorage, ent);
         }
+        */
 
         public static async Task<T> Save<T>(this T? ent, IServiceProvider? Service = null) where T : Entity<T>, IEntity<T>, IEntity
         {

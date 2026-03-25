@@ -6,8 +6,7 @@ namespace WebClient.Services
 {
     public class ChatService : IChatService
     {
-        private readonly HttpClient? _httpClient;
-        internal static IServiceProvider? _service;
+        private readonly HttpClient _httpClient;
         private List<ServicePreset>? recentResult;
         private DateTime? recentChecked;
         private string? recentMessage;
@@ -71,22 +70,18 @@ namespace WebClient.Services
             }
         }
 
+        public static Task<bool?>? Working { get; set; }
 
-        public ChatService()
+        public ChatService(HttpClient client)
         {
-            _httpClient = _service?.GetRequiredService<HttpClient>();
-            _ = PingService("", "", "", "", []);
+            _httpClient = client;
+            Working ??= IsWorking();
         }
 
-        static ChatService()
-        {
-            var _chat = _service?.GetRequiredService<ChatService>();
-            _ = _chat?.IsWorking();
-        }
 
         public async Task<List<ServicePreset>> ListPresets()
         {
-            if(_httpClient == null)
+            if (_httpClient == null)
             {
                 throw new InvalidOperationException("Http client unavailable.");
             }

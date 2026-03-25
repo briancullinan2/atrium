@@ -37,7 +37,8 @@ namespace Atrium.Logging
             WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
         }
 
-        Action<object, Exception?> ILog.this[string level] {
+        Action<object, Exception?> ILog.this[string level]
+        {
             get => GetLogger(Filepath ?? Category ?? string.Empty)[level];
             set => GetLogger(Filepath ?? Category ?? string.Empty)[level] = value;
         }
@@ -93,7 +94,7 @@ namespace Atrium.Logging
 #else
             var simple = SimpleLogger.GetLogger(filePath);
 #endif
-            if(!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
+            if (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
             {
                 var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as ILog;
                 parentLogger?.Category = category;
