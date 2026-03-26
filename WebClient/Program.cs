@@ -1,3 +1,4 @@
+using DataLayer;
 using DataLayer.Utilities;
 using FlashCard.Services;
 using FlashCard.Services.Logging;
@@ -41,7 +42,7 @@ builder.Services.AddSingleton<IThemeService, ThemeService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton(sp => new HttpClient
 {
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
 });
 builder.Services.AddSingleton<IFileManager, FileManager>();
 builder.Services.AddSingleton<IAnkiService, AnkiService>();
@@ -53,15 +54,17 @@ builder.Services.AddSingleton<SimpleLogger>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddSingleton<AuthenticationStateProvider, BrowserStateProvider>();
 
-builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>((serviceProvider, options) =>
-{
-
-});
+builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
+// for use inside the remoteprovider to call
+//RemoteStorage? remote = null;
+//builder.Services.AddSingleton<RemoteStorage>(cs => remote!);
+
 
 var app = builder.Build();
 // FUCK DI
 _ = app.Services.GetRequiredService<SimpleLogger>();
+//remote = app.Services.GetRequiredService<IDbContextFactory<RemoteStorage>>().CreateDbContext();
 
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();

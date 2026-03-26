@@ -34,7 +34,7 @@ namespace FlashCard.Services
 
                 // Extract the SessionId from the Claims or Preferences
                 var sessionId = user.FindFirst("SessionId")?.Value;
-                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                //var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
                 var uri = new Uri(e.Location);
 
@@ -45,7 +45,7 @@ namespace FlashCard.Services
                     Query = uri.Query, // JSON string or raw
                     Method = "GET",    // Blazor nav is always GET
                     SessionId = sessionId,
-                    UserId = userId,
+                    //UserId = userId,
                     //Ip = 0, // TODO: inject this server side for web clients
                     Hash = uri.Fragment.StartsWith('#') ? uri.Fragment[1..] : uri.Fragment, // Your fingerprinting logic
                 };

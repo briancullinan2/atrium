@@ -42,7 +42,8 @@ namespace DataLayer.Utilities.Extensions
 
         public static XDocument ToXDocument(this Expression expression)
         {
-            return new XDocument(VisitToXml(expression, 0, 0));
+            var cleanExpression = new ClosureEvaluatorVisitor().Visit(expression);
+            return new XDocument(VisitToXml(cleanExpression, 0, 0));
         }
 
         public static XElement VisitToXml(object? node, int currentDepth, int expressionDepth)
@@ -98,6 +99,7 @@ namespace DataLayer.Utilities.Extensions
                 {
                     var value = prop.GetValue(node);
 
+                    /*
                     if (value is MemberExpression memberExpression
                         && memberExpression.Expression is ConstantExpression constant
                         && constant.Value?.GetType().Name.Contains("<>c__DisplayClass") == true)
@@ -113,6 +115,7 @@ namespace DataLayer.Utilities.Extensions
                         propElement.Add(VisitToXml(Expression.Constant(result), currentDepth, expressionDepth + 1));
                         element.Add(propElement);
                     }
+                    */
 
                     // Treat Expression, MethodInfo, and Type as "Complex" to recurse into them
                     /*else if (value is ConstantExpression constant2 
@@ -127,7 +130,8 @@ namespace DataLayer.Utilities.Extensions
                         propElement.Add(VisitToXml(Expression.Constant(result), currentDepth, expressionDepth + 1));
                         element.Add(propElement);
                     }*/
-                    else if (value is Expression)
+                    
+                    if (value is Expression)
                     {
                         var propElement = new XElement(prop.Name);
                         propElement.Add(VisitToXml(value, currentDepth, expressionDepth + 1));

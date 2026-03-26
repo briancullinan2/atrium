@@ -2,6 +2,7 @@
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
@@ -14,6 +15,7 @@ namespace DataLayer.Utilities
 
     public class RemoteManager : QueryManager
     {
+
         private readonly HttpClient _httpClient;
 
         public RemoteManager(HttpClient client, IServiceProvider Service) : base(Service)
@@ -21,28 +23,14 @@ namespace DataLayer.Utilities
             PersistentStorage = StorageType.Test;
             EphemeralStorage = StorageType.Remote;
 
+            //var context = GetContext(EphemeralStorage) as RemoteStorage
+            //    ?? throw new InvalidOperationException("Remote context is not of type: " + typeof(RemoteStorage));
+
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
+            //FinalProvider = new RemoteQueryProvider(context);
 
 
             _httpClient = client;
-        }
-
-
-        public override TResult Query<TEntity, TResult>(
-            StorageType storage,
-            Expression<Func<IQueryable<TEntity>, TResult>> query,
-            int priority = 10)
-        {
-            var context = GetContext(EphemeralStorage) as RemoteStorage 
-                ?? throw new InvalidOperationException("Remote context is not of type: " + typeof(RemoteStorage));
-            var provider = new RemoteQueryProvider(context, priority);
-            var fakeRoot = provider.CreateQuery<TEntity>(new List<TEntity>().AsQueryable().Expression).Expression;
-            //IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-            var visitor = new ParameterUpdateVisitor(query.Parameters[0], fakeRoot);
-            var invokedExpression = visitor.Visit(query.Body);
-
-            // Return the "fake" queryable that points to your Enqueue engine
-            return (TResult)(invokedExpression as dynamic);
         }
 
 
@@ -61,9 +49,9 @@ namespace DataLayer.Utilities
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
             //var xml = Expression.Constant(results).ToXDocument().ToString();
             //var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
-            var baseAddress = (context as RemoteStorage)?.BaseAddress;
+            var baseAddress = (context as RemoteStorage)?.BaseAddress?.TrimEnd('/');
             var queryAddress = (!string.IsNullOrEmpty(baseAddress) ? (baseAddress + (!baseAddress.EndsWith('/') ? '/' : "")) : "")
-                + "/api/save";
+                + "api/save";
 
             var response = await _httpClient.PostAsJsonAsync(queryAddress, serialized);
 

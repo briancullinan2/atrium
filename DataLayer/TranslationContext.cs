@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -252,7 +253,7 @@ namespace DataLayer
     public class RemoteStorage(HttpClient client, IQueryManager service, DbContextOptions<RemoteStorage> ctx) : TranslationContext(service, ctx)
     {
         public HttpClient Client { get; set; } = client;
-        public string? BaseAddress { get; set; } = null;
+        public string? BaseAddress { get; set; } = client.BaseAddress?.ToString();
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -261,9 +262,11 @@ namespace DataLayer
 
             _ = options.UseInMemoryDatabase("RemoteShell");
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
-//#pragma warning disable EF1001 // Internal EF Core API usage.
-//            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
-//#pragma warning restore EF1001 // Internal EF Core API usage.
+            _ = options.ReplaceService<IQueryProvider, RemoteQueryProvider>();
+            _ = options.ReplaceService<IAsyncQueryProvider, RemoteQueryProvider>();
+            //#pragma warning disable EF1001 // Internal EF Core API usage.
+            //            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
+            //#pragma warning restore EF1001 // Internal EF Core API usage.
             /*options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>(
             (IServiceProvider internalServiceProvider, IQueryCompiler originalCompiler) =>
             {

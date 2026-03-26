@@ -19,6 +19,8 @@ namespace DataLayer.Utilities
     public interface IQueryManager
     {
         // TODO: for overriding in web client to switch persistent to remote, code reduction
+        IQueryProvider? FinalProvider { get; set; }
+
         StorageType EphemeralStorage { get; set; }
         StorageType PersistentStorage { get; set; }
         Type EphemeralType { get; set; }
@@ -52,6 +54,7 @@ namespace DataLayer.Utilities
         AsyncQueryable<TEntity> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
         TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         TResult Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
+
 
         Task<TResult> QueryNow<TEntity, TResult>(
             StorageType storage,
@@ -132,6 +135,7 @@ namespace DataLayer.Utilities
         protected static PriorityQueue<TaskCompletionSource, int> TaskQueue { get; } = new();
         private static readonly SemaphoreSlim _processorLock = new(1, 1);
         private static readonly SemaphoreSlim _gate = new(0);
+        public IQueryProvider? FinalProvider { get; set; }
 
         public virtual StorageType EphemeralStorage { get; set; } = StorageType.Ephemeral;
         public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
@@ -769,6 +773,10 @@ namespace DataLayer.Utilities
                         using var transaction = context.Database.BeginTransaction();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
+                        if(typeof(EnqueuedQueryProvider<>).Extends(set.Provider.GetType()))
+                        {
+                            throw new InvalidOperationException("Must override internal query provider!");
+                        }
                         if(query is LambdaExpression lambda)
                         {
                             var visitor = new ParameterUpdateVisitor(lambda.Parameters[0], set.Expression);
@@ -788,7 +796,7 @@ namespace DataLayer.Utilities
                         if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
                         {
                             // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
-                            var finalQueryable = set.Provider.CreateQuery(query);
+                            var finalQueryable = (FinalProvider ?? set.Provider).CreateQuery(query);
 
                             // Force ToList to materialize it before the context is disposed
                             var typeParameter = typeof(TResult).GetGenericArguments().FirstOrDefault()
@@ -814,7 +822,7 @@ namespace DataLayer.Utilities
                         }
                         else
                         {
-                            if (set?.Provider is IAsyncQueryProvider asyncProvider)
+                            if ((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
                             {
                                 result = await asyncProvider.ExecuteAsync<Task<TResult>>(
                                     query
@@ -824,7 +832,7 @@ namespace DataLayer.Utilities
                             else
                             {
                                 // Fallback if the provider doesn't support async (e.g., Linq-to-Objects)
-                                result = (TResult)set?.Provider.Execute(query)!;
+                                result = (TResult)(FinalProvider ?? set.Provider).Execute(query)!;
                             }
                         }
 

@@ -161,7 +161,8 @@ namespace DataLayer.Utilities.Extensions
 
         public static bool Extends(this Type type, Type genericDefinition)
         {
-            return genericDefinition.IsAssignableFrom(type) || IsCompatibleWith(type, genericDefinition);
+            return genericDefinition.IsAssignableFrom(type) || IsCompatibleWith(type, genericDefinition)
+                || type.IsAssignableFrom(genericDefinition) || IsCompatibleWith(genericDefinition, type);
         }
 
 
@@ -171,9 +172,14 @@ namespace DataLayer.Utilities.Extensions
             if (type.IsGenericType && type.GetGenericTypeDefinition() == genericDefinition)
                 return true;
 
+            if (genericDefinition.IsGenericType && genericDefinition.GetGenericTypeDefinition() == type)
+                return true;
+
             // 2. Does it implement the interface (e.g., List<T> implements IEnumerable<T>)
             return type.GetInterfaces().Any(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition() == genericDefinition);
+                i.IsGenericType && i.GetGenericTypeDefinition() == genericDefinition)
+                || genericDefinition.GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == type);
         }
 
         // Token: 0x060002F9 RID: 761 RVA: 0x000192F8 File Offset: 0x000174F8

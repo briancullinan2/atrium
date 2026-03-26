@@ -55,7 +55,7 @@ namespace FlashCard.Services
                 if(principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier) is Claim claim)
                 {
                     var usernameMatch = await Query
-                        .Query<User>(u => string.Equals(u.Username, claim.Value, StringComparison.InvariantCultureIgnoreCase))
+                        .Query<User>(u => u.Username != null && u.Username.Equals(claim.Value))
                         .FirstOrDefaultAsync();
                     User = usernameMatch;
                 }
