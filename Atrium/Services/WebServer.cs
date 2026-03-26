@@ -74,8 +74,7 @@ namespace Atrium.Services
                 // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
                 webBuilder.Services.AddSingleton(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
-                var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(webBuilder);
-                new AuthService(null).AddExternalLogins(authenticationBuilder);
+                DatabaseStateProvider.BuildAuthentication(webBuilder);
 
                 webBuilder.Services.AddSingleton(sp => new HttpClient { 
                     // TODO: insert our own address validated from settings and HostingService

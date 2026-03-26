@@ -38,16 +38,16 @@ namespace WebClient.Services
         {
             // 1. Get SessionID from Local Settings (Your source of truth)
             var currentSetting = await _query.Query<Setting>(s =>
-                s.Name == DefaultPermissions.ApplicationCurrentUser.ToString());
+                s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                .FirstOrDefaultAsync();
 
-            string? sessionId = currentSetting?.FirstOrDefault()?.Value;
+            string? sessionId = currentSetting?.Value;
 
             if (string.IsNullOrEmpty(sessionId))
                 return LoginService.Guest();
 
             // 2. Fetch from local/remote node
-            var sessions = await _query.Query<Session>(s => s.Id == sessionId);
-            var session = sessions.FirstOrDefault();
+            var session = await _query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
             // Arizona: Check expiration locally
             if (session == null || session.Time.AddSeconds(session.Lifetime) < DateTime.UtcNow)

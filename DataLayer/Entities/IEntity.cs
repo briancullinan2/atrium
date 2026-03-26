@@ -208,6 +208,26 @@ namespace DataLayer.Entities
         }
         */
 
+
+        public async Task<T> Update(IQueryManager query)
+        {
+            return await IEntityExtensions.Update<T>((T)this, query);
+        }
+
+        public async Task<TEntity?> Update<TEntity>(TEntity? entity = null, IQueryManager? query = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity
+        {
+            if (entity == null && this is TEntity that)
+            {
+                return await IEntityExtensions.Update<TEntity>(that, query);
+            }
+            else if (entity != null)
+            {
+                return await IEntityExtensions.Update<TEntity>(entity, query);
+            }
+            else
+                return default;
+        }
+
         public async Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity
         {
             entity ??= this as TEntity;

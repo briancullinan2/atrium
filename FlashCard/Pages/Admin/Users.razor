@@ -191,7 +191,7 @@
 
     protected async Task GetCurrentUsers()
     {
-        var users = (await QueryManager.Query<DataLayer.Entities.User>()).ToList();
+        var users = await QueryManager.Query<DataLayer.Entities.User>().ToListAsync();
         if(LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true
             || LoginService.User?.Settings.Any(s => string.Equals(s.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
         {
@@ -212,7 +212,7 @@
 
     protected async Task SetCurrentUser()
     {
-        CurrentUser = (await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id)).FirstOrDefault();
+        CurrentUser = await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id).FirstOrDefaultAsync();
         TitleService?.UpdateTitle("Edit User - " + CurrentUser?.Username);
         StateHasChanged();
     }

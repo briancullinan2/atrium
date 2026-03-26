@@ -28,10 +28,11 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var alreadyLoaded = await Query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage);
-            if (alreadyLoaded.Any())
+            var alreadyLoaded = await Query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage)
+                .ToListAsync();
+            if (alreadyLoaded.Count != 0)
             {
-                results = [.. await Query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName))];
+                results = [.. await Query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName)).ToListAsync()];
                 if (results.Count != 0)
                 {
                     return results;
@@ -70,8 +71,8 @@ namespace AnkiParser
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var alreadyLoaded = await Query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName);
-            if (alreadyLoaded.Any())
+            var alreadyLoaded = await Query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName).ToListAsync();
+            if (alreadyLoaded.Count != 0)
             {
                 return [.. alreadyLoaded];
             }

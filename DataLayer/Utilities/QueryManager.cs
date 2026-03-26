@@ -49,10 +49,15 @@ namespace DataLayer.Utilities
         //Task<IEntity> Save(bool persistent, IEntity entity, int priority = 10);
 
 
-        Task<IQueryable<TEntity>> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
-        Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
-        Task<TResult> Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
+        AsyncQueryable<TEntity> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
+        TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
+        TResult Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
 
+        Task<TResult> QueryNow<TEntity, TResult>(
+            StorageType storage,
+            Expression query,
+            int priority = 10)
+            where TEntity : class;
 
 
         Task<TEntity> Update<TEntity, TResult>(StorageType storage, Expression<Func<TEntity, TResult>> key, int priority = 10) where TEntity : Entity<TEntity>;
@@ -61,6 +66,8 @@ namespace DataLayer.Utilities
         Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
+        Task<IEntity?> Update(IEntity entity, int priority = 10);
+        Task<IEntity?> Update(StorageType storage, IEntity entity, int priority = 10);
 
         Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>;
         Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>;
@@ -659,14 +666,14 @@ namespace DataLayer.Utilities
 
 
 
-        public async Task<IQueryable<TEntity>> Query<TEntity>(
+        public AsyncQueryable<TEntity> Query<TEntity>(
             Expression<Func<TEntity, bool>>? query = null,
             int priority = 10) where TEntity : Entity<TEntity>
         {
             if (query == null)
             {
                 // Return a simple identity: entities => entities
-                return await Query(EphemeralStorage, (IQueryable<TEntity> entities) => entities, priority);
+                return Query<TEntity, AsyncQueryable<TEntity>>(EphemeralStorage, entities => (AsyncQueryable<TEntity>)entities, priority);
             }
 
             // MANUALLY build the call to .Where(query) 
@@ -685,25 +692,50 @@ namespace DataLayer.Utilities
             // This creates the final Lambda: (IQueryable<TEntity> entities) => entities.Where(query)
             var lambda = Expression.Lambda<Func<IQueryable<TEntity>, IQueryable<TEntity>>>(whereCall, parameter);
 
-            return await Query(EphemeralStorage, lambda, priority);
+            return (AsyncQueryable<TEntity>)Query<TEntity, IQueryable<TEntity>>(EphemeralStorage, lambda, priority);
         }
 
 
 
-        public async Task<TResult> Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+        public TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return await Query(EphemeralStorage, query, priority);
+            return Query(EphemeralStorage, query, priority);
+        }
+
+
+        
+
+
+        public virtual TResult Query<TEntity, TResult>(
+            StorageType storage,
+            Expression<Func<IQueryable<TEntity>, TResult>> query,
+            int priority = 10)
+            where TEntity : Entity<TEntity>
+        {
+            var provider = new EnqueuedQueryProvider<TEntity>(this, storage, priority);
+
+            if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
+            {
+                return (TResult)provider.CreateQuery<TEntity>(query);
+            }
+            else if(typeof(Task).IsAssignableFrom(typeof(TResult)))
+            {
+                return (dynamic)provider.ExecuteAsync<Task<TResult>>(query, new CancellationToken());
+            }
+            // Return the "fake" queryable that points to your Enqueue engine
+            throw new InvalidOperationException("Don't know what you were expecting, buts not this.");
         }
 
 
         // TODO: make this only queue once per same result
         private static readonly ConcurrentDictionary<string, Task<object?>> _pendingQueries = new();
 
-        public virtual async Task<TResult> Query<TEntity, TResult>(
+        public virtual async Task<TResult> QueryNow<TEntity, TResult>(
             StorageType storage,
-            Expression<Func<IQueryable<TEntity>, TResult>> query,
+            Expression query,
             int priority = 10)
-            where TEntity : Entity<TEntity>
+            where TEntity : class
+            //where TEntity : Entity<TEntity>
         {
             // 1. Generate a unique key for this specific query signature
             // For "absurd detail," you could use query.ToXDocument() if you've mapped it,
@@ -737,9 +769,18 @@ namespace DataLayer.Utilities
                         using var transaction = context.Database.BeginTransaction();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-                        var visitor = new ParameterUpdateVisitor(query.Parameters[0], set.Expression);
-                        var bodyWithSetInlined = visitor.Visit(query.Body);
-                        var invokedExpression = bodyWithSetInlined;
+                        if(query is LambdaExpression lambda)
+                        {
+                            var visitor = new ParameterUpdateVisitor(lambda.Parameters[0], set.Expression);
+                            var invokedExpression = visitor.Visit(lambda.Body);
+                            query = invokedExpression;
+                        }
+                        else
+                        {
+                            var swapper = new RootReplacementVisitor(set);
+                            var sqliteExpression = swapper.Visit(query);
+                            query = sqliteExpression;
+                        }
                         //var invokedExpression = Expression.Invoke(query, set.Expression);
 
                         TResult? result = default;
@@ -747,7 +788,7 @@ namespace DataLayer.Utilities
                         if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
                         {
                             // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
-                            var finalQueryable = set.Provider.CreateQuery(invokedExpression);
+                            var finalQueryable = set.Provider.CreateQuery(query);
 
                             // Force ToList to materialize it before the context is disposed
                             var typeParameter = typeof(TResult).GetGenericArguments().FirstOrDefault()
@@ -776,14 +817,14 @@ namespace DataLayer.Utilities
                             if (set?.Provider is IAsyncQueryProvider asyncProvider)
                             {
                                 result = await asyncProvider.ExecuteAsync<Task<TResult>>(
-                                    invokedExpression
+                                    query
                                 //cancellationToken // Always good practice to pass a token if available
                                 );
                             }
                             else
                             {
                                 // Fallback if the provider doesn't support async (e.g., Linq-to-Objects)
-                                result = (TResult)set?.Provider.Execute(invokedExpression)!;
+                                result = (TResult)set?.Provider.Execute(query)!;
                             }
                         }
 
@@ -967,6 +1008,36 @@ namespace DataLayer.Utilities
 
             return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
         }
+
+        public async Task<IEntity?> Update(IEntity entity, int priority = 10)
+        {
+            return await Update(EphemeralStorage, entity, priority);
+        }
+
+        public virtual async Task<IEntity?> Update(StorageType storage, IEntity entity, int priority = 10)
+        {
+            await Enqueue(async () =>
+            {
+                var contextFrom = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                await contextFrom.InitializeIfNeeded();
+            }, 0);
+
+            var UpdateGeneric = GetType().GetMethods(nameof(UpdateNow), 1, [typeof(DbContext)]).FirstOrDefault();
+            return await Enqueue(async () => {
+                var persistentContext = GetContext(storage)
+                    ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
+                var genericMethod = UpdateGeneric?.MakeGenericMethod(entity.GetType());
+                var result = genericMethod?.Invoke(this, [persistentContext, entity, null, 3]);
+                if(result is Task task)
+                {
+                    await task;
+                    return (result as dynamic).Result as IEntity;
+                }
+                return result as IEntity; 
+            }, priority);
+        }
+
 
         public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
             where TEntity : Entity<TEntity>

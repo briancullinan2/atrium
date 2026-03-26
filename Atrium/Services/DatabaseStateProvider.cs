@@ -41,14 +41,16 @@ namespace Atrium.Services
 #endif
             {
                 var currentSetting = await _query.Query<Setting>(s =>
-                    s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString());
-                sessionId = currentSetting?.FirstOrDefault()?.Value;
+                    s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                    .FirstOrDefaultAsync();
+                sessionId = currentSetting?.Value;
 
                 if (sessionId == null)
                 {
                     var autoLoginSetting = await _query.Query<Setting>(s =>
-                        s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString());
-                    sessionId = autoLoginSetting?.FirstOrDefault()?.Value;
+                        s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString())
+                        .FirstOrDefaultAsync();
+                    sessionId = autoLoginSetting?.Value;
                 }
             }
 
@@ -57,13 +59,14 @@ namespace Atrium.Services
 
             // 2. Fetch the session from your DataLayer.Entities.Session table
             var session = await _query.Query<Session>(s =>
-                s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow);
+                s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow)
+                .FirstOrDefaultAsync();
 
-            if (session.FirstOrDefault() == null)
+            if (session == null)
                 return LoginService.Guest();
 
             // 3. Deserialize the 'Value' (JSON) into Claims
-            var sessionEntity = session.First();
+            var sessionEntity = session;
             var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(sessionEntity.Value) ?? [];
 
             // 4. Sync Logic with Throttling (e.g., once every 30 minutes)
@@ -157,10 +160,10 @@ namespace Atrium.Services
             await _query.Save(newSession);
 
             var guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            var userEntity = (await _query.Query<User>(u => u.Guid == guid)).FirstOrDefault();
-            var currentSetting = (await _query.Query<Setting>(s =>
+            var userEntity = await _query.Query<User>(u => u.Guid == guid).FirstOrDefaultAsync<User>();
+            var currentSetting = await _query.Query<Setting>(s =>
                 s.Name != null
-                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString()))?.FirstOrDefault()
+                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString()).FirstOrDefaultAsync()
                 ?? new Setting
                 {
                     Name = DefaultPermissions.ApplicationCurrentUser.ToString()
@@ -173,7 +176,7 @@ namespace Atrium.Services
 
             if (user.Claims.Any(c => c.Type == ClaimTypes.Role))
             {
-                currentSetting.Role = await new Role { Name = user.Claims.First(c => c.Type == ClaimTypes.Role).Value }.Update();
+                currentSetting.Role = await new Role { Name = user.Claims.First(c => c.Type == ClaimTypes.Role).Value }.Update(_query);
                 currentSetting.RoleId = currentSetting.Role.Name;
             }
 
@@ -220,12 +223,12 @@ namespace Atrium.Services
         }
 
 #if WINDOWS
-        public static AuthenticationBuilder BuildAuthentication(IHostApplicationBuilder builder)
+        public static void BuildAuthentication(IHostApplicationBuilder builder)
         {
             // Define a constant for the claim type to avoid naming mismatches
             const string SessionIdClaimType = "atrium_sid";
 
-            return builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
                     options.LoginPath = "/login";
@@ -254,8 +257,7 @@ namespace Atrium.Services
                             }
 
                             // Query the database to see if this session is still "Live"
-                            var session = await query.Query<Session>(s => s.Id == sessionId);
-                            var activeSession = session.FirstOrDefault();
+                            var activeSession = await query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
                             // Validation Logic:
                             // 1. Does the session exist?
@@ -268,6 +270,9 @@ namespace Atrium.Services
                         }
                     };
                 });
+
+            new AuthService(null).AddExternalLogins(authenticationBuilder);
+            
         }
 #endif
     }

@@ -170,66 +170,6 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        private static Dictionary<string, string?> ToDictionary(this MemberInitExpression expression)
-        {
-            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var binding in expression.Bindings)
-            {
-                if (binding is MemberAssignment assignment)
-                {
-                    // We extract the name and value without ever running the constructor
-                    var value = Expression.Lambda(assignment.Expression).Compile().DynamicInvoke();
-                    values[assignment.Member.Name] = value?.ToString();
-                }
-            }
-            return values;
-        }
-
-
-        public static Dictionary<string, string?> ToDictionary(this NewExpression ne)
-        {
-            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < ne.Members?.Count; i++)
-            {
-                var value = Expression.Lambda(ne.Arguments[i]).Compile().DynamicInvoke();
-                values[ne.Members[i].Name] = value?.ToString();
-            }
-            return values;
-        }
-
-
-        public static Dictionary<string, string?> ToDictionary<TDelegate>(this Expression<TDelegate> ex)
-        {
-            _ = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, string?>? values;
-            if (ex?.Body is NewExpression ne)
-            {
-                values = ne.ToDictionary();
-            }
-            else if (ex?.Body is MemberInitExpression mi)
-            {
-                values = mi.ToDictionary();
-            }
-            else if (ex?.Body is LambdaExpression le)
-            {
-                values = le.ToDictionary();
-            }
-            else if (ex?.Body is BinaryExpression bi)
-            {
-                values = bi.ToDictionary();
-            }
-            else if (ex?.Body is ConditionalExpression ce)
-            {
-                values = ce.ToDictionary();
-            }
-            else
-            {
-                throw new InvalidOperationException("Can't do anything else with this " + ex?.Body.GetType() + ", frankly.");
-            }
-            return values;
-        }
-
 
         private static Dictionary<MemberInfo, object?> ToMembers(this ConditionalExpression expression)
         {
@@ -240,19 +180,6 @@ namespace DataLayer.Utilities.Extensions
 
             return values;
         }
-
-
-        private static Dictionary<string, string?> ToDictionary(this LambdaExpression expression)
-        {
-            return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
-        }
-
-        private static Dictionary<string, string?> ToDictionary(this ConditionalExpression expression)
-        {
-            return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
-        }
-
-
 
         private static Dictionary<MemberInfo, object?> ToMembers(this LambdaExpression expression)
         {
@@ -265,7 +192,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        private static Dictionary<string, string?> ToDictionary(this BinaryExpression expression)
+        public static Dictionary<string, string?> ToDictionary(this Expression expression)
         {
             return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
         }
@@ -379,6 +306,11 @@ namespace DataLayer.Utilities.Extensions
                 if (mc.Object is MemberExpression me)
                 {
                     values[me.Member] = ResolveValue(mc);
+                }
+
+                foreach(var arg in mc.Arguments)
+                {
+                    Merge(values, arg.ToMembers());
                 }
             }
             else if (expr is NewExpression ne) Merge(values, ne.ToMembers());
@@ -533,21 +465,34 @@ namespace DataLayer.Utilities.Extensions
             return values;
         }
 
+
         public static Dictionary<MemberInfo, object?> ToMembers<TDelegate>(this Expression<TDelegate> ex)
         {
-            if (ex?.Body is NewExpression ne)
+            return ToMembers(ex.Body);
+        }
+
+        public static Dictionary<MemberInfo, object?> ToMembers(this Expression ex)
+        {
+            if(typeof(Expression<>).IsCompatibleWith(ex.GetType()))
+                return (ex as dynamic).Body.ToMembers();
+
+            if (ex is NewExpression ne)
                 return ne.ToMembers();
 
-            if (ex?.Body is MemberInitExpression mi)
+            if (ex is MemberInitExpression mi)
                 return mi.ToMembers();
 
-            if (ex?.Body is LambdaExpression le)
+            if (ex is LambdaExpression le)
                 return le.ToMembers();
 
-            if (ex?.Body is BinaryExpression bi)
+            if (ex is BinaryExpression bi)
                 return bi.ToMembers();
 
-            throw new InvalidOperationException("Can't do anything else with this " + ex?.Body.GetType() + ", frankly.");
+            var dictionary = new Dictionary<MemberInfo, object?>();
+            ParseExpression(ex, dictionary);
+            if(dictionary.Count > 0) return dictionary;  
+
+            throw new InvalidOperationException("Can't do anything else with this " + ex.GetType() + ", frankly.");
         }
 
 

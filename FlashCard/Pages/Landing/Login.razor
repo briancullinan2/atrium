@@ -3,7 +3,7 @@
 @page "/login/callback/{ServiceId}"
 @page "/logout"
 @page "/access-denied"
-
+@implements IDisposable
 @using DataLayer.Utilities
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
@@ -103,16 +103,18 @@
         // 2. Call the provider to save to DB and set the Cookie
         await AuthService.MarkUserAsAuthenticated(principal);
 
+        // automatically synchronized through LoginService
         // 3. UI logic
-        _ = LoginService.SetUser(user);
-        _ = LoginService.SetLoginMode(false);
+        //_ = LoginService.SetUser(user);
+        //_ = LoginService.SetLoginMode(false);
 
-        if(ReturnUrl != null)
-        {
-            Nav.NavigateTo(ReturnUrl);
-            return;
-        }
-        Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
+        // this is cool because if they login with QR code it will automatically reroute
+        //if(ReturnUrl != null)
+        //{
+        //    Nav.NavigateTo(ReturnUrl);
+        //    return;
+        //}
+        //Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
     }
 
 
@@ -128,8 +130,28 @@
         MenuService.SetHeader(false);
         LoginService.SetLoginMode(true);
         LoginService.SetUser(null);
+        LoginService.OnUserChanged += SetUser;
     }
 
+
+    public void SetUser(DataLayer.Entities.User? user)
+    {
+        // this is cool because if they login with QR code it will automatically reroute
+        if (user != null)
+        {
+            if (ReturnUrl != null)
+            {
+                Nav.NavigateTo(ReturnUrl);
+                return;
+            }
+            Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
+        }
+    }
+
+    public void Dispose()
+    {
+        LoginService.OnUserChanged -= SetUser;
+    }
 
     protected override void OnParametersSet()
     {

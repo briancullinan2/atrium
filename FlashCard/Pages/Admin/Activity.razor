@@ -1,3 +1,4 @@
+@using Microsoft.EntityFrameworkCore
 @using DataLayer.Utilities
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Services
@@ -185,7 +186,7 @@
         var wideEnd = day.AddDays(2).ToUniversalTime();
 
         var results = await QueryManager.Query<DataLayer.Entities.Visit>(
-            v => v.Created >= wideStart && v.Created < wideEnd);
+            v => v.Created >= wideStart && v.Created < wideEnd).ToListAsync();
 
         // BUCKETIZE: Only keep events that land on THIS local day after offset
         var localEvents = results
@@ -257,7 +258,7 @@
         var utcEnd = end.ToUniversalTime().Date;
     
         var allEvents = await QueryManager.Query<DataLayer.Entities.Visit>(
-            v => v.Created >= utcStart && v.Created < utcEnd);
+            v => v.Created >= utcStart && v.Created < utcEnd).ToListAsync();
 
         // 2. Localize and Bucketize immediately
         foreach (var ev in allEvents)

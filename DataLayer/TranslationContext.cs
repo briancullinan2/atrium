@@ -253,15 +253,17 @@ namespace DataLayer
     {
         public HttpClient Client { get; set; } = client;
         public string? BaseAddress { get; set; } = null;
+
+
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);
 
             _ = options.UseInMemoryDatabase("RemoteShell");
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
-#pragma warning disable EF1001 // Internal EF Core API usage.
-            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
-#pragma warning restore EF1001 // Internal EF Core API usage.
+//#pragma warning disable EF1001 // Internal EF Core API usage.
+//            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
+//#pragma warning restore EF1001 // Internal EF Core API usage.
             /*options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>(
             (IServiceProvider internalServiceProvider, IQueryCompiler originalCompiler) =>
             {
