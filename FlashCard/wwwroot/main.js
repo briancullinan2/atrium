@@ -57,7 +57,7 @@ window.getLineHeight = (element) => {
 
 
 window.getLineHeightInt = (element) => {
-    const lineHeight = getLineHeight(element);
+    const lineHeight = getLineHeight(element || document.body);
 
     if (lineHeight === 'normal') {
         // Fallback: Default browser line-height is usually ~1.2 * font-size
@@ -68,4 +68,10 @@ window.getLineHeightInt = (element) => {
     return Math.round(parseFloat(lineHeight));
 };
 
+
+window.listenToResize = (dotnetHelper) => {
+    window.addEventListener('resize', () => {
+        dotnetHelper.invokeMethodAsync('OnWindowResize', window.innerWidth, window.innerHeight);
+    });
+};
 

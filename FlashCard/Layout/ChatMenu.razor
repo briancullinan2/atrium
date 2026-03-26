@@ -25,7 +25,6 @@
     public bool? ShowChat = null;
 
     public bool AutoScroll = true;
-    private CancellationTokenSource? _scrollDebounceCts;
 
 
 
@@ -71,68 +70,28 @@
 
     protected async Task ToggleAutoScroll()
     {
-        // 1. Cancel the previous pending timeout
-        _scrollDebounceCts?.Cancel();
-        _scrollDebounceCts?.Dispose();
-
-        // 2. Create a new token for the current 100ms window
-        _scrollDebounceCts = new CancellationTokenSource();
-        var token = _scrollDebounceCts.Token;
-
-        try
-        {
-            // 3. Wait for 100ms of "silence"
-            await Task.Delay(100, token);
-
-            // 4. If we weren't cancelled, execute the logic
-            if (!Chat) return;
-
+        _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(async () => {
             var bottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
             AutoScroll = bottom == true;
-        }
-        catch (TaskCanceledException)
-        {
-            // This is expected when a new event bumps the timer
-        }
+        }, 200);
+
     }
 
     private CancellationTokenSource? _autoScrollLoopCts;
 
     protected async Task LaunchAutoScrollLoop()
     {
-        // 1. Cancel any existing loop so they don't fight
-        _autoScrollLoopCts?.Cancel();
-        _autoScrollLoopCts?.Dispose();
-        _autoScrollLoopCts = new CancellationTokenSource();
-        var token = _autoScrollLoopCts.Token;
-
-        try
+        _autoScrollLoopCts = DataLayer.Utilities.Extensions.TaskExtensions.Timer(async () =>
         {
-            int attempts = 0;
-            bool isBottom = false;
+            var isBottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
 
-            // Loop up to 30 times (~1.5 seconds of total scroll time)
-            while (!isBottom && attempts < 300)
+            if (isBottom == true)
             {
-                token.ThrowIfCancellationRequested();
-
-                // 2. Nudge the scrollbar down
-                await JS.InvokeVoidAsync("scrollSlightly", "Navlist");
-
-                // 3. Small delay to let the browser render the scroll movement
-                await Task.Delay(50, token);
-
-                // 4. Check if we've arrived
-                var result = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
-                isBottom = result == true;
-
-                attempts++;
+                _autoScrollLoopCts?.Cancel();
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // New message arrived or user scrolled away, loop stopped gracefully
-        }
+
+            await JS.InvokeVoidAsync("scrollSlightly", "Navlist");
+        });
     }
 
 

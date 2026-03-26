@@ -1,4 +1,5 @@
 @using DataLayer.Utilities
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Services
 @using System
 @implements IDisposable
@@ -10,10 +11,11 @@
 <SyncedTitle Title="Usage Activity"></SyncedTitle>
 
 <div class="flash-card timeline-viewport" 
+     @onscroll="HandleScroll"
      @onwheel="HandleZoom" 
      @onwheel:preventDefault="true"
      @onwheel:stopPropagation="true"
-     @ref="timelineRef" @onscroll="HandleScroll">
+     @ref="timelineRef">
     <span class="instructions">See a list of program interactions on a timeline.</span>
     <div class="now-indicator"></div> @* Fixed line in the middle *@
 
@@ -32,32 +34,36 @@
             <div>Zoom: @(ZoomLevel)</div>
             <div>Line: @(CalculatedHeight)</div>
         </div>
-        <div class="y-axis">
+        <div @ref="yAxisRef" class="y-axis">
             @for (int i = 0; i < 24; i++)
             {
                 <div class="hour-label">@($"{i:D2}:00")</div>
             }
+            <div class="hour-label">Midnight</div>
         </div>
 
         <div class="content-area">
             @foreach (var day in GetVisibleDays())
             {
                 @* Calculate this day's position relative to the center of the screen *@
-                var xPos = CalculateXPosition(day);
-
                 <div class="day-column @(day.Date == DateTime.Today ? "today" : "")"
-                     style="width: @(PixelsPerDay)px; transform: translateX(@(xPos)px); position: absolute;">
+                     style="@(GetColumnStyle(day))">
 
                     <div class="day-header">@day.ToString("MMM dd")</div>
 
                     <div class="events-layer">
-                        @foreach (var ev in GetEventsForDay(day.Date))
+                        @if (DayBuckets.TryGetValue(day.Date, out var events))
                         {
-                            <div data-hour="@(ev.Created.Hour)" class="event-pill"
-                                 style="top: @(GetYPosition(ev.Created))px;"
-                                 @onclick="() => NavigateToEvent(ev)">
-                                @ev?.Path
-                            </div>
+                            @foreach (var ev in events)
+                            {
+                                <div data-hour="@(ev.Created.Hour)" class="event-pill"
+                                    style="@(GetYPosition(ev.Created.AddMinutes(-OffsetInMinutes)))"
+                                    @onclick="() => NavigateToEvent(ev)">@ev?.Path</div>
+                            }
+                        }
+                        else if (PendingDays.Contains(day.Date))
+                        {
+                            <div class="loader">Loading...</div>
                         }
                     </div>
                 </div>
@@ -70,6 +76,7 @@
 @code {
     // style="top: @GetYOffset(ev.Time); height: @GetDurationHeight(ev.Duration);"
 
+    private ElementReference yAxisRef;
     private ElementReference timelineRef;
     private double ViewportOffset = 0; // The "Scroll" position in pixels
     private bool Dragging = false;
@@ -78,10 +85,15 @@
     private int TotalWidth => (int)(PixelsPerDay * 7); // 60 days of buffer
     private double PixelsPerDay => ZoomLevel * 150;
 
+    public string? GetColumnStyle(DateTime day) => 
+        $"width: {PixelsPerDay}px; transform: translateX({CalculateXPosition(day.Date)}px); position: absolute;";
+
+
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        _ = PopulatorLoop();
     }
     // This is the key: How many pixels away is this date from the "Zero Point"?
     private double CalculateXPosition(DateTime day)
@@ -98,37 +110,89 @@
     }
 
 
-    private CancellationTokenSource? _movects;
+    private int _width;
+    private int _height;
+    private DotNetObjectReference<Pages.Admin.Activity>? _objRef;
+
+    [JSInvokable]
+    public void OnWindowResize(int width, int height)
+    {
+        _width = width;
+        _height = height;
+        DataLayer.Utilities.Extensions.TaskExtensions
+            .Debounce(OnWindowResizeDebounced, 200, JS, yAxisRef)
+            .Then<int?>(async task => CalculatedHeight = await task ?? CalculatedHeight)
+            .Then(task => InvokeAsync(StateHasChanged));
+    }
+
+    public static async Task<int?> OnWindowResizeDebounced(IJSRuntime? JS, ElementReference yAxisRef)
+    {
+        var result = JS?.InvokeAsync<int>("getLineHeightInt", yAxisRef);
+        if(result is ValueTask<int> task)
+        {
+            await task;
+            return (result as dynamic).Result;
+        }
+        return null;
+    }
+
+
+    public void Dispose() => _objRef?.Dispose();
+
+
+
+    private Dictionary<DateTime, List<DataLayer.Entities.Visit>> DayBuckets = new();
 
     protected async Task HandleMove(MouseEventArgs e)
     {
         if (!Dragging) return;
 
-        // 1. Accumulate the movement immediately (The "Snap" feel)
-        // We update the local state so the UI feels responsive
+        // 1. Immediate UI Feedback (The "Snap")
         ViewportOffset += e.MovementX;
+        _ = DataLayer.Utilities.Extensions.TaskExtensions
+            .Debounce(TriggerSerializedLoad, 200);
+    }
 
-        // 2. Cancel the previous "Server/State Sync" timer
-        _movects?.Cancel();
-        _movects = new CancellationTokenSource();
-        var token = _movects.Token;
+    private async Task TriggerSerializedLoad()
+    {
+        var visibleDays = GetVisibleDays().ToList();
 
-        try
+        foreach (var day in visibleDays)
         {
-            // 3. The 50ms Wait Window
-            await Task.Delay(50, token);
+            var dateKey = day.Date;
 
-            // 4. If we made it here without being cancelled,
-            // finally trigger the heavy lifting (StateHasChanged / Server Sync)
+            // Skip if already loaded or currently loading
+            if (DayBuckets.ContainsKey(dateKey) || PendingDays.Contains(dateKey))
+                continue;
+
+            PendingDays.Add(dateKey);
+
+            // The 100ms stagger you requested
+            await Task.Delay(100);
+
+            await LoadDay(dateKey);
+            
+            // Refresh UI for this specific day column
             StateHasChanged();
-        
-            // If you were syncing to a remote node in Flagstaff:
-            // await SaveViewportPosition(ViewportOffset);
         }
-        catch (TaskCanceledException)
-        {
-            // Silently swallowed: Another move happened within 50ms
-        }
+    }
+
+    private async Task LoadDay(DateTime day)
+    {
+        // Define the UTC window for the query
+        // Since AZ is UTC-7, we grab a 48-hour window to be safe for "bleeding" events
+        var wideStart = day.AddDays(-1).ToUniversalTime();
+        var wideEnd = day.AddDays(2).ToUniversalTime();
+
+        var results = await QueryManager.Query<DataLayer.Entities.Visit>(
+            v => v.Created >= wideStart && v.Created < wideEnd);
+
+        // BUCKETIZE: Only keep events that land on THIS local day after offset
+        var localEvents = results
+            .Where(v => v.Created.AddMinutes(-OffsetInMinutes).Date == day.Date)
+            .ToList();
+
+        DayBuckets[day.Date] = localEvents;
     }
 
 
@@ -144,11 +208,24 @@
         // to calculate which dates to "Stream" or "Skip" via LINQ
     }
 
+
+    // TODO: resize stuff to get new line height from css media query
+
+    private int OffsetInMinutes = 0;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        CalculatedHeight = await JS.InvokeAsync<int>("getLineHeightInt");
-
-    //    if (firstRender)
+        if (firstRender)
+        {
+            _ = DataLayer.Utilities.Extensions.TaskExtensions
+                .Debounce(OnWindowResizeDebounced, 200, JS, yAxisRef)
+                .Then<int?>(async task => CalculatedHeight = await task ?? CalculatedHeight);
+            OffsetInMinutes = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+            _objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("listenToResize", _objRef);
+            StateHasChanged();
+        }
+        //    if (firstRender)
     //    {
     //        var dotNetHelper = DotNetObjectReference.Create(this);
     //        await JS.InvokeVoidAsync("initTimeline", dotNetHelper, timelineRef);
@@ -166,61 +243,57 @@
 
     private Dictionary<DateTime, IEnumerable<DataLayer.Entities.Visit>> Events = new();
     
+    private HashSet<DateTime> PendingDays = new();
+    private bool IsLoading = false;
+
+    // 1. Fetch a wide range to reduce server round-trips
+    private async Task LoadDataRange(DateTime start, DateTime end)
+    {
+        if (IsLoading) return;
+        IsLoading = true;
+
+        // Fetch once for the whole view
+        var utcStart = start.ToUniversalTime().Date;
+        var utcEnd = end.ToUniversalTime().Date;
     
-    private Dictionary<DateTime, CancellationTokenSource?> _loadcts = new();
+        var allEvents = await QueryManager.Query<DataLayer.Entities.Visit>(
+            v => v.Created >= utcStart && v.Created < utcEnd);
 
-    protected async Task UpdateEvents(DateTime day)
-    {
-        if (!Dragging) return;
-
-        // 2. Cancel the previous "Server/State Sync" timer
-        if(_loadcts.TryGetValue(day.Date, out var cts))
+        // 2. Localize and Bucketize immediately
+        foreach (var ev in allEvents)
         {
-            cts?.Cancel();
+            // Adjust to browser local time before bucketing
+            var localTime = ev.Created.AddMinutes(-OffsetInMinutes);
+            var dateKey = localTime.Date;
+
+            if (!DayBuckets.ContainsKey(dateKey)) DayBuckets[dateKey] = new();
+            DayBuckets[dateKey].Add(ev);
         }
-        ;
-        var token = (_loadcts[day.Date] = new CancellationTokenSource()).Token;
+    
+        IsLoading = false;
+        StateHasChanged();
+    }
 
-        try
+    // 3. Serialized "Staggered" day populator
+    private async Task PopulatorLoop()
+    {
+        var visible = GetVisibleDays().ToList();
+    
+        foreach (var day in visible)
         {
-            // 3. The 50ms Wait Window
-            await Task.Delay(50, token);
+            if (DayBuckets.ContainsKey(day.Date) || PendingDays.Contains(day.Date))
+                continue;
 
-            // Temporary Wide Query: Get everything from the last 48 hours
-            var wideStart = day.Date.ToUniversalTime();
-            var wideEnd = day.Date.AddDays(1).ToUniversalTime();
+            PendingDays.Add(day.Date);
 
-            if (!Events.TryGetValue(day.Date, out var _))
-            {
+            // Artificial 100ms stagger as requested
+            await Task.Delay(100);
         
-                var allRecent = (await QueryManager.Query<DataLayer.Entities.Visit>(v => v.Created >= wideStart && v.Created < wideEnd)).ToList();
-                Events[day.Date] = allRecent;
-                if (allRecent.Count > 0)
-                {
-                    if (allRecent.Count != 0) StateHasChanged();
-                }
-            }
-        }
-        catch (TaskCanceledException)
-        {
-            // Silently swallowed: Another move happened within 50ms
+            // Trigger specific day load or use the Range method above
+            _ = LoadDay(day.Date);
         }
     }
 
-
-    private int delayCount = 0;
-    private IEnumerable<DataLayer.Entities.Visit> GetEventsForDay(DateTime day)
-    {
-        var localDate = day.Date;
-
-        if (Events.TryGetValue(localDate, out var events))
-        {
-            return events;
-        }
-        delayCount++;
-        _ = UpdateEvents(localDate);
-        return [];
-    }
 
     [JSInvokable]
     public void OnViewportScroll(double deltaX)
@@ -244,14 +317,10 @@
 
     public int CalculatedHeight { get; set; } = 18;
 
-    private double GetYPosition(DateTime time) 
+    private string GetYPosition(DateTime time) 
     {
-        return (24 - time.Hour) * CalculatedHeight * ZoomLevel + (time.Minute / 60.0 * ZoomLevel);
+        return $"top: {(24 - time.Hour) * CalculatedHeight * ZoomLevel + (time.Minute / 60.0 * ZoomLevel)}px;";
     }
 
-    public void Dispose()
-    {
-        
-    }
 
 }

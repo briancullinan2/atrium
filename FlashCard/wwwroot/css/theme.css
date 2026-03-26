@@ -7,9 +7,70 @@ body, html
     line-height: var(--global-line-height);
 }
 
+.timeline-grid .y-axis {
+    line-height: var(--global-line-height);
+}
+
 .timeline-grid {
     background-size: 100% var(--global-line-height); /* 25px per hour */
 }
+
+.timeline-grid .y-axis {
+    margin-bottom: calc(var(--global-line-height) * 2);
+}
+
+@media all and (max-height: 640px) {
+
+    .timeline-grid .y-axis {
+        line-height: calc(var(--global-line-height) / 2);
+    }
+    .timeline-grid .y-axis > * {
+        padding: calc(var(--global-line-height) / 4) 0;
+    }
+
+    .timeline-grid {
+        background-size: 100% calc(var(--global-line-height) / 2); /* 25px per hour */
+    }
+
+}
+
+
+
+
+.flash-card.timeline-viewport {
+    height: calc(100vh - 5.7rem);
+}
+
+.page.chatting .flash-card.timeline-viewport {
+    height: calc(100vh - 8.7rem);
+}
+
+.timeline-grid .y-axis {
+    background-color: var(--slate-card);
+    line-height: calc((100vh - 16rem) / 24);
+}
+
+.timeline-grid {
+    background-size: 100% calc((100vh - 16rem) / 24); /* 25px per hour */
+}
+
+.timeline-grid .y-axis {
+    margin-bottom: var(--global-line-height);
+}
+
+@media all and (max-height: 640px) {
+
+    .timeline-grid .y-axis {
+        line-height: calc((100vh - 16rem) / 24);
+    }
+
+    .timeline-grid .y-axis > * {
+        padding: calc((100vh - 16rem) / 24 / 2) 0;
+    }
+
+}
+
+
 
 .btn-primary,
 a.cta,

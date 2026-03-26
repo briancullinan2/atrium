@@ -65,6 +65,7 @@ namespace Atrium.Services
                 webBuilder.Services.AddSingleton<DataLayer.Utilities.IQueryManager, DataLayer.Utilities.QueryManager>();
                 webBuilder.Services.AddSingleton<IAuthService, AuthService>();
                 webBuilder.Services.AddSingleton<NavigationTracker>();
+                webBuilder.Services.AddSingleton<SimpleLogger>();
 
                 webBuilder.Services.AddAuthorizationCore();
                 // Register your provider as the base class
@@ -76,7 +77,9 @@ namespace Atrium.Services
                 var authenticationBuilder = DatabaseStateProvider.BuildAuthentication(webBuilder);
                 new AuthService(null).AddExternalLogins(authenticationBuilder);
 
-                webBuilder.Services.AddScoped(sp => new HttpClient { });
+                webBuilder.Services.AddSingleton(sp => new HttpClient { 
+                    // TODO: insert our own address validated from settings and HostingService
+                });
 
                 // FUCK DI
                 webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
@@ -122,7 +125,7 @@ namespace Atrium.Services
 
 
                 var webApp = webBuilder.Build();
-
+                _ = webApp.Services.GetRequiredService<SimpleLogger>();
 
                 var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();
                 localServer.Initialize(webApp);
@@ -213,11 +216,11 @@ namespace Atrium.Services
 
 
                 // Run the Web Server in the background
-                webApp.RunAsync().Forget();
+                _ = webApp.RunAsync().Forget();
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Log.Error("Web server failed to start: " + ex.Message, ex);
                 throw new Exception("bs", ex);
             }
         }

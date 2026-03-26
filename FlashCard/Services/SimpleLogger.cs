@@ -1,4 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -23,19 +24,24 @@ namespace FlashCard.Services
     {
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
 
+        public static IQueryManager? Query { get; set; }
         public static IPageManager? Manager { get; set; }
 
-        public SimpleLogger(IPageManager? page = null)
+        public SimpleLogger(IPageManager? page = null, IQueryManager? query = null)
         {
+            Query ??= query;
             Manager ??= page;
-            foreach (var pre in PreLog)
+            if(Query != null)
             {
-                _ = pre.Save();
-                var boringException = new Exception(pre.Title) { Source = pre.Source };
-                boringException.Data["OriginalStack"] = pre.Body;
-                Manager?.SetError(boringException);
+                foreach (var pre in PreLog)
+                {
+                    //_ = pre.Save(Query);
+                    var boringException = new Exception(pre.Title) { Source = pre.Source };
+                    boringException.Data["OriginalStack"] = pre.Body;
+                    Manager?.SetError(boringException);
+                }
+                PreLog.Clear();
             }
-            PreLog.Clear();
         }
 
 
@@ -158,7 +164,7 @@ namespace FlashCard.Services
                 }
                 else
                 {
-                    _ = newMessage.Save();
+                    _ = newMessage.Save(Query);
                     // so we get a stack trace with it
                     if (exception != null) Manager?.SetError(exception);
                     else

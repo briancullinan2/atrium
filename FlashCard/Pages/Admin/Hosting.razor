@@ -96,11 +96,11 @@
 
     protected override void OnInitialized()
     {
-        _cts ??= new();
         Instance = this;
         Services = ServiceProvider;
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Hosting />);
-        _ = PollTunnelStatusAsync();
+        _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+        _timer = DataLayer.Utilities.Extensions.TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3);
     }
 
     private static string? _apiToken;
@@ -110,7 +110,7 @@
         set
         {
             _apiToken = value;
-            _ = PollTunnelStatusAsync();
+            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _tunnelName;
@@ -120,7 +120,7 @@
         set
         {
             _tunnelName = value;
-            _ = PollTunnelStatusAsync();
+            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _accountId;
@@ -130,7 +130,7 @@
         set
         {
             _accountId = value;
-            _ = PollTunnelStatusAsync();
+            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _domain;
@@ -140,7 +140,7 @@
         set
         {
             _domain = value;
-            _ = PollTunnelStatusAsync();
+            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
 
@@ -150,8 +150,7 @@
     private static string hostChecked = "Never";
     private static string? serviceStatus = "Checking Services...";
     private static string serviceChecked = "Never";
-    private static PeriodicTimer? _timer;
-    private static CancellationTokenSource? _cts = new();
+    private static CancellationTokenSource? _timer;
     private static bool? IsWorking { get; set; } = null;
     private static bool? IsTunneling { get; set; } = null;
     private static bool? IsServicing { get; set; } = null;
@@ -159,26 +158,8 @@
 
     private static async Task PollTunnelStatusAsync()
     {
-
-        if(_timer != null)
-        {
-            return;
-        }
-
         await CheckStatus();
         if (Instance != null) await Instance.InvokeAsync(ChangeState);
-        _timer = new PeriodicTimer(TimeSpan.FromMinutes(3));
-
-        try
-        {
-            // The loop waits here every 300 seconds
-            while (await _timer.WaitForNextTickAsync(_cts?.Token ?? (_cts = new CancellationTokenSource()).Token))
-            {
-                await CheckStatus();
-                if (Instance != null) await Instance.InvokeAsync(ChangeState);
-            }
-        }
-        catch (OperationCanceledException) { /* Component was disposed */ }
     }
 
     protected static void ChangeState() => Instance?.StateHasChanged();
@@ -186,9 +167,8 @@
 
     public void Dispose()
     {
-        _cts?.Cancel();
-        _cts = null;
-        _timer?.Dispose();
+        _timer?.Cancel();
+        //_timer?.Dispose();
         _timer = null;
     }
 

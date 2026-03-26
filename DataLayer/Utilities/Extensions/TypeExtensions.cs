@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace DataLayer.Utilities.Extensions
@@ -224,6 +225,58 @@ namespace DataLayer.Utilities.Extensions
                 (type.IsGenericType
                     && type.GetGenericTypeDefinition() == typeof(Nullable<>)
                     && type.GetGenericArguments().FirstOrDefault()?.IsSimple() == true);
+        }
+
+
+
+        private static readonly ConcurrentDictionary<string, Type?> _pathToTypeCache = new();
+        private static readonly Lazy<List<Type>> _assemblyTypes = new(() =>
+            [.. Assembly.GetExecutingAssembly().GetTypes()]);
+
+        public static Type? ToType(this string filePath, Assembly? targetAssembly = null)
+        {
+            if (Type.GetType(filePath) is Type t) return t;
+
+            return _pathToTypeCache.GetOrAdd(filePath, path =>
+            {
+                var assembly = targetAssembly ?? Assembly.GetExecutingAssembly();
+                var fileName = Path.GetFileNameWithoutExtension(path);
+
+                // 1. Try the "Standard" Namespace approach first (Fast)
+                var assemblyName = assembly.GetName().Name!;
+                var normalizedPath = path.Replace("\\", "/");
+                int startIndex = normalizedPath.IndexOf(assemblyName);
+
+                if (startIndex != -1)
+                {
+                    string relativePath = normalizedPath[startIndex..]
+                        .Replace(".razor", "").Replace(".cs", "").Replace("/", ".");
+
+                    var exactMatch = assembly.GetType(relativePath);
+                    if (exactMatch != null) return exactMatch;
+                }
+
+                // 2. "Fuzzy" Resolution: Search all types for a Name match
+                // This catches components with custom @namespace declarations
+                var potentialMatches = _assemblyTypes.Value
+                    .Where(t => t.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (potentialMatches.Count == 1) return potentialMatches[0];
+
+                // 3. Deep Dive: Try to match the folder hierarchy against the namespace
+                if (potentialMatches.Count > 1)
+                {
+                    var folders = path.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)
+                                      .Reverse().Skip(1).ToList();
+
+                    return potentialMatches.OrderByDescending(t =>
+                        folders.Count(f => t.Namespace?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)
+                    ).FirstOrDefault();
+                }
+
+                return null;
+            });
         }
     }
 

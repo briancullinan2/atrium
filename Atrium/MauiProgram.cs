@@ -53,6 +53,7 @@ namespace Atrium
             builder.Services.AddSingleton<IQueryManager, QueryManager>();
             builder.Services.AddSingleton<IAuthService, Services.AuthService>();
             builder.Services.AddSingleton<NavigationTracker>();
+            builder.Services.AddSingleton<SimpleLogger>();
 
             builder.Services.AddAuthorizationCore();
             builder.Services.AddCascadingAuthenticationState();
@@ -61,7 +62,7 @@ namespace Atrium
             // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
             builder.Services.AddSingleton(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
-            builder.Services.AddScoped(sp => new HttpClient
+            builder.Services.AddSingleton(sp => new HttpClient
             {
                 BaseAddress = new Uri("https://0.0.0.1")
             });
@@ -90,6 +91,7 @@ namespace Atrium
 
             // 1. Build the app
             var mauiApp = builder.Build();
+            _ = mauiApp.Services.GetRequiredService<SimpleLogger>();
 
             // 3. Return the built app
             return mauiApp;

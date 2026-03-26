@@ -98,9 +98,13 @@ main {
     max-height: 0;
 }
 
-.page.login-mode .chat-box
-{
-    display:none;
+
+.page.chatting .course-container {
+    min-height: calc(100vh - 6.5rem);
+}
+
+.page.login-mode .chat-box {
+    display: none;
 }
 
 .chat-message

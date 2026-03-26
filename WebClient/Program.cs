@@ -48,6 +48,7 @@ builder.Services.AddSingleton<IAnkiService, AnkiService>();
 builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
 builder.Services.AddSingleton<NavigationTracker>();
+builder.Services.AddSingleton<SimpleLogger>();
 
 builder.Services.AddAuthorizationCore();
 builder.Services.AddSingleton<AuthenticationStateProvider, BrowserStateProvider>();
@@ -60,6 +61,8 @@ builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
 
 var app = builder.Build();
 // FUCK DI
+_ = app.Services.GetRequiredService<SimpleLogger>();
+
 
 var runtime = app.Services.GetRequiredService<IJSRuntime>();
 var navigation = app.Services.GetRequiredService<NavigationManager>();

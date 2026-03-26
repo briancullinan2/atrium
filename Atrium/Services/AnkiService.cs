@@ -3,6 +3,8 @@ using DataLayer.Utilities;
 using FlashCard.Services;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Atrium.Services
@@ -26,55 +28,18 @@ namespace Atrium.Services
             }
         }
 
-        private static readonly ConcurrentDictionary<string, CancellationTokenSource> _userRequests = new();
-        private static readonly SemaphoreSlim _ankiLock = new(1, 1);
-        private static DateTime _lastRequestTime = DateTime.MinValue;
 
-        private const int DelaySeconds = 30;
-
-        protected static async Task<IEnumerable<DataLayer.Entities.File>> SearchAnki(string clientId, string? searchTerm, HttpClient HttpClient)
+        protected static async Task<IEnumerable<DataLayer.Entities.File>?> SearchAnki(string clientId, string? searchTerm, HttpClient HttpClient, [CallerFilePath] string path = "")
         {
-
-            // 1. Cancel previous pending request for THIS client
-            if (_userRequests.TryRemove(clientId, out var oldCts))
-            {
-                oldCts.Cancel();
-                oldCts.Dispose();
-            }
-
-            var cts = new CancellationTokenSource();
-            _userRequests[clientId] = cts;
-
-            try
-            {
-                // 2. Enforce the 3-second window
-                await _ankiLock.WaitAsync(cts.Token);
-
-                var timeSinceLast = DateTime.UtcNow - _lastRequestTime;
-                if (timeSinceLast.TotalSeconds < DelaySeconds)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(DelaySeconds) - timeSinceLast, cts.Token);
-                }
-
-                // 3. Execute the actual search
-                var results = await DoActualSearch(searchTerm, HttpClient);
-
-                _lastRequestTime = DateTime.UtcNow;
-                return results;
-            }
-            catch (OperationCanceledException)
-            {
-                // This happens when a newer keystroke comes in and cancels this task
-                return [];
-            }
-            finally
-            {
-                _ = _ankiLock.Release();
-            }
+            return await DataLayer.Utilities.Extensions.TaskExtensions.Debounce(DoActualSearch, 3000, searchTerm, HttpClient, new StackFrame(true).GetFileName() ?? path, nameof(SearchAnki) + ":" + clientId);
         }
 
-        protected static async Task<IEnumerable<DataLayer.Entities.File>> DoActualSearch(string? searchTerm, HttpClient HttpClient)
+        protected static async Task<IEnumerable<DataLayer.Entities.File>?> DoActualSearch(string? searchTerm, HttpClient? HttpClient)
         {
+            if(HttpClient == null)
+            {
+                throw new InvalidOperationException("Http client not available.");
+            }
             // We have to mimic a real browser for SvelteKit apps to respond or find their internal JSON route
             HttpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
             HttpClient.DefaultRequestHeaders.Add("Accept", "*/*");
