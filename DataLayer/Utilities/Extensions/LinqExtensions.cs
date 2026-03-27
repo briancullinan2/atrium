@@ -241,6 +241,12 @@ namespace DataLayer.Utilities.Extensions
 
                         element.Add(typeElement);
                     }
+                    else if (value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+                    {
+                        var propElement = new XElement(prop.Name);
+                        propElement.Add(VisitToXml(value, currentDepth + 1, expressionDepth));
+                        element.Add(propElement);
+                    }
                     else if (value is IEnumerable list && value is not string)
                     {
                         var propElement = new XElement(prop.Name);
@@ -817,10 +823,10 @@ namespace DataLayer.Utilities.Extensions
                 {
                     if (e.Name == "Null") return null;
                     var typeName = e.Attribute("AssemblyQualifiedName")?.Value
-                        ?? throw new InvalidOperationException("Could not resolve type name on: " + e);
+                        ?? throw new InvalidOperationException("Could not resolve type name on: " + e + " on " + el);
                     var entityType = Type.GetType(typeName)
                         ?? typeArgument
-                        ?? throw new InvalidOperationException("Could not resolve type on: " + e);
+                        ?? throw new InvalidOperationException("Could not resolve type on: " + e + " on " + el);
                     if (e.Attribute("Value")?.Value == "Null")
                         return null;
                     else if (entityType.IsSimple())
@@ -829,35 +835,7 @@ namespace DataLayer.Utilities.Extensions
                         return ResolveMetadata(entityType, e.Attribute("Value")?.Value, e);
                 }).ToArray();
 
-                if (targetType == typeof(ValueBuffer))
-                    return new ValueBuffer(values);
-
-                var itemType = targetType.IsArray
-                    ? targetType.GetElementType() ?? typeof(object)
-                    : targetType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
-
-                // 1. Convert our 'values' (which is likely List<object>) to IEnumerable<TItem>
-                var castMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.Cast))
-                    ?.MakeGenericMethod(itemType)
-                    ?? throw new InvalidOperationException("Cast failed");
-
-                var castedValues = castMethod.Invoke(null, [values]);
-
-                // 2. Handle Arrays
-                if (targetType.IsArray)
-                {
-                    var toArrayMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToArray))
-                        ?.MakeGenericMethod(itemType);
-                    return toArrayMethod!.Invoke(null, [castedValues]);
-                }
-
-                // 3. Handle Lists (List<T>)
-                if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
-                {
-                    var toListMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToList))
-                        ?.MakeGenericMethod(itemType);
-                    return toListMethod!.Invoke(null, [castedValues]);
-                }
+                var castedValues = CollectionConverter.ConvertAsync(values, targetType);
 
                 // Fallback for other IEnumerables
                 return castedValues;
@@ -886,10 +864,10 @@ namespace DataLayer.Utilities.Extensions
                         && el.Element(prop.Name) is XElement complex)
                     {
                         var complexValue = ResolveMetadata(baseType, el.Attribute(prop.Name)?.Value, complex);
-                        complexValue = CollectionConverter.ConvertAsync(complexValue, baseType);
-                        if (complexValue?.GetType() != baseType)
-                            throw new InvalidOperationException("Iterable types don't match: " + complexValue?.GetType() + " and " + baseType);
-                        prop.SetValue(entity, complexValue);
+                        var convertedValue = CollectionConverter.ConvertAsync(complexValue, baseType);
+                        if (convertedValue?.GetType().Extends(baseType) != true)
+                            throw new InvalidOperationException("Iterable types don't match: " + complexValue?.GetType() + " -> " + convertedValue?.GetType() + " and " + baseType + " on " + el + " property " + prop);
+                        prop.SetValue(entity, convertedValue);
                     }
 
                     else if (baseType.IsSimple())
@@ -897,7 +875,7 @@ namespace DataLayer.Utilities.Extensions
                         var converter = TypeDescriptor.GetConverter(baseType);
                         var simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)?.Value ?? string.Empty);
                         if (simpleValue?.GetType() != baseType)
-                            throw new InvalidOperationException("Simple types don't match: " + simpleValue?.GetType() + " and " + baseType);
+                            throw new InvalidOperationException("Simple types don't match: " + simpleValue?.GetType() + " and " + baseType + " on " + el + " property " + prop);
                         prop.SetValue(entity, simpleValue);
                     }
 
@@ -905,12 +883,12 @@ namespace DataLayer.Utilities.Extensions
                     {
                         var complexValue = ResolveMetadata(baseType, el.Attribute(prop.Name)?.Value, complex2);
                         if (complexValue?.GetType() != baseType)
-                            throw new InvalidOperationException("Complex types don't match: " + complexValue?.GetType() + " and " + baseType);
+                            throw new InvalidOperationException("Complex types don't match: " + complexValue?.GetType() + " and " + baseType + " on " + el + " property " + prop);
                         prop.SetValue(entity, complexValue);
                     }
 
                     else
-                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType);
+                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType + " on " + el + " property " + prop);
                 }
                 return entity;
             }
@@ -937,11 +915,15 @@ namespace DataLayer.Utilities.Extensions
                 {
                     return Expression.Constant(null, type);
                 }
-                var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex);
+                var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex.Elements().FirstOrDefault() ?? complex);
                 if (val?.GetType().IsSimple() == true
                     && val?.GetType() != type)
                 {
                     return Expression.Constant(Convert.ChangeType(val, type), type);
+                }
+                if(type.IsIterable())
+                {
+                    val = CollectionConverter.ConvertAsync(val, type);
                 }
 
                 if (val?.GetType() != type)
@@ -973,7 +955,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
         // Keep a cache of parameters during a single Reconstruction pass
-        private static readonly Dictionary<string, ParameterExpression> _parameters = [];
+        internal static readonly Dictionary<string, ParameterExpression> _parameters = [];
         private static ParameterExpression BuildParameter(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Extract Name and Type accurately from the XML
@@ -1058,64 +1040,6 @@ namespace DataLayer.Utilities.Extensions
             throw new NotSupportedException($"No factory found for {nodeType}");
         }
 
-
-
-        public static string ToSerialized(IQueryable query)
-        {
-            return ToXDocument(query.Expression).ToString();
-        }
-
-        public static async Task<object?> ToQueryable(string query, DbContext context)
-        {
-            // 1. Clear the parameter cache for this specific run
-            _parameters.Clear();
-
-            using XmlReader reader = XmlReader.Create(new StringReader(query));
-            _ = reader.MoveToContent();
-            XElement root = (XElement)XNode.ReadFrom(reader);
-
-            // TODO: fix this, won't know how until i debug expressions and see what parts of the trees it can show in
-            Expression? finalExpression = ToExpression(root, context, out IQueryable? set)
-
-                ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
-            if (typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
-                && !finalExpression.Type.IsArray
-                && finalExpression.Type != typeof(string))
-            {
-                // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
-                var finalQueryable = set?.Provider.CreateQuery(finalExpression);
-
-                var stringExpr = finalQueryable?.Expression.ToString();
-                Console.WriteLine("Querying serialized: " + stringExpr);
-
-                // Force ToList to materialize it before the context is disposed
-                return typeof(Enumerable)
-                    .GetMethod(nameof(Enumerable.ToList))
-                    ?.MakeGenericMethod(finalExpression.Type.GenericTypeArguments[0]) // Or the target type
-                    .Invoke(null, [finalQueryable])!;
-            }
-            else if (set?.Provider is IAsyncQueryProvider asyncProvider
-                && finalExpression.Type.Extends(typeof(Task)))
-            {
-                var callAsync = asyncProvider.GetType().GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync), 1, [typeof(Expression)])
-                    .FirstOrDefault()
-                    ?.MakeGenericMethod(finalExpression.Type)
-                    ?? throw new InvalidOperationException("Could not render generic ExecuteAsync");
-                var result = callAsync.Invoke(asyncProvider, [finalExpression, null]);
-                if (result is Task task)
-                {
-                    await task;
-                    return (result as dynamic).Result;
-                }
-                return result;
-            }
-            else
-            {
-                return set?.Provider.Execute(finalExpression);
-            }
-
-
-        }
 
 
     }

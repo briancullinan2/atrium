@@ -85,10 +85,11 @@
         // 1. Create the Claims for this user
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, user.Username ?? ""),
+            new Claim(ClaimTypes.Name, user.Email ?? ""),
             new Claim(ClaimTypes.GivenName, user.FirstName ?? ""),
             new Claim(ClaimTypes.Surname, user.LastName ?? ""),
-            new Claim(ClaimTypes.NameIdentifier, user.Guid ?? ""),
+            new Claim(ClaimTypes.NameIdentifier, user.Username ?? ""),
+            new Claim(ClaimTypes.Sid, user.Guid ?? ""),
         };
 
         foreach(var claim in user.Roles)

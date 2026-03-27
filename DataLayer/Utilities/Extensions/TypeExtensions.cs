@@ -159,8 +159,9 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        public static bool Extends(this Type type, Type genericDefinition)
+        public static bool Extends(this Type type, Type? genericDefinition)
         {
+            if (genericDefinition == null) return false;
             return genericDefinition.IsAssignableFrom(type) || IsCompatibleWith(type, genericDefinition)
                 || type.IsAssignableFrom(genericDefinition) || IsCompatibleWith(genericDefinition, type);
         }

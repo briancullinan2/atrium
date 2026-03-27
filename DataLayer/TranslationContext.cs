@@ -118,15 +118,17 @@ namespace DataLayer
             // Use the Semaphore to ensure even with the lock above, 
             // the actual async work is serialized.
             await _initLock.WaitAsync();
+            NeedsInitialize = false;
             try
             {
+                var conn = Database.GetDbConnection();
+                //await conn.CloseAsync(); // This clears the internal transaction state
+
+                if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
                 // Re-check inside the lock
-                NeedsInitialize = false;
                 using var transaction = Database.BeginTransaction();
                 if (!NeedsInitialize) return;
-
-                var conn = Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
 
                 await Database.EnsureCreatedAsync();
                 await EnsureGlobalIdentityStart();
@@ -325,12 +327,12 @@ namespace DataLayer
     {
         public override void Close()
         {
-
+            //base.Close();
         }
 
-        public override Task CloseAsync()
+        public override async Task CloseAsync()
         {
-            return Task.CompletedTask;
+           // return base.CloseAsync();
         }
 
         protected override void Dispose(bool disposing)

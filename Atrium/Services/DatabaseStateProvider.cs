@@ -159,11 +159,12 @@ namespace Atrium.Services
             // TODO: set newSession.Lifetime to token lifetime
             await _query.Save(newSession);
 
-            var guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Sid)?.Value;
             var userEntity = await _query.Query<User>(u => u.Guid == guid).FirstOrDefaultAsync<User>();
             var currentSetting = await _query.Query<Setting>(s =>
                 s.Name != null
-                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString()).FirstOrDefaultAsync()
+                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                .FirstOrDefaultAsync()
                 ?? new Setting
                 {
                     Name = DefaultPermissions.ApplicationCurrentUser.ToString()

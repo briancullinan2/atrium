@@ -78,10 +78,10 @@ namespace DataLayer.Utilities
             return method.Invoke(null, [task])!;
         }
 
-        private static async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task<List<T>> task)
+        private static async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task<List<T>?> task)
         {
             var list = await task;
-            foreach (var item in list)
+            foreach (var item in list ?? [])
             {
                 yield return item;
             }

@@ -1,7 +1,9 @@
 ﻿using DataLayer;
 using DataLayer.Entities;
+using DataLayer.Generators;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
+using FlashCard.Services.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -54,10 +56,23 @@ namespace FlashCard.Services
             {
                 if(principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier) is Claim claim)
                 {
-                    var usernameMatch = await Query
-                        .Query<User>(u => u.Username != null && u.Username.Equals(claim.Value))
-                        .FirstOrDefaultAsync();
-                    User = usernameMatch;
+                    try
+                    {
+                        var usernameMatch = await Query
+                            .Query<User>(u => u.Username != null && u.Username.Equals(claim.Value))
+                            .FirstOrDefaultAsync();
+                        User = usernameMatch;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Info("Login failed: " + ex.Message);
+                    }
+
+
+                    if(Users.Generate().FirstOrDefault(u => string.Equals(u.Username, claim.Value)) is User defaultUser)
+                    {
+                        User = defaultUser;
+                    }
                 }
                 // Map your ClaimsPrincipal back to your User object
                 //var results = 

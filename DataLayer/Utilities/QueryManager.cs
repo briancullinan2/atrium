@@ -3,6 +3,7 @@ using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -750,8 +751,8 @@ namespace DataLayer.Utilities
                 variables = JsonSerializer.Serialize(query.ToDictionary()).ToSafe();
             }
             catch { }
-            string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query}_{variables}";
-
+            string queryKey = $"{typeof(TEntity).Name}_{typeof(TResult).Name}_{storage}_{query.ToString().ToSafe()}_{variables}";
+            Console.WriteLine("Query Caching: " + queryKey);
             // 2. Check if this exact query is already "in flight"
             // GetOrAdd ensures that only one Task is created for the same key.
             var task = _pendingQueries.GetOrAdd(queryKey, _k =>
@@ -766,11 +767,11 @@ namespace DataLayer.Utilities
                 // This inner block only runs ONCE for the same queryKey
                 return Enqueue(async () =>
                 {
+                    var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
+                    using var transaction = context.Database.BeginTransaction();
+
                     try
                     {
-                        var context = GetContext(storage) ?? throw new InvalidOperationException("DB context failed in: " + nameof(Query));
-                        await context.InitializeIfNeeded();
-                        using var transaction = context.Database.BeginTransaction();
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
                         if(typeof(EnqueuedQueryProvider<>).Extends(set.Provider.GetType()))
@@ -793,50 +794,75 @@ namespace DataLayer.Utilities
 
                         TResult? result = default;
 
-                        if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
+                        if ((typeof(IQueryable).IsAssignableFrom(typeof(TResult)) && typeof(TResult) != typeof(string))
+                            || (typeof(IQueryable).IsAssignableFrom(query.Type) && query.Type != typeof(string)))
                         {
                             // It's a sequence - force materialization to avoid SingleQueryingEnumerable leaks
                             var finalQueryable = (FinalProvider ?? set.Provider).CreateQuery(query);
 
                             // Force ToList to materialize it before the context is disposed
                             var typeParameter = typeof(TResult).GetGenericArguments().FirstOrDefault()
+                                ?? typeof(TResult).GetElementType()
                                 ?? throw new InvalidOperationException("Couldn't extract generic type.");
+
                             var toListMethod = typeof(AsyncEnumerable)
                                 .GetMethod(nameof(AsyncEnumerable.ToListAsync))
                                 ?.MakeGenericMethod(typeParameter) ?? throw new InvalidOperationException("Couldn't render ToListAsync");
-                            var forcedTask = toListMethod.Invoke(null, [finalQueryable, null]) as dynamic;
 
-                            if (forcedTask?.AsTask() is Task task)
+                            var listResult = toListMethod.Invoke(null, [finalQueryable, null]);
+
+                            if (typeof(ValueTask<>).Extends(listResult?.GetType())
+                                && (listResult as dynamic)?.AsTask() is Task forcedTask2)
+                            {
+                                await forcedTask2;
+                                var forcedList = (forcedTask2 as dynamic).Result;
+                                result = CollectionConverter.ConvertAsync(forcedList, typeof(TResult));
+                            }
+                            if (listResult is Task forcedTask)
                             {
                                 await forcedTask;
                                 var forcedList = (forcedTask as dynamic).Result;
-                                if (typeof(IQueryable).IsAssignableFrom(typeof(TResult)))
-                                {
-                                    result = (TResult)Queryable.AsQueryable((IEnumerable)forcedList)!;
-                                }
-                                else
-                                {
-                                    result = (TResult)forcedList;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if ((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
-                            {
-                                result = await asyncProvider.ExecuteAsync<Task<TResult>>(
-                                    query
-                                //cancellationToken // Always good practice to pass a token if available
-                                );
-                            }
-                            else
-                            {
-                                // Fallback if the provider doesn't support async (e.g., Linq-to-Objects)
-                                result = (TResult)(FinalProvider ?? set.Provider).Execute(query)!;
+                                result = CollectionConverter.ConvertAsync(forcedList, typeof(TResult));
                             }
                         }
 
-                        transaction.Dispose();
+                        else if((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
+                        {
+                            
+                            var taskType = typeof(Task<>).MakeGenericType(query.Type);
+                            var executeMethod = asyncProvider.GetType().GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync))
+                                .FirstOrDefault()
+                                ?.MakeGenericMethod(taskType)
+                                ?? throw new InvalidOperationException("Unable to render ExecuteAsync");
+                            var unconverted = executeMethod.Invoke(asyncProvider,
+                                [query, null]
+                            // Always good practice to pass a token if available
+                            //TODO: cancellationToken for UX to cancel log queries like searches
+                            );
+                            if(unconverted is Task task)
+                            {
+                                await task;
+                                if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+                                {
+                                    result = (TResult)CollectionConverter.ConvertAsync((unconverted as dynamic).Result, typeof(TResult))!;
+                                }
+                                else
+                                {
+                                    result = (unconverted as dynamic).Result;
+                                }
+                            }
+                            else
+                            {
+                                result = (TResult)unconverted!;
+                            }
+                        }
+
+                        else
+                        {
+                            // Fallback if the provider doesn't support async (e.g., Linq-to-Objects)
+                            result = (TResult)(FinalProvider ?? set.Provider).Execute(query)!;
+                        }
+
 
                         if (result is Task taskResult)
                         {
@@ -848,6 +874,7 @@ namespace DataLayer.Utilities
                     }
                     finally
                     {
+                        transaction.Dispose();
                         // 3. CRITICAL: Remove the task from the dictionary when done
                         // so subsequent calls actually hit the DB for fresh data.
                         _pendingQueries.TryRemove(queryKey, out var _);
@@ -1171,6 +1198,7 @@ namespace DataLayer.Utilities
 
         protected static Expression? ToExpression(string query, TranslationContext context, out IQueryable? set)
         {
+            LinqExtensions._parameters.Clear();
             using XmlReader reader = XmlReader.Create(new StringReader(query));
             _ = reader.MoveToContent();
             XElement root = (XElement)XNode.ReadFrom(reader);
@@ -1184,17 +1212,36 @@ namespace DataLayer.Utilities
 
         public async Task<object?> ToQueryable(string query)
         {
-            var context = GetContext(EphemeralStorage)
-                ?? throw new InvalidOperationException("Database context failed.");
-            return await LinqExtensions.ToQueryable(query, context);
+            return await ToQueryable(query, EphemeralStorage);
         }
 
 
         public async Task<object?> ToQueryable(string query, StorageType? storage)
         {
-            var context = GetContext(storage ?? EphemeralStorage)
-               ?? throw new InvalidOperationException("Database context failed.");
-            return await LinqExtensions.ToQueryable(query, context);
+            Expression? finalExpression = ToExpression(storage, query, out IQueryable? set)
+                ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
+            
+            var QueryGeneric = GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
+                .FirstOrDefault()
+                 ?? throw new InvalidOperationException("Could not render QueryNow method");
+
+            bool isCollection = typeof(IEnumerable).IsAssignableFrom(finalExpression.Type)
+                    && finalExpression.Type != typeof(string);
+
+            var innerType = finalExpression.Type.GetGenericArguments().FirstOrDefault();
+            var entityType = set?.GetType().GetGenericArguments().FirstOrDefault()
+                ?? throw new InvalidOperationException("Could not find entity type.");
+
+            var QueryNow = QueryGeneric.MakeGenericMethod(entityType, finalExpression.Type);
+            var result = QueryNow.Invoke(this, [storage, finalExpression, 10])
+                ?? throw new InvalidOperationException("Could not render QueryNow function.");
+            
+            if(result is Task task)
+            {
+                await task;
+                return (result as dynamic).Result;
+            }
+            return result;
         }
 
     }

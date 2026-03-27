@@ -1,6 +1,7 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -93,9 +94,13 @@ namespace DataLayer.Utilities
             if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 
             Console.WriteLine("Executing: " + query.ToString());
+            var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
+
             // This is exactly where you use your Expression Tree Converter
             var serialized = query.ToXDocument().ToString();
-            //Console.WriteLine("Converted: " + serialized);
+            Console.WriteLine("Converted: " + cleanExpression);
+            //var compressed = XNodeTruncator.Truncate(doc).ToString();
+            //var tinyPayload = ExpressionMinifier.Minify(cleanExpr);
 
             // 1. Serialize Expression to XML/XDocument
             var baseAddress = Context.BaseAddress?.TrimEnd('/');

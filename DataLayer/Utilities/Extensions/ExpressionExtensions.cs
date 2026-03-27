@@ -194,7 +194,9 @@ namespace DataLayer.Utilities.Extensions
 
         public static Dictionary<string, string?> ToDictionary(this Expression expression)
         {
-            return expression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
+            var cleanExpression = new ClosureEvaluatorVisitor().Visit(expression);
+
+            return cleanExpression.ToMembers().ToDictionary(dkv => dkv.Key.Name, dkv => dkv.Value?.ToString());
         }
 
 
@@ -326,6 +328,11 @@ namespace DataLayer.Utilities.Extensions
             {
                 // (object)x or (int?)y - just peel the onion and keep going
                 ParseExpression(ue.Operand, values);
+            }
+            else if(expr is ConstantExpression co
+                && co.Value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+            {
+
             }
             else
             {
@@ -487,6 +494,10 @@ namespace DataLayer.Utilities.Extensions
 
             if (ex is BinaryExpression bi)
                 return bi.ToMembers();
+
+            if (ex is ConstantExpression co
+                && co.Value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+                return [];
 
             var dictionary = new Dictionary<MemberInfo, object?>();
             ParseExpression(ex, dictionary);

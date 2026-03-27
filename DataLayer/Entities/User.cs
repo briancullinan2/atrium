@@ -36,6 +36,11 @@ namespace DataLayer.Entities
 
         [MaxLength(256)]
         [Category("User Info")]
+        [Display(GroupName = "Login Info", Order = 0, Name = "Email address", Description = "Fill in user's email to use at login")]
+        public string? Email { get; set; }
+
+        [MaxLength(256)]
+        [Category("User Info")]
         [StringLength(16, MinimumLength = 8)]
         [DataType(DataType.Password)]
         [Display(GroupName = "Login Info", Order = 1, Name = "Password", Description = "Set a new password")]
