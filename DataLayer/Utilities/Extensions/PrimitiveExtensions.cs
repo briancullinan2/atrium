@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections;
+using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -7,6 +8,28 @@ namespace DataLayer.Utilities.Extensions
 {
     public static partial class PrimitiveExtensions
     {
+        public static bool IsEmpty(this object? obj)
+        {
+            if (obj is not IEnumerable enumerable || obj is string)
+                return true;
+
+            // 1. Check for ICollection first (Fastest - no enumeration)
+            if (obj is ICollection collection)
+                return collection.Count == 0;
+
+            // 2. The "Nuclear" check for all other IEnumerables (Iterators)
+            var enumerator = enumerable.GetEnumerator();
+            try
+            {
+                return !enumerator.MoveNext();
+            }
+            finally
+            {
+                // Some iterators implement IDisposable; don't leave them hanging
+                (enumerator as IDisposable)?.Dispose();
+            }
+        }
+
 
         public static string ToSafe(this string url)
         {

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace FlashCard.Services
 {
@@ -54,6 +55,8 @@ namespace FlashCard.Services
 
             if (principal.Identity?.IsAuthenticated == true)
             {
+                Console.WriteLine("User is authenticated");
+                Console.WriteLine("User is: " + principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier));
                 if(principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier) is Claim claim)
                 {
                     try
@@ -83,7 +86,7 @@ namespace FlashCard.Services
                 User = null; // Guest state
             }
 
-
+            Console.WriteLine("Logged in: " + User?.Username);
             // Notify any UI components listening to LoginService
             _ = SetUser(User);
             // this is cool because if they login with QR code it will automatically reroute

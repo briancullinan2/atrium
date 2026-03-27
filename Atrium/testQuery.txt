@@ -1,0 +1,14 @@
+<Constantexpression AssemblyQualifiedName="System.Linq.Expressions.ConstantExpression, System.Linq.Expressions, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" NodeType="Constant">
+  <Type Name="EnumerableQuery`1" FullName="System.Linq.EnumerableQuery`1[[DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]" Namespace="System.Linq" AssemblyQualifiedName="System.Linq.EnumerableQuery`1[[DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Linq.Queryable, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <GenericArguments>
+      <Type AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+    </GenericArguments>
+  </Type>
+  <Value>
+    <Visit AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Id="1" SessionId="Null" Session="Null" UserId="Null" User="Null" Path="/" Query="" Hash="" Method="GET" Ip="0" Created="3/27/2026 5:20:05 AM" CanonicalFingerprint="1088926432" />
+    <Visit AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Id="2" SessionId="Null" Session="Null" UserId="Null" User="Null" Path="/account" Query="" Hash="" Method="GET" Ip="0" Created="3/27/2026 5:20:06 AM" CanonicalFingerprint="-1294723214" />
+    <Visit AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Id="3" SessionId="Null" Session="Null" UserId="Null" User="Null" Path="/login" Query="" Hash="" Method="GET" Ip="0" Created="3/27/2026 5:20:06 AM" CanonicalFingerprint="-1948449191" />
+    <Visit AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Id="4" SessionId="6e747fb5-6226-40f6-914a-0cf2739c8df9" Session="Null" UserId="Null" User="Null" Path="/" Query="" Hash="" Method="GET" Ip="0" Created="3/27/2026 5:20:09 AM" CanonicalFingerprint="-1903437166" />
+    <Visit AssemblyQualifiedName="DataLayer.Entities.Visit, DataLayer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" Id="5" SessionId="6e747fb5-6226-40f6-914a-0cf2739c8df9" Session="Null" UserId="Null" User="Null" Path="/login" Query="?ReturnUrl=%2Factivity" Hash="" Method="GET" Ip="0" Created="3/27/2026 5:20:15 AM" CanonicalFingerprint="-225356616" />
+  </Value>
+</Constantexpression>

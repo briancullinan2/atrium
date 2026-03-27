@@ -2,6 +2,8 @@
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using System.Linq.Expressions;
+using System.Reflection;
+
 
 #if WINDOWS
 using Microsoft.AspNetCore.Http;
@@ -12,6 +14,7 @@ namespace Atrium.Services
 {
     internal static class QueryService //: QueryManager
     {
+
 
 
 
@@ -67,6 +70,7 @@ namespace Atrium.Services
 
 
 
+
         public async static Task RespondQuery(HttpContext context, IQueryManager Query)
         {
             try
@@ -74,6 +78,12 @@ namespace Atrium.Services
                 using var reader = new StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
                 string? rawXml = JsonSerializer.Deserialize<string>(jsonQuery);
+
+
+                //string testQuery = Path.Combine(AppContext.BaseDirectory, "testQuery.txt");
+                //var query = System.IO.File.ReadAllText(testQuery);
+                //var testResults = Query.ToExpression(query);
+                //Console.WriteLine(testResults);
 
                 if (string.IsNullOrWhiteSpace(rawXml))
                 {

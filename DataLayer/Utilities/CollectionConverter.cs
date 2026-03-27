@@ -20,14 +20,14 @@ namespace DataLayer.Utilities
         {
             if (source == null)
             {
-                Console.WriteLine("You entered a null: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("You entered a null: " + source?.GetType() + " - " + source?.ToString());
                 return GetDefault(targetType);
             }
 
             var sourceType = source.GetType();
             if (sourceType.Extends(targetType))
             {
-                Console.WriteLine("Already extends this bastard: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Already extends this bastard: " + source?.GetType() + " - " + source?.ToString());
                 return source;
             }
 
@@ -39,7 +39,7 @@ namespace DataLayer.Utilities
             // 2. Ensure source is at least an Enumerable we can work with
             if (source is not IEnumerable enumerableSource)
             {
-                Console.WriteLine("Not even a goddamn enumerable: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Not even a goddamn enumerable: " + source?.GetType() + " - " + source?.ToString());
                 return source;
             }
 
@@ -49,7 +49,7 @@ namespace DataLayer.Utilities
                 targetType.GetGenericTypeDefinition() == typeof(IList<>) ||
                 targetType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
-                Console.WriteLine("Converting to plain list: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Converting to plain list: " + source?.GetType() + " - " + source?.ToString());
                 var castMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.Cast))!
                     .MakeGenericMethod(itemType);
 
@@ -65,14 +65,14 @@ namespace DataLayer.Utilities
             // CASE: Target is IAsyncEnumerable<T>
             if (IsGenericType(targetType, typeof(IAsyncEnumerable<>)))
             {
-                Console.WriteLine("Making special async list: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Making special async list: " + source?.GetType() + " - " + source?.ToString());
                 return ToAsyncMethod.MakeGenericMethod(itemType).Invoke(null, [source]);
             }
 
             // CASE: Target is IQueryable<T>
             if (IsGenericType(targetType, typeof(IQueryable<>)))
             {
-                Console.WriteLine("Making a concrete list out of a queryable: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Making a concrete list out of a queryable: " + source?.GetType() + " - " + source?.ToString());
                 var list = EnsureConcreteList(enumerableSource, itemType);
                 return Queryable.AsQueryable((IEnumerable)list);
             }
@@ -80,14 +80,14 @@ namespace DataLayer.Utilities
             // CASE: Target is List<T>
             if (IsGenericType(targetType, typeof(List<>)))
             {
-                Console.WriteLine("Making a concrete list: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Making a concrete list: " + source?.GetType() + " - " + source?.ToString());
                 return EnsureConcreteList(enumerableSource, itemType);
             }
 
             // CASE: Target is Array T[]
             if (targetType.IsArray)
             {
-                Console.WriteLine("Making a object array: " + source?.GetType() + " - " + source?.ToString());
+                //Console.WriteLine("Making a object array: " + source?.GetType() + " - " + source?.ToString());
                 return ToArrayMethod.MakeGenericMethod(itemType).Invoke(null, [source]);
             }
 
@@ -97,12 +97,12 @@ namespace DataLayer.Utilities
                 // If the source is already a Queryable/AsyncEnumerable, we need to ToListAsync it
                 if (source is IQueryable || IsGenericType(sourceType, typeof(IAsyncEnumerable<>)))
                 {
-                    Console.WriteLine("Making a generic task: " + source?.GetType() + " - " + source?.ToString());
+                    //Console.WriteLine("Making a generic task: " + source?.GetType() + " - " + source?.ToString());
                     return ToListAsyncMethod.MakeGenericMethod(itemType).Invoke(null, [source, null]);
                 }
             }
 
-            Console.WriteLine("Did zero fucking conversion: " + source?.GetType() + " - " + source?.ToString());
+            //Console.WriteLine("Did zero fucking conversion: " + source?.GetType() + " - " + source?.ToString());
 
             return source;
         }

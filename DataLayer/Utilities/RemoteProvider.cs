@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using System.Xml.Linq;
 
 namespace DataLayer.Utilities
@@ -77,10 +78,10 @@ namespace DataLayer.Utilities
             return method.Invoke(null, [task])!;
         }
 
-        private static async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task<List<T>> task)
+        private static async IAsyncEnumerable<T> ToAsyncEnumerableInternal<T>(Task<List<T>?> task)
         {
             var list = await task;
-            foreach (var item in list)
+            foreach (var item in list ?? [])
             {
                 yield return item;
             }
@@ -128,6 +129,15 @@ namespace DataLayer.Utilities
 
             var finalExpression = root.ToExpression(Context, out _) as ConstantExpression
                 ?? throw new InvalidOperationException("Failed to convert remote result to Expression.");
+
+            Console.WriteLine("Server responded: " + JsonSerializer.Serialize(finalExpression.Value));
+            Console.WriteLine("What fucking part is failing?" + query.IsDefault() + " - " + finalExpression.Value.IsEmpty());
+            if (query.IsDefault() 
+                && (finalExpression.Value == null
+                || finalExpression.Value.IsEmpty()))
+            {
+                return default!;
+            }
 
             // 4. Handle Collections vs Scalars
             if (typeof(T).IsIterable() && !query.IsDefault())

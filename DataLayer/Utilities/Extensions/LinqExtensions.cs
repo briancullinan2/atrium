@@ -11,6 +11,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.Serialization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml;
 using System.Xml.Linq;
@@ -873,8 +874,10 @@ namespace DataLayer.Utilities.Extensions
                     else if (baseType.IsSimple())
                     {
                         var converter = TypeDescriptor.GetConverter(baseType);
-                        var simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)?.Value ?? string.Empty);
-                        if (simpleValue?.GetType() != baseType)
+                        object? simpleValue = null;
+                        if (!string.IsNullOrWhiteSpace(el.Attribute(prop.Name)?.Value))
+                            simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)!.Value);
+                        if (!prop.IsNullable() && simpleValue?.GetType() != baseType)
                             throw new InvalidOperationException("Simple types don't match: " + simpleValue?.GetType() + " and " + baseType + " on " + el + " property " + prop);
                         prop.SetValue(entity, simpleValue);
                     }
@@ -888,7 +891,9 @@ namespace DataLayer.Utilities.Extensions
                     }
 
                     else
-                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType + " on " + el + " property " + prop);
+                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType + " on " + el + " property " + prop 
+                            + " value is " + (el.Attribute(prop.Name)?.Value ?? el.Element(prop.Name)?.Attribute("Value")?.Value)
+                            + " prop type is nullable " + prop.IsNullable());
                 }
                 return entity;
             }
@@ -915,7 +920,11 @@ namespace DataLayer.Utilities.Extensions
                 {
                     return Expression.Constant(null, type);
                 }
-                var val = ResolveMetadata(type, el.Attribute("Value")?.Value, complex.Elements().FirstOrDefault() ?? complex);
+                var val = ResolveMetadata(type, el.Attribute("Value")?.Value, type.IsIterable() ? complex : complex.Elements().FirstOrDefault() ?? complex);
+                if(type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
+                {
+                    Console.WriteLine("Made constant: " + JsonSerializer.Serialize(val) + el);
+                }
                 if (val?.GetType().IsSimple() == true
                     && val?.GetType() != type)
                 {

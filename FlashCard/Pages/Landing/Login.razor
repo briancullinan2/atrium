@@ -92,6 +92,8 @@
             new Claim(ClaimTypes.Sid, user.Guid ?? ""),
         };
 
+        Console.WriteLine("User logging in: " + user.Username);
+
         foreach(var claim in user.Roles)
         {
             if (claim.Name == null) continue;

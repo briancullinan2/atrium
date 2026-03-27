@@ -36,30 +36,37 @@ namespace WebClient.Services
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
-            // 1. Get SessionID from Local Settings (Your source of truth)
-            var currentSetting = await _query.Query<Setting>(s =>
-                s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
-                .FirstOrDefaultAsync();
+            try
+            {
 
-            string? sessionId = currentSetting?.Value;
+                // 1. Get SessionID from Local Settings (Your source of truth)
+                var currentSetting = await _query.Query<Setting>(s =>
+                    s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                    .FirstOrDefaultAsync();
 
-            if (string.IsNullOrEmpty(sessionId))
-                return LoginService.Guest();
+                string? sessionId = currentSetting?.Value;
 
-            // 2. Fetch from local/remote node
-            var session = await _query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
+                if (string.IsNullOrEmpty(sessionId))
+                    return LoginService.Guest();
 
-            // Arizona: Check expiration locally
-            if (session == null || session.Time.AddSeconds(session.Lifetime) < DateTime.UtcNow)
-                return LoginService.Guest();
+                // 2. Fetch from local/remote node
+                var session = await _query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
-            // 3. Hydrate Claims
-            var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(session.Value) ?? [];
+                // Arizona: Check expiration locally
+                if (session == null || session.Time.AddSeconds(session.Lifetime) < DateTime.UtcNow)
+                    return LoginService.Guest();
 
-            // ... Keep your GetFreshUserInfo Sync logic here ...
+                // 3. Hydrate Claims
+                var storedClaims = JsonSerializer.Deserialize<List<UserClaim>>(session.Value) ?? [];
 
-            var identity = new ClaimsIdentity(storedClaims.Select(c => new Claim(c.Type, c.Value)), SessionId);
-            return new AuthenticationState(new ClaimsPrincipal(identity));
+                var identity = new ClaimsIdentity(storedClaims.Select(c => new Claim(c.Type, c.Value)), SessionId);
+                return new AuthenticationState(new ClaimsPrincipal(identity));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Auth state check failed: " + ex);
+            }
+            return LoginService.Guest();
         }
 
         public record UserClaim(string Type, string Value);
