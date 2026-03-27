@@ -16,14 +16,9 @@ using System.Text;
 
 namespace Atrium.Services
 {
-    internal class AuthService(IServiceProvider? _service) : FlashCard.Services.AuthService(_service)
+    internal abstract class AuthService : FlashCard.Services.AuthService
     {
 
-        public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
-        {
-            var task = (Service?.GetService<AuthenticationStateProvider>() as DatabaseStateProvider)?.MarkUserAsAuthenticated(user);
-            if (task != null) await task;
-        }
 
 #if WINDOWS || ANDROID
         public static void RegisterOpenId(AuthenticationBuilder builder, AuthProviderMetadata p)
@@ -38,7 +33,7 @@ namespace Atrium.Services
             });
         }
 
-        public void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p)
+        public static void RegisterOauth(AuthenticationBuilder builder, AuthProviderMetadata p)
         {
             if (p.ClientId == null || p.Secret == null)
             {
@@ -266,7 +261,7 @@ namespace Atrium.Services
             }
         }
 
-        public virtual AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
+        public static AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
         {
             foreach (var p in Providers)
             {

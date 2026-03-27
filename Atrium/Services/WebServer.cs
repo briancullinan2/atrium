@@ -1,4 +1,5 @@
 ﻿#if WINDOWS
+using Antlr4.Runtime.Misc;
 using Atrium.Logging;
 using DataLayer;
 using DataLayer.Utilities;
@@ -17,9 +18,14 @@ namespace Atrium.Services
 {
     internal static class WebServer
     {
+        static WebServer()
+        {
+            Current = StartWebServer([]);
+        }
 
+        public static WebApplication Current { get; }
 
-        public static async Task StartWebServer(string[] args)
+        public static WebApplication StartWebServer(string[] args)
         {
             try
             {
@@ -48,40 +54,27 @@ namespace Atrium.Services
                     options.DetailedErrors = true;
                 });
 
-                webBuilder.Services.AddCascadingValue(sp => new ErrorBoundary());
-                // Add device-specific services used by the FlashCard project
-                webBuilder.Services.AddSingleton<IFormFactor, FormFactor>();
-                webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
-                webBuilder.Services.AddSingleton<IMenuService, MenuService>();
-                webBuilder.Services.AddSingleton<IStudyService, StudyService>();
-                webBuilder.Services.AddSingleton<ILoginService, LoginService>();
-                webBuilder.Services.AddSingleton<ICourseService, CourseService>();
-                webBuilder.Services.AddSingleton<IPageManager, PageManager>();
+
+                SharedRegistry.BuildSharedServiceList(webBuilder.Services);
+
                 webBuilder.Services.AddSingleton<IFileManager, FileManager>();
                 webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
                 webBuilder.Services.AddSingleton<IHostingService, HostingService>();
-                webBuilder.Services.AddSingleton<IThemeService, ThemeService>();
                 webBuilder.Services.AddSingleton<IChatService, ChatService>();
-                webBuilder.Services.AddSingleton<DataLayer.Utilities.IQueryManager, DataLayer.Utilities.QueryManager>();
-                webBuilder.Services.AddSingleton<IAuthService, AuthService>();
-                webBuilder.Services.AddSingleton<NavigationTracker>();
-                webBuilder.Services.AddSingleton<SimpleLogger>();
+                // Add device-specific services used by the FlashCard project
+                webBuilder.Services.AddSingleton<IFormFactor, FormFactor>();
+                webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
+                webBuilder.Services.AddSingleton<Application>(sp => App.Current!);
 
-                webBuilder.Services.AddAuthorizationCore();
-                // Register your provider as the base class
-                // TODO: change to AddSingleton?
-                webBuilder.Services.AddSingleton<AuthenticationStateProvider, DatabaseStateProvider>();
-                // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
-                webBuilder.Services.AddSingleton(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
-                DatabaseStateProvider.BuildAuthentication(webBuilder);
+                webBuilder.Services.AddScoped<IAuthService, DatabaseStateProvider>();
+                webBuilder.Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
+                DatabaseStateProvider.BuildAuthentication(webBuilder.Services);
 
-                webBuilder.Services.AddSingleton(sp => new HttpClient { 
+                webBuilder.Services.AddSingleton(sp => new HttpClient
+                {
                     // TODO: insert our own address validated from settings and HostingService
                 });
-
-                // FUCK DI
-                webBuilder.Services.AddSingleton<ILocalServer, LocalServer>();
 
                 webBuilder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
                 webBuilder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
@@ -122,14 +115,12 @@ namespace Atrium.Services
                 });
 
 
+                WebApplication? webApp = null;
+                webBuilder.Services.AddSingleton<WebApplication>(sp => (WebApplication)webApp!);
 
-                var webApp = webBuilder.Build();
+                webApp = webBuilder.Build();
                 _ = webApp.Services.GetRequiredService<SimpleLogger>();
 
-                var localServer = (LocalServer)webApp.Services.GetRequiredService<ILocalServer>();
-                localServer.Initialize(webApp);
-
-                MauiProgram.ServerInstance = webApp;
 
 
                 //webApp.MapGet("/api/status", () => new { Status = "Online", Machine = Environment.MachineName });
@@ -216,6 +207,7 @@ namespace Atrium.Services
 
                 // Run the Web Server in the background
                 _ = webApp.RunAsync().Forget();
+                return webApp;
             }
             catch (Exception ex)
             {

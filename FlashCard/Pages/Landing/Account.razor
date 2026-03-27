@@ -81,7 +81,9 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        if (LoginService.User == null)
+        // always redirect guests no matter what
+        if (LoginService.User == null
+            || LoginService.User.Roles.Any(r => r.Name == DefaultRoles.Guest.ToString()))
         {
             if (IsStaticRender) return;
             Nav.NavigateTo(NavigationExtensions.GetUri<Pages.Landing.Login>());

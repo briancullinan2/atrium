@@ -94,10 +94,11 @@
 
         Console.WriteLine("User logging in: " + user.Username);
 
-        foreach(var claim in user.Roles)
+        foreach(var role in user.Roles)
         {
-            if (claim.Name == null) continue;
-            claims.Add(new Claim(ClaimTypes.Role, claim.Name));
+            if (role.Name == null) continue;
+            claims.Add(new Claim(ClaimTypes.Role, role.Name));
+            break;
         }
 
         var identity = new ClaimsIdentity(claims, "AtriumAuth");

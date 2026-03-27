@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 using WebClient.Services;
 
@@ -27,51 +28,36 @@ TaskScheduler.UnobservedTaskException += (s, e) =>
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-builder.Services.AddCascadingValue(sp => new ErrorBoundary());
-// Add device-specific services used by the FlashCard project
+SharedRegistry.BuildSharedServiceList(builder.Services);
+
+
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
-builder.Services.AddSingleton<ILocalServer, LocalServer>();
 builder.Services.AddSingleton<ITitleService, TitleService>();
-builder.Services.AddSingleton<IMenuService, MenuService>();
-builder.Services.AddSingleton<IStudyService, StudyService>();
-builder.Services.AddSingleton<ILoginService, LoginService>();
-builder.Services.AddSingleton<ICourseService, CourseService>();
 builder.Services.AddSingleton<IPageManager, WebClient.Services.PageManager>();
 builder.Services.AddSingleton<IHostingService, HostingService>();
-builder.Services.AddSingleton<IThemeService, ThemeService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddSingleton<IFileManager, FileManager>();
+builder.Services.AddSingleton<IAnkiService, AnkiService>();
+
 builder.Services.AddSingleton(sp => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
 });
-builder.Services.AddSingleton<IFileManager, FileManager>();
-builder.Services.AddSingleton<IAnkiService, AnkiService>();
-builder.Services.AddSingleton<IQueryManager, RemoteManager>();
-builder.Services.AddSingleton<IAuthService, WebClient.Services.AuthService>();
-builder.Services.AddSingleton<NavigationTracker>();
-builder.Services.AddSingleton<SimpleLogger>();
+builder.Services.RemoveAll<IQueryManager>();
 
-builder.Services.AddAuthorizationCore();
-builder.Services.AddSingleton<AuthenticationStateProvider, BrowserStateProvider>();
+builder.Services.AddSingleton<IQueryManager, RemoteManager>();
+
+builder.Services.AddScoped<IAuthService, BrowserStateProvider>();
+builder.Services.AddScoped(sp => (BrowserStateProvider)sp.GetRequiredService<IAuthService>());
 
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
-// for use inside the remoteprovider to call
-//RemoteStorage? remote = null;
-//builder.Services.AddSingleton<RemoteStorage>(cs => remote!);
 
-
-var app = builder.Build();
+WebAssemblyHost? app = null;
+builder.Services.AddSingleton<WebAssemblyHost>(sp => (WebAssemblyHost)app!);
+app = builder.Build();
 // FUCK DI
 _ = app.Services.GetRequiredService<SimpleLogger>();
-//remote = app.Services.GetRequiredService<IDbContextFactory<RemoteStorage>>().CreateDbContext();
 
-
-var runtime = app.Services.GetRequiredService<IJSRuntime>();
-var navigation = app.Services.GetRequiredService<NavigationManager>();
-var localServer = (LocalServer)app.Services.GetRequiredService<ILocalServer>();
-
-
-localServer.Initialize(app, runtime, navigation);
 
 await app.RunAsync();

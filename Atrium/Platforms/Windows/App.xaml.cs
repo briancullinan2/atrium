@@ -26,14 +26,7 @@ namespace Atrium.WinUI
 
         protected override MauiApp CreateMauiApp()
         {
-            var app = MauiProgram.CreateMauiApp();
-#if WINDOWS
-            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
-            {
-                (app.Services.GetService(typeof(IFileManager)) as FileManager)?.InitializeWndProc(h);
-            });
-#endif
-            return app;
+            return MauiProgram.CreateMauiApp();
         }
 
         [STAThread]
@@ -51,17 +44,8 @@ namespace Atrium.WinUI
                 e.SetObserved(); // Prevents process crash if you want, but logs it
             };
 
-            try
-            {
-                // 1. Start your Web Server in a background thread
-                _ = WebServer.StartWebServer(args);
-                TitleService._setTitle = SetTitle;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw new Exception("bs", ex);
-            }
+            // TODO: insert webserver activation here if running in windows service mode
+
 
             // 2. Start the WinUI/MAUI Application
             WinRT.ComWrappersSupport.InitializeComWrappers();
@@ -100,17 +84,6 @@ namespace Atrium.WinUI
                 // Ensure "appicon.ico" is actually being copied there by our MSBuild target
                 appWindow.SetIcon("teardrop.ico");
             }
-        }
-
-        internal static void SetTitle(string? title, IEnumerable<Window> windows)
-        {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                foreach (var window in windows)
-                {
-                    window.Title = title; // This is now safe
-                }
-            });
         }
     }
 }

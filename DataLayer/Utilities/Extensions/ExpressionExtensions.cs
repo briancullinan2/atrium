@@ -507,6 +507,22 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static Expression<Func<TEntity, bool>> ToPredicate<TEntity>(this TEntity? entity)
+            where TEntity : Entities.Entity<TEntity>
+        {
+            return ToPredicate<TEntity>(entity.ToMembers());
+        }
+
+
+        public static Dictionary<MemberInfo, object?> ToMembers<TEntity>(this TEntity? entity)
+            where TEntity : Entities.Entity<TEntity>
+        {
+            if (entity == null) return [];
+            List<PropertyInfo> members = Entities.Entity<TEntity>.Database;
+            return members.ToDictionary<PropertyInfo, MemberInfo, object?>(m => m, m => m.GetValue(entity));
+        }
+
+
         public static Expression<Func<TEntity, bool>> ToPredicate<TEntity>(this Expression<TEntity> ex)
             where TEntity : class
         {

@@ -1,23 +1,17 @@
 ﻿using FlashCard.Services;
-using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Reflection;
 
 namespace Atrium.Services
 {
-    internal class TitleService : ITitleService
+    internal class TitleService(Application? App = null) : ITitleService
     {
-        internal static Action<string?, IEnumerable<Window>> _setTitle = (s, windows) => { };
         internal static string? _title;
-        private readonly string? _appName;
+        private readonly string? _appName = Assembly.GetEntryAssembly()?
+                             .GetCustomAttribute<AssemblyProductAttribute>()?
+                             .Product;
 
         public event Action<string?>? OnTitleChanged;
 
-        public TitleService()
-        {
-            _appName = Assembly.GetEntryAssembly()?
-                             .GetCustomAttribute<AssemblyProductAttribute>()?
-                             .Product;
-        }
 
 
         public async Task UpdateTitle(string? title)
@@ -30,7 +24,14 @@ namespace Atrium.Services
             {
                 _title = title + " - " + _appName;
             }
-            _setTitle(_title, Application.Current?.Windows ?? []);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                foreach (var window in App?.Windows ?? [])
+                {
+                    window.Title = _title; // This is now safe
+                }
+            });
+
             OnTitleChanged?.Invoke(title);
         }
 

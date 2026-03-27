@@ -39,7 +39,7 @@ namespace FlashCard.Services
 
         public void Dispose()
         {
-            Auth.AuthenticationStateChanged += OnAuthStateChanged;
+            Auth.AuthenticationStateChanged -= OnAuthStateChanged;
             GC.SuppressFinalize(this);
         }
 
@@ -174,7 +174,7 @@ namespace FlashCard.Services
             OnLoginChanged?.Invoke(login);
         }
 
-        public async Task SetUser(DataLayer.Entities.User? user)
+        public async Task SetUser(User? user)
         {
             User = user;
             OnUserChanged?.Invoke(user);
@@ -188,19 +188,27 @@ namespace FlashCard.Services
         {
             // TODO: check here for cached value if database allows Guest accounts
             //   otherwise sneakily change expectations and return anonymous
-
+            var guest = Users.Generate().FirstOrDefault(u => u.Username == DefaultRoles.Guest.ToString());
 
             var guestClaims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, "Guest"),
+                new(ClaimTypes.NameIdentifier, guest?.Username ?? string.Empty),
                 //new(ClaimTypes.Sid, User.Guid),
-                new(ClaimTypes.Name, "Guest User"),
-                new(ClaimTypes.Role, "Guest"),
-                new("urn:atrium:guest", "true")
+                new(ClaimTypes.Surname, guest?.FirstName ?? string.Empty),
+                new(ClaimTypes.GivenName, guest?.FirstName ?? string.Empty),
+                new(ClaimTypes.NameIdentifier, guest?.Username ?? string.Empty),
+                new("urn:atrium:guest", "true"),
             };
 
+            foreach (var role in guest?.Roles ?? [])
+            {
+                if (role.Name == null) continue;
+                guestClaims.Add(new Claim(ClaimTypes.Role, role.Name));
+                break;
+            }
+
             // IMPORTANT: Providing "Guest" as the second argument makes IsAuthenticated = true
-            var identity = new ClaimsIdentity(guestClaims, "Guest");
+            var identity = new ClaimsIdentity(guestClaims, "GuestAuth");
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
 

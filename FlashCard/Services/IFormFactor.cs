@@ -4,5 +4,8 @@ namespace FlashCard.Services
     {
         string GetFormFactor();
         string GetPlatform();
+        string BaseUrl { get; }
+        Task StopAsync();
+
     }
 }

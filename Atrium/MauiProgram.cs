@@ -12,6 +12,8 @@ using DataLayer.Utilities;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using DataLayer;
+using Microsoft.AspNetCore.Builder;
+using Antlr4.Runtime.Misc;
 
 namespace Atrium
 {
@@ -19,11 +21,6 @@ namespace Atrium
 
     public static class MauiProgram
     {
-
-
-#if WINDOWS
-        public static Microsoft.AspNetCore.Builder.WebApplication? ServerInstance { get; set; }
-#endif
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
@@ -35,32 +32,22 @@ namespace Atrium
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 });
 
-            builder.Services.AddCascadingValue(sp => new ErrorBoundary());
+            SharedRegistry.BuildSharedServiceList(builder.Services);
 
             // Add device-specific services used by the FlashCard project
             builder.Services.AddSingleton<IFormFactor, FormFactor>();
             builder.Services.AddSingleton<ITitleService, TitleService>();
-            builder.Services.AddSingleton<IMenuService, MenuService>();
-            builder.Services.AddSingleton<IStudyService, StudyService>();
-            builder.Services.AddSingleton<ILoginService, LoginService>();
-            builder.Services.AddSingleton<ICourseService, CourseService>();
-            builder.Services.AddSingleton<IPageManager, PageManager>();
             builder.Services.AddSingleton<IFileManager, FileManager>();
             builder.Services.AddSingleton<IAnkiService, AnkiService>();
             builder.Services.AddSingleton<IHostingService, HostingService>();
-            builder.Services.AddSingleton<IThemeService, ThemeService>();
             builder.Services.AddSingleton<IChatService, ChatService>();
-            builder.Services.AddSingleton<IQueryManager, QueryManager>();
-            builder.Services.AddSingleton<IAuthService, Services.AuthService>();
-            builder.Services.AddSingleton<NavigationTracker>();
-            builder.Services.AddSingleton<SimpleLogger>();
+            builder.Services.AddSingleton<Application>(sp => App.Current!);
+#if WINDOWS
+            builder.Services.AddSingleton<WebApplication>(sp => WebServer.Current);
+#endif
 
-            builder.Services.AddAuthorizationCore();
-            builder.Services.AddCascadingAuthenticationState();
-            // Register your provider as the base class
-            builder.Services.AddSingleton<AuthenticationStateProvider, DatabaseStateProvider>();
-            // "Alias" the concrete type to the same instance so MarkUserAsAuthenticated works
-            builder.Services.AddSingleton(sp => (DatabaseStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
+            builder.Services.AddScoped<IAuthService, DatabaseStateProvider>();
+            builder.Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
 
             builder.Services.AddSingleton(sp => new HttpClient
             {
@@ -77,10 +64,7 @@ namespace Atrium
 #endif
             // Inject the server instance into MAUI's DI
 #if WINDOWS
-            if (ServerInstance != null)
-            {
-                builder.Services.AddSingleton<ILocalServer>(new LocalServer(ServerInstance));
-            }
+            DatabaseStateProvider.BuildAuthentication(builder.Services);
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
@@ -92,6 +76,14 @@ namespace Atrium
             // 1. Build the app
             var mauiApp = builder.Build();
             _ = mauiApp.Services.GetRequiredService<SimpleLogger>();
+#if WINDOWS
+            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
+            {
+                (mauiApp.Services.GetService(typeof(IFileManager)) as FileManager)?.InitializeWndProc(h);
+            });
+            _ = mauiApp.Services.GetRequiredService<WebApplication>();
+#endif
+
 
             // 3. Return the built app
             return mauiApp;

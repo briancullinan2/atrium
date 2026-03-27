@@ -21,8 +21,11 @@ using DataLayer.Utilities.Extensions;
 
 namespace Atrium.Services
 {
-    public class DatabaseStateProvider(IQueryManager _query, IServiceProvider _services) : AuthenticationStateProvider
-    {
+    internal class DatabaseStateProvider(IQueryManager _query
+#if WINDOWS
+        , IHttpContextAccessor? _httpContextAccessor = null
+#endif
+    ) : AuthService {
 
         private static readonly string SessionId = "AtriumSession";
 
@@ -33,7 +36,7 @@ namespace Atrium.Services
 
             string? sessionId = null;
 #if WINDOWS
-            if (_services.GetService<IHttpContextAccessor>() is IHttpContextAccessor _httpContextAccessor)
+            if (_httpContextAccessor is not null)
             {
                 sessionId = _httpContextAccessor.HttpContext?.Request.Cookies[cookieName];
             }
@@ -81,7 +84,6 @@ namespace Atrium.Services
             {
                 try
                 {
-                    var authService = _services.GetRequiredService<AuthService>();
                     using var json = await GetFreshUserInfo(providerId, token);
 
                     if (json != null)
@@ -116,7 +118,7 @@ namespace Atrium.Services
 
         public record UserClaim(string Type, string Value);
 
-        public async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
+        public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
         {
             var claimsData = user.Claims.ToList();
 
@@ -128,7 +130,7 @@ namespace Atrium.Services
 
             var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
 #if WINDOWS
-            if (_services.GetService<IHttpContextAccessor>() is IHttpContextAccessor _httpContextAccessor)
+            if (_httpContextAccessor is not null)
             {
                 var context = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("Could not obtain Http context");
                 var token = await context.GetTokenAsync("access_token");
@@ -185,19 +187,17 @@ namespace Atrium.Services
 
             var claims = user.Claims.ToList();
 
-            var newIdentity = new ClaimsIdentity(claims, provider);
-            var newUser = new ClaimsPrincipal(newIdentity);
+            var identity = new ClaimsIdentity(claims, provider);
+            var authState = Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
 
-            // Now notify the world with the user that actually HAS the SessionId
-            var authState = Task.FromResult(new AuthenticationState(newUser));
             NotifyAuthenticationStateChanged(authState);
         }
 
 
-        public async Task<JsonDocument?> GetFreshUserInfo(AuthID providerId, string accessToken)
+        public static async Task<JsonDocument?> GetFreshUserInfo(AuthID providerId, string accessToken)
         {
-            var _authService = _services.GetService<IAuthService>() ?? throw new InvalidOperationException("Auth service not available.");
-            var (_, _, userInfoUrl) = _authService.GetOAuthEndpoints(providerId);
+
+            var (_, _, userInfoUrl) = GetOAuthEndpoints(providerId);
 
             using var client = new HttpClient();
             var request = new HttpRequestMessage(HttpMethod.Get, userInfoUrl);
@@ -224,12 +224,12 @@ namespace Atrium.Services
         }
 
 #if WINDOWS
-        public static void BuildAuthentication(IHostApplicationBuilder builder)
+        public static void BuildAuthentication(IServiceCollection Services)
         {
             // Define a constant for the claim type to avoid naming mismatches
             const string SessionIdClaimType = "atrium_sid";
 
-            var authenticationBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            var authenticationBuilder = Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
                     options.LoginPath = "/login";
@@ -272,7 +272,7 @@ namespace Atrium.Services
                     };
                 });
 
-            new AuthService(null).AddExternalLogins(authenticationBuilder);
+            AddExternalLogins(authenticationBuilder);
             
         }
 #endif

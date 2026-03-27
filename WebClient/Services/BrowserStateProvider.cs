@@ -2,35 +2,27 @@
 using DataLayer.Entities;
 using DataLayer.Utilities;
 using FlashCard.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class BrowserStateProvider : AuthenticationStateProvider
+    public class BrowserStateProvider : AuthService
     {
 
         private static readonly string SessionId = "AtriumSession";
 
-        private static readonly Task<AuthenticationState> _unauthenticatedTask =
-        Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
-
-        private readonly Task<AuthenticationState> _authenticationStateTask = _unauthenticatedTask;
         private readonly IQueryManager _query;
 
         public BrowserStateProvider(IQueryManager query)
         {
             _query = query;
-            var user = new DataLayer.Entities.User();
-            // Reconstruct the identity on the Client
+            var user = new User();
+            // TODO: Reconstruct the identity on the Client
             List<Claim> claims = [
                 new Claim(ClaimTypes.Name, user.Username ?? ""),
             ];
-
-            _authenticationStateTask = Task.FromResult(
-                new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, SessionId))));
         }
 
 
@@ -70,7 +62,8 @@ namespace WebClient.Services
         }
 
         public record UserClaim(string Type, string Value);
-        public async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
+
+        public override async Task MarkUserAsAuthenticated(ClaimsPrincipal user)
         {
             // 1. Prepare the Session record
             var claimsData = user.Claims.Select(c => new UserClaim(c.Type, c.Value)).ToList();
@@ -81,6 +74,8 @@ namespace WebClient.Services
                 var provider = user.Identity?.AuthenticationType ?? "LocalNode";
                 claimsData.Add(new UserClaim("urn:atrium:provider", provider));
             }
+
+            Log.Info("Logging in: " + user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value);
 
 
             // 4. Notify Blazor UI

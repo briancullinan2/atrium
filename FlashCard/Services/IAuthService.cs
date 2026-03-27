@@ -1,6 +1,7 @@
 ﻿using DataLayer;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,6 @@ namespace FlashCard.Services
     public interface IAuthService
     {
         Task MarkUserAsAuthenticated(ClaimsPrincipal user);
-        (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id);
     }
 
 
@@ -65,20 +65,17 @@ namespace FlashCard.Services
     }
 
 
-    public abstract class AuthService : IAuthService
+    public abstract class AuthService : AuthenticationStateProvider, IAuthService
     {
-        public static IQueryManager? QueryManager { get; set; }
-        public static IServiceProvider? Service { get; set; }
+        //public static IQueryManager? QueryManager { get; set; }
+        //public static IServiceProvider? Service { get; set; }
 
         static AuthService()
         {
         }
 
-        public AuthService(IServiceProvider? _service)
-        {
-            Service = _service;
-            QueryManager = Service?.GetService(typeof(IQueryManager)) as IQueryManager;
-        }
+
+
         public static readonly List<AuthProviderMetadata> Providers =
         [
             new(AuthID.Google, "Google", "bi-google", AuthType.BuiltIn),
@@ -112,7 +109,7 @@ namespace FlashCard.Services
 
         public abstract Task MarkUserAsAuthenticated(ClaimsPrincipal user);
 
-        public virtual (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)
+        public static (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)
         {
             return id switch
             {
