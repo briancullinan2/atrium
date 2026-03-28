@@ -3,8 +3,6 @@ using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.Extensions.DependencyInjection;
 using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
@@ -32,7 +30,7 @@ namespace AnkiParser
                 .ToListAsync();
             if (alreadyLoaded.Count != 0)
             {
-                results = [.. await Query.Query((IQueryable<DataLayer.Entities.File> files) => files.Where(f => f.Source == simpleName)).ToListAsync()];
+                results = [.. await Query.Query<DataLayer.Entities.File>(f => f.Source == simpleName).ToListAsync()];
                 if (results.Count != 0)
                 {
                     return results;
@@ -105,15 +103,9 @@ namespace AnkiParser
             using (var fs = File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
             anki2Database.Close();
 
-            using var uploadConn = new SqliteConnection($"Data Source={tempPath}");
-            uploadConn.Open();
-            //uploadConn.BackupDatabase(connection);
-
-            var options = new DbContextOptionsBuilder<TranslationContext>()
-                    .UseSqlite(uploadConn)
-                    .Options;
-
-            using var context = new TranslationContext(options);
+            
+            using var context = new TranslationContext(tempPath, new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TranslationContext>().Options);
+            var connection = Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(context.Database);
 
             // 1. Get the Note Models (Col.models JSON) 
             // Anki stores deck configs and note models in the 'col' table 'models' column
@@ -121,7 +113,7 @@ namespace AnkiParser
             var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonHelper.Default);
 
             var results = new List<DataLayer.Entities.Card>();
-            var cards = context.Set<Entities.Card>().Include(c => c.Note).ToList();
+            var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<Entities.Card>().Where(c => c.Note != null));
 
             foreach (var card in cards)
             {
@@ -152,8 +144,12 @@ namespace AnkiParser
                 // idempotence
                 results.Add(newCard);
             }
-            uploadConn.Close();
-            SqliteConnection.ClearPool(uploadConn);
+
+
+
+            connection.Close();
+            if(connection is SqliteConnection sqlite)
+                SqliteConnection.ClearPool(sqlite);
             File.Delete(tempPath);
 
             return results;

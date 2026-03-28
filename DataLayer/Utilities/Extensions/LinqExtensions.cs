@@ -313,15 +313,17 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.Constant, BuildConstant },
                 { ExpressionType.Quote, BuildUnary },
                 { ExpressionType.Lambda, BuildLambda },
-                { ExpressionType.Equal, BuildLeftRight },
-                { ExpressionType.NotEqual, BuildLeftRight },
                 { ExpressionType.Convert, BuildUnary },
                 { ExpressionType.MemberAccess, BuildProperty },
-                { ExpressionType.OrElse, BuildLeftRight },
                 { ExpressionType.Index, BuildIndex },
                 { ExpressionType.Invoke, BuildInvocation },
                 { ExpressionType.Conditional, BuildConditional },
                 { ExpressionType.NewArrayInit, BuildNewArrayInit },
+
+                // Binary Expressions
+                { ExpressionType.Equal, BuildLeftRight },
+                { ExpressionType.NotEqual, BuildLeftRight },
+                { ExpressionType.OrElse, BuildLeftRight },
                 { ExpressionType.AndAlso, BuildLeftRight },
                 { ExpressionType.LessThan, BuildLeftRight },
                 { ExpressionType.LessThanOrEqual, BuildLeftRight },
@@ -334,6 +336,7 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.Multiply, BuildLeftRight },
                 { ExpressionType.Divide, BuildLeftRight },
                 { ExpressionType.Modulo, BuildLeftRight },
+                { ExpressionType.Power, BuildLeftRight },
 
                 // Bitwise
                 { ExpressionType.And, BuildLeftRight },
@@ -435,6 +438,8 @@ namespace DataLayer.Utilities.Extensions
                 "Multiply" => Expression.Multiply(leftOperand, rightOperand),
                 "Divide" => Expression.Divide(leftOperand, rightOperand),
                 "Modulo" => Expression.Modulo(leftOperand, rightOperand),
+                "Power" => Expression.Power(leftOperand, rightOperand),
+
 
                 // The Bitwise & Null-Safety Peers
                 "And" => Expression.And(leftOperand, rightOperand),
@@ -851,6 +856,8 @@ namespace DataLayer.Utilities.Extensions
                     if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
                         continue;
 
+                    if (!prop.CanWrite || prop.GetSetMethod(nonPublic: true) == null)
+                        continue;
 
                     var baseType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 

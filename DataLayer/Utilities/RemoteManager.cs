@@ -47,6 +47,7 @@ namespace DataLayer.Utilities
 
             var context = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
+
             //var xml = Expression.Constant(results).ToXDocument().ToString();
             //var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
             var baseAddress = (context as RemoteStorage)?.BaseAddress?.TrimEnd('/');

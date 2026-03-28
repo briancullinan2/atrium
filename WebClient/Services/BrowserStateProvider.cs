@@ -8,22 +8,10 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class BrowserStateProvider : AuthService
+    public class BrowserStateProvider(IQueryManager Query) : AuthService
     {
 
         private static readonly string SessionId = "AtriumSession";
-
-        private readonly IQueryManager _query;
-
-        public BrowserStateProvider(IQueryManager query)
-        {
-            _query = query;
-            var user = new User();
-            // TODO: Reconstruct the identity on the Client
-            List<Claim> claims = [
-                new Claim(ClaimTypes.Name, user.Username ?? ""),
-            ];
-        }
 
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -32,7 +20,7 @@ namespace WebClient.Services
             {
 
                 // 1. Get SessionID from Local Settings (Your source of truth)
-                var currentSetting = await _query.Query<Setting>(s =>
+                var currentSetting = await Query.Query<Setting>(s =>
                     s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
                     .FirstOrDefaultAsync();
 
@@ -42,7 +30,7 @@ namespace WebClient.Services
                     return LoginService.Guest();
 
                 // 2. Fetch from local/remote node
-                var session = await _query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
+                var session = await Query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
                 // Arizona: Check expiration locally
                 if (session == null || session.Time.AddSeconds(session.Lifetime) < DateTime.UtcNow)

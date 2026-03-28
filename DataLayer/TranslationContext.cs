@@ -266,21 +266,6 @@ namespace DataLayer
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
             _ = options.ReplaceService<IQueryProvider, RemoteQueryProvider>();
             _ = options.ReplaceService<IAsyncQueryProvider, RemoteQueryProvider>();
-            //#pragma warning disable EF1001 // Internal EF Core API usage.
-            //            _ = options.ReplaceService<IQueryCompiler, RemoteQuery>();
-            //#pragma warning restore EF1001 // Internal EF Core API usage.
-            /*options.ReplaceService<IQueryCompiler, Utilities.RemoteQuery>(
-            (IServiceProvider internalServiceProvider, IQueryCompiler originalCompiler) =>
-            {
-                var currentContext = internalServiceProvider.GetRequiredService<ICurrentDbContext>();
-
-                return new Utilities.RemoteQuery(
-                    originalCompiler,
-                    currentContext,
-                    remoteUrl
-                );
-            });
-            */
         }
 
 
@@ -307,6 +292,8 @@ namespace DataLayer
 
             _ = options.UseInMemoryDatabase("TestShell");
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+            _ = options.ReplaceService<IQueryProvider, LocalQueryProvider>();
+            _ = options.ReplaceService<IAsyncQueryProvider, LocalQueryProvider>();
         }
 
         public override async Task EnsureGlobalIdentityStart()

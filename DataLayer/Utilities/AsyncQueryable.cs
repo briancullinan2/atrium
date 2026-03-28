@@ -1,105 +1,273 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
-using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq.Expressions;
-using System.Text;
+using System.Reflection;
 
 namespace DataLayer.Utilities
 {
-    public class AsyncQueryable<T>(IQueryProvider provider, Expression expression) : IQueryable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>, IQueryable
+    public class AsyncQueryable<TSource>(IQueryProvider provider, Expression expression)
+        : DynamicObject, IAsyncQueryable<TSource>, IQueryable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
     {
         public Expression Expression { get; } = expression;
         public IQueryProvider Provider { get; } = provider;
-        public Type ElementType => typeof(T);
+        public Type ElementType => typeof(TSource);
 
-        #region Standard LINQ Infrastructure
-        public IEnumerator<T> GetEnumerator() => throw new InvalidOperationException("Use async enumerator.");
-
+        #region Blocked Synchronous Leaf Methods
+        // Specifically blocking the standard IEnumerable leaf calls
+        public IEnumerator<TSource> GetEnumerator() => throw new NotSupportedException("Synchronous enumeration is not supported. Use ToListAsync or await foreach.");
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        #endregion
 
-        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        public async IAsyncEnumerator<TSource> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            // This maps to AsAsyncEnumerable() logic
-            var task = ((IAsyncQueryProvider)Provider).ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken);
+            var task = ((IAsyncQueryProvider)Provider).ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken);
             await foreach (var item in task.WithCancellation(cancellationToken))
             {
                 yield return item;
             }
         }
+
+        public override bool TryInvokeMember(InvokeMemberBinder binder, object?[]? args, out object? result)
+        {
+
+            // 1. Check if it's an EF/Async extension we care about
+            var asyncEquivalentName = $"{binder.Name}Async";
+            var hasAsyncCounterpart = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Any(m => m.Name == asyncEquivalentName);
+
+            if (hasAsyncCounterpart)
+            {
+                // This is a terminal leaf like ToList, Any, or Count. 
+                // A.R.S. § 44-7007 requires we force the async path for reliability.
+                throw new InvalidOperationException(
+                    $"Blocking synchronous '{binder.Name}'. Use '{asyncEquivalentName}' to maintain " +
+                    "thread reliability in the AtriumCache local context.");
+            }
+
+
+            // 1. Prepare the arguments (Extension methods take 'this' as the first arg)
+            object?[] extendedArgs = [];
+            if (args != null)
+            {
+                extendedArgs = new object[args.Length + 1];
+                extendedArgs[0] = this;
+                Array.Copy(args, 0, extendedArgs, 1, args.Length);
+            }
+
+            // 2. Find the method in EntityFrameworkQueryableExtensions
+            // We look for a method matching the name and argument count
+            var method = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == binder.Name)
+                .FirstOrDefault(m => m.GetParameters().Length == extendedArgs.Length);
+
+            if (method != null)
+            {
+                // 3. Handle Generic Methods (like Include<T, TProperty> or ToListAsync<TSource>)
+                if (method.IsGenericMethod)
+                {
+                    // Most EF extensions use the element type as the first generic argument
+                    // We can infer them from the arguments or default to typeof(T)
+                    var genericArgs = method.GetGenericArguments();
+                    var typeArguments = new Type[genericArgs.Length];
+                    for (int i = 0; i < genericArgs.Length; i++) typeArguments[i] = typeof(TSource);
+
+                    method = method.MakeGenericMethod(typeArguments);
+                }
+
+                result = method.Invoke(null, extendedArgs);
+                return true;
+            }
+
+            return base.TryInvokeMember(binder, args, out result);
+        }
+
+        public string ToQueryString(IQueryable source)
+            => EntityFrameworkQueryableExtensions.ToQueryString(source);
+
+        #region Any/All
+        public Task<bool> AnyAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.AnyAsync(this, token);
+        public Task<bool> AnyAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.AnyAsync(this, predicate, token);
+        public Task<bool> AllAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.AllAsync(this, predicate, token);
         #endregion
 
-        #region EF Core Async Terminal Maps
-        // These replace the need for "using Microsoft.EntityFrameworkCore" at the call site
+        #region Count/LongCount
+        public Task<int> CountAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.CountAsync(this, token);
+        public Task<int> CountAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.CountAsync(this, predicate, token);
+        public Task<long> LongCountAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LongCountAsync(this, token);
+        public Task<long> LongCountAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LongCountAsync(this, predicate, token);
+        #endregion
 
-        public Task<List<T>> ToListAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.ToListAsync(this, ct);
+        #region ElementAt
+        public Task<TSource> ElementAtAsync(int index, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ElementAtAsync(this, index, token);
+        public Task<TSource?> ElementAtOrDefaultAsync(int index, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ElementAtOrDefaultAsync(this, index, token);
+        #endregion
 
-        public Task<T[]> ToArrayAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.ToArrayAsync(this, ct);
+        #region First/FirstOrDefault
+        public Task<TSource> FirstAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.FirstAsync(this, token);
+        public Task<TSource> FirstAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.FirstAsync(this, predicate, token);
+        public Task<TSource?> FirstOrDefaultAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(this, token);
+        public Task<TSource?> FirstOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(this, predicate, token);
+        #endregion
 
-        public Task<bool> AnyAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.AnyAsync(this, ct);
+        #region Last/LastOrDefault
+        public Task<TSource> LastAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LastAsync(this, token);
+        public Task<TSource> LastAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LastAsync(this, predicate, token);
+        public Task<TSource?> LastOrDefaultAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LastOrDefaultAsync(this, token);
+        public Task<TSource?> LastOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.LastOrDefaultAsync(this, predicate, token);
+        #endregion
 
-        public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.AnyAsync(this, predicate, ct);
+        #region Single/SingleOrDefault
+        public Task<TSource> SingleAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SingleAsync(this, token);
+        public Task<TSource> SingleAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SingleAsync(this, predicate, token);
+        public Task<TSource?> SingleOrDefaultAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SingleOrDefaultAsync(this, token);
+        public Task<TSource?> SingleOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SingleOrDefaultAsync(this, predicate, token);
+        #endregion
 
-        public Task<T?> FirstOrDefaultAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(this, ct);
+        #region Min/Max/Sum/Average
+        public Task<TSource> MinAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.MinAsync(this, token);
+        public Task<TResult> MinAsync<TResult>(Expression<Func<TSource, TResult>> selector, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.MinAsync(this, selector, token);
+        public Task<TSource> MaxAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.MaxAsync(this, token);
+        public Task<TResult> MaxAsync<TResult>(Expression<Func<TSource, TResult>> selector, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.MaxAsync(this, selector, token);
 
-        public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(this, predicate, ct);
+        public Task<decimal> SumAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SumAsync(this.Cast<decimal>(), token);
+        public Task<decimal> SumAsync(Expression<Func<TSource, decimal>> selector, CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.SumAsync(this, selector, token);
 
-        public Task<int> CountAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.CountAsync(this, ct);
+        public Task<decimal> AverageAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.AverageAsync(this.Cast<decimal>(), token);
+        #endregion
 
-        public Task<int> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.CountAsync(this, predicate, ct);
+        #region Collections
+        public Task<List<TSource>> ToListAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ToListAsync(this, token);
+        public Task<TSource[]> ToArrayAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ToArrayAsync(this, token);
+        public Task<HashSet<TSource>> ToHashSetAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ToHashSetAsync(this, token);
+        #endregion
 
-#endregion
-
-        public IQueryable<TEntity> AsNoTracking<TEntity>()
-            where TEntity : class, T
-            => EntityFrameworkQueryableExtensions.AsNoTracking<TEntity>(this.OfType<TEntity>());
-
-        public IQueryable<T> AsNoTrackingWithIdentityResolution<TEntity>()
-            where TEntity : class, T
-            => EntityFrameworkQueryableExtensions.AsNoTrackingWithIdentityResolution(this.OfType<TEntity>());
-
-        public IQueryable<T> IgnoreQueryFilters<TEntity>()
-            where TEntity : class, T
-            => EntityFrameworkQueryableExtensions.IgnoreQueryFilters(this.OfType<TEntity>());
-
-        public IQueryable<T> TagWith(string tag)
+        #region EF Specific Metadata/Tracking
+        public IIncludableQueryable<TReturn, TProperty> Include<TReturn, TProperty>(Expression<Func<TReturn, TProperty>> navigationPropertyPath)
+            where TReturn : class
+            => EntityFrameworkQueryableExtensions.Include<TReturn, TProperty>(this.Cast<TReturn>(), navigationPropertyPath);
+        public IQueryable<TReturn> AsNoTracking<TReturn>()
+            where TReturn : class
+            => EntityFrameworkQueryableExtensions.AsNoTracking(this.Cast<TReturn>());
+        public IQueryable<TSource> TagWith(string tag)
             => EntityFrameworkQueryableExtensions.TagWith(this, tag);
+        #endregion
 
-        public IIncludableQueryable<TEntity, TProperty> Include<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> navigationPropertyPath)
-            where TEntity : class, T
-            => EntityFrameworkQueryableExtensions.Include(this.OfType<TEntity>(), navigationPropertyPath);
-
-        // String-based include for dynamic scenarios
-        public IQueryable<T> Include<TEntity>(string navigationPropertyPath)
-            where TEntity : class, T
-            => EntityFrameworkQueryableExtensions.Include(this.OfType<TEntity>(), navigationPropertyPath);
-
-        public Task<int> ExecuteDeleteAsync(CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.ExecuteDeleteAsync(this, ct);
-
-        public Task<int> ExecuteUpdateAsync(Action<UpdateSettersBuilder<T>> setPropertyCalls, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.ExecuteUpdateAsync(this, setPropertyCalls, ct);
-
-        public Task<TResult> MaxAsync<TResult>(Expression<Func<T, TResult>> selector, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.MaxAsync(this, selector, ct);
-
-        public Task<TResult> MinAsync<TResult>(Expression<Func<T, TResult>> selector, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.MinAsync(this, selector, ct);
-
-        public Task<decimal> SumAsync(Expression<Func<T, decimal>> selector, CancellationToken ct = default)
-            => EntityFrameworkQueryableExtensions.SumAsync(this, selector, ct);
-
-        public string ToQueryString()
-            => EntityFrameworkQueryableExtensions.ToQueryString(this);
-
+        #region Bulk Operations
+        public Task<int> ExecuteDeleteAsync(CancellationToken token = default)
+            => EntityFrameworkQueryableExtensions.ExecuteDeleteAsync(this, token);
+        #endregion
     }
+
+    public interface IAsyncQueryable<TSource>
+    {
+        /// <summary>
+        /// An interface representation of EntityFrameworkQueryableExtensions 
+        /// for swappable data provider logic.
+        /// </summary>
+        string ToQueryString(IQueryable source);
+
+        #region Any/All
+        Task<bool> AnyAsync(CancellationToken cancellationToken = default);
+        Task<bool> AnyAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<bool> AllAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region Count/LongCount
+        Task<int> CountAsync(CancellationToken cancellationToken = default);
+        Task<int> CountAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<long> LongCountAsync(CancellationToken cancellationToken = default);
+        Task<long> LongCountAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region ElementAt
+        Task<TSource> ElementAtAsync(int index, CancellationToken cancellationToken = default);
+        Task<TSource?> ElementAtOrDefaultAsync(int index, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region First/FirstOrDefault
+        Task<TSource> FirstAsync(CancellationToken cancellationToken = default);
+        Task<TSource> FirstAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<TSource?> FirstOrDefaultAsync(CancellationToken cancellationToken = default);
+        Task<TSource?> FirstOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region Last/LastOrDefault
+        Task<TSource> LastAsync(CancellationToken cancellationToken = default);
+        Task<TSource> LastAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<TSource?> LastOrDefaultAsync(CancellationToken cancellationToken = default);
+        Task<TSource?> LastOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region Single/SingleOrDefault
+        Task<TSource> SingleAsync(CancellationToken cancellationToken = default);
+        Task<TSource> SingleAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<TSource?> SingleOrDefaultAsync(CancellationToken cancellationToken = default);
+        Task<TSource?> SingleOrDefaultAsync(Expression<Func<TSource, bool>> predicate, CancellationToken cancellationToken = default);
+        #endregion
+
+        #region Min/Max/Sum/Average
+        Task<TSource> MinAsync(CancellationToken cancellationToken = default);
+        Task<TResult> MinAsync<TResult>(Expression<Func<TSource, TResult>> selector, CancellationToken cancellationToken = default);
+        Task<TSource> MaxAsync(CancellationToken cancellationToken = default);
+        Task<TResult> MaxAsync<TResult>(Expression<Func<TSource, TResult>> selector, CancellationToken cancellationToken = default);
+
+        // Example for Sum (Repeat for other numeric types as needed)
+        Task<decimal> SumAsync(CancellationToken cancellationToken = default);
+        Task<decimal> SumAsync(Expression<Func<TSource, decimal>> selector, CancellationToken cancellationToken = default);
+
+        Task<decimal> AverageAsync(CancellationToken cancellationToken = default);
+        #endregion
+
+        #region Collections
+        Task<List<TSource>> ToListAsync(CancellationToken cancellationToken = default);
+        Task<TSource[]> ToArrayAsync(CancellationToken cancellationToken = default);
+        Task<HashSet<TSource>> ToHashSetAsync(CancellationToken cancellationToken = default);
+        #endregion
+
+        #region EF Specific Metadata/Tracking
+        IIncludableQueryable<TReturn, TProperty> Include<TReturn, TProperty>(Expression<Func<TReturn, TProperty>> navigationPropertyPath) where TReturn : class;
+        IQueryable<TReturn> AsNoTracking<TReturn>() where TReturn : class;
+        IQueryable<TSource> TagWith(string tag);
+        #endregion
+
+        #region Bulk Operations
+        Task<int> ExecuteDeleteAsync(CancellationToken cancellationToken = default);
+        #endregion
+    }
+
 }

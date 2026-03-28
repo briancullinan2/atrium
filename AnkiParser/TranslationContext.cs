@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataLayer;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 
 namespace AnkiParser
 {
-    public class TranslationContext(DbContextOptions<TranslationContext> ctx) : DbContext(ctx)
+    public class TranslationContext(string tempPath, DbContextOptions<TranslationContext> ctx) : DbContext(ctx)
     {
         public DbSet<Entities.Collection>? Collections { get; set; }
         public DbSet<Entities.Note>? Notes { get; set; }
@@ -13,6 +15,7 @@ namespace AnkiParser
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             base.OnConfiguring(options);// TODO: ??// options.AddInterceptors(new WrapperInterceptor());
+            options.UseSqlite($"Data Source={tempPath}");
         }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -23,6 +26,7 @@ namespace AnkiParser
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            Database.GetDbConnection().Open();
         }
     }
 }

@@ -70,6 +70,8 @@ export async function getRecord(storeName, key) {
     })
 }
 
+
+
 export async function queryIndex(storeName, indexName, lower, upper = null, getAll = true) {
     const db = await getDB()
     const tx = db.transaction(storeName, 'readonly')
@@ -84,6 +86,8 @@ export async function queryIndex(storeName, indexName, lower, upper = null, getA
         req.onerror = () => rj(req.error)
     })
 }
+
+
 
 export async function deleteRecord(storeName, key) {
     const db = await getDB();

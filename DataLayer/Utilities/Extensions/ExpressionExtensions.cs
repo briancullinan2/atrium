@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
@@ -570,5 +571,89 @@ namespace DataLayer.Utilities.Extensions
 
         [GeneratedRegex(@"(?<name>[^\[]+)(?:\[(?<index>\d+)\])?")]
         private static partial Regex BasicIndexerParser();
+
+
+        public static bool IsTerminal(this MethodInfo method)
+        {
+            var terminalMethods = new[]
+            { 
+
+                // Quantifiers (Booleans)
+                nameof(Queryable.Any),
+                nameof(Queryable.All),
+                nameof(Queryable.Contains),
+
+                // Element Operations (Single items)
+                nameof(Queryable.First),
+                nameof(Queryable.FirstOrDefault),
+                nameof(Queryable.Single),
+                nameof(Queryable.SingleOrDefault),
+                nameof(Queryable.Last),
+                nameof(Queryable.LastOrDefault),
+
+                // Aggregates (Math/Counts)
+                nameof(Queryable.Count),
+                nameof(Queryable.LongCount),
+                nameof(Queryable.Min),
+                nameof(Queryable.Max),
+                nameof(Queryable.Sum),
+                nameof(Queryable.Average),
+
+
+                // Collections & Arrays
+                nameof(Enumerable.ToList),
+                nameof(Enumerable.ToArray),
+                nameof(Enumerable.ToDictionary),
+                nameof(Enumerable.ToHashSet),
+
+                // Iteration & Logic
+                nameof(List<>.ForEach),
+
+
+
+                // Collections & Arrays
+                nameof(EntityFrameworkQueryableExtensions.ToListAsync),
+                nameof(EntityFrameworkQueryableExtensions.ToArrayAsync),
+                nameof(EntityFrameworkQueryableExtensions.ToDictionaryAsync),
+                nameof(EntityFrameworkQueryableExtensions.ToHashSetAsync),
+
+                // Quantifiers (Booleans)
+                nameof(EntityFrameworkQueryableExtensions.AnyAsync),
+                nameof(EntityFrameworkQueryableExtensions.AllAsync),
+                nameof(EntityFrameworkQueryableExtensions.ContainsAsync),
+
+                // Element Operations (Single items)
+                nameof(EntityFrameworkQueryableExtensions.FirstAsync),
+                nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.LastAsync),
+                nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync),
+
+                // Aggregates (Math/Counts)
+                nameof(EntityFrameworkQueryableExtensions.CountAsync),
+                nameof(EntityFrameworkQueryableExtensions.LongCountAsync),
+                nameof(EntityFrameworkQueryableExtensions.MinAsync),
+                nameof(EntityFrameworkQueryableExtensions.MaxAsync),
+                nameof(EntityFrameworkQueryableExtensions.SumAsync),
+                nameof(EntityFrameworkQueryableExtensions.AverageAsync),
+
+                // Iteration & Logic
+                nameof(EntityFrameworkQueryableExtensions.ForEachAsync),
+
+                // 2026 Batch Operations
+                nameof(EntityFrameworkQueryableExtensions.ExecuteDeleteAsync),
+                nameof(EntityFrameworkQueryableExtensions.ExecuteUpdateAsync)
+            };
+            return terminalMethods.Contains(method.Name);
+        }
+
+
+        public static bool IsTerminal(this MethodCallExpression node)
+        { 
+            return node.Method.IsTerminal();
+        }
+
+
     }
 }
