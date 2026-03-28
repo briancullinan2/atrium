@@ -6,17 +6,23 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace DataLayer.Utilities
 {
     internal class AggressiveVisitor : ExpressionVisitor
     {
 
-        protected class RecordMethod
+        public class RecordMethod
         {
             public string? MethodName { get; set; }
             public Type? MemberAccess { get; set; }
+            [JsonIgnore]
             public List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators { get; set; } = [];
+            public List<Tuple<string, string, object?>> SerializableComparators
+            {
+                get => Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value)).ToList();
+            }
             public Type? EntityType { get; set; }
             public bool AddBoth { get; set; } = false;
             public bool HasArithmetic { get; set; } = false;
@@ -28,7 +34,7 @@ namespace DataLayer.Utilities
         }
 
         protected RecordMethod? CurrentRecording { get; set; }
-        protected Dictionary<MethodInfo, RecordMethod> Recordings { get; set; } = [];
+        public Dictionary<MethodInfo, RecordMethod> Recordings { get; set; } = [];
 
 
         protected override Expression VisitBinary(BinaryExpression node)

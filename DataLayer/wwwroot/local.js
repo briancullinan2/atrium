@@ -37,7 +37,7 @@ export async function setupStore(storeName, keyPath, columnNames) {
             
             columnNames.forEach(col => {
                 if (col !== keyPath) {
-                    store.createIndex(col[0], col[1], { unique: false })
+                    store.createIndex(col.key, col.value, { unique: false })
                 }
             })
         }

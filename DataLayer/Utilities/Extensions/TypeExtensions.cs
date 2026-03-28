@@ -176,10 +176,10 @@ namespace DataLayer.Utilities.Extensions
 
         public static EntityMetadata Metadata(this Type any)
         {
-            if (_metadataCache.TryGetValue(any.GetType(), out var meta))
+            if (_metadataCache.TryGetValue(any, out var meta))
                 return meta;
-            var newMeta = new EntityMetadata(any.GetType());
-            _metadataCache.TryAdd(any.GetType(), newMeta);
+            var newMeta = new EntityMetadata(any);
+            _metadataCache.TryAdd(any, newMeta);
             return newMeta;
         }
 
@@ -234,6 +234,7 @@ namespace DataLayer.Utilities.Extensions
         public static IEnumerable<FieldInfo> GetFields(this Type? type, string? name = null, int? generic = null, bool all = false)
         {
             var results = new List<FieldInfo>();
+            var safety = 10;
             while (type != null)
             {
 
@@ -241,12 +242,14 @@ namespace DataLayer.Utilities.Extensions
                     .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
                     .Where(m => (name == null || m.Name == name)
                         && (generic == null || (generic == 0 && !m.FieldType.IsGenericType) || (m.FieldType.GetGenericArguments().Length == generic))
-                        );
-                results = [.. results, .. method];
+                        )
+                    .ToList();
+                results.AddRange(method);
                 type = type.BaseType;
+                if (--safety == 0) throw new InvalidOperationException("Whats going on?");
                 if (results.Count > 0 && !all) break;
             }
-            return [.. results];
+            return results;
         }
 
 

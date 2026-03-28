@@ -210,8 +210,27 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
+        public static ValueTask Invokable(this object component, IJSRuntime JS)
+        {
+            var type = component.GetType();
+            var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                                  .Select(m => m.Name)
+                                  .ToArray();
 
-        public static ValueTask JSInvokable(this IComponent component, IJSRuntime? JS = null)
+            var path = type.FullName ?? type.Name;
+
+            // 2. Wrap and Pin
+            var sentry = new InterconnectSentry(component);
+            var objRef = DotNetObjectReference.Create(sentry);
+
+            // 3. Register with the Method Names list
+            var await = JS.InvokeVoidAsync("interconnect.register", path, objRef, methodNames);
+
+            return await;
+        }
+
+
+        public static ValueTask Invokable(this IComponent component, IJSRuntime? JS = null)
         {
             if (component is RouteView or AuthorizeRouteView)
             {
@@ -222,28 +241,7 @@ namespace FlashCard.Utilities.Extensions
 
             if (js == null) return ValueTask.CompletedTask;
 
-            var type = component.GetType();
-            var path = type.FullName ?? type.Name;
-
-            // 1. Deep Magic: Snatch the private _componentId from ComponentBase
-            // This is the unique integer Blazor uses to track this specific instance
-            var componentId = component.GetId();
-            if (componentId == -1) return ValueTask.CompletedTask;
-
-            // 1. Get all public instance methods to inform the JS Proxy (optional but good for discovery)
-            var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                                  .Select(m => m.Name)
-                                  .ToArray();
-
-            // 2. Wrap and Pin
-            var sentry = new InterconnectSentry(component);
-            var objRef = DotNetObjectReference.Create(sentry);
-
-            // 3. Register with the Method Names list
-            var await = js.InvokeVoidAsync("interconnect.register", path, objRef, componentId, methodNames);
-
-
-            return await;
+            return Invokable((object)component, js);
         }
 
 
@@ -305,7 +303,7 @@ namespace FlashCard.Utilities.Extensions
                 var id = comp.GetId();
                 if (!_activeMirrors.ContainsKey(id))
                 {
-                    await comp.JSInvokable();
+                    await comp.Invokable();
                     _activeMirrors.Add(id, currentIds[id]);
                 }
             }

@@ -97,14 +97,17 @@ namespace DataLayer.Utilities
 
             Console.WriteLine("Executing: " + query.ToString());
             var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
-            var simpleExpression = new AggressiveVisitor().Visit(cleanExpression);
+            var visitor = new AggressiveVisitor();
+            var simpleExpression = visitor.Visit(cleanExpression);
+            var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
+            Console.WriteLine(JsonSerializer.Serialize(values));
 
             // This is exactly where you use your Expression Tree Converter
             var serialized = query.ToXDocument().ToString();
             Console.WriteLine("Converted: " + cleanExpression);
 
             if (Context.Module == null)
-                throw new InvalidOperationException("IDB Module not setup.");
+                throw new InvalidOperationException("IDB Module not setup for query.");
 
 
 

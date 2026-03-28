@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.JSInterop;
 using System.Reflection;
+using System.Text.Json;
 
 namespace DataLayer
 {
@@ -307,11 +308,13 @@ namespace DataLayer
                     var predicate = IEntityExtensions.ListPredicate(EntityType)
                         .Select(p => p.Name);
                     var columns = IEntityExtensions.ListDatabase(EntityType)
-                        .Select<PropertyInfo, (string Key, List<string> Columns)>(p => (p.Name, [p.Name]));
+                        .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
                     var indexes = IEntityExtensions.ListIndexes(EntityType)
-                        .Select<KeyValuePair<string, List<PropertyInfo>>, (string Key, List<string> Columns)>(p =>
-                            (string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p.Value.Select(p => p.Name).ToList()));
-                    await Module.InvokeAsync<int>("setupStore", storeName, predicate, columns.Concat(indexes).DistinctBy(k => k.Key));
+                        .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
+                            string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => p.Value.Select(p => p.Name).ToList());
+                    var distinct = columns.Concat(indexes).DistinctBy(k => k.Key);
+                    Console.WriteLine("Creating store: " + storeName + " - " + JsonSerializer.Serialize(distinct));
+                    await Module.InvokeVoidAsync("setupStore", storeName, predicate, distinct);
                 }
 
             }

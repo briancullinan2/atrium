@@ -81,11 +81,11 @@ window.listenToResize = (dotnetHelper) => {
 window.interconnect = {
     activeReapers: {},
 
-    register: function(path, dotnetHelper, componentId, methodNames = []) {
+    register: function(path, dotnetHelper, methodNames = []) {
         // 1. REAPER CHECK: Skip if already wired to this specific instance
-        if (this.activeReapers[path] && this.activeReapers[path].id === componentId) {
-            return;
-        }
+        //if (this.activeReapers[path] && this.activeReapers[path].id === componentId) {
+        //    return;
+        //}
 
         if (this.activeReapers[path]) {
             this.unregister(path);

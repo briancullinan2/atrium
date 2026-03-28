@@ -76,7 +76,7 @@ namespace DataLayer.Utilities
             where TEntity : Entity<TEntity>
         {
             if (context.Module == null)
-                throw new InvalidOperationException("IDB Module not setup.");
+                throw new InvalidOperationException("IDB Module not setup for saving.");
             await context.Module.InvokeAsync<int>("putRecord", Entity<TEntity>.Metadata.TableName, entity);
             return entity;
         }
