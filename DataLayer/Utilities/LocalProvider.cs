@@ -40,7 +40,7 @@ namespace DataLayer.Utilities
                 var innerType = typeT.GetGenericArguments().FirstOrDefault() ?? typeof(object);
 
                 // USE REFLECTION to call the inner method so T is 'Setting', not 'Task<Setting>'
-                var method = typeof(RemoteQueryProvider)
+                var method = typeof(LocalQueryProvider)
                     .GetMethod(nameof(ExecuteRemoteAsync), BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.MakeGenericMethod(innerType)
                     ?? throw new InvalidOperationException("Method not found");
@@ -57,7 +57,7 @@ namespace DataLayer.Utilities
                 var itemType = typeT.GetGenericArguments()[0];
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
-                var method = typeof(RemoteQueryProvider)
+                var method = typeof(LocalQueryProvider)
                     .GetMethod(nameof(ExecuteRemoteAsync), BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.MakeGenericMethod(listType)
                     ?? throw new InvalidOperationException("Method not found");
@@ -71,7 +71,7 @@ namespace DataLayer.Utilities
 
         private object CreateAsyncEnumerableFromTask(object task, Type itemType)
         {
-            var method = typeof(RemoteQueryProvider)
+            var method = typeof(LocalQueryProvider)
                 .GetMethod(nameof(ToAsyncEnumerableInternal), BindingFlags.NonPublic | BindingFlags.Static)?
                 .MakeGenericMethod(itemType)
                 ?? throw new InvalidOperationException("Could not render ToAsyncEnumerableInternal function.");
@@ -91,9 +91,9 @@ namespace DataLayer.Utilities
 
         private async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken? ct = null)
         {
-            var Context = Current.Context as RemoteStorage
+            var Context = Current.Context as TranslationContext
                 ?? throw new InvalidOperationException("Could not render remote storage context.");
-            if (Context.Client == null) throw new InvalidOperationException("No Http client.");
+            //if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 
             Console.WriteLine("Executing: " + query.ToString());
             var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);

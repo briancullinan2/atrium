@@ -100,7 +100,7 @@
 
 @code
 {
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.EditPack));
+
 
     [Category("Pack")]
     public DataLayer.Entities.Pack? CurrentPack { get; set; }
@@ -138,10 +138,10 @@
 
     protected override void OnInitialized()
     {
-        TitleLayout = DataLayer.EntityMetadata.Pack.Groups["Title"]?.FirstOrDefault();
-        GeneralLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Info"];
-        StatusLayout = DataLayer.EntityMetadata.Pack.Groups["Pack Status"];
-        CardsLayout = Pages.Landing.EditPack.Metadata.Categories["Edit"];
+        TitleLayout = DataLayer.Entities.Pack.Metadata.Groups["Title"]?.FirstOrDefault();
+        GeneralLayout = DataLayer.Entities.Pack.Metadata.Groups["Pack Info"];
+        StatusLayout = DataLayer.Entities.Pack.Metadata.Groups["Pack Status"];
+        CardsLayout = typeof(Pages.Landing.EditPack).Metadata().Categories["Edit"];
         Nav.LocationChanged += OnLocationChanged;
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         TitleService?.UpdateTitle("Edit Pack");

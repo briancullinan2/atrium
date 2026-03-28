@@ -138,8 +138,8 @@ namespace FlashCard.Services
                     newMessage = new DataLayer.Entities.Message
                     {
                         Source = Source,
-                        Title = (Title ?? exception.Message).Limit(DataLayer.EntityMetadata.Message.MaxLength[x => x.Title] ?? 1024),
-                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled)?.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Title = (Title ?? exception.Message).Limit(DataLayer.Entities.Message.Metadata.MaxLength[x => x.Title] ?? 1024),
+                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled)?.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
@@ -150,8 +150,8 @@ namespace FlashCard.Services
                     newMessage = new DataLayer.Entities.Message
                     {
                         Source = Source,
-                        Title = Title.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
-                        Body = stackWhenCalled.Limit(DataLayer.EntityMetadata.Message.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Title = Title.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
+                        Body = stackWhenCalled.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4

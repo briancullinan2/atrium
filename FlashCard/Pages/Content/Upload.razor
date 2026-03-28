@@ -78,7 +78,6 @@
 @code
 {
     // TODO: decide when to synchronize the file storage with memory storage
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Content.Upload));
     [Category("Display")]
     public List<DataLayer.Entities.File>? Uploads { get; set; }
     public List<DataLayer.Entities.File>? AnkiSearch { get; set; }
@@ -119,8 +118,8 @@
     {
         base.OnInitialized();
         MenuService.SetMenu(@<FlashCard.Pages.Shared.Packs />);
-        FilesLayout = Pages.Content.Upload.Metadata.Categories["Display"]?.ToList();
-        CardsLayout = Pages.Content.Upload.Metadata.Categories["Content"]?.ToList();
+        FilesLayout = typeof(Pages.Content.Upload).Metadata().Categories["Display"]?.ToList();
+        CardsLayout = typeof(Pages.Content.Upload).Metadata().Categories["Content"]?.ToList();
         File.OnFileDragging += OnDragging;
         _ = PopulateUploads();
     }

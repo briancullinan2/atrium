@@ -900,7 +900,7 @@ namespace DataLayer.Utilities.Extensions
                     if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
                         continue;
 
-                    if (!prop.CanWrite || prop.GetSetMethod(nonPublic: true) == null)
+                    if (prop.ReadOnly())
                         continue;
 
                     var baseType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;

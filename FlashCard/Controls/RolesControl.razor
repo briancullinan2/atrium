@@ -11,7 +11,7 @@
 
     protected override void OnInitialized()
     {
-        RoleLayout = DataLayer.EntityMetadata.Role.Categories["Editable"]?.ToList();
+        RoleLayout = Role.Metadata.Categories["Editable"]?.ToList();
     }
 
     public string GetBackgroundColor(int? index)

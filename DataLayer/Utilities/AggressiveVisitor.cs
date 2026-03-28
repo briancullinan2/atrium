@@ -266,7 +266,8 @@ namespace DataLayer.Utilities
 
             FilterBad(node);
 
-            FilterBadNonAsync(node);
+            // Too aggressive
+            //FilterBadNonAsync(node);
 
 
             // 2. Identify if this method has a Predicate (Func<T, bool>)

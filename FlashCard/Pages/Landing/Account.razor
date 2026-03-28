@@ -69,8 +69,8 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        GeneralLayout = DataLayer.EntityMetadata.User.Groups["General Info"]?.ToList();
-        LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
+        GeneralLayout = User.Metadata.Groups["General Info"]?.ToList();
+        LoginLayout = User.Metadata.Groups["Login Info"]?.ToList();
 
         if (IsStaticRender) return;
 

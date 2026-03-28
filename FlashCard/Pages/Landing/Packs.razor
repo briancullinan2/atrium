@@ -39,7 +39,7 @@
 </div>
 
 @code {
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Packs));
+
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
@@ -55,7 +55,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        RecentLayout = Pages.Landing.Packs.Metadata.Categories["Recent"]?.ToList();
+        RecentLayout = typeof(Pages.Landing.Packs).Metadata().Categories["Recent"]?.ToList();
 
         if (IsStaticRender) return;
 

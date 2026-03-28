@@ -74,7 +74,7 @@
 
 
 @code {
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Landing.Courses));
+
     [Category("Recent")]
     public List<DataLayer.Entities.Course> Recent { get; set; } = new();
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
@@ -107,9 +107,9 @@
     {
         base.OnInitialized();
         // Define the contextual menu for THIS page
-        RecentLayout = Pages.Landing.Courses.Metadata.Categories["Recent"]?.ToList();
-        InfoLayout = DataLayer.EntityMetadata.Group.Groups["Group Info"]?.ToList();
-        ExtendedLayout = DataLayer.EntityMetadata.Group.Groups["Extended Info"]?.ToList();
+        RecentLayout = typeof(Pages.Landing.Courses).Metadata().Categories["Recent"]?.ToList();
+        InfoLayout = Group.Metadata.Groups["Group Info"]?.ToList();
+        ExtendedLayout = Group.Metadata.Groups["Extended Info"]?.ToList();
 
         if (IsStaticRender) return;
 

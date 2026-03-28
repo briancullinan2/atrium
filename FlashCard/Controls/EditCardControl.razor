@@ -6,7 +6,6 @@
 {
     public class EditControl
     {
-        public static EntityMetadata Metadata = new EntityMetadata(typeof(EditControl));
         [Category("Display")]
         public DataLayer.Entities.Card? Card { get; set; }
 
@@ -15,7 +14,6 @@
         public int? Index { get; set; }
     }
 
-    public static EntityMetadata Metadata = new EntityMetadata(typeof(Controls.EditCardControl));
     [Category("Results")]
     public IEnumerable<Controls.ResultsCardControl.ResultCard>? Results { get; set; }
 
@@ -28,9 +26,9 @@
 
     protected override void OnInitialized()
     {
-        CardLayout = DataLayer.EntityMetadata.Card.Categories["Content"]?.ToList();
-        PreviewLayout = EditControl.Metadata.Categories["Display"]?.ToList();
-        ResultLayout = Controls.EditCardControl.Metadata.Categories["Results"]?.ToList();
+        CardLayout = Card.Metadata.Categories["Content"]?.ToList();
+        PreviewLayout = typeof(EditControl).Metadata().Categories["Display"]?.ToList();
+        ResultLayout = typeof(Controls.EditCardControl).Metadata().Categories["Results"]?.ToList();
     }
 
     protected void ToggleCard(EditControl card)

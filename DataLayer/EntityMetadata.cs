@@ -133,7 +133,7 @@ namespace DataLayer
         public string? TableName { get; private set; }
 
 
-        public EntityMetadata(Type entityType) : base()
+        internal EntityMetadata(Type entityType) : base()
         {
             EntityType = entityType;
 

@@ -82,7 +82,6 @@
 
 @code {
 
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Groups));
     [Category("Display")]
     public IEnumerable<DataLayer.Entities.Group>? CurrentGroups { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; }
@@ -103,9 +102,9 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        GroupLayout = Pages.Admin.Groups.Metadata.Categories["Display"]?.ToList();
-        InfoLayout = DataLayer.EntityMetadata.Group.Groups["Group Info"]?.ToList();
-        ExtendedLayout = DataLayer.EntityMetadata.Group.Groups["Extended Info"]?.ToList();
+        GroupLayout = typeof(Pages.Admin.Groups).Metadata().Categories["Display"]?.ToList();
+        InfoLayout = Group.Metadata.Groups["Group Info"]?.ToList();
+        ExtendedLayout = Group.Metadata.Groups["Extended Info"]?.ToList();
         
         if (IsStaticRender) return;
 

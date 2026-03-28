@@ -1,10 +1,14 @@
 ﻿using DataLayer.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace DataLayer.Utilities.Extensions
 {
@@ -266,10 +270,7 @@ namespace DataLayer.Utilities.Extensions
             var type = typeof(TEntity);
 
             // 1. Find properties via Reflection that have the [Key] attribute
-            var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
-            var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null || primaryKey?.Contains(p.Name) == true)
-                .ToList();
+            var keyProperties = Entity<TEntity>.Predicate;
 
             // Fallback: If no [Key] attribute, check for "Id" or "{ClassName}Id" 
             // to match EF's default convention
@@ -362,5 +363,102 @@ namespace DataLayer.Utilities.Extensions
         {
             return (await EntryAsync(context, entity)) != null;
         }
+
+
+        public static List<PropertyInfo> ListDatabase(Type type)
+        {
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =>
+                    //p.GetGetMethod()?.IsVirtual != true
+                    !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            return properties;
+        }
+
+
+
+        public static List<PropertyInfo> ListPredicate(Type type)
+        {
+            var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
+            var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttribute<KeyAttribute>() != null || primaryKey?.Contains(p.Name) == true)
+                .ToList();
+            return keyProperties;
+        }
+
+
+        public static Dictionary<string, List<PropertyInfo>> ListIndexes(Type type)
+        {
+            var indexes = type.GetCustomAttributes<IndexAttribute>()
+                .ToDictionary<IndexAttribute,string, List<PropertyInfo>>(
+                    i => i.Name ?? string.Empty, 
+                    i => [.. type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(p => i.PropertyNames.Contains(p.Name))]);
+            return indexes;
+        }
+
+
+        public static List<PropertyInfo> ListInteresting(Type type)
+        {
+            var foreignKeys = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Select(p => Attribute.GetCustomAttribute(p, typeof(ForeignKeyAttribute))?.TypeId);
+
+            // Get properties that are NOT virtual (Nav properties) and NOT marked [NotMapped]
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =>
+                    !foreignKeys.Contains(p.Name) // TODO: skip all FK IDs because they might not match on server
+                                                  //&& p.GetGetMethod()?.IsVirtual != true
+                    && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
+                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
+                    && !Attribute.IsDefined(p, typeof(ForeignKeyAttribute)) // comparing id is enough
+                    && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType))
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            return properties;
+        }
+
+        public static List<PropertyInfo> ListDisplay(Type type)
+        {
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p =>
+                    (Attribute.IsDefined(p, typeof(CategoryAttribute))
+                    || Attribute.IsDefined(p, typeof(DisplayAttribute)))
+                    && (string.Equals(p.GetCustomAttribute<CategoryAttribute>()?.Category, "Display")
+                    || string.Equals(p.GetCustomAttribute<DisplayAttribute>()?.GroupName, "Display"))
+                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
+                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
+
+                    )
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            return properties;
+        }
+
+
+
+        public static List<(string Name, Type EntityType)> Schemas(DbContext context)
+        {
+            return context.GetType().Schemas();
+        }
+
+
+        public static List<(string Name, Type EntityType)> Schemas(this Type contextType)
+        {
+            return [.. contextType.GetProperties()
+                .Where(p => p.PropertyType.IsGenericType &&
+                            p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+                .Select(p => (
+                    Name: p.PropertyType.GetCustomAttributes().OfType<TableAttribute>().FirstOrDefault()?.Name ?? p.Name,
+                    EntityType: p.PropertyType.GetGenericArguments()[0]
+                ))];
+        }
+
+
     }
 }

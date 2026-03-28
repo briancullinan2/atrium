@@ -31,12 +31,10 @@ namespace DataLayer.Entities
     public interface IEntity<T> : IEntity where T : Entity<T>, IEntity<T>
     {
 
+        static abstract List<PropertyInfo> Predicate { get; }
         static abstract List<PropertyInfo> Display { get; }
-        static abstract List<PropertyInfo> ListDisplay(Type type);
         static abstract List<PropertyInfo> Database { get; }
-        static abstract List<PropertyInfo> ListDatabase(Type type);
         static abstract List<PropertyInfo> Interesting { get; }
-        static abstract List<PropertyInfo> ListInteresting(Type type);
         static abstract EntityMetadata<T> Metadata { get; }
 
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
@@ -70,64 +68,15 @@ namespace DataLayer.Entities
         }
 
         [NotMapped]
-        public static List<PropertyInfo> Database { get => ListDatabase(typeof(T)); }
+        public static List<PropertyInfo> Database { get => IEntityExtensions.ListDatabase(typeof(T)); }
         [NotMapped]
-        public static List<PropertyInfo> Interesting { get => ListInteresting(typeof(T)); }
+        public static List<PropertyInfo> Interesting { get => IEntityExtensions.ListInteresting(typeof(T)); }
         [NotMapped]
-        public static List<PropertyInfo> Display { get => ListDisplay(typeof(T)); }
-        public static List<PropertyInfo> ListDatabase(Type type)
-        {
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p =>
-                    //p.GetGetMethod()?.IsVirtual != true
-                    !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
-                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
-                .OrderBy(p => p.Name)
-                .ToList();
-
-            return properties;
-        }
-
-
-
-        public static List<PropertyInfo> ListInteresting(Type type)
-        {
-            var foreignKeys = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Select(p => Attribute.GetCustomAttribute(p, typeof(ForeignKeyAttribute))?.TypeId);
-
-            // Get properties that are NOT virtual (Nav properties) and NOT marked [NotMapped]
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p =>
-                    !foreignKeys.Contains(p.Name) // TODO: skip all FK IDs because they might not match on server
-                                                  //&& p.GetGetMethod()?.IsVirtual != true
-                    && !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
-                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
-                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
-                    && !Attribute.IsDefined(p, typeof(ForeignKeyAttribute)) // comparing id is enough
-                    && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType))
-                .OrderBy(p => p.Name)
-                .ToList();
-
-            return properties;
-        }
-
-        public static List<PropertyInfo> ListDisplay(Type type)
-        {
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p =>
-                    (Attribute.IsDefined(p, typeof(CategoryAttribute))
-                    || Attribute.IsDefined(p, typeof(DisplayAttribute)))
-                    && (string.Equals(p.GetCustomAttribute<CategoryAttribute>()?.Category, "Display")
-                    || string.Equals(p.GetCustomAttribute<DisplayAttribute>()?.GroupName, "Display"))
-                    && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
-                    && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
-
-                    )
-                .OrderBy(p => p.Name)
-                .ToList();
-
-            return properties;
-        }
+        public static List<PropertyInfo> Display { get => IEntityExtensions.ListDisplay(typeof(T)); }
+        [NotMapped]
+        public static List<PropertyInfo> Predicate { get => IEntityExtensions.ListPredicate(typeof(T)); }
+        [NotMapped]
+        public static Dictionary<string,List<PropertyInfo>> Indexes { get => IEntityExtensions.ListIndexes(typeof(T)); }
 
 
         public override bool Equals(object? obj)

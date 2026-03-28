@@ -145,7 +145,7 @@
     [JsonPropertyName("step")]
     public StepMode Step { get; set; } = StepMode.Intro;
     public StepMode? PreviousStep { get; set; } = null;
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Course.Course));
+
     [JsonPropertyName("quiz")]
     [Category("Display")]
     public IEnumerable<DataLayer.Entities.Card>? CurrentQuiz { get; set; }
@@ -199,8 +199,8 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        CardLayout = Pages.Course.Course.Metadata.Categories["Display"]?.ToList();
-        ResultLayout = Pages.Course.Course.Metadata.Categories["Results"]?.ToList();
+        CardLayout = typeof(Pages.Course.Course).Metadata().Categories["Display"]?.ToList();
+        ResultLayout = typeof(Pages.Course.Course).Metadata().Categories["Results"]?.ToList();
 
         // TODO: make sure this goes through RemoteQuery on web assembly client
         //_ = LoadDataAsync();

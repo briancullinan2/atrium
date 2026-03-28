@@ -1,11 +1,14 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.JSInterop;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -18,10 +21,12 @@ namespace DataLayer.Utilities
 
         private readonly HttpClient _httpClient;
 
-        public RemoteManager(HttpClient client, IServiceProvider Service) : base(Service)
+        public IJSRuntime JS { get; }
+
+        public RemoteManager(IJSRuntime js, HttpClient client, IServiceProvider Service) : base(Service)
         {
-            PersistentStorage = StorageType.Test;
-            EphemeralStorage = StorageType.Remote;
+            PersistentStorage = StorageType.Remote; // TODO: switch these back
+            EphemeralStorage = StorageType.Test;
 
             //var context = GetContext(EphemeralStorage) as RemoteStorage
             //    ?? throw new InvalidOperationException("Remote context is not of type: " + typeof(RemoteStorage));
@@ -29,27 +34,17 @@ namespace DataLayer.Utilities
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
             //FinalProvider = new RemoteQueryProvider(context);
 
-
+            JS = js;
             _httpClient = client;
         }
 
 
-
-        protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
+        protected async Task<TEntity> SaveRemote<TEntity>(RemoteStorage context, TEntity entity)
+            where TEntity : class
         {
             var serialized = new XDocument(LinqExtensions.VisitToXml(Expression.Constant(entity), 0, 0));
             Console.WriteLine("Save Object: " + serialized);
 
-            if (_httpClient == null)
-            {
-                throw new InvalidOperationException("No Http client.");
-            }
-
-            var context = GetContext(storage)
-                ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
-
-            //var xml = Expression.Constant(results).ToXDocument().ToString();
-            //var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
             var baseAddress = (context as RemoteStorage)?.BaseAddress?.TrimEnd('/');
             var queryAddress = (!string.IsNullOrEmpty(baseAddress) ? (baseAddress + (!baseAddress.EndsWith('/') ? '/' : "")) : "")
                 + "api/save";
@@ -73,6 +68,36 @@ namespace DataLayer.Utilities
             context.Entry(resultEntity).State = EntityState.Detached;
 
             return resultEntity;
+        }
+
+
+
+        protected async Task<TEntity> SaveLocal<TEntity>(TestStorage context, TEntity entity)
+            where TEntity : Entity<TEntity>
+        {
+            await JS.InvokeAsync<int>("putRecord", Entity<TEntity>.Metadata.TableName, entity);
+            return entity;
+        }
+
+
+
+        protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
+        {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("No Http client.");
+            }
+
+            var context = GetContext(storage)
+                ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
+
+            if (context is RemoteStorage remote)
+                return await SaveRemote<TEntity>(remote, entity);
+            else if (context is TestStorage test)
+                return await SaveLocal<TEntity>(test, entity);
+            else
+                return await base.SaveNow(storage, entity);
+            
         }
     }
 }

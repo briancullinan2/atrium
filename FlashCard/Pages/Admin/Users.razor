@@ -79,7 +79,6 @@
 
 
 @code {
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Users));
 
     public bool FilterChanged { get; set; }
     [Category("Display")] public static IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
@@ -110,9 +109,9 @@
     {
         base.OnInitialized();
 
-        UserLayout = Pages.Admin.Users.Metadata.Categories["Display"]?.ToList();
-        GeneralLayout = DataLayer.EntityMetadata.User.Groups["General Info"]?.ToList();
-        LoginLayout = DataLayer.EntityMetadata.User.Groups["Login Info"]?.ToList();
+        UserLayout = typeof(Pages.Admin.Users).Metadata().Categories["Display"]?.ToList();
+        GeneralLayout = User.Metadata.Groups["General Info"]?.ToList();
+        LoginLayout = User.Metadata.Groups["Login Info"]?.ToList();
         
         if (IsStaticRender) return;
 

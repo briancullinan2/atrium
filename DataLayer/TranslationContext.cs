@@ -1,5 +1,6 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -8,6 +9,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.JSInterop;
+using System.Reflection;
 
 namespace DataLayer
 {
@@ -15,6 +18,8 @@ namespace DataLayer
     public class TranslationContext(IQueryManager query, DbContextOptions ctx) : DbContext(ctx)
     {
         public IQueryManager Query { get; set; } = query;
+
+
         public DbSet<Permission>? Permissions { get; set; }
         public DbSet<Role>? Roles { get; set; }
         public DbSet<User>? Users { get; set; }
@@ -51,6 +56,7 @@ namespace DataLayer
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
+
             _ = configurationBuilder.Properties<DisplayType>().HaveConversion<int>();
             _ = configurationBuilder.Properties<ControlMode>().HaveConversion<int>();
             _ = configurationBuilder.Properties<Gender>().HaveConversion<int>();
@@ -71,22 +77,22 @@ namespace DataLayer
             _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
 
 
-            _ = modelBuilder.Entity<Message>().ToTable(EntityMetadata.Message.TableName);
-            _ = modelBuilder.Entity<Permission>().ToTable(EntityMetadata.Permission.TableName);
-            _ = modelBuilder.Entity<Role>().ToTable(EntityMetadata.Role.TableName);
-            _ = modelBuilder.Entity<Setting>().ToTable(EntityMetadata.Setting.TableName);
-            _ = modelBuilder.Entity<User>().ToTable(EntityMetadata.User.TableName);
-            _ = modelBuilder.Entity<Card>().ToTable(EntityMetadata.Card.TableName);
-            _ = modelBuilder.Entity<Pack>().ToTable(EntityMetadata.Pack.TableName);
-            _ = modelBuilder.Entity<Answer>().ToTable(EntityMetadata.Answer.TableName);
-            _ = modelBuilder.Entity<Group>().ToTable(EntityMetadata.Group.TableName);
-            _ = modelBuilder.Entity<Entities.File>().ToTable(EntityMetadata.File.TableName);
-            _ = modelBuilder.Entity<Visit>().ToTable(EntityMetadata.Visit.TableName);
-            _ = modelBuilder.Entity<Session>().ToTable(EntityMetadata.Session.TableName);
-            _ = modelBuilder.Entity<Subject>().ToTable(EntityMetadata.Subject.TableName);
-            _ = modelBuilder.Entity<Schedule>().ToTable(EntityMetadata.Schedule.TableName);
-            _ = modelBuilder.Entity<Grade>().ToTable(EntityMetadata.Grade.TableName);
-            _ = modelBuilder.Entity<Lesson>().ToTable(EntityMetadata.Lesson.TableName);
+            _ = modelBuilder.Entity<Message>().ToTable(Message.Metadata.TableName);
+            _ = modelBuilder.Entity<Permission>().ToTable(Permission.Metadata.TableName);
+            _ = modelBuilder.Entity<Role>().ToTable(Role.Metadata.TableName);
+            _ = modelBuilder.Entity<Setting>().ToTable(Setting.Metadata.TableName);
+            _ = modelBuilder.Entity<User>().ToTable(User.Metadata.TableName);
+            _ = modelBuilder.Entity<Card>().ToTable(Card.Metadata.TableName);
+            _ = modelBuilder.Entity<Pack>().ToTable(Pack.Metadata.TableName);
+            _ = modelBuilder.Entity<Answer>().ToTable(Answer.Metadata.TableName);
+            _ = modelBuilder.Entity<Group>().ToTable(Group.Metadata.TableName);
+            _ = modelBuilder.Entity<Entities.File>().ToTable(Entities.File.Metadata.TableName);
+            _ = modelBuilder.Entity<Visit>().ToTable(Visit.Metadata.TableName);
+            _ = modelBuilder.Entity<Session>().ToTable(Session.Metadata.TableName);
+            _ = modelBuilder.Entity<Subject>().ToTable(Subject.Metadata.TableName);
+            _ = modelBuilder.Entity<Schedule>().ToTable(Schedule.Metadata.TableName);
+            _ = modelBuilder.Entity<Grade>().ToTable(Grade.Metadata.TableName);
+            _ = modelBuilder.Entity<Lesson>().ToTable(Lesson.Metadata.TableName);
 
             NeedsInitialize = true;
         }
@@ -205,27 +211,6 @@ namespace DataLayer
     }
 
 
-    public partial class EntityMetadata
-    {
-        public static EntityMetadata<Answer> Answer => new();
-        public static EntityMetadata<Pack> Pack => new();
-        public static EntityMetadata<Card> Card => new();
-        public static EntityMetadata<Permission> Permission => new();
-        public static EntityMetadata<User> User => new();
-        public static EntityMetadata<Role> Role => new();
-        public static EntityMetadata<Setting> Setting => new();
-        public static EntityMetadata<Message> Message => new();
-        public static EntityMetadata<Entities.File> File => new();
-        public static EntityMetadata<Group> Group => new();
-        public static EntityMetadata<Visit> Visit => new();
-        public static EntityMetadata<Session> Session => new();
-        public static EntityMetadata<Subject> Subject => new();
-        public static EntityMetadata<Schedule> Schedule => new();
-        public static EntityMetadata<Grade> Grade => new();
-        public static EntityMetadata<Lesson> Lesson => new();
-
-    }
-
 
     // expected to reset only the first time the application runs and be persistent on disk
     public class PersistentStorage(IQueryManager service, DbContextOptions<PersistentStorage> ctx) : TranslationContext(service, ctx)
@@ -274,7 +259,7 @@ namespace DataLayer
             if (NeedsInitialize)
             {
                 NeedsInitialize = false;
-                await Database.EnsureCreatedAsync();
+                //await Database.EnsureCreatedAsync();
             }
         }
         public override async Task EnsureGlobalIdentityStart()
@@ -284,7 +269,7 @@ namespace DataLayer
 
 
     // expected to reset multiple times per instance run
-    public class TestStorage(IQueryManager service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
+    public class TestStorage(IJSRuntime JS, IQueryManager service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
     {
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -298,6 +283,20 @@ namespace DataLayer
 
         public override async Task EnsureGlobalIdentityStart()
         {
+
+            foreach (var (Name, EntityType) in IEntityExtensions.Schemas(this))
+            {
+                var storeName = EntityType.Metadata().TableName;
+                var predicate = IEntityExtensions.ListPredicate(EntityType)
+                    .Select(p => p.Name);
+                var columns = IEntityExtensions.ListDatabase(EntityType)
+                    .Select<PropertyInfo, (string Key, List<string> Columns)>(p => (p.Name, [p.Name]));
+                var indexes = IEntityExtensions.ListIndexes(EntityType)
+                    .Select<KeyValuePair<string,List<PropertyInfo>>, (string Key,List<string> Columns)>(p => 
+                        (string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p.Value.Select(p => p.Name).ToList()));
+                await JS.InvokeAsync<int>("setupStore", storeName, predicate, columns.Concat(indexes).DistinctBy(k => k.Key));
+            }
+
         }
 
         protected override async Task PerformInitialization()
@@ -305,7 +304,8 @@ namespace DataLayer
             if (NeedsInitialize)
             {
                 NeedsInitialize = false;
-                await Database.EnsureCreatedAsync();
+                //await Database.EnsureCreatedAsync();
+
             }
         }
     }

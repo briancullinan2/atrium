@@ -42,7 +42,6 @@
 
 @code {
 
-    public static EntityMetadata Metadata => new EntityMetadata(typeof(Pages.Admin.Roles));
     [Category("Display")]
     public IEnumerable<Controls.RolesControl.ControlRole>? CurrentRoles { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; }
@@ -55,7 +54,7 @@
     {
         // Define the contextual menu for THIS page
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
-        RolesLayout = Pages.Admin.Roles.Metadata.Categories["Display"]?.ToList();
+        RolesLayout = typeof(Pages.Admin.Roles).Metadata().Categories["Display"]?.ToList();
         Nav.LocationChanged += OnLocationChanged;
     }
 

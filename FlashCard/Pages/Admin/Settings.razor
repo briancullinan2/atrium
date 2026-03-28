@@ -259,7 +259,6 @@
         }
     }
 
-    static EntityMetadata Metadata = new EntityMetadata(typeof(Pages.Admin.Settings));
     IEnumerable<PropertyMetadata>? ThemeLayout { get; set; }
 
 
@@ -318,7 +317,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        ThemeLayout = Pages.Admin.Settings.Metadata.Groups["Themes"]?.ToList();
+        ThemeLayout = typeof(Pages.Admin.Settings).Metadata().Groups["Themes"]?.ToList();
         
         if (IsStaticRender) return;
         // we don't have to reinitialize theme just to get it to show up now

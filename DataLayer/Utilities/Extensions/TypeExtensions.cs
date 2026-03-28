@@ -141,6 +141,38 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static bool ReadOnly(this PropertyInfo property)
+        {
+            return !property.IsWritable();
+        }
+
+
+        public static bool IsWritable(this PropertyInfo property)
+        {
+            return property.CanWrite && property.GetSetMethod(nonPublic: true) != null;
+        }
+
+
+        private static readonly Dictionary<Type, EntityMetadata> _metadataCache = [];
+
+
+
+
+        public static EntityMetadata Metadata(this object any)
+        {
+            return any.GetType().Metadata();
+        }
+
+        public static EntityMetadata Metadata(this Type any)
+        {
+            if (_metadataCache.TryGetValue(any.GetType(), out var meta))
+                return meta;
+            var newMeta = new EntityMetadata(any.GetType());
+            _metadataCache.TryAdd(any.GetType(), newMeta);
+            return newMeta;
+        }
+
+
 
         public static IEnumerable<MethodInfo> GetMethods(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
         {
