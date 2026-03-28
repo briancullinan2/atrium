@@ -182,6 +182,7 @@
         // No need to StateHasChanged() because the SendMessage event handler will invoke it
     }
 
+    private bool PageHasChanged = true;
     private string? contextKey;
 
     protected async Task UnvaluedTask(CancellationToken ct = default)
@@ -216,7 +217,18 @@
         {
             await InvokeAsync(StateHasChanged);
         }
+
+        
+        if (PageHasChanged)
+        {
+            //_activeBody.Component()?.JSInvokable();
+            await this.Mirror();
+            PageHasChanged = false;
+        }
+
     }
+
+
 
     private async ValueTask HandleLocationChanging(LocationChangingContext context)
     {
@@ -235,7 +247,7 @@
         {
             return; // Exact same page, do nothing and let Blazor handle it
         }
-
+        PageHasChanged = true;
 
         var (targetType, targetParams) = NavigationExtensions.IdentifyNavigation(targetUri);
         var (currentType, currentParams) = NavigationExtensions.IdentifyNavigation(currentUri);
@@ -293,6 +305,7 @@
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
         ChatService.OnChatWorking += SetChat;
+
         //AuthProvider.AuthenticationStateChanged += (task) =>
         //{
         // If this line never hits when you login, the UI is NOT
@@ -301,6 +314,7 @@
         //};
         SetPageClass();
         _ = ChatService.IsWorking();
+        this.JSInvokable();
     }
 
     public void SetState(IComponent? state)
@@ -433,6 +447,7 @@
     {
         _errorBoundary?.Recover();
 
+
         if (!_isTransitioning)
         {
             _activeBody = Body;
@@ -474,6 +489,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+
+
         if (!initRender || Background == null)
         {
             return;

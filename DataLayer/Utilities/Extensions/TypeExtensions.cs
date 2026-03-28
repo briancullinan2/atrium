@@ -1,6 +1,9 @@
-﻿using System.Collections;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json;
 
 namespace DataLayer.Utilities.Extensions
 {
@@ -153,9 +156,17 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+
         private static readonly Dictionary<Type, EntityMetadata> _metadataCache = [];
 
 
+
+
+        [Obsolete("This probably isn't what you want, Metadata of a Metadata?")]
+        public static EntityMetadata Metadata(this EntityMetadata any)
+        {
+            return any;
+        }
 
 
         public static EntityMetadata Metadata(this object any)
@@ -173,22 +184,70 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-
-        public static IEnumerable<MethodInfo> GetMethods(this Type type, string name, int? generic = null, Type[]? extendedTypes = null)
+        public static IEnumerable<PropertyInfo> GetProperties(this Type? type, string? name = null, int? generic = null, Type[]? extendedTypes = null, bool all = false)
         {
-            var method = type
+            var results = new List<PropertyInfo>();
+            while (type != null)
+            {
+
+                var method = type
+                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                .Where(m => (name == null || m.Name == name)
+                    && (generic == null || (generic == 0 && !m.PropertyType.IsGenericType) || (m.PropertyType.GetGenericArguments().Length == generic))
+                    && (extendedTypes == null
+                        || m.GetIndexParameters().Where((p, i) =>
+                            extendedTypes.ElementAtOrDefault(i) is Type testTest
+                            && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
+                    );
+                results = [.. results, .. method];
+                type = type.BaseType;
+                if (results.Count > 0 && !all) break;
+            }
+            return [.. results];
+        }
+
+        public static IEnumerable<MethodInfo> GetMethods(this Type? type, string? name = null, int? generic = null, Type[]? extendedTypes = null, bool all = false)
+        {
+            var results = new List<MethodInfo>();
+            while (type != null)
+            {
+
+
+                var method = type
                 .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-                .Where(m => m.Name == name
+                .Where(m => (name == null || m.Name == name)
                     && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic))
                     && (extendedTypes == null
                         || m.GetParameters().Where((p, i) =>
                             extendedTypes.ElementAtOrDefault(i) is Type testTest
                             && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
                     );
-            return [.. method];
+
+                results = [.. results, .. method];
+                type = type.BaseType;
+                if (results.Count > 0 && !all) break;
+            }
+            return [.. results];
         }
 
 
+        public static IEnumerable<FieldInfo> GetFields(this Type? type, string? name = null, int? generic = null, bool all = false)
+        {
+            var results = new List<FieldInfo>();
+            while (type != null)
+            {
+
+                var method = type
+                    .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                    .Where(m => (name == null || m.Name == name)
+                        && (generic == null || (generic == 0 && !m.FieldType.IsGenericType) || (m.FieldType.GetGenericArguments().Length == generic))
+                        );
+                results = [.. results, .. method];
+                type = type.BaseType;
+                if (results.Count > 0 && !all) break;
+            }
+            return [.. results];
+        }
 
 
         public static bool Extends(this Type type, Type? genericDefinition)

@@ -72,7 +72,7 @@ namespace DataLayer.Utilities
 
 
 
-        protected async Task<TEntity> SaveLocal<TEntity>(TestStorage context, TEntity entity)
+        protected static async Task<TEntity> SaveLocal<TEntity>(TestStorage context, TEntity entity)
             where TEntity : Entity<TEntity>
         {
             if (context.Module == null)
