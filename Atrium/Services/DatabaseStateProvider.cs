@@ -44,14 +44,14 @@ namespace Atrium.Services
 #endif
             {
                 var currentSetting = await _query.Query<Setting>(s =>
-                    s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                    s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                     .FirstOrDefaultAsync();
                 sessionId = currentSetting?.Value;
 
                 if (sessionId == null)
                 {
                     var autoLoginSetting = await _query.Query<Setting>(s =>
-                        s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString())
+                        s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
                         .FirstOrDefaultAsync();
                     sessionId = autoLoginSetting?.Value;
                 }
@@ -165,11 +165,11 @@ namespace Atrium.Services
             var userEntity = await _query.Query<User>(u => u.Guid == guid).FirstOrDefaultAsync<User>();
             var currentSetting = await _query.Query<Setting>(s =>
                 s.Name != null
-                && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                 .FirstOrDefaultAsync()
                 ?? new Setting
                 {
-                    Name = DefaultPermissions.ApplicationCurrentUser.ToString()
+                    Name = nameof(DefaultPermissions.ApplicationCurrentUser)
                 };
             currentSetting.Value = newSession.Id;
             currentSetting.Guid = userEntity?.Guid;

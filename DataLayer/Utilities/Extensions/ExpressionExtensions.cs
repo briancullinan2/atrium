@@ -58,6 +58,37 @@ namespace DataLayer.Utilities.Extensions
             return current;
         }
 
+
+        public static bool IsArithmetic(this BinaryExpression node) => node.NodeType switch
+        {
+            ExpressionType.Add or ExpressionType.Subtract or
+            ExpressionType.Multiply or ExpressionType.Divide or
+            ExpressionType.Modulo or ExpressionType.Power => true,
+            _ => false
+        };
+
+        public static bool IsBitwise(this BinaryExpression node) => node.NodeType switch
+        {
+            ExpressionType.And or ExpressionType.Or or
+            ExpressionType.ExclusiveOr => true,
+            _ => false
+        };
+
+        public static bool IsCompare(this BinaryExpression node) => node.NodeType switch
+        {
+            ExpressionType.Equal or ExpressionType.NotEqual or
+            ExpressionType.LessThan or ExpressionType.LessThanOrEqual or
+            ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual => true,
+            _ => false
+        };
+
+        public static bool IsBoolean(this BinaryExpression node) => node.NodeType switch
+        {
+            ExpressionType.AndAlso or ExpressionType.OrElse or
+            ExpressionType.Not => true,
+            _ => false
+        };
+
         // TODO: QueryManager.Query(string).Any(u => !u.IsDeleted) 
         // TODO: QueryManager.Query<User>().Where(string) 
         // TODO: QueryManager.Query<User>().OrderBy(string) 

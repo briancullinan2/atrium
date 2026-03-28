@@ -114,8 +114,8 @@ namespace FlashCard.Services
         {
             // discard the current user
 
-            var currentSetting = await Query.Query<DataLayer.Entities.Setting>(s =>
-                s.Name != null && s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+            var currentSetting = await Query.Query<Setting>(s =>
+                s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                 .FirstOrDefaultAsync();
             if (currentSetting?.Value != null)
             {
@@ -132,7 +132,7 @@ namespace FlashCard.Services
         {
 
             var autoLoginSetting = await Query.Query<DataLayer.Entities.Setting>(s =>
-                s.Name != null && s.Name == DefaultPermissions.ApplicationAutoLogin.ToString())
+                s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
                 .FirstOrDefaultAsync();
 
             if (autoLoginSetting?.Value != null)
@@ -152,8 +152,8 @@ namespace FlashCard.Services
         //   visiting. I wish modern video games worked this way, logging in is boring as shit
         public virtual async Task LoginDefaultUser()
         {
-            var defaultUserSetting = await Query.Query<DataLayer.Entities.Setting>(s =>
-                    s.Name != null && s.Name == DefaultPermissions.ApplicationDefaultUser.ToString())
+            var defaultUserSetting = await Query.Query<Setting>(s =>
+                    s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationDefaultUser))
                 .FirstOrDefaultAsync();
 
             if (defaultUserSetting?.Value == null)
@@ -188,7 +188,7 @@ namespace FlashCard.Services
         {
             // TODO: check here for cached value if database allows Guest accounts
             //   otherwise sneakily change expectations and return anonymous
-            var guest = Users.Generate().FirstOrDefault(u => u.Username == DefaultRoles.Guest.ToString());
+            var guest = Users.Generate().FirstOrDefault(u => u.Username == nameof(DefaultRoles.Guest));
 
             var guestClaims = new List<Claim>
             {

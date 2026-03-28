@@ -153,7 +153,7 @@
     {
         var newP = new Permission
         {
-            Name = DefaultPermissions.Unset.ToString(),
+            Name = nameof(DefaultPermissions.Unset),
             Simplified = SelectedTarget ?? "Global"
         };
         ActivePermissions.Add(newP);

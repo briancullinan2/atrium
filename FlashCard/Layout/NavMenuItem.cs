@@ -32,7 +32,7 @@ namespace FlashCard.Layout
         public bool IsBeta { get; set; } = false;
         public bool IsCollapsed { get; set; } = true; // Added state
         public virtual DefaultPermissions? Permission { get => RequiredPermission?.TryParse<DefaultPermissions>(); set => RequiredPermission = value.ToString(); }
-        public virtual string? RequiredPermission { get; set; } = DefaultPermissions.Unset.ToString();
+        public virtual string? RequiredPermission { get; set; } = nameof(DefaultPermissions.Unset);
         public virtual IEnumerable<INavMenuItem> Children { get; set; } = [];
     }
 

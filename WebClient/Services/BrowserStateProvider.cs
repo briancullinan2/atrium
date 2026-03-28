@@ -21,7 +21,7 @@ namespace WebClient.Services
 
                 // 1. Get SessionID from Local Settings (Your source of truth)
                 var currentSetting = await Query.Query<Setting>(s =>
-                    s.Name == DefaultPermissions.ApplicationCurrentUser.ToString())
+                    s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                     .FirstOrDefaultAsync();
 
                 string? sessionId = currentSetting?.Value;

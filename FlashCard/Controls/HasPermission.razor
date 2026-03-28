@@ -16,7 +16,7 @@
     private bool IsAuthorized =>
         Permission == null ||
         Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
-        LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true ||
-        LoginService.User?.Settings.Any(s => s.Name == DefaultPermissions.Unrestricted.ToString() || 
+        LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true ||
+        LoginService.User?.Settings.Any(s => s.Name == nameof(DefaultPermissions.Unrestricted) || 
             s.Name == Permission) == true;
 }

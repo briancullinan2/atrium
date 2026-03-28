@@ -72,7 +72,7 @@
                 && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
             {
                 //await user.Roles.First().Update();
-                user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == DefaultRoles.Admin.ToString()));
+                user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == nameof(DefaultRoles.Admin)));
                 await user.Save(QueryManager);
             }
 

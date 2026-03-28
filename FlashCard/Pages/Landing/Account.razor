@@ -83,7 +83,7 @@
         await base.OnInitializedAsync();
         // always redirect guests no matter what
         if (LoginService.User == null
-            || LoginService.User.Roles.Any(r => r.Name == DefaultRoles.Guest.ToString()))
+            || LoginService.User.Roles.Any(r => r.Name == nameof(DefaultRoles.Guest)))
         {
             if (IsStaticRender) return;
             Nav.NavigateTo(NavigationExtensions.GetUri<Pages.Landing.Login>());

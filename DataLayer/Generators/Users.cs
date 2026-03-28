@@ -11,10 +11,10 @@ namespace DataLayer.Generators
         public static IEnumerable<User> Generate()
         {
             return [
-                new User { FirstName = "System", LastName = "Admin", Username = DefaultRoles.Admin.ToString(), Password = "Password123!", MiddleInitial = "A", Roles = [new() { Name = DefaultRoles.Admin.ToString() }] },
-                new User { FirstName = "Guest", LastName = "Account", Username = DefaultRoles.Guest.ToString(), Password = "GuestPassword1!", MiddleInitial = "G", Roles = [new() { Name = DefaultRoles.Guest.ToString() }] },
-                new User { FirstName = "Technical", LastName = "Support", Username = DefaultRoles.Tech.ToString(), Password = "TechSupport1!", MiddleInitial = "T", Roles = [new() { Name = DefaultRoles.Tech.ToString() }] },
-                new User { FirstName = "Standard", LastName = "Client", Username = DefaultRoles.Client.ToString(), Password = "ClientUser1!", MiddleInitial = "C", Roles = [new() { Name = DefaultRoles.Client.ToString() }] }
+                new User { FirstName = "System", LastName = "Admin", Username = nameof(DefaultRoles.Admin), Password = "Password123!", MiddleInitial = "A", Roles = [new() { Name = nameof(DefaultRoles.Admin) }] },
+                new User { FirstName = "Guest", LastName = "Account", Username = nameof(DefaultRoles.Guest), Password = "GuestPassword1!", MiddleInitial = "G", Roles = [new() { Name = nameof(DefaultRoles.Guest) }] },
+                new User { FirstName = "Technical", LastName = "Support", Username = nameof(DefaultRoles.Tech), Password = "TechSupport1!", MiddleInitial = "T", Roles = [new() { Name = nameof(DefaultRoles.Tech) }] },
+                new User { FirstName = "Standard", LastName = "Client", Username = nameof(DefaultRoles.Client), Password = "ClientUser1!", MiddleInitial = "C", Roles = [new() { Name = nameof(DefaultRoles.Client) }] }
             ];
         }
     }

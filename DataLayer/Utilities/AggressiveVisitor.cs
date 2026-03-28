@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,112 +11,166 @@ namespace DataLayer.Utilities
 {
     internal class AggressiveVisitor : ExpressionVisitor
     {
-#if false
-        protected override Expression VisitBinary(BinaryExpression node)
+
+        protected class RecordMethod
         {
-            // 1. Handle OR - Forces Multiple Database Queries
-            if (node.NodeType == ExpressionType.OrElse)
+            public string? MethodName { get; set; }
+            public Type? MemberAccess { get; set; }
+            public List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators { get; set; } = [];
+            public Type? EntityType { get; set; }
+            public bool AddBoth { get; set; } = false;
+            public bool HasArithmetic { get; set; } = false;
+
+            public RecordMethod()
             {
-                // Split into two independent execution paths
-                Visit(node.Left);
-                var leftResults = ExecuteCurrentBag();
 
-                ClearBag();
-
-                Visit(node.Right);
-                var rightResults = ExecuteCurrentBag();
-
-                return CombineUnion(leftResults, rightResults);
-            }
-
-            // 2. Handle AND - Sequential Filtering
-            if (node.NodeType == ExpressionType.AndAlso)
-            {
-                // We visit the Left first to establish the Primary Index Seek
-                Visit(node.Left);
-
-                // We visit the Right, but we tag these as 'Post-Fetch' filters
-                // unless they are more restrictive/indexed than the Left.
-                Visit(node.Right);
-                return node;
-            }
-
-            // 3. Handle Arithmetic/Logic (The "Math on one side" rule)
-            if (IsArithmetic(node.NodeType))
-            {
-                // If we hit u.Age + 5 >= 21, throw the "Writer's Onus" error
-                throw new NotSupportedException(
-                    $"Arithmetic '{node.NodeType}' must be evaluated on the Constant side. " +
-                    "Please rewrite as: member [operator] (constant [math] constant).");
-            }
-
-            // 4. Standard Member/Constant Mapping
-            return MapMemberToConstant(node);
-        }
-
-
-        private void UpdateState(ExpressionType type, object value)
-        {
-            switch (type)
-            {
-                case ExpressionType.GreaterThanOrEqual:
-                    state.Lower = value;
-                    break;
-                case ExpressionType.LessThanOrEqual:
-                    state.Upper = value;
-                    break;
-                case ExpressionType.Equal:
-                    state.Lower = value;
-                    state.Upper = value;
-                    break;
-            }
-
-            // Logic check: Ensure the writer hasn't created an impossible range
-            if (state.Lower != null && state.Upper != null &&
-                Comparer.Default.Compare(state.Lower, state.Upper) > 0)
-            {
-                state.IsInconsistent = true;
-                throw new InvalidOperationException("This would cause an invalid result set.");
             }
         }
 
+        protected RecordMethod? CurrentRecording { get; set; }
+        protected Dictionary<MethodInfo, RecordMethod> Recordings { get; set; } = [];
 
 
         protected override Expression VisitBinary(BinaryExpression node)
         {
-            // Ensure we are looking at: Property [Operator] Constant
-            if (node.Left is MemberExpression member && node.Right is ConstantExpression constant)
-            {
-                var val = constant.Value;
+            // if we reach our first comparator, start recording
+            //   it doesn't matter what tree is collected, 
+            //   all that matters is that there is something
+            //   to compare at the top of each OrElse, with
+            //   as many AndAlsos following
 
-                switch (node.NodeType)
+            if(node.NodeType == ExpressionType.Not
+                || node.NodeType == ExpressionType.NotEqual)
+            {
+                throw new InvalidOperationException("Not/NotEqual operator can't be used on IDB: " + node.ToString());
+            }
+
+            if (node.IsArithmetic())
+            {
+                // make sure all the math is on one side and the member accessor is on the other side
+                CurrentRecording?.HasArithmetic = true;
+            }
+
+            if(node.IsCompare())
+            {
+                if (node.NodeType == ExpressionType.GreaterThan
+                    || node.NodeType == ExpressionType.LessThan)
+                    throw new InvalidOperationException("Change your comparator to be inclusive >= or <=: " + node.ToString());
+
+                // TODO: most important thing here is to initiate comparator recorder
+                //   make sure member access is on one side and math and constants
+                //   are on the other, then our dictionary of values will come
+                //   out proper. Hack around the member accessor error we generated below
+                var oldMember = CurrentRecording?.MemberAccess;
+                CurrentRecording?.MemberAccess = null;
+                CurrentRecording?.HasArithmetic = false;
+                var left = Visit(node.Left);
+
+
+                var memberIsOnLeft = false;
+                var memberIsOnRight = false;
+                var mathIsOnLeft = false;
+                var mathIsOnRight = false;
+                if (CurrentRecording?.MemberAccess != null)
+                    memberIsOnLeft = true;
+                if(CurrentRecording?.HasArithmetic == true)
+                    mathIsOnLeft = true;
+
+
+                CurrentRecording?.MemberAccess = null;
+                CurrentRecording?.HasArithmetic = false;
+                var right = Visit(node.Right);
+
+
+                if (CurrentRecording?.MemberAccess != null)
+                    memberIsOnRight = true;
+                if (CurrentRecording?.HasArithmetic == true)
+                    mathIsOnRight = true;
+
+
+                if ((mathIsOnLeft && mathIsOnRight)
+                    || (memberIsOnLeft && memberIsOnRight))
+                    throw new InvalidOperationException(
+                        "Expression is too complicated, put all the numbers on one side and the property access on the other.");
+
+                CurrentRecording?.MemberAccess = oldMember;
+
+                var newExpression = Expression.MakeBinary(node.NodeType, left, right);
+
+                // TODO: if we made it this far make a recording
+                var members = newExpression.ToMembers();
+                foreach(var member in members)
                 {
-                    case ExpressionType.GreaterThanOrEqual:
-                        // Bridge Call: queryIndex(store, index, lower: val, upper: null)
-                        return RegisterRange(member.Member.Name, lower: val);
+                    CurrentRecording?.Comparators.Add((member.Key, node.NodeType, member.Value));
+                }
 
-                    case ExpressionType.LessThanOrEqual:
-                        // Bridge Call: queryIndex(store, index, lower: null, upper: val)
-                        return RegisterRange(member.Member.Name, upper: val);
+                return newExpression;
+            }
 
-                    case ExpressionType.Equal:
-                        // Bridge Call: queryIndex(store, index, lower: val, upper: val)
-                        return RegisterRange(member.Member.Name, lower: val, upper: val);
 
-                    case ExpressionType.GreaterThan:
-                    case ExpressionType.LessThan:
-                    case ExpressionType.NotEqual:
-                        // Under A.R.S. § 44-7007, we throw to prevent unreliable 
-                        // data filtering that the writer didn't explicitly close.
-                        throw new NotSupportedException(
-                            $"Operator {node.NodeType} is restricted. Use inclusive bounds (>=, <=) " +
-                            "to satisfy AtriumCache reliability standards.");
+            if (node.IsBoolean())
+            {
+                if(node.NodeType == ExpressionType.OrElse)
+                {
+                    // TODO: they both get added
+                    CurrentRecording?.AddBoth = true;
+                }
+                if (node.NodeType == ExpressionType.AndAlso)
+                {
+                    // TODO: one is comparator and one is secondary
+                    CurrentRecording?.AddBoth = false;
+
+                    // TODO: check if two AndAlso comparators we added in sequence, the latter can be plopped off into another list
                 }
             }
 
-            return base.VisitBinary(node);
+            // make no changes
+
+            return Expression.MakeBinary(node.NodeType, Visit(node.Left), Visit(node.Right));
         }
-#endif
+
+
+        protected override Expression VisitMember(MemberExpression node)
+        {
+            // 1. If this branch eventually leads back to the Lambda Parameter 'u',
+            // we must keep it as a MemberExpression for our Whitelist/Index lookup.
+            if (IsEntityRooted(node))
+            {
+                return base.VisitMember(node);
+            }
+
+            if (node.Expression is ParameterExpression parameter)
+            {
+                if (CurrentRecording?.MemberAccess != null
+                    && parameter.Type != CurrentRecording.MemberAccess)
+                {
+                    throw new InvalidOperationException("Member accessors are not the same type, too complicated.");
+                }
+
+                CurrentRecording?.MemberAccess = parameter.Type;
+                if (parameter.Type.Extends(typeof(Entities.Entity<>)))
+                {
+                    CurrentRecording?.EntityType = parameter.Type;
+                }
+            }
+
+            // 2. Otherwise, it's an external value (e.g., claim.Value, local vars).
+            // We evaluate it now so the JS bridge gets a Constant.
+            try
+            {
+                var objectMember = Expression.Convert(node, typeof(object));
+                var getterLambda = Expression.Lambda<Func<object>>(objectMember);
+                var value = getterLambda.Compile()();
+                return Expression.Constant(value);
+            }
+            catch
+            {
+                // If evaluation fails (e.g., null ref in the closure), 
+                // we fall back to standard behavior.
+                return base.VisitMember(node);
+            }
+        }
+
 
         private Expression? FilterFluff(MethodCallExpression node)
         {
@@ -215,13 +270,20 @@ namespace DataLayer.Utilities
 
 
             // 2. Identify if this method has a Predicate (Func<T, bool>)
-            var predicateArg = node.Arguments.FirstOrDefault(a =>
-                a.Type.IsGenericType && a.Type.GetGenericTypeDefinition() == typeof(Expression<>));
+            var predicateArg = node.Arguments.FirstOrDefault(a => a.Type.Extends(typeof(Expression)));
 
             if (predicateArg != null)
             {
                 // This is where we drill into the Lambda to fill our "MethodFilters" dictionary
                 // TODO: record predicates and binary
+                CurrentRecording = new RecordMethod();
+                var possiblyEntity = predicateArg.Type.GetGenericArguments()
+                    .FirstOrDefault()?.GetGenericArguments().FirstOrDefault();
+                CurrentRecording?.MemberAccess = possiblyEntity;
+                if (possiblyEntity?.Extends(typeof(Entities.Entity<>)) == true)
+                {
+                    CurrentRecording?.EntityType = possiblyEntity;
+                }
             }
 
 
@@ -233,37 +295,21 @@ namespace DataLayer.Utilities
             {
                 // We keep the 'Where' but its arguments (the lambda) 
                 // will be cleaned by our VisitMember override.
-                return base.VisitMethodCall(node);
+                var callVisited = base.VisitMethodCall(node);
+
+                if(CurrentRecording != null)
+                {
+                    if (!Recordings.TryAdd(node.Method, CurrentRecording))
+                        throw new InvalidOperationException("Method call already in recordings, too complicated.");
+                    CurrentRecording = null;
+                }
+
+                return callVisited;
             }
 
             throw new InvalidOperationException($"Method '{node.Method.Name}' is not part of the trusted provider chain.");
         }
 
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            // 1. If this branch eventually leads back to the Lambda Parameter 'u',
-            // we must keep it as a MemberExpression for our Whitelist/Index lookup.
-            if (IsEntityRooted(node))
-            {
-                return base.VisitMember(node);
-            }
-
-            // 2. Otherwise, it's an external value (e.g., claim.Value, local vars).
-            // We evaluate it now so the JS bridge gets a Constant.
-            try
-            {
-                var objectMember = Expression.Convert(node, typeof(object));
-                var getterLambda = Expression.Lambda<Func<object>>(objectMember);
-                var value = getterLambda.Compile()();
-                return Expression.Constant(value);
-            }
-            catch
-            {
-                // If evaluation fails (e.g., null ref in the closure), 
-                // we fall back to standard behavior.
-                return base.VisitMember(node);
-            }
-        }
 
         private static bool IsEntityRooted(Expression? node)
         {

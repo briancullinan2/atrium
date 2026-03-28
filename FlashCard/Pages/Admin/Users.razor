@@ -191,8 +191,8 @@
     protected async Task GetCurrentUsers()
     {
         var users = await QueryManager.Query<DataLayer.Entities.User>().ToListAsync();
-        if(LoginService.User?.Roles.Any(r => r.Name == DefaultRoles.Admin.ToString()) == true
-            || LoginService.User?.Settings.Any(s => string.Equals(s.Name, DefaultPermissions.CanModifyDefaultUsers.ToString())) == true)
+        if(LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true
+            || LoginService.User?.Settings.Any(s => string.Equals(s.Name, nameof(DefaultPermissions.CanModifyDefaultUsers))) == true)
         {
             var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
             var fresh = defaultUsers.Where(d => {

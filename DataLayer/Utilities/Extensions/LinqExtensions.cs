@@ -53,7 +53,7 @@ namespace DataLayer.Utilities.Extensions
 
             var type = node.GetType();
             var element = new XElement(type.Name.ToSafe(),
-                new XAttribute("AssemblyQualifiedName", type.AssemblyQualifiedName ?? ""));
+                new XAttribute(nameof(Type.AssemblyQualifiedName), type.AssemblyQualifiedName ?? ""));
 
             if (expressionDepth >= _maxExpressionDepth)
             {
@@ -92,10 +92,15 @@ namespace DataLayer.Utilities.Extensions
 
                 if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null) continue;
 
-                if (prop.Name == "ImplementedInterfaces" || prop.Name == "DeclaredProperties"
-                    || prop.Name == "QueryManager"
-                    || prop.Name == "DeclaredMethods" || prop.Name == "CanReduce" || prop.Name == "TailCall") continue;
 
+                if (prop.Name == nameof(TypeInfo.ImplementedInterfaces)
+                    || prop.Name == nameof(TypeInfo.DeclaredProperties)
+                    || prop.Name == nameof(Entity<>.QueryManager)
+                    || prop.Name == nameof(TypeInfo.DeclaredMethods)
+                    || prop.Name == nameof(Expression.CanReduce)
+                    || prop.Name == nameof(LambdaExpression.TailCall))
+                    continue;
+                
                 try
                 {
                     var value = prop.GetValue(node);
@@ -151,7 +156,7 @@ namespace DataLayer.Utilities.Extensions
                             foreach (var arg in method.GetGenericArguments())
                             {
                                 // One level of recursion for the arg is usually safe and necessary
-                                generics.Add(new XElement("Type", new XAttribute("AssemblyQualifiedName", arg.AssemblyQualifiedName ?? "")));
+                                generics.Add(new XElement("Type", new XAttribute(nameof(Type.AssemblyQualifiedName), arg.AssemblyQualifiedName ?? "")));
                             }
                             methodInfo.Add(generics);
                         }
@@ -160,7 +165,7 @@ namespace DataLayer.Utilities.Extensions
                         foreach (var p in parameters)
                         {
                             paramsEl.Add(new XElement("Parameter",
-                                new XAttribute("AssemblyQualifiedName", p.ParameterType.AssemblyQualifiedName ?? "")));
+                                new XAttribute(nameof(Type.AssemblyQualifiedName), p.ParameterType.AssemblyQualifiedName ?? "")));
                         }
                         methodInfo.Add(paramsEl);
                         element.Add(propElement);
@@ -168,7 +173,7 @@ namespace DataLayer.Utilities.Extensions
                     else if (value is ValueBuffer buffer)
                     {
                         var propElement = new XElement(prop.Name,
-                            new XAttribute("Count", buffer.Count
+                            new XAttribute(nameof(ValueBuffer.Count), buffer.Count
                         ));
                         for (var i = 0; i < buffer.Count; i++)
                         {
@@ -186,7 +191,7 @@ namespace DataLayer.Utilities.Extensions
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
-                                    new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
+                                    new XAttribute(nameof(Type.AssemblyQualifiedName), item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
                         }
@@ -205,7 +210,7 @@ namespace DataLayer.Utilities.Extensions
                             foreach (var arg in property.PropertyType.GetGenericArguments())
                             {
                                 // One level of recursion for the arg is usually safe and necessary
-                                generics.Add(new XElement("Type", new XAttribute("AssemblyQualifiedName", arg.AssemblyQualifiedName ?? "")));
+                                generics.Add(new XElement("Type", new XAttribute(nameof(Type.AssemblyQualifiedName), arg.AssemblyQualifiedName ?? "")));
                             }
                             methodInfo.Add(generics);
                         }
@@ -223,10 +228,10 @@ namespace DataLayer.Utilities.Extensions
                     {
                         var typeElement = new XElement(prop.Name);
                         // Don't recurse! Just add the critical identification data.
-                        typeElement.Add(new XAttribute("Name", t.Name));
-                        typeElement.Add(new XAttribute("FullName", t.FullName ?? ""));
-                        typeElement.Add(new XAttribute("Namespace", t.Namespace ?? ""));
-                        typeElement.Add(new XAttribute("AssemblyQualifiedName", t.AssemblyQualifiedName ?? ""));
+                        typeElement.Add(new XAttribute(nameof(Type.Name), t.Name));
+                        typeElement.Add(new XAttribute(nameof(Type.FullName), t.FullName ?? ""));
+                        typeElement.Add(new XAttribute(nameof(Type.Namespace), t.Namespace ?? ""));
+                        typeElement.Add(new XAttribute(nameof(Type.AssemblyQualifiedName), t.AssemblyQualifiedName ?? ""));
 
                         // If it's a generic type (like List<Pack>), you might need the generic arguments
                         if (t.IsGenericType)
@@ -235,7 +240,7 @@ namespace DataLayer.Utilities.Extensions
                             foreach (var arg in t.GetGenericArguments())
                             {
                                 // One level of recursion for the arg is usually safe and necessary
-                                generics.Add(new XElement("Type", new XAttribute("AssemblyQualifiedName", arg.AssemblyQualifiedName ?? "")));
+                                generics.Add(new XElement("Type", new XAttribute(nameof(Type.AssemblyQualifiedName), arg.AssemblyQualifiedName ?? "")));
                             }
                             typeElement.Add(generics);
                         }
@@ -265,7 +270,7 @@ namespace DataLayer.Utilities.Extensions
                             {
                                 propElement.Add(new XElement(item?.GetType().Name.ToSafe() ?? "Null",
                                     new XAttribute("Value", item?.ToString() ?? string.Empty),
-                                    new XAttribute("AssemblyQualifiedName", item?.GetType().AssemblyQualifiedName ?? "")
+                                    new XAttribute(nameof(Type.AssemblyQualifiedName), item?.GetType().AssemblyQualifiedName ?? "")
                                 ));
                             }
 
@@ -321,10 +326,13 @@ namespace DataLayer.Utilities.Extensions
                 { ExpressionType.NewArrayInit, BuildNewArrayInit },
 
                 // Binary Expressions
-                { ExpressionType.Equal, BuildLeftRight },
-                { ExpressionType.NotEqual, BuildLeftRight },
+                { ExpressionType.Not, BuildUnary },
                 { ExpressionType.OrElse, BuildLeftRight },
                 { ExpressionType.AndAlso, BuildLeftRight },
+
+                // Comparators
+                { ExpressionType.Equal, BuildLeftRight },
+                { ExpressionType.NotEqual, BuildLeftRight },
                 { ExpressionType.LessThan, BuildLeftRight },
                 { ExpressionType.LessThanOrEqual, BuildLeftRight },
                 { ExpressionType.GreaterThan, BuildLeftRight },
@@ -345,6 +353,9 @@ namespace DataLayer.Utilities.Extensions
 
                 // Null Handling (Essential for your 'Atrium' entities)
                 { ExpressionType.Coalesce, BuildLeftRight },
+                { ExpressionType.TypeAs, BuildTypeTest },
+                { ExpressionType.TypeIs, BuildTypeTest },
+                { ExpressionType.TypeEqual, BuildTypeTest },
 
                 // Comparisons (You already have most, but don't forget these)
                 //{ ExpressionType.TypeIs, BuildLeftRight } // Used for "is" keyword checks
@@ -357,8 +368,9 @@ namespace DataLayer.Utilities.Extensions
         private static Expression BuildNewArrayInit(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Get the array type (e.g., System.Object[])
-            var typeName = el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value
-                           ?? el.Element("Type")?.Value;
+            var typeName = el.Element(nameof(NewArrayExpression.Type))?
+                .Attribute(nameof(Type.AssemblyQualifiedName))?.Value
+                ?? el.Element(nameof(NewArrayExpression.Type))?.Value;
             var arrayType = Type.GetType(typeName!)
                             ?? throw new InvalidOperationException($"Array type not found: {typeName}");
 
@@ -366,7 +378,7 @@ namespace DataLayer.Utilities.Extensions
             var elementType = arrayType.GetElementType() ?? typeof(object);
 
             // 3. Resolve all the expressions inside the { ... }
-            var expressions = el.Element("Expressions")?.Elements()
+            var expressions = el.Element(nameof(NewArrayExpression.Expressions))?.Elements()
                 .Select(x => ToExpression(x)!)
                 .ToList() ?? [];
 
@@ -375,9 +387,9 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression BuildConditional(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var test = ToExpression(el.Element("Test")?.Elements().First()!)!;
-            var ifTrue = ToExpression(el.Element("IfTrue")?.Elements().First()!)!;
-            var ifFalse = ToExpression(el.Element("IfFalse")?.Elements().First()!)!;
+            var test = ToExpression(el.Element(nameof(ConditionalExpression.Test))?.Elements().First()!)!;
+            var ifTrue = ToExpression(el.Element(nameof(ConditionalExpression.IfTrue))?.Elements().First()!)!;
+            var ifFalse = ToExpression(el.Element(nameof(ConditionalExpression.IfFalse))?.Elements().First()!)!;
 
             return Expression.Condition(test, ifTrue, ifFalse);
         }
@@ -385,16 +397,16 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression? BuildProperty(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var expressionEl = el.Element("Expression")?.Elements().FirstOrDefault()
+            var expressionEl = el.Element(nameof(MemberExpression.Expression))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException("Missing expression");
             var expression = ToExpression(expressionEl);
 
             // Get the actual Metadata node (Runtimepropertyinfo)
-            var memberEl = el.Element("Member")?.Elements().FirstOrDefault()
+            var memberEl = el.Element(nameof(MemberExpression.Member))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException("Missing member node");
 
             // Pull the 'Name' attribute specifically!
-            string memberName = memberEl.Attribute("Name")?.Value
+            string memberName = memberEl.Attribute(nameof(MemberInfo.Name))?.Value
                 ?? throw new InvalidOperationException("Member name attribute missing");
 
             PropertyInfo? propertyInfo = ResolveMetadata(typeof(PropertyInfo), memberName, memberEl) as PropertyInfo
@@ -403,6 +415,35 @@ namespace DataLayer.Utilities.Extensions
             return Expression.MakeMemberAccess(expression, propertyInfo);
         }
 
+
+
+
+        private static Expression? BuildTypeTest(XElement el, Func<XElement, Expression?> ToExpression)
+        {
+            var rightEl = (el.Element(nameof(TypeBinaryExpression.TypeOperand)) ?? el.Element(nameof(UnaryExpression.Type)))?.Elements().FirstOrDefault();
+            var leftEl = (el.Element(nameof(TypeBinaryExpression.Expression)) ?? el.Element(nameof(UnaryExpression.Operand)))?.Elements().FirstOrDefault();
+            if (rightEl == null || leftEl == null)
+            {
+                throw new InvalidOperationException("Could not resolve right expression on " + el);
+            }
+            var rightOperand = ResolveMetadata(typeof(Type), rightEl.ToString(), rightEl) as Type;
+            var leftOperand = ToExpression(leftEl);
+            if (rightOperand == null || leftOperand == null)
+            {
+                throw new InvalidOperationException("Could not resolve right expression on " + el);
+            }
+
+            var nodeType = el.Attribute(nameof(TypeBinaryExpression.NodeType))?.Value;
+
+            return nodeType switch
+            {
+                nameof(ExpressionType.TypeIs) => Expression.TypeIs(leftOperand, rightOperand),
+                nameof(ExpressionType.TypeAs) => Expression.TypeAs(leftOperand, rightOperand),
+                nameof(ExpressionType.TypeEqual) => Expression.TypeEqual(leftOperand, rightOperand),
+                _ => throw new InvalidOperationException($"Node Type '{nodeType}' not supported on host.")
+            };
+
+        }
 
         private static Expression? BuildLeftRight(XElement el, Func<XElement, Expression?> ToExpression)
         {
@@ -419,33 +460,33 @@ namespace DataLayer.Utilities.Extensions
                 throw new InvalidOperationException("Could not resolve right expression on " + el);
             }
 
-            var nodeType = el.Attribute("NodeType")?.Value;
+            var nodeType = el.Attribute(nameof(BinaryExpression.NodeType))?.Value;
 
             return nodeType switch
             {
-                "Equal" => Expression.Equal(leftOperand, rightOperand),
-                "NotEqual" => Expression.NotEqual(leftOperand, rightOperand),
-                "AndAlso" => Expression.AndAlso(leftOperand, rightOperand),
-                "OrElse" => Expression.OrElse(leftOperand, rightOperand),
-                "LessThan" => Expression.LessThan(leftOperand, rightOperand),
-                "LessThanOrEqual" => Expression.LessThanOrEqual(leftOperand, rightOperand),
-                "GreaterThan" => Expression.GreaterThan(leftOperand, rightOperand),
-                "GreaterThanOrEqual" => Expression.GreaterThanOrEqual(leftOperand, rightOperand),
+               nameof(ExpressionType.Equal) => Expression.Equal(leftOperand, rightOperand),
+               nameof(ExpressionType.NotEqual) => Expression.NotEqual(leftOperand, rightOperand),
+               nameof(ExpressionType.AndAlso) => Expression.AndAlso(leftOperand, rightOperand),
+               nameof(ExpressionType.OrElse) => Expression.OrElse(leftOperand, rightOperand),
+               nameof(ExpressionType.LessThan) => Expression.LessThan(leftOperand, rightOperand),
+               nameof(ExpressionType.LessThanOrEqual) => Expression.LessThanOrEqual(leftOperand, rightOperand),
+               nameof(ExpressionType.GreaterThan) => Expression.GreaterThan(leftOperand, rightOperand),
+               nameof(ExpressionType.GreaterThanOrEqual) => Expression.GreaterThanOrEqual(leftOperand, rightOperand),
 
                 // The New Arithmetic Peers
-                "Add" => Expression.Add(leftOperand, rightOperand),
-                "Subtract" => Expression.Subtract(leftOperand, rightOperand),
-                "Multiply" => Expression.Multiply(leftOperand, rightOperand),
-                "Divide" => Expression.Divide(leftOperand, rightOperand),
-                "Modulo" => Expression.Modulo(leftOperand, rightOperand),
-                "Power" => Expression.Power(leftOperand, rightOperand),
+               nameof(ExpressionType.Add) => Expression.Add(leftOperand, rightOperand),
+               nameof(ExpressionType.Subtract) => Expression.Subtract(leftOperand, rightOperand),
+               nameof(ExpressionType.Multiply) => Expression.Multiply(leftOperand, rightOperand),
+               nameof(ExpressionType.Divide) => Expression.Divide(leftOperand, rightOperand),
+               nameof(ExpressionType.Modulo) => Expression.Modulo(leftOperand, rightOperand),
+               nameof(ExpressionType.Power) => Expression.Power(leftOperand, rightOperand),
 
 
                 // The Bitwise & Null-Safety Peers
-                "And" => Expression.And(leftOperand, rightOperand),
-                "Or" => Expression.Or(leftOperand, rightOperand),
-                "Coalesce" => Expression.Coalesce(leftOperand, rightOperand),
-                "ExclusiveOr" => Expression.ExclusiveOr(leftOperand, rightOperand),
+               nameof(ExpressionType.And) => Expression.And(leftOperand, rightOperand),
+               nameof(ExpressionType.Or) => Expression.Or(leftOperand, rightOperand),
+               nameof(ExpressionType.Coalesce) => Expression.Coalesce(leftOperand, rightOperand),
+               nameof(ExpressionType.ExclusiveOr) => Expression.ExclusiveOr(leftOperand, rightOperand),
 
                 _ => throw new InvalidOperationException($"Node Type '{nodeType}' not supported on host.")
             };
@@ -454,8 +495,8 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression? BuildLambda(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var parametersEl = el.Element("Parameters")?.Elements();
-            var bodyEl = el.Element("Body")?.Elements().FirstOrDefault()
+            var parametersEl = el.Element(nameof(LambdaExpression.Parameters))?.Elements();
+            var bodyEl = el.Element(nameof(LambdaExpression.Body))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException("Missing body");
 
             var parameters = parametersEl?.Select(p => ToExpression(p)).Cast<ParameterExpression>().ToList() ?? [];
@@ -463,8 +504,8 @@ namespace DataLayer.Utilities.Extensions
                 ?? throw new InvalidOperationException("Body resolution failed");
 
             // 1. Get the intended Delegate Type (e.g., Func<Role, IEnumerable<Group>>)
-            var typeName = el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value
-                          ?? el.Element("Type")?.Value;
+            var typeName = el.Element(nameof(LambdaExpression.Type))?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value
+                          ?? el.Element(nameof(LambdaExpression.Type))?.Value;
 
             if (!string.IsNullOrEmpty(typeName))
             {
@@ -484,28 +525,30 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression? BuildUnary(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var operandEl = el.Element("Operand")?.Elements().FirstOrDefault()
+            var operandEl = el.Element(nameof(UnaryExpression.Operand))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException($"Missing operand: {el}");
 
             var operand = ToExpression(operandEl)
                 ?? throw new InvalidOperationException("Operand resolution failed.");
 
-            var nodeType = el.Attribute("NodeType")?.Value;
+            var nodeType = el.Attribute(nameof(UnaryExpression.NodeType))?.Value;
 
-            if (nodeType == "Quote") return Expression.Quote(operand);
+            if (nodeType == nameof(ExpressionType.Not)) return Expression.Not(operand);
 
-            if (nodeType == "Convert")
+            if (nodeType == nameof(ExpressionType.Quote)) return Expression.Quote(operand);
+
+            if (nodeType == nameof(ExpressionType.Convert))
             {
                 // 1. Prioritize AssemblyQualifiedName for Generics/Nullables
-                var typeEl = el.Element("Type");
-                var typeName = typeEl?.Attribute("AssemblyQualifiedName")?.Value
-                              ?? typeEl?.Attribute("FullName")?.Value
+                var typeEl = el.Element(nameof(UnaryExpression.Type));
+                var typeName = typeEl?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value
+                              ?? typeEl?.Attribute(nameof(Type.FullName))?.Value
                               ?? throw new InvalidOperationException("Missing type metadata.");
 
                 var resolvedType = Type.GetType(typeName);
 
                 // 2. Fallback for common types if reflection is being finicky
-                if (resolvedType == null && typeName.Contains("Nullable"))
+                if (resolvedType == null && typeName.Contains(nameof(Nullable)))
                 {
                     // Handle manual assembly loading or specific mappings if needed
                     throw new InvalidOperationException($"Type load failed for: {typeName}");
@@ -521,19 +564,20 @@ namespace DataLayer.Utilities.Extensions
         private static Expression BuildIndex(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Resolve the target object (the thing being indexed)
-            var instanceEl = el.Element("Object")?.Elements().FirstOrDefault()
+            var instanceEl = el.Element(nameof(IndexExpression.Object))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException("IndexExpression missing Object target.");
             var instance = ToExpression(instanceEl)!;
 
             // 2. Resolve the Indexer (PropertyInfo)
-            var indexerEl = el.Element("Indexer")?.Element("Runtimepropertyinfo")
+            var indexerEl = el.Element(nameof(IndexExpression.Indexer))?.Element("Runtimepropertyinfo")
                     ?? throw new InvalidOperationException("IndexExpression missing Indexer info.");
-            var declaringTypeName = indexerEl.Element("DeclaringType")?.Attribute("AssemblyQualifiedName")?.Value;
+            var declaringTypeName = indexerEl.Element("DeclaringType")?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value;
             var declaringType = Type.GetType(declaringTypeName!)
                 ?? throw new InvalidOperationException("IndexExpression missing declaring type.");
 
-            var propertyName = indexerEl.Attribute("Name")?.Value ?? "Item";
-            var reflectedTypeName = indexerEl.Element("ReflectedType")?.Attribute("AssemblyQualifiedName")?.Value;
+            var propertyName = indexerEl.Attribute(nameof(PropertyInfo.Name))?.Value ?? "Item";
+            var reflectedTypeName = indexerEl.Element(nameof(PropertyInfo.ReflectedType))?
+                .Attribute(nameof(Type.AssemblyQualifiedName))?.Value;
             var reflectedType = Type.GetType(reflectedTypeName!)
                 ?? throw new InvalidOperationException($"Could not resolve ReflectedType: {reflectedTypeName}");
 
@@ -541,7 +585,7 @@ namespace DataLayer.Utilities.Extensions
             var propertyInfo = reflectedType.GetProperty(propertyName);
 
             // 3. Resolve the Arguments (the index values)
-            var argumentsEl = el.Element("Arguments")?.Elements() ?? [];
+            var argumentsEl = el.Element(nameof(IndexExpression.Arguments))?.Elements() ?? [];
             var arguments = argumentsEl.Select(x => ToExpression(x)!).ToList();
 
             // 4. Build the Index node
@@ -561,7 +605,7 @@ namespace DataLayer.Utilities.Extensions
             {
                 methodName = "Include";
             }
-            var typeName = declEl?.Attribute("AssemblyQualifiedName")?.Value ?? declEl?.Value;
+            var typeName = declEl?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value ?? declEl?.Value;
 
             if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(typeName))
                 throw new InvalidOperationException($"Incomplete method metadata: {el}");
@@ -592,7 +636,7 @@ namespace DataLayer.Utilities.Extensions
 
                         for (int i = 0; i < methodParams.Length; i++)
                         {
-                            var expectedTypeStr = paramsEl[i].Attribute("AssemblyQualifiedName")?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
+                            var expectedTypeStr = paramsEl[i].Attribute(nameof(Type.AssemblyQualifiedName))?.Value ?? throw new InvalidOperationException("Parameter type not know to disambiguate.");
                             var expectedType = Type.GetType(expectedTypeStr) ?? throw new InvalidOperationException("Parameter not know to disambiguate.");
 
                             // Get the actual parameter type name (handles generics like TSource)
@@ -628,7 +672,7 @@ namespace DataLayer.Utilities.Extensions
                 var paramsEl = el.Element("Parameters")?.Elements().ToList();
                 var expectedTypeParams = paramsEl?.Select(e =>
                 {
-                    var expectedTypeStr = e.Attribute("AssemblyQualifiedName")?.Value;
+                    var expectedTypeStr = e.Attribute(nameof(Type.AssemblyQualifiedName))?.Value;
                     var expectedType = Type.GetType(expectedTypeStr!);
                     return expectedType;
                 });
@@ -708,7 +752,7 @@ namespace DataLayer.Utilities.Extensions
                         ?? methods.FirstOrDefault() ?? throw new InvalidOperationException("Could not resolve method: " + el);
 
                     var genericTypes = genericsEl.Elements()
-                        .Select(g => Type.GetType(g.Attribute("AssemblyQualifiedName")?.Value ?? g.Value))
+                        .Select(g => Type.GetType(g.Attribute(nameof(Type.AssemblyQualifiedName))?.Value ?? g.Value))
                         .Cast<Type>()
                         .ToArray();
 
@@ -762,7 +806,7 @@ namespace DataLayer.Utilities.Extensions
         private static Expression BuildMethodCall(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Resolve the actual MethodInfo (Where, Select, etc.)
-            var methodEl = el.Element("Method")?.Elements().FirstOrDefault()
+            var methodEl = el.Element(nameof(MethodCallExpression.Method))?.Elements().FirstOrDefault()
                 ?? throw new InvalidOperationException("Missing Method metadata");
 
             var methodInfo = ResolveMetadata(typeof(MethodInfo), null, methodEl) as MethodInfo
@@ -770,11 +814,11 @@ namespace DataLayer.Utilities.Extensions
 
             // 2. Resolve the Instance (The 'Object' attribute in your XML)
             // For LINQ extensions (static), this is usually null.
-            var instanceEl = el.Element("Object")?.Elements().FirstOrDefault();
+            var instanceEl = el.Element(nameof(MethodCallExpression.Object))?.Elements().FirstOrDefault();
             var instance = instanceEl != null ? ToExpression(instanceEl) : null;
 
             // 3. Resolve Arguments
-            var args = el.Element("Arguments")?.Elements()
+            var args = el.Element(nameof(MethodCallExpression.Arguments))?.Elements()
                 .Select(x =>
                 {
                     var expr = ToExpression(x)!;
@@ -828,7 +872,7 @@ namespace DataLayer.Utilities.Extensions
                 var values = el.Elements().Select(e =>
                 {
                     if (e.Name == "Null") return null;
-                    var typeName = e.Attribute("AssemblyQualifiedName")?.Value
+                    var typeName = e.Attribute(nameof(Type.AssemblyQualifiedName))?.Value
                         ?? throw new InvalidOperationException("Could not resolve type name on: " + e + " on " + el);
                     var entityType = Type.GetType(typeName)
                         ?? typeArgument
@@ -882,7 +926,9 @@ namespace DataLayer.Utilities.Extensions
                     {
                         var converter = TypeDescriptor.GetConverter(baseType);
                         object? simpleValue = null;
-                        if (!string.IsNullOrWhiteSpace(el.Attribute(prop.Name)?.Value))
+                        if (baseType == typeof(string))
+                            simpleValue = el.Attribute(prop.Name)?.Value ?? string.Empty;
+                        else if (!string.IsNullOrWhiteSpace(el.Attribute(prop.Name)?.Value))
                             simpleValue = converter.ConvertFromString(el.Attribute(prop.Name)!.Value);
                         if (!prop.IsNullable() && simpleValue?.GetType() != baseType)
                             throw new InvalidOperationException("Simple types don't match: " + simpleValue?.GetType() + " and " + baseType + " on " + el + " property " + prop);
@@ -915,19 +961,19 @@ namespace DataLayer.Utilities.Extensions
 
         private static ConstantExpression BuildConstant(XElement el, Func<XElement, Expression?> ToExpression)
         {
-            var typeName = (el.Element("Type")?.Attribute("AssemblyQualifiedName")?.Value)
+            var typeName = (el.Element(nameof(ConstantExpression.Type))?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value)
                 ?? throw new InvalidOperationException("Could not resolve constant type attribute on: " + el);
             var type = Type.GetType(typeName)
                 ?? throw new InvalidOperationException("Could not resolve constant type on: " + el);
 
-            if (el.Element("Value") is XElement complex)
+            if (el.Element(nameof(ConstantExpression.Value)) is XElement complex)
             {
                 // TODO: 
                 if (complex.Element("Null") is not null)
                 {
                     return Expression.Constant(null, type);
                 }
-                var val = ResolveMetadata(type, el.Attribute("Value")?.Value, type.IsIterable() ? complex : complex.Elements().FirstOrDefault() ?? complex);
+                var val = ResolveMetadata(type, el.Attribute(nameof(ConstantExpression.Value))?.Value, type.IsIterable() ? complex : complex.Elements().FirstOrDefault() ?? complex);
                 if(type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
                 {
                     Console.WriteLine("Made constant: " + JsonSerializer.Serialize(val) + el);
@@ -948,7 +994,7 @@ namespace DataLayer.Utilities.Extensions
                 }
                 return Expression.Constant(val, type);
             }
-            else if (el.Attribute("Value")?.Value is string val)
+            else if (el.Attribute(nameof(ConstantExpression.Value))?.Value is string val)
             {
                 if (type == typeof(object) && val == "Null")
                 {
@@ -975,10 +1021,10 @@ namespace DataLayer.Utilities.Extensions
         private static ParameterExpression BuildParameter(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Extract Name and Type accurately from the XML
-            var name = el.Attribute("Name")?.Value ?? "x";
-            var typeEl = el.Element("Type");
-            var typeName = typeEl?.Attribute("AssemblyQualifiedName")?.Value
-                          ?? typeEl?.Attribute("FullName")?.Value
+            var name = el.Attribute(nameof(ParameterExpression.Name))?.Value ?? "x";
+            var typeEl = el.Element(nameof(ParameterExpression.Type));
+            var typeName = typeEl?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value
+                          ?? typeEl?.Attribute(nameof(Type.FullName))?.Value
                           ?? throw new InvalidOperationException("Could not resolve parameter type");
 
             var type = Type.GetType(typeName) ?? typeof(object);
@@ -998,7 +1044,7 @@ namespace DataLayer.Utilities.Extensions
 
         private static Expression? BuildExtension(XElement el, DbContext context, out IQueryable? set)
         {
-            var typeName = (el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value)
+            var typeName = (el.Element(nameof(IQueryable.ElementType))?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value)
                 ?? throw new InvalidOperationException("Could not resolve extension type on: " + el);
 
             var entityType = Type.GetType(typeName)
@@ -1021,7 +1067,7 @@ namespace DataLayer.Utilities.Extensions
         public static Expression? ToExpression(this XElement el, DbContext context, out IQueryable? set)
         {
             set = null;
-            var typeStr = el.Attribute("NodeType")?.Value;
+            var typeStr = el.Attribute(nameof(Expression.NodeType))?.Value;
             if (typeStr == null || !_nodeTypeLookup.TryGetValue(typeStr, out var nodeType))
                 return null;
 
@@ -1029,8 +1075,9 @@ namespace DataLayer.Utilities.Extensions
             // because they don't follow the "Children as Expressions" rule perfectly.
             if (nodeType == ExpressionType.Extension)
             {
-                var typeName = el.Element("ElementType")?.Attribute("AssemblyQualifiedName")?.Value;
-                if (typeName?.Contains("DataLayer") == true)
+                var typeName = el.Element(nameof(IQueryable.ElementType))?
+                    .Attribute(nameof(Type.AssemblyQualifiedName))?.Value;
+                if (typeName?.Contains(nameof(DataLayer)) == true)
                 {
                     return BuildExtension(el, context, out set); // Swap placeholder for Real DB source
                 }
@@ -1047,7 +1094,7 @@ namespace DataLayer.Utilities.Extensions
                 if (outish != null) set = outish;
                 return result;
             }
-            if (el.Attribute("AssemblyQualifiedName") is XAttribute typeAttr
+            if (el.Attribute(nameof(Type.AssemblyQualifiedName)) is XAttribute typeAttr
                 && Type.GetType(typeAttr.Value) is Type targetType)
             {
                 return Expression.Constant(ResolveMetadata(targetType, el.ToString(), el));
