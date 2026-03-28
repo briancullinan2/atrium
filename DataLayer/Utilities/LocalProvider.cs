@@ -91,7 +91,7 @@ namespace DataLayer.Utilities
 
         private async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken? ct = null)
         {
-            var Context = Current.Context as TranslationContext
+            var Context = Current.Context as TestStorage
                 ?? throw new InvalidOperationException("Could not render remote storage context.");
             //if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 
@@ -102,6 +102,9 @@ namespace DataLayer.Utilities
             // This is exactly where you use your Expression Tree Converter
             var serialized = query.ToXDocument().ToString();
             Console.WriteLine("Converted: " + cleanExpression);
+
+            if (Context.Module == null)
+                throw new InvalidOperationException("IDB Module not setup.");
 
 
 
