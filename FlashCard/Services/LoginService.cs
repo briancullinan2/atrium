@@ -57,7 +57,7 @@ namespace FlashCard.Services
             {
                 Console.WriteLine("User is authenticated");
                 Console.WriteLine("User is: " + principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier));
-                if(principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier) is Claim claim)
+                if (principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier) is Claim claim)
                 {
                     try
                     {
@@ -72,7 +72,7 @@ namespace FlashCard.Services
                     }
 
 
-                    if(Users.Generate().FirstOrDefault(u => string.Equals(u.Username, claim.Value)) is User defaultUser)
+                    if (Users.Generate().FirstOrDefault(u => string.Equals(u.Username, claim.Value)) is User defaultUser)
                     {
                         User = defaultUser;
                     }
@@ -115,7 +115,7 @@ namespace FlashCard.Services
             // discard the current user
 
             var currentSetting = await Query.Query<Setting>(s =>
-                s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
+                s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                 .FirstOrDefaultAsync();
             if (currentSetting?.Value != null)
             {
@@ -132,7 +132,7 @@ namespace FlashCard.Services
         {
 
             var autoLoginSetting = await Query.Query<DataLayer.Entities.Setting>(s =>
-                s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
+                s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
                 .FirstOrDefaultAsync();
 
             if (autoLoginSetting?.Value != null)
@@ -153,7 +153,7 @@ namespace FlashCard.Services
         public virtual async Task LoginDefaultUser()
         {
             var defaultUserSetting = await Query.Query<Setting>(s =>
-                    s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationDefaultUser))
+                    s.Name == nameof(DefaultPermissions.ApplicationDefaultUser))
                 .FirstOrDefaultAsync();
 
             if (defaultUserSetting?.Value == null)

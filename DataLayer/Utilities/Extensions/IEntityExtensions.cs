@@ -22,7 +22,7 @@ namespace DataLayer.Utilities.Extensions
 
         public static T Create<T>(this IQueryManager Query, StorageType storage) where T : Entity<T>, IEntity
         {
-            var context = Query.GetContext(storage) 
+            var context = Query.GetContext(storage)
                 ?? throw new InvalidOperationException("Could not render context: " + storage);
 
             var type = typeof(T);
@@ -393,8 +393,8 @@ namespace DataLayer.Utilities.Extensions
         public static Dictionary<string, List<PropertyInfo>> ListIndexes(Type type)
         {
             var indexes = type.GetCustomAttributes<IndexAttribute>()
-                .ToDictionary<IndexAttribute,string, List<PropertyInfo>>(
-                    i => i.Name ?? string.Empty, 
+                .ToDictionary<IndexAttribute, string, List<PropertyInfo>>(
+                    i => i.Name ?? string.Empty,
                     i => [.. type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         .Where(p => i.PropertyNames.Contains(p.Name))]);
             return indexes;
@@ -456,7 +456,7 @@ namespace DataLayer.Utilities.Extensions
                 .Select(p => (
                     Name: p.PropertyType.GetGenericArguments()[0].GetCustomAttributes()
                         // has to match RemoteManager.SaveNow putRecord
-                        .OfType<TableAttribute>().FirstOrDefault()?.Name 
+                        .OfType<TableAttribute>().FirstOrDefault()?.Name
                         ?? p.PropertyType.GetGenericArguments()[0].Name ?? p.Name,
                     EntityType: p.PropertyType.GetGenericArguments()[0]
                 ))];

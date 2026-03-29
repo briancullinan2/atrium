@@ -33,7 +33,7 @@ namespace FlashCard.Services
             Service ??= _services;
             Manager = Service.GetRequiredService<IPageManager>();
             Query = Service.GetRequiredService<IQueryManager>();
-            if(Query != null)
+            if (Query != null)
             {
                 foreach (var pre in PreLog)
                 {

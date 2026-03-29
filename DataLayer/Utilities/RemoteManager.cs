@@ -81,6 +81,40 @@ namespace DataLayer.Utilities
 
 
 
+        public override TResult Query<TEntity, TResult>(
+            StorageType storage,
+            Expression<Func<IQueryable<TEntity>, TResult>> query,
+            int priority = 10)
+        {
+            var context = GetStorageType(storage)
+                ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
+
+            if (context == typeof(RemoteStorage))
+                return base.Query<TEntity, TResult>(storage, query, priority);
+            else if (context == typeof(TestStorage))
+            {
+                // clean now so we know where it came from and don't have to go through task stack chains
+                try
+                {
+                    var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
+                    var visitor = new AggressiveVisitor();
+                    var simpleExpression = visitor.Visit(cleanExpression);
+
+                    return base.Query<TEntity, TResult>(storage, (Expression<Func<IQueryable<TEntity>, TResult>>)simpleExpression, priority);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Query will fail: " + query.ToString() + " - " + ex);
+                    throw new InvalidOperationException("Query will fail: " + query.ToString() + " - " + ex);
+                }
+
+            }
+            else
+                return base.Query<TEntity, TResult>(storage, query, priority);
+        }
+
+
+
         protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
         {
             if (_httpClient == null)
@@ -97,7 +131,7 @@ namespace DataLayer.Utilities
                 return await SaveLocal<TEntity>(test, entity);
             else
                 return await base.SaveNow(storage, entity);
-            
+
         }
     }
 }

@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) 
+    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS)
         : FlashCard.Services.PageManager(LoggerFactory, JS), IPageManager
     {
         private readonly IJSRuntime _runtime = JS;

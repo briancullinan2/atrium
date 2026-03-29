@@ -348,7 +348,7 @@ namespace DataLayer.Utilities.Extensions
                     values[me.Member] = ResolveValue(mc);
                 }
 
-                foreach(var arg in mc.Arguments)
+                foreach (var arg in mc.Arguments)
                 {
                     Merge(values, arg.ToMembers());
                 }
@@ -367,7 +367,7 @@ namespace DataLayer.Utilities.Extensions
                 // (object)x or (int?)y - just peel the onion and keep going
                 ParseExpression(ue.Operand, values);
             }
-            else if(expr is ConstantExpression co
+            else if (expr is ConstantExpression co
                 && co.Value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
             {
 
@@ -518,7 +518,7 @@ namespace DataLayer.Utilities.Extensions
 
         public static Dictionary<MemberInfo, object?> ToMembers(this Expression ex)
         {
-            if(typeof(Expression<>).IsCompatibleWith(ex.GetType()))
+            if (typeof(Expression<>).Extends(ex.GetType()))
                 return (ex as dynamic).Body.ToMembers();
 
             if (ex is NewExpression ne)
@@ -539,7 +539,7 @@ namespace DataLayer.Utilities.Extensions
 
             var dictionary = new Dictionary<MemberInfo, object?>();
             ParseExpression(ex, dictionary);
-            if(dictionary.Count > 0) return dictionary;  
+            if (dictionary.Count > 0) return dictionary;
 
             throw new InvalidOperationException("Can't do anything else with this " + ex.GetType() + ", frankly.");
         }
@@ -584,7 +584,7 @@ namespace DataLayer.Utilities.Extensions
 
             if (match == null)
             {
-                if(!typeof(TEntity).IsNullable())
+                if (!typeof(TEntity).IsNullable())
                 {
                     return Expression.Lambda<Func<TEntity, bool>>(Expression.Constant(true), parameter);
                 }
@@ -742,7 +742,7 @@ namespace DataLayer.Utilities.Extensions
 
 
         public static bool IsTerminal(this MethodCallExpression node)
-        { 
+        {
             return node.Method.IsTerminal();
         }
 

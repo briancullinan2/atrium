@@ -100,7 +100,7 @@ namespace DataLayer.Utilities.Extensions
                     || prop.Name == nameof(Expression.CanReduce)
                     || prop.Name == nameof(LambdaExpression.TailCall))
                     continue;
-                
+
                 try
                 {
                     var value = prop.GetValue(node);
@@ -136,7 +136,7 @@ namespace DataLayer.Utilities.Extensions
                         propElement.Add(VisitToXml(Expression.Constant(result), currentDepth, expressionDepth + 1));
                         element.Add(propElement);
                     }*/
-                    
+
                     if (value is Expression)
                     {
                         var propElement = new XElement(prop.Name);
@@ -464,29 +464,29 @@ namespace DataLayer.Utilities.Extensions
 
             return nodeType switch
             {
-               nameof(ExpressionType.Equal) => Expression.Equal(leftOperand, rightOperand),
-               nameof(ExpressionType.NotEqual) => Expression.NotEqual(leftOperand, rightOperand),
-               nameof(ExpressionType.AndAlso) => Expression.AndAlso(leftOperand, rightOperand),
-               nameof(ExpressionType.OrElse) => Expression.OrElse(leftOperand, rightOperand),
-               nameof(ExpressionType.LessThan) => Expression.LessThan(leftOperand, rightOperand),
-               nameof(ExpressionType.LessThanOrEqual) => Expression.LessThanOrEqual(leftOperand, rightOperand),
-               nameof(ExpressionType.GreaterThan) => Expression.GreaterThan(leftOperand, rightOperand),
-               nameof(ExpressionType.GreaterThanOrEqual) => Expression.GreaterThanOrEqual(leftOperand, rightOperand),
+                nameof(ExpressionType.Equal) => Expression.Equal(leftOperand, rightOperand),
+                nameof(ExpressionType.NotEqual) => Expression.NotEqual(leftOperand, rightOperand),
+                nameof(ExpressionType.AndAlso) => Expression.AndAlso(leftOperand, rightOperand),
+                nameof(ExpressionType.OrElse) => Expression.OrElse(leftOperand, rightOperand),
+                nameof(ExpressionType.LessThan) => Expression.LessThan(leftOperand, rightOperand),
+                nameof(ExpressionType.LessThanOrEqual) => Expression.LessThanOrEqual(leftOperand, rightOperand),
+                nameof(ExpressionType.GreaterThan) => Expression.GreaterThan(leftOperand, rightOperand),
+                nameof(ExpressionType.GreaterThanOrEqual) => Expression.GreaterThanOrEqual(leftOperand, rightOperand),
 
                 // The New Arithmetic Peers
-               nameof(ExpressionType.Add) => Expression.Add(leftOperand, rightOperand),
-               nameof(ExpressionType.Subtract) => Expression.Subtract(leftOperand, rightOperand),
-               nameof(ExpressionType.Multiply) => Expression.Multiply(leftOperand, rightOperand),
-               nameof(ExpressionType.Divide) => Expression.Divide(leftOperand, rightOperand),
-               nameof(ExpressionType.Modulo) => Expression.Modulo(leftOperand, rightOperand),
-               nameof(ExpressionType.Power) => Expression.Power(leftOperand, rightOperand),
+                nameof(ExpressionType.Add) => Expression.Add(leftOperand, rightOperand),
+                nameof(ExpressionType.Subtract) => Expression.Subtract(leftOperand, rightOperand),
+                nameof(ExpressionType.Multiply) => Expression.Multiply(leftOperand, rightOperand),
+                nameof(ExpressionType.Divide) => Expression.Divide(leftOperand, rightOperand),
+                nameof(ExpressionType.Modulo) => Expression.Modulo(leftOperand, rightOperand),
+                nameof(ExpressionType.Power) => Expression.Power(leftOperand, rightOperand),
 
 
                 // The Bitwise & Null-Safety Peers
-               nameof(ExpressionType.And) => Expression.And(leftOperand, rightOperand),
-               nameof(ExpressionType.Or) => Expression.Or(leftOperand, rightOperand),
-               nameof(ExpressionType.Coalesce) => Expression.Coalesce(leftOperand, rightOperand),
-               nameof(ExpressionType.ExclusiveOr) => Expression.ExclusiveOr(leftOperand, rightOperand),
+                nameof(ExpressionType.And) => Expression.And(leftOperand, rightOperand),
+                nameof(ExpressionType.Or) => Expression.Or(leftOperand, rightOperand),
+                nameof(ExpressionType.Coalesce) => Expression.Coalesce(leftOperand, rightOperand),
+                nameof(ExpressionType.ExclusiveOr) => Expression.ExclusiveOr(leftOperand, rightOperand),
 
                 _ => throw new InvalidOperationException($"Node Type '{nodeType}' not supported on host.")
             };
@@ -944,7 +944,7 @@ namespace DataLayer.Utilities.Extensions
                     }
 
                     else
-                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType + " on " + el + " property " + prop 
+                        throw new InvalidOperationException("Don't know how to handle property type: " + baseType + " on " + el + " property " + prop
                             + " value is " + (el.Attribute(prop.Name)?.Value ?? el.Element(prop.Name)?.Attribute("Value")?.Value)
                             + " prop type is nullable " + prop.IsNullable());
                 }
@@ -974,7 +974,7 @@ namespace DataLayer.Utilities.Extensions
                     return Expression.Constant(null, type);
                 }
                 var val = ResolveMetadata(type, el.Attribute(nameof(ConstantExpression.Value))?.Value, type.IsIterable() ? complex : complex.Elements().FirstOrDefault() ?? complex);
-                if(type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
+                if (type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
                 {
                     Console.WriteLine("Made constant: " + JsonSerializer.Serialize(val) + el);
                 }
@@ -983,7 +983,7 @@ namespace DataLayer.Utilities.Extensions
                 {
                     return Expression.Constant(Convert.ChangeType(val, type), type);
                 }
-                if(type.IsIterable())
+                if (type.IsIterable())
                 {
                     val = CollectionConverter.ConvertAsync(val, type);
                 }

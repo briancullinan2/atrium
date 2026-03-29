@@ -82,7 +82,7 @@ namespace DataLayer.Utilities
             _service = service;
             // Start the import immediately
             service.OnRendered += () => _ = EnsureModuleLoaded();
-            if(service.IsRendered)
+            if (service.IsRendered)
             {
                 _ = EnsureModuleLoaded();
             }
@@ -99,7 +99,7 @@ namespace DataLayer.Utilities
         {
             if (_renderTcs.Task.IsCompleted) return;
             var result = _service.Runtime?.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js").AsTask();
-            if(result is Task task)
+            if (result is Task task)
             {
                 await task;
                 Module = (result as dynamic).Result;
@@ -130,7 +130,7 @@ namespace DataLayer.Utilities
         {
             await ModuleInitialize;
             var result = await Module!.InvokeAsync<Tuple<bool?, string?>>("setupDatabase", dbName, schema.ToList());
-            if(result.Item1 != true)
+            if (result.Item1 != true)
             {
                 throw new InvalidOperationException("Failed to create store: " + result.Item2 + " for " + JsonSerializer.Serialize(schema));
             }
@@ -167,13 +167,13 @@ namespace DataLayer.Utilities
         public async ValueTask<bool> NeedsInstall(string? dbName, List<KeyValuePair<string, List<string>>> columnNames)
         {
             await ModuleInitialize;
-            
+
             var metadata = await Module!.InvokeAsync<List<KeyValuePair<string?, object?>>>("getDatabaseMetadata", dbName, columnNames);
             if (metadata.Count == 0) return true; // don't even have a database
 
             var result = false;
 
-            foreach(var db in metadata)
+            foreach (var db in metadata)
             {
                 var needsInstall = await Module!.InvokeAsync<Tuple<string?, object?, bool?, List<string?>?>>("needsInstall", db.Key, columnNames);
                 if (needsInstall.Item3 == true || needsInstall.Item4?.Count > 0)

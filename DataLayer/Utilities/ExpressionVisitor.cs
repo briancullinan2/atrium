@@ -1,27 +1,195 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Reflection.Metadata;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Xml.Linq;
+using static DataLayer.Utilities.AggressiveVisitor;
 
 namespace DataLayer.Utilities
 {
+    
 
-    public class RootReplacementVisitor(IQueryable realRoot) : ExpressionVisitor
+    public class RootReplacementVisitor(IQueryable? realRoot) : ExpressionVisitor
     {
         protected override Expression VisitConstant(ConstantExpression node)
         {
-            // If we hit the 'EnqueuedQueryable' at the bottom of the tree, 
-            // replace it with the actual DbSet.Expression
-            if (node.Value is IQueryable queryable && queryable.Provider.GetType().GetGenericTypeDefinition() == typeof(EnqueuedQueryProvider<>))
+            if (realRoot != null
+                && node.Value is IQueryable queryable
+                && (queryable.Provider.GetType().Extends(typeof(EnqueuedQueryProvider<>))
+                || node.Type.Extends(typeof(AsyncQueryable<>))))
             {
                 return realRoot.Expression;
             }
             return base.VisitConstant(node);
         }
+
+        protected override Expression VisitExtension(Expression node)
+        {
+            if (node.Type.Extends(typeof(IQueryable<>)))
+            {
+                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
+                    .MakeGenericType(node.Type.GenericTypeArguments))!).AsQueryable();
+                return realRoot.Expression;
+            }
+
+            if (node.Type.Extends(typeof(Entities.Entity<>)))
+            {
+                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
+                    .MakeGenericType(node.Type))!).AsQueryable();
+                return realRoot.Expression;
+            }
+
+            if (node.CanReduce)
+            {
+                return Visit(node.Reduce())!;
+            }
+
+            return base.VisitExtension(node);
+        }
+
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            /*
+            if (node.Type.Extends(typeof(Entities.Entity<>)))
+                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
+                    .MakeGenericType(node.Type))!).AsQueryable();
+            if(node.Type.Extends(typeof(IQueryable<>)))
+                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
+                    .MakeGenericType(node.Type.GenericTypeArguments))!).AsQueryable();
+            */
+
+            if (node == CurrentRecording?.Parameter
+                && CurrentRecording?.NewParameter != null)
+                return CurrentRecording.NewParameter;
+            return base.VisitParameter(node);
+        }
+
+
+        public class ClosureRecording
+        {
+            [JsonIgnore]
+            public Type? MemberAccess { get; set; }
+            public string? MemberAccessName { get => MemberAccess?.AssemblyQualifiedName; }
+
+            [JsonIgnore]
+            public Type? EntityType { get; set; }
+            public string? EntityTypeName { get => EntityType?.AssemblyQualifiedName; }
+
+            [JsonIgnore]
+            public ParameterExpression? Parameter { get; internal set; }
+            public string? ParameterName { get => Parameter?.Name; }
+
+            [JsonIgnore]
+            public Expression? NewParameter { get; internal set; }
+        }
+
+
+        public ClosureRecording? CurrentRecording { get; set; } = null;
+        public Expression? Root { get; set; }
+
+
+        private int _depth = 0;
+
+        public override Expression? Visit(Expression? node)
+        {
+            _depth++;
+            try
+            {
+                if (_depth == 1)
+                {
+                    Root = node;
+                }
+
+                return base.Visit(node);
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        protected override Expression VisitLambda<T>(Expression<T> node)
+        {
+            if (node is LambdaExpression lambda)
+            {
+                if (Root == node
+                    && lambda.Body is MethodCallExpression methodCall
+                    && lambda.Parameters.FirstOrDefault() is ParameterExpression set
+                    && (set.Type.Extends(typeof(DbSet<>))
+                    || set.Type.Extends(typeof(IQueryable<>))))
+                {
+                    CurrentRecording = new ClosureRecording();
+                    CurrentRecording?.Parameter = set;
+                    CurrentRecording?.NewParameter = realRoot?.Expression;
+                    return VisitMethodCall(methodCall);
+                }
+            }
+
+
+            return base.VisitLambda(node);
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            // 1. Only process Queryable methods (Where, Select, SelectMany, etc.)
+            if (node.Method.DeclaringType != typeof(Queryable))
+                return base.VisitMethodCall(node);
+
+            var genericArgs = node.Method.GetGenericArguments().FirstOrDefault();
+            var quoted = node.Arguments.FirstOrDefault(a => a.Type.Extends(typeof(Expression)));
+            var lamda = quoted is UnaryExpression quote ? quote.Operand as LambdaExpression : quoted as LambdaExpression;
+            var predicateArg = lamda?.Parameters.FirstOrDefault();
+
+            var possiblyEntity = predicateArg?.Type.GetGenericArguments()
+                .FirstOrDefault()?.GetGenericArguments().FirstOrDefault()
+                ?? genericArgs;
+
+            if (predicateArg != null && possiblyEntity != null
+            //    && genericArgs == typeof(object)
+                && genericArgs != possiblyEntity
+            )
+            {
+
+
+                CurrentRecording ??= new ClosureRecording();
+                CurrentRecording?.MemberAccess = possiblyEntity;
+                if (possiblyEntity.Extends(typeof(Entities.Entity<>)) == true)
+                {
+                    CurrentRecording?.EntityType = possiblyEntity;
+                }
+
+                // only replace parameter is type doesn't match or it's the root
+                //if (genericArgs != possiblyEntity)
+                {
+                    var newParameter = Expression.Parameter(predicateArg.Type.GetGenericTypeDefinition()
+                        .MakeGenericType(possiblyEntity), predicateArg.Name);
+
+                    CurrentRecording?.Parameter = node.Arguments.First() as ParameterExpression;
+                    CurrentRecording?.NewParameter = newParameter;
+                }
+
+                var newMethod = typeof(Queryable).GetMethods(node.Method.Name)
+                    .FirstOrDefault(m => m.GetParameters().Length == node.Method.GetParameters().Length)
+                    ?.MakeGenericMethod(possiblyEntity)
+                    ?? throw new InvalidOperationException("Could not render new Expression method");
+
+                var arguments = node.Arguments.Select(Visit).Cast<Expression>().ToList();
+
+                return Expression.Call(newMethod, arguments);
+            }
+
+            return base.VisitMethodCall(node);
+        }
+
+
     }
 
     public class ExpressionMinifier : ExpressionVisitor
@@ -83,22 +251,10 @@ namespace DataLayer.Utilities
     }
 
 
-
-    public class ParameterUpdateVisitor(ParameterExpression oldParam, Expression newExpression) : ExpressionVisitor
-    {
-        private readonly ParameterExpression _oldParam = oldParam;
-        private readonly Expression _newExpression = newExpression;
-
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            if (node == _oldParam) return _newExpression;
-            return base.VisitParameter(node);
-        }
-    }
-
-
     public class ClosureEvaluatorVisitor : ExpressionVisitor
     {
+
+
         protected override Expression VisitMember(MemberExpression node)
         {
             if (TryEvaluate(node) is Expression expr) return expr;

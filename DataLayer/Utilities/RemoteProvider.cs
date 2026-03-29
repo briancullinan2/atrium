@@ -132,7 +132,7 @@ namespace DataLayer.Utilities
 
             Console.WriteLine("Server responded: " + JsonSerializer.Serialize(finalExpression.Value));
             Console.WriteLine("What fucking part is failing?" + query.IsDefault() + " - " + finalExpression.Value.IsEmpty());
-            if (query.IsDefault() 
+            if (query.IsDefault()
                 && (finalExpression.Value == null
                 || finalExpression.Value.IsEmpty()))
             {

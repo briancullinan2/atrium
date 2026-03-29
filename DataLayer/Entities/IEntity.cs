@@ -76,7 +76,7 @@ namespace DataLayer.Entities
         [NotMapped]
         public static List<PropertyInfo> Predicate { get => IEntityExtensions.ListPredicate(typeof(T)); }
         [NotMapped]
-        public static Dictionary<string,List<PropertyInfo>> Indexes { get => IEntityExtensions.ListIndexes(typeof(T)); }
+        public static Dictionary<string, List<PropertyInfo>> Indexes { get => IEntityExtensions.ListIndexes(typeof(T)); }
 
 
         public override bool Equals(object? obj)

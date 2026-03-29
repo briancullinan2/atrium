@@ -219,7 +219,7 @@ namespace DataLayer.Utilities
             }
             catch (Exception ex)
             {
-               Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
+                Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
                 Console.WriteLine("Stack when called: " + stackWhenCalled);
                 throw new InvalidOperationException("holy shit", ex);
             }
@@ -729,11 +729,11 @@ namespace DataLayer.Utilities
 
         public TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
         {
-            return Query(EphemeralStorage, query, priority);
+            return Query<TEntity, TResult>(EphemeralStorage, query, priority);
         }
 
 
-        
+
 
 
         public virtual TResult Query<TEntity, TResult>(
@@ -748,7 +748,7 @@ namespace DataLayer.Utilities
             {
                 return (TResult)provider.CreateQuery<TEntity>(query);
             }
-            else if(typeof(Task).IsAssignableFrom(typeof(TResult)))
+            else if (typeof(Task).IsAssignableFrom(typeof(TResult)))
             {
                 return (dynamic)provider.ExecuteAsync<Task<TResult>>(query, new CancellationToken());
             }
@@ -799,23 +799,13 @@ namespace DataLayer.Utilities
                     {
 
                         IQueryable<TEntity> set = context.Set<TEntity>().AsQueryable();
-                        if(typeof(EnqueuedQueryProvider<>).Extends(set.Provider.GetType()))
+                        if (typeof(EnqueuedQueryProvider<>).Extends(set.Provider.GetType()))
                         {
                             throw new InvalidOperationException("Must override internal query provider!");
                         }
-                        if(query is LambdaExpression lambda)
-                        {
-                            var visitor = new ParameterUpdateVisitor(lambda.Parameters[0], set.Expression);
-                            var invokedExpression = visitor.Visit(lambda.Body);
-                            query = invokedExpression;
-                        }
-                        else
-                        {
-                            var swapper = new RootReplacementVisitor(set);
-                            var sqliteExpression = swapper.Visit(query);
-                            query = sqliteExpression;
-                        }
-                        //var invokedExpression = Expression.Invoke(query, set.Expression);
+
+                        var swappedRoot = new RootReplacementVisitor(set).Visit(query);
+                        query = swappedRoot ?? throw new InvalidOperationException("Something went wrong swapping providers");
 
                         TResult? result = default;
 
@@ -852,9 +842,9 @@ namespace DataLayer.Utilities
                             }
                         }
 
-                        else if((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
+                        else if ((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
                         {
-                            
+
                             var taskType = typeof(Task<>).MakeGenericType(query.Type);
                             var executeMethod = asyncProvider.GetType().GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync))
                                 .FirstOrDefault()
@@ -865,7 +855,7 @@ namespace DataLayer.Utilities
                             // Always good practice to pass a token if available
                             //TODO: cancellationToken for UX to cancel log queries like searches
                             );
-                            if(unconverted is Task task)
+                            if (unconverted is Task task)
                             {
                                 await task;
                                 if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
@@ -1085,17 +1075,18 @@ namespace DataLayer.Utilities
             }, 0);
 
             var UpdateGeneric = GetType().GetMethods(nameof(UpdateNow), 1, [typeof(DbContext)]).FirstOrDefault();
-            return await Enqueue(async () => {
+            return await Enqueue(async () =>
+            {
                 var persistentContext = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
                 var genericMethod = UpdateGeneric?.MakeGenericMethod(entity.GetType());
                 var result = genericMethod?.Invoke(this, [persistentContext, entity, null, 3]);
-                if(result is Task task)
+                if (result is Task task)
                 {
                     await task;
                     return (result as dynamic).Result as IEntity;
                 }
-                return result as IEntity; 
+                return result as IEntity;
             }, priority);
         }
 
@@ -1246,7 +1237,7 @@ namespace DataLayer.Utilities
         {
             Expression? finalExpression = ToExpression(storage, query, out IQueryable? set)
                 ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
-            
+
             var QueryGeneric = GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
                 .FirstOrDefault()
                  ?? throw new InvalidOperationException("Could not render QueryNow method");
@@ -1261,8 +1252,8 @@ namespace DataLayer.Utilities
             var QueryNow = QueryGeneric.MakeGenericMethod(entityType, finalExpression.Type);
             var result = QueryNow.Invoke(this, [storage, finalExpression, 10])
                 ?? throw new InvalidOperationException("Could not render QueryNow function.");
-            
-            if(result is Task task)
+
+            if (result is Task task)
             {
                 await task;
                 return (result as dynamic).Result;

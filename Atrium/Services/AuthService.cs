@@ -159,7 +159,7 @@ namespace Atrium.Services
                 }
 
 
-                if(p.Id != null)
+                if (p.Id != null)
                     ConfigureClaimActions((AuthID)p.Id, options.ClaimActions);
             });
         }

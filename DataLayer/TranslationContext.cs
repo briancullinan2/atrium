@@ -314,7 +314,8 @@ namespace DataLayer
 
                 // TODO: check actual store for initialization needs
                 var tables = IEntityExtensions.Schemas(this).Select(kvp => kvp.Name);
-                var schema = IEntityExtensions.Schemas(this).ToDictionary(kvp => kvp.Name, kvp => {
+                var schema = IEntityExtensions.Schemas(this).ToDictionary(kvp => kvp.Name, kvp =>
+                {
                     var predicate = IEntityExtensions.ListPredicate(kvp.EntityType)
                         .Select(p => p.Name)
                         .ToList();
@@ -324,10 +325,10 @@ namespace DataLayer
                         .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
                             string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
                     var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();
-                    return new Tuple<List<string>,List<string>,List<KeyValuePair<string,List<string>>>>(predicate, [.. columns.Select(kvp => kvp.Key)], distinct);
+                    return new Tuple<List<string>, List<string>, List<KeyValuePair<string, List<string>>>>(predicate, [.. columns.Select(kvp => kvp.Key)], distinct);
                 });
-                
-                
+
+
                 var needInstall = await Store.NeedsInstall(null, [.. schema.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.Item2))]);
 
                 if (!needInstall) return;
@@ -368,7 +369,7 @@ namespace DataLayer
 
         public override async Task CloseAsync()
         {
-           // return base.CloseAsync();
+            // return base.CloseAsync();
         }
 
         protected override void Dispose(bool disposing)

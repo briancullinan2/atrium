@@ -20,18 +20,9 @@ namespace DataLayer.Utilities
         {
             var fakeRoot = new AsyncQueryable<TEntity>(this, Expression.Constant(new AsyncQueryable<TEntity>(this, Expression.Constant(Enumerable.Empty<TEntity>().AsQueryable()))));
 
-            if (expression is LambdaExpression lambda)
-            {
-                var visitor = new ParameterUpdateVisitor(lambda.Parameters[0], fakeRoot.Expression);
-                var invokedExpression = visitor.Visit(lambda.Body);
-                return new AsyncQueryable<TEntity>(this, invokedExpression);
-            }
-            else
-            {
-                var swapper = new RootReplacementVisitor(fakeRoot);
-                var sqliteExpression = swapper.Visit(expression);
-                return new AsyncQueryable<TEntity>(this, sqliteExpression);
-            }
+            var swapper = new RootReplacementVisitor(fakeRoot);
+            var sqliteExpression = swapper.Visit(expression);
+            return new AsyncQueryable<TEntity>(this, sqliteExpression!);
         }
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
@@ -48,13 +39,13 @@ namespace DataLayer.Utilities
             // evaluate Task<> types
             var resultType = typeof(TResult);
             var innerType = resultType.GetGenericArguments().FirstOrDefault();
-            var isTask = resultType.IsCompatibleWith(typeof(Task));
-            if(typeof(Task).Extends(resultType))
+            var isTask = resultType.Extends(typeof(Task));
+            if (typeof(Task).Extends(resultType))
             {
                 var QueryNow = QueryGeneric.MakeGenericMethod(typeof(TEntity), innerType ?? typeof(TResult));
                 return (TResult)QueryNow.Invoke(Query, [_storage, expression, _priority])!;
             }
-            else if (typeof(IAsyncEnumerable<>).IsCompatibleWith(resultType)
+            else if (typeof(IAsyncEnumerable<>).Extends(resultType)
                 && innerType is Type itemType)
             {
                 var listType = typeof(List<>).MakeGenericType(itemType);

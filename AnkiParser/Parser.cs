@@ -103,7 +103,7 @@ namespace AnkiParser
             using (var fs = File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
             anki2Database.Close();
 
-            
+
             using var context = new TranslationContext(tempPath, new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TranslationContext>().Options);
             var connection = Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(context.Database);
 
@@ -148,7 +148,7 @@ namespace AnkiParser
 
 
             connection.Close();
-            if(connection is SqliteConnection sqlite)
+            if (connection is SqliteConnection sqlite)
                 SqliteConnection.ClearPool(sqlite);
             File.Delete(tempPath);
 

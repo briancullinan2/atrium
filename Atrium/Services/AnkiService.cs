@@ -36,7 +36,7 @@ namespace Atrium.Services
 
         protected static async Task<IEnumerable<DataLayer.Entities.File>?> DoActualSearch(string? searchTerm, HttpClient? HttpClient)
         {
-            if(HttpClient == null)
+            if (HttpClient == null)
             {
                 throw new InvalidOperationException("Http client not available.");
             }

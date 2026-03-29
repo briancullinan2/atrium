@@ -1,4 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Entities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
@@ -63,7 +64,7 @@ namespace DataLayer.Utilities
                 CurrentRecording?.HasArithmetic = true;
             }
 
-            if(node.IsCompare())
+            if (node.IsCompare())
             {
                 if (node.NodeType == ExpressionType.GreaterThan
                     || node.NodeType == ExpressionType.LessThan)
@@ -85,7 +86,7 @@ namespace DataLayer.Utilities
                 var mathIsOnRight = false;
                 if (CurrentRecording?.MemberAccess != null)
                     memberIsOnLeft = true;
-                if(CurrentRecording?.HasArithmetic == true)
+                if (CurrentRecording?.HasArithmetic == true)
                     mathIsOnLeft = true;
 
 
@@ -139,9 +140,9 @@ namespace DataLayer.Utilities
                         var realType = Nullable.GetUnderlyingType(integerToCompare.PropertyType) ?? integerToCompare.PropertyType;
                         var zeroIndex = Expression.Constant(Convert.ChangeType(0, realType), realType);
                         var newMember = Expression.MakeMemberAccess(member.Expression, integerToCompare);
-                        var newerExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, left, zeroIndex);
+                        var newerExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, newMember, zeroIndex);
                         Console.WriteLine("WARNING: converting expression from " + newExpression + " to " + newerExpression);
-                        members = new Dictionary<MemberInfo, object?>{{ integerToCompare, 0}};
+                        members = new Dictionary<MemberInfo, object?> { { integerToCompare, 0 } };
                         newExpression = newerExpression;
                     }
                     else
@@ -150,7 +151,7 @@ namespace DataLayer.Utilities
 
 
                 // TODO: if we made it this far make a recording
-                foreach(var member in members)
+                foreach (var member in members)
                 {
                     CurrentRecording?.Comparators.Add((member.Key, node.NodeType, member.Value));
                 }
@@ -161,7 +162,7 @@ namespace DataLayer.Utilities
 
             if (node.IsBoolean())
             {
-                if(node.NodeType == ExpressionType.OrElse)
+                if (node.NodeType == ExpressionType.OrElse)
                 {
                     // TODO: they both get added
                     CurrentRecording?.AddBoth = true;
@@ -310,7 +311,7 @@ namespace DataLayer.Utilities
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if(FilterFluff(node) is Expression queryable)
+            if (FilterFluff(node) is Expression queryable)
             {
                 return queryable;
             }
@@ -349,7 +350,7 @@ namespace DataLayer.Utilities
                 // will be cleaned by our VisitMember override.
                 var callVisited = base.VisitMethodCall(node);
 
-                if(CurrentRecording != null)
+                if (CurrentRecording != null)
                 {
                     if (!Recordings.TryAdd(node.Method, CurrentRecording))
                         throw new InvalidOperationException("Method call already in recordings, too complicated.");
@@ -358,6 +359,21 @@ namespace DataLayer.Utilities
 
                 return callVisited;
             }
+
+
+            if (node.Method.DeclaringType == typeof(Microsoft.EntityFrameworkCore.EF)
+                && node.Method.Name == nameof(Microsoft.EntityFrameworkCore.EF.Property)
+                && node.Arguments.ElementAtOrDefault(0) is ParameterExpression parameter
+                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: string memberName }
+                && parameter.Type.Extends(typeof(IEntity))
+                && parameter.Type != typeof(object))
+            {
+                var member = parameter.Type.GetProperties(memberName).FirstOrDefault()
+                    ?? throw new InvalidOperationException("Could not find property: " + memberName + " on " + parameter.Type.FullName);
+                var memberAccess = Expression.MakeMemberAccess(parameter, member);
+                return memberAccess;
+            }
+
 
             throw new InvalidOperationException($"Method '{node.Method.Name}' is not part of the supported IDB method chain.");
         }

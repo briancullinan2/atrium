@@ -79,7 +79,8 @@ namespace FlashCard.Utilities.Extensions
                 //while (!component.IsDisposed())
                 {
                     // Wait for the Dispatcher to be 'Idle' (meaning render is done)
-                    await dispatcher.InvokeAsync(() => {
+                    await dispatcher.InvokeAsync(() =>
+                    {
                         onRendered?.Invoke();
                     });
 
@@ -367,7 +368,7 @@ namespace FlashCard.Utilities.Extensions
                 }
 
                 // 4. Execute and Return
-                if(method.IsStatic || target is Type)
+                if (method.IsStatic || target is Type)
                 {
                     return method.Invoke(null, convertedArgs);
                 }

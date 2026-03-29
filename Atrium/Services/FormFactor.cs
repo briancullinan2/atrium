@@ -9,7 +9,8 @@ namespace Atrium.Services
 #if WINDOWS
         , WebApplication? App = null
 #endif
-    ) : IFormFactor {
+    ) : IFormFactor
+    {
         public bool IsWebContext => httpContextAccessor?.HttpContext != null;
         public bool IsMauiContext => httpContextAccessor == null || httpContextAccessor.HttpContext == null;
 

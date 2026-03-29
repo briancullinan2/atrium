@@ -14,7 +14,7 @@ namespace DataLayer.Utilities.Extensions
         {
             return task.ContinueWith(t => then(t)).Unwrap();
         }
-        
+
         // Overload for: Task<T> -> async (Task<T> t) => { ... }
         public static Task Then<T>(this Task<T> task, Func<Task<T>, Task> then)
         {
@@ -366,7 +366,8 @@ namespace DataLayer.Utilities.Extensions
             var cts = new CancellationTokenSource();
 
             // Ensure we don't leak old ones if they were cancelled but still in the dict
-            _timerRegistry.AddOrUpdate(uniqueKey, cts, (_, old) => {
+            _timerRegistry.AddOrUpdate(uniqueKey, cts, (_, old) =>
+            {
                 old.Cancel();
                 old.Dispose();
                 return cts;

@@ -25,7 +25,8 @@ namespace Atrium.Services
 #if WINDOWS
         , IHttpContextAccessor? _httpContextAccessor = null
 #endif
-    ) : AuthService {
+    ) : AuthService
+    {
 
         private static readonly string SessionId = "AtriumSession";
 
@@ -273,7 +274,7 @@ namespace Atrium.Services
                 });
 
             AddExternalLogins(authenticationBuilder);
-            
+
         }
 #endif
     }

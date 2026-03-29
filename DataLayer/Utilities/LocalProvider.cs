@@ -99,9 +99,11 @@ namespace DataLayer.Utilities
                 throw new InvalidOperationException("IDB Module not setup for query.");
 
             Console.WriteLine("Executing: " + query.ToString());
-            var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
             try
             {
+
+                var rootSwapped = new RootReplacementVisitor(null).Visit(query);
+                var cleanExpression = new ClosureEvaluatorVisitor().Visit(rootSwapped);
                 var visitor = new AggressiveVisitor();
                 var simpleExpression = visitor.Visit(cleanExpression);
                 var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
