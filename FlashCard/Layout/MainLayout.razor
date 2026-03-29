@@ -190,8 +190,9 @@
         await InvokeAsync(StateHasChanged);
         await Task.Delay(100);
 
+
         _isTransitioning = true;
-        if (!ct.IsCancellationRequested)
+        ct.ThrowIfCancellationRequested();
         {
             await InvokeAsync(StateHasChanged);
         }
@@ -213,13 +214,13 @@
         _nextBody = null;
         _cts?.Dispose();
         _cts = null;
-        if (!ct.IsCancellationRequested)
+        ct.ThrowIfCancellationRequested();
         {
             await InvokeAsync(StateHasChanged);
         }
 
-        
-        if (PageHasChanged)
+
+        if (!IsClosing && PageHasChanged)
         {
             //_activeBody.Component()?.JSInvokable();
             await this.Mirror();
@@ -461,11 +462,19 @@
             _cts?.Cancel();
         }
         _cts = new CancellationTokenSource();
-        _ = UnvaluedTask(_cts.Token);
+        _ = UnvaluedTask(_cts.Token).Forget();
     }
+
+    public bool IsClosing = false;
 
     public void Dispose()
     {
+        IsClosing = true;
+        if (_cts != null)
+        {
+            _cts?.Cancel();
+        }
+
         // Unsubscribe to prevent memory leaks
         _registration?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;

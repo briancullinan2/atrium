@@ -4,10 +4,11 @@
 @using FlashCard.Services
 @implements IDisposable
 @inject IPageManager PageManager
+@inject IFormFactor Form
 
 <div class="flash-card dev-console @(Embedded == true ? "embedded" : "") animate-in @(_isExpanded ? "expanded" : "collapsed")">
     <div class="console-header" @onclick="Toggle">
-        <span>Dev Console (@Services.PageManager.Immediate.Count)</span>
+        <span>Dev Console (@Services.PageManager.Immediate.Count)<br />@(Form.GetFormFactor())</span>
         <button class="cta" @onclick:stopPropagation @onclick="Clear">Clear</button>
     </div>
 
@@ -25,7 +26,7 @@
                         <p><strong>Source:</strong> <pre>@error.Exception.Source</pre></p>
                         <details>
                             <summary>Stack Trace</summary>
-                            <pre>@(error.Exception.Data["OriginalStack"] as string ?? error.Exception.StackTrace)</pre>
+                            <pre>@(error.Exception.StackTrace ?? error.Exception.Data["OriginalStack"])</pre>
                         </details>
                     </div>
                 }

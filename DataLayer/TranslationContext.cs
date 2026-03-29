@@ -270,9 +270,10 @@ namespace DataLayer
 
 
     // expected to reset multiple times per instance run
-    public class TestStorage(IJSRuntime JS, IQueryManager service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
+    public class TestStorage(ILocalStore _store, IQueryManager service, DbContextOptions<TestStorage> ctx) : TranslationContext(service, ctx)
     {
-        public IJSObjectReference? Module { get; private set; }
+        public ILocalStore Store { get; } = _store;
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
@@ -282,6 +283,7 @@ namespace DataLayer
             _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
             _ = options.ReplaceService<IQueryProvider, LocalQueryProvider>();
             _ = options.ReplaceService<IAsyncQueryProvider, LocalQueryProvider>();
+
         }
 
         public override async Task EnsureGlobalIdentityStart()
@@ -296,25 +298,24 @@ namespace DataLayer
             {
                 NeedsInitialize = false;
 
-                Module = await JS.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
-
                 // 2. Call the function ON the module reference, not the global JS runtime
-                //await module.InvokeVoidAsync("putRecord", "UserSessions", myData);
+                await Store.InitializeAsync();
 
                 //await Database.EnsureCreatedAsync();
                 foreach (var (Name, EntityType) in IEntityExtensions.Schemas(this))
                 {
                     var storeName = EntityType.Metadata().TableName;
                     var predicate = IEntityExtensions.ListPredicate(EntityType)
-                        .Select(p => p.Name);
+                        .Select(p => p.Name)
+                        .ToList();
                     var columns = IEntityExtensions.ListDatabase(EntityType)
                         .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
                     var indexes = IEntityExtensions.ListIndexes(EntityType)
                         .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
-                            string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => p.Value.Select(p => p.Name).ToList());
-                    var distinct = columns.Concat(indexes).DistinctBy(k => k.Key);
+                            string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
+                    var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();
                     Console.WriteLine("Creating store: " + storeName + " - " + JsonSerializer.Serialize(distinct));
-                    await Module.InvokeVoidAsync("setupStore", storeName, predicate, distinct);
+                    await Store.SetupStoreAsync(storeName, predicate, distinct);
                 }
 
             }

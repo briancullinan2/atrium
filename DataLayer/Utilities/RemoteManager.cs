@@ -75,9 +75,9 @@ namespace DataLayer.Utilities
         protected static async Task<TEntity> SaveLocal<TEntity>(TestStorage context, TEntity entity)
             where TEntity : Entity<TEntity>
         {
-            if (context.Module == null)
+            if (context.Store == null)
                 throw new InvalidOperationException("IDB Module not setup for saving.");
-            await context.Module.InvokeAsync<int>("putRecord", Entity<TEntity>.Metadata.TableName, entity);
+            await context.Store.PutRecordAsync(Entity<TEntity>.Metadata.TableName, entity);
             return entity;
         }
 

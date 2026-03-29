@@ -81,11 +81,30 @@ window.listenToResize = (dotnetHelper) => {
 window.interconnect = {
     activeReapers: {},
 
-    register: function(path, dotnetHelper, methodNames = []) {
+    clear: function(namespace) {
+        delete window[namespace];
+    },
+
+
+    register: function(path, dotnetHelper, methodNames = [], servicable) {
         // 1. REAPER CHECK: Skip if already wired to this specific instance
         //if (this.activeReapers[path] && this.activeReapers[path].id === componentId) {
         //    return;
         //}
+        if (window.GetService == null && servicable) {
+            window.GetService = async s => {
+                var path = await dotnetHelper.invokeMethodAsync('GetService', s)
+                if (path == null) return null;
+                const parts = path.split('.');
+                let current = window;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    current[parts[i]] = current[parts[i]] || {};
+                    current = current[parts[i]];
+                }
+                return current;
+            }
+        }
+
 
         if (this.activeReapers[path]) {
             this.unregister(path);

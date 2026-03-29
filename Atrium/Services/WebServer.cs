@@ -118,6 +118,8 @@ namespace Atrium.Services
                 WebApplication? webApp = null;
                 webBuilder.Services.AddSingleton<WebApplication>(sp => (WebApplication)webApp!);
 
+                webBuilder.Services.AddHttpContextAccessor();
+
                 webApp = webBuilder.Build();
                 _ = webApp.Services.GetRequiredService<SimpleLogger>();
 

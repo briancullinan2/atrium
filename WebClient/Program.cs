@@ -52,6 +52,7 @@ builder.Services.AddScoped(sp => (BrowserStateProvider)sp.GetRequiredService<IAu
 
 builder.Services.AddDbContextFactory<DataLayer.RemoteStorage>();
 builder.Services.AddDbContextFactory<DataLayer.TestStorage>();
+builder.Services.AddSingleton<ILocalStore, LocalStore>();
 
 WebAssemblyHost? app = null;
 builder.Services.AddSingleton<WebAssemblyHost>(sp => (WebAssemblyHost)app!);

@@ -92,11 +92,8 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        private static readonly NullabilityInfoContext context;
-        static TypeExtensions()
-        {
-            context = new NullabilityInfoContext();
-        }
+        private static readonly NullabilityInfoContext context = new();
+
 
         public static bool IsNullable(this MethodInfo method)
         {
@@ -127,7 +124,7 @@ namespace DataLayer.Utilities.Extensions
 
         public static bool IsNullable(this Type type)
         {
-            return Nullable.GetUnderlyingType(type) != null;
+            return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
         }
 
 
@@ -221,9 +218,16 @@ namespace DataLayer.Utilities.Extensions
                         || m.GetParameters().Where((p, i) =>
                             extendedTypes.ElementAtOrDefault(i) is Type testTest
                             && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
-                    );
+                    )
+                .OrderBy(m => m.GetParameters().Select((p, i) =>
+                            p.ParameterType != typeof(object) ? -1 : 0).Sum());
+                var ordered = method;
+                if(extendedTypes != null)
+                    ordered = method
+                        .OrderBy(m => m.GetParameters().Select((p, i) => 
+                            p.ParameterType == extendedTypes.ElementAtOrDefault(i) ? -1 : 0).Sum());
 
-                results = [.. results, .. method];
+                results = [.. results, .. ordered];
                 type = type.BaseType;
                 if (results.Count > 0 && !all) break;
             }
@@ -329,54 +333,81 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        private static readonly ConcurrentBag<Type> _allKnownTypes = [];
+        private static readonly HashSet<string> _loadedAssemblies = [];
+        private static readonly Lock _loaderLock = new();
+
+
+        static TypeExtensions()
+        {
+            RegisterAssembly(Assembly.GetExecutingAssembly());
+        }
+
+
+        public static void RegisterAssembly(Assembly? assembly)
+        {
+            if (assembly == null) return;
+
+            var name = assembly.FullName!;
+            if (_loadedAssemblies.Contains(name)) return;
+
+            lock (_loaderLock)
+            {
+                if (_loadedAssemblies.Add(name))
+                {
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        _allKnownTypes.Add(type);
+                    }
+                }
+            }
+        }
 
         private static readonly ConcurrentDictionary<string, Type?> _pathToTypeCache = new();
-        private static readonly Lazy<List<Type>> _assemblyTypes = new(() =>
-            [.. Assembly.GetExecutingAssembly().GetTypes()]);
+
+
 
         public static Type? ToType(this string filePath, Assembly? targetAssembly = null)
         {
-            if (Type.GetType(filePath) is Type t) return t;
+            // 0. Register new assemblies if provided on the fly
+            if (targetAssembly != null) RegisterAssembly(targetAssembly ?? Assembly.GetCallingAssembly());
 
             return _pathToTypeCache.GetOrAdd(filePath, path =>
             {
-                var assembly = targetAssembly ?? Assembly.GetExecutingAssembly();
-                var fileName = Path.GetFileNameWithoutExtension(path);
-
-                // 1. Try the "Standard" Namespace approach first (Fast)
-                var assemblyName = assembly.GetName().Name!;
+                // Standardize path separators
                 var normalizedPath = path.Replace("\\", "/");
-                int startIndex = normalizedPath.IndexOf(assemblyName);
+                var fileName = Path.GetFileNameWithoutExtension(normalizedPath);
 
-                if (startIndex != -1)
-                {
-                    string relativePath = normalizedPath[startIndex..]
-                        .Replace(".razor", "").Replace(".cs", "").Replace("/", ".");
+                // 1. Direct Lookup (In case it's a fully qualified name string)
+                var directType = Type.GetType(path);
+                if (directType != null) return directType;
 
-                    var exactMatch = assembly.GetType(relativePath);
-                    if (exactMatch != null) return exactMatch;
-                }
-
-                // 2. "Fuzzy" Resolution: Search all types for a Name match
-                // This catches components with custom @namespace declarations
-                var potentialMatches = _assemblyTypes.Value
+                // 2. Exact Name Match (Fuzzy step 1)
+                // Filters the master list for anything matching the file name (Component.razor -> Component)
+                var potentialMatches = _allKnownTypes
                     .Where(t => t.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
+                if (potentialMatches.Count == 0) return null;
                 if (potentialMatches.Count == 1) return potentialMatches[0];
 
-                // 3. Deep Dive: Try to match the folder hierarchy against the namespace
-                if (potentialMatches.Count > 1)
+                // 3. Namespace/Folder Hierarchy Match (Fuzzy step 2)
+                // Compares path segments like /Pages/Users/Profile.razor against namespaces
+                var pathSegments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                                               .Reverse()
+                                               .Skip(1) // Skip the filename itself
+                                               .ToList();
+
+                return potentialMatches.OrderByDescending(t =>
                 {
-                    var folders = path.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)
-                                      .Reverse().Skip(1).ToList();
+                    if (string.IsNullOrEmpty(t.Namespace)) return 0;
 
-                    return potentialMatches.OrderByDescending(t =>
-                        folders.Count(f => t.Namespace?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)
-                    ).FirstOrDefault();
-                }
-
-                return null;
+                    // Count how many folders in the path exist in the namespace string
+                    return pathSegments.Count(segment =>
+                        t.Namespace.Contains(segment, StringComparison.OrdinalIgnoreCase));
+                })
+                .ThenBy(t => t.Namespace?.Length ?? int.MaxValue) // Prefer shorter/closer namespaces if tied
+                .FirstOrDefault();
             });
         }
     }

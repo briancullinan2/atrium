@@ -130,7 +130,7 @@ namespace DataLayer
         public AttributeValueIndexer<int?> MaxLength { get; private set; }
         public AttributeTypeIndexer Attributes { get; private set; }
         public Type EntityType { get; private set; }
-        public string? TableName { get; private set; }
+        public string TableName { get; private set; }
 
 
         internal EntityMetadata(Type entityType) : base()

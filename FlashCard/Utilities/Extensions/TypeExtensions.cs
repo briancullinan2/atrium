@@ -210,8 +210,10 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
-        public static ValueTask Invokable(this object component, IJSRuntime JS)
+        public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, IServiceProvider? Service = null)
         {
+            if (component == null) return ValueTask.CompletedTask;
+
             var type = component.GetType();
             var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                                   .Select(m => m.Name)
@@ -220,17 +222,17 @@ namespace FlashCard.Utilities.Extensions
             var path = type.FullName ?? type.Name;
 
             // 2. Wrap and Pin
-            var sentry = new InterconnectSentry(component);
+            var sentry = new InterconnectSentry(component, Service);
             var objRef = DotNetObjectReference.Create(sentry);
 
             // 3. Register with the Method Names list
-            var await = JS.InvokeVoidAsync("interconnect.register", path, objRef, methodNames);
+            var await = JS?.InvokeVoidAsync("interconnect.register", path, objRef, methodNames, Service != null);
 
-            return await;
+            return await ?? ValueTask.CompletedTask;
         }
 
 
-        public static ValueTask Invokable(this IComponent component, IJSRuntime? JS = null)
+        public static ValueTask Invokable(this IComponent component, IJSRuntime JS)
         {
             if (component is RouteView or AuthorizeRouteView)
             {
@@ -241,19 +243,32 @@ namespace FlashCard.Utilities.Extensions
 
             if (js == null) return ValueTask.CompletedTask;
 
-            return Invokable((object)component, js);
+            return Invokable((object)component, js, component.Service());
         }
 
 
-        public class InterconnectSentry(object target)
+        public class InterconnectSentry(object target, IServiceProvider? Service)
         {
+            [JSInvokable("GetService")]
+            public async Task<string?> GetService(string typeName)
+            {
+                var type = typeName.ToType() ?? throw new InvalidOperationException("type not found: " + typeName);
+                var service = (Service?.GetService(type)) ?? throw new InvalidOperationException("service not found: " + type.FullName);
+                await service.Invokable(Service?.GetService(typeof(IJSRuntime)) as IJSRuntime, Service);
+                return service.GetType().FullName ?? service.GetType().Name;
+            }
+
+
             [JSInvokable("Invoke")]
             public object? Invoke(string methodName, JsonElement[] args)
             {
                 // 1. Reflection Handshake: Find the method on the 'target'
-                var method = target.GetType().GetMethods(methodName).FirstOrDefault()
+                var method = target.GetType().GetMethods(methodName)
+                    .OrderBy(m => m.ContainsGenericParameters)
+                    .FirstOrDefault()
                     ?? throw new MissingMethodException($"Sentry: Method '{methodName}' not found on {target.GetType().Name}.");
 
+                //Console.WriteLine("Calling method: " + method.Name + " - " + string.Join(", ", method.GetParameters().Select(p => p.Name)));
                 // 2. Security Check (The 'Whitelist' Logic)
                 // Since we aren't using attributes, we might want to check if it's 
                 // a 'safe' name or part of a specific interface.
@@ -276,8 +291,6 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
-        private static readonly Dictionary<int, string> _activeMirrors = [];
-
         public static async Task Mirror(this IComponent component)
         {
             var JS = component.Runtime();
@@ -286,26 +299,12 @@ namespace FlashCard.Utilities.Extensions
             var currentComponents = new List<IComponent>([component]).Concat(component.GetChildComponents());
             var currentIds = currentComponents.ToDictionary(c => c.GetId(), c => c.GetType().FullName ?? c.GetType().Name);
 
-            // 2. THE REAPER: Find IDs that exist in our tracker but are NOT in the current tree
-            var deadIds = _activeMirrors.Keys.Where(id => !currentIds.ContainsKey(id)).ToList();
+            await JS.InvokeVoidAsync("interconnect.clear", nameof(FlashCard));
 
-            foreach (var id in deadIds)
-            {
-                var path = _activeMirrors[id];
-                // Tell JS to nuke the specific path
-                await JS.InvokeVoidAsync("interconnect.unregister", path);
-                _activeMirrors.Remove(id);
-            }
-
-            // 3. THE HANDSHAKE: Register new components
             foreach (var comp in currentComponents)
             {
                 var id = comp.GetId();
-                if (!_activeMirrors.ContainsKey(id))
-                {
-                    await comp.Invokable();
-                    _activeMirrors.Add(id, currentIds[id]);
-                }
+                await comp.Invokable(JS);
             }
         }
 

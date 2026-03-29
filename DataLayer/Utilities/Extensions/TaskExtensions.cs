@@ -13,9 +13,15 @@ namespace DataLayer.Utilities.Extensions
         {
             return task.ContinueWith(then, TaskContinuationOptions.NotOnFaulted);
         }
+
         public static Task Then<T>(this Task<T> task, Action<Task<T>> then)
         {
             return task.ContinueWith(then, TaskContinuationOptions.NotOnFaulted);
+        }
+
+        public static Task Then<T>(this Task<T> task, Action<T> then)
+        {
+            return task.ContinueWith(t => then(t.Result), TaskContinuationOptions.NotOnFaulted);
         }
 
         public static Task Catch(this Task task, Action<Task> then)
@@ -30,6 +36,7 @@ namespace DataLayer.Utilities.Extensions
                 if (t.IsFaulted && t.Exception != null)
                 {
                     var ex = t.Exception.Flatten().InnerException ?? t.Exception;
+                    if (ex is OperationCanceledException) return; // don't log
                     // Hook into your "serious" logger here
                     Console.WriteLine($"!!! Unwatched Task Failed in {caller} L:{line}: {ex?.Message}");
 

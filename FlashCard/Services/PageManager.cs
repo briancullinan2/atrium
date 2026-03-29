@@ -3,7 +3,9 @@ using FlashCard.Controls;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace FlashCard.Services
 {
@@ -20,13 +22,14 @@ namespace FlashCard.Services
     }
 
 
-    public class PageManager(ILoggerFactory LoggerFactory) : IPageManager
+    public class PageManager(ILoggerFactory Logger, IJSRuntime JS) : IPageManager
     {
         internal static ConcurrentQueue<(DateTime Created, Exception Exception)> Immediate { get; set; } = [];
 
         public Dictionary<string, string?> State { get; set; } = [];
 
-        public bool IsWebClient { get; } = false;
+        public IJSObjectReference? Module { get; private set; }
+
 
 
         public event Action<IComponent?>? OnStateChanged;
@@ -67,7 +70,7 @@ namespace FlashCard.Services
         public async Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services)
         {
             var fragment = _activeBody;
-            using var htmlRenderer = new HtmlRenderer(Services, LoggerFactory);
+            using var htmlRenderer = new HtmlRenderer(Services, Logger);
 
             var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
             {

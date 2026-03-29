@@ -22,15 +22,17 @@ namespace FlashCard.Services
 
     public class SimpleLogger : ILog
     {
+        public static IServiceProvider? Service { get; set; }
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
 
-        public static IQueryManager? Query { get; set; }
-        public static IPageManager? Manager { get; set; }
+        private static IQueryManager? Query { get; set; }
+        private static IPageManager? Manager { get; set; }
 
-        public SimpleLogger(IPageManager? page = null, IQueryManager? query = null)
+        public SimpleLogger(IServiceProvider _services)
         {
-            Query ??= query;
-            Manager ??= page;
+            Service ??= _services;
+            Manager = Service.GetRequiredService<IPageManager>();
+            Query = Service.GetRequiredService<IQueryManager>();
             if(Query != null)
             {
                 foreach (var pre in PreLog)
@@ -61,7 +63,7 @@ namespace FlashCard.Services
             string category = Path.GetFileNameWithoutExtension(filePath);
             if (_loggerCache.TryGetValue(category, out var logger)) return logger;
 
-            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger()
+            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger(Service!)
             {
                 Filepath = filePath,
                 Category = category

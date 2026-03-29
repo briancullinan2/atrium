@@ -1,17 +1,21 @@
 using FlashCard.Services;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace Atrium.Services
 {
     public class FormFactor(
+        IHttpContextAccessor? httpContextAccessor = null
 #if WINDOWS
-        WebApplication? App = null
+        , WebApplication? App = null
 #endif
-        ) : IFormFactor
-    {
+    ) : IFormFactor {
+        public bool IsWebContext => httpContextAccessor?.HttpContext != null;
+        public bool IsMauiContext => httpContextAccessor == null || httpContextAccessor.HttpContext == null;
+
         public string GetFormFactor()
         {
-            return DeviceInfo.Idiom.ToString();
+            return (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
         }
 
         public string GetPlatform()

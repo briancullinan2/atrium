@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 
 namespace WebClient.Services
 {
-    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) : FlashCard.Services.PageManager(LoggerFactory), IPageManager
+    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) : FlashCard.Services.PageManager(LoggerFactory, JS), IPageManager
     {
         private readonly IJSRuntime _runtime = JS;
 

@@ -15,12 +15,12 @@ namespace FlashCard.Services
         {
             Services.AddCascadingValue(sp => new ErrorBoundary());
             // FUCK DI
-            Services.AddSingleton<IMenuService, MenuService>();
-            Services.AddSingleton<IStudyService, StudyService>();
+            Services.AddScoped<IMenuService, MenuService>();
+            Services.AddScoped<IStudyService, StudyService>();
             Services.AddScoped<ILoginService, LoginService>();
-            Services.AddSingleton<ICourseService, CourseService>();
-            Services.AddSingleton<IPageManager, PageManager>();
-            Services.AddSingleton<IThemeService, ThemeService>();
+            Services.AddScoped<ICourseService, CourseService>();
+            Services.AddScoped<IPageManager, PageManager>();
+            Services.AddScoped<IThemeService, ThemeService>();
             Services.AddSingleton<IQueryManager, QueryManager>();
             //Services.AddScoped<IAuthService, AuthService>();
             Services.AddScoped<NavigationTracker>();

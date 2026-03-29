@@ -52,6 +52,8 @@ namespace DataLayer.Utilities
         //Task<IEntity> Save(bool persistent, IEntity entity, int priority = 10);
 
 
+        Task<List<object>> Query(object query, string type, int priority = 10);
+        AsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) where TEntity : Entity<TEntity>;
         AsyncQueryable<TEntity> Query<TEntity>(Expression<Func<TEntity, bool>>? query = null, int priority = 10) where TEntity : Entity<TEntity>;
         //TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
         //TResult Query<TEntity, TResult>(StorageType storage, Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>;
@@ -669,6 +671,29 @@ namespace DataLayer.Utilities
         }
 
 
+        public virtual Task<List<object>> Query(object query, string type, int priority = 10)
+        {
+            var realType = type.ToType() ?? throw new InvalidOperationException("Entity type not known: " + type);
+            var ToPredicate = typeof(DataLayer.Utilities.Extensions.ExpressionExtensions)
+                .GetMethods("ToPredicate", 1, [typeof(object)])
+                .FirstOrDefault()
+                ?.MakeGenericMethod(realType)
+                ?? throw new InvalidOperationException("Cant find ToPredicate");
+            var Query = typeof(QueryManager)
+                .GetMethods(nameof(QueryManager.Query), 1, [typeof(Expression)])
+                .FirstOrDefault()
+                ?.MakeGenericMethod(realType)
+                ?? throw new InvalidOperationException("Cant find Query builder");
+            var result = (IQueryable)Query.Invoke(this, [ToPredicate.Invoke(null, [query]), priority])!;
+            return result.Cast<object>().ToListAsync();
+        }
+
+
+        public virtual AsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) where TEntity : Entity<TEntity>
+        {
+            return Query<TEntity>(query.ToPredicate<TEntity>(), priority);
+        }
+
 
 
         public AsyncQueryable<TEntity> Query<TEntity>(
@@ -801,7 +826,8 @@ namespace DataLayer.Utilities
                             var finalQueryable = (FinalProvider ?? set.Provider).CreateQuery(query);
 
                             // Force ToList to materialize it before the context is disposed
-                            var typeParameter = typeof(TResult).GetGenericArguments().FirstOrDefault()
+                            var typeParameter = finalQueryable.ElementType
+                                ?? typeof(TResult).GetGenericArguments().FirstOrDefault()
                                 ?? typeof(TResult).GetElementType()
                                 ?? throw new InvalidOperationException("Couldn't extract generic type.");
 

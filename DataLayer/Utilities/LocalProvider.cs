@@ -106,7 +106,7 @@ namespace DataLayer.Utilities
             var serialized = query.ToXDocument().ToString();
             Console.WriteLine("Converted: " + cleanExpression);
 
-            if (Context.Module == null)
+            if (Context.Store == null)
                 throw new InvalidOperationException("IDB Module not setup for query.");
 
 

@@ -16,14 +16,18 @@ namespace DataLayer.Utilities
         public class RecordMethod
         {
             public string? MethodName { get; set; }
+            [JsonIgnore]
             public Type? MemberAccess { get; set; }
+            public string? MemberAccessName { get => MemberAccess?.AssemblyQualifiedName; }
             [JsonIgnore]
             public List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators { get; set; } = [];
             public List<Tuple<string, string, object?>> SerializableComparators
             {
-                get => Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value)).ToList();
+                get => [.. Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value))];
             }
+            [JsonIgnore]
             public Type? EntityType { get; set; }
+            public string? EntityTypeName { get => EntityType?.AssemblyQualifiedName; }
             public bool AddBoth { get; set; } = false;
             public bool HasArithmetic { get; set; } = false;
 
