@@ -62,7 +62,7 @@ namespace FlashCard.Services
                     try
                     {
                         var usernameMatch = await Query
-                            .Query<User>(u => u.Username != null && u.Username.Equals(claim.Value))
+                            .Query<User>(u => u.Username == claim.Value)
                             .FirstOrDefaultAsync();
                         User = usernameMatch;
                     }

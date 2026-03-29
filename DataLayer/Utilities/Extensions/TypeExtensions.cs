@@ -128,12 +128,57 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static bool IsNumeric(this Type type)
+        {
+            if (type == null) return false;
+
+            // Handle Nullable<T> by getting the underlying type (e.g., int? -> int)
+            var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+
+            if (underlyingType.IsPrimitive)
+            {
+                return underlyingType != typeof(bool) &&
+                       underlyingType != typeof(char) &&
+                       underlyingType != typeof(IntPtr) &&
+                       underlyingType != typeof(UIntPtr);
+            }
+
+            // Handle types that are numeric but not "Primitive" in .NET terms
+            return underlyingType == typeof(decimal);
+        }
+
+
+        public static bool IsNullable(this MemberInfo member)
+        {
+            return member switch
+            {
+                PropertyInfo prop => prop.IsNullable(),
+                FieldInfo field => field.FieldType.IsNullable(),
+                MethodInfo method => method.ReturnType.IsNullable(),
+                Type type => type.IsNullable(), // Handle the case where the member IS a type
+                _ => throw new InvalidOperationException($"Member type {member.GetType().Name} is not supported.")
+            };
+        }
+
+        public static bool IsNumeric(this MemberInfo member)
+        {
+            return member switch
+            {
+                PropertyInfo prop => prop.PropertyType.IsNumeric(),
+                FieldInfo field => field.FieldType.IsNumeric(),
+                MethodInfo method => method.ReturnType.IsNumeric(),
+                Type type => type.IsNumeric(), // Handle the case where the member IS a type
+                _ => throw new InvalidOperationException($"Member type {member.GetType().Name} is not supported.")
+            };
+        }
+
         public static bool IsNullable(this PropertyInfo property)
         {
             var info = context.Create(property);
 
-            if (info.WriteState == NullabilityState.Nullable ||
-                info.ReadState == NullabilityState.Nullable)
+            if (property.PropertyType.IsNullable()
+                || info.WriteState == NullabilityState.Nullable
+                || info.ReadState == NullabilityState.Nullable)
             {
                 return true;
             }

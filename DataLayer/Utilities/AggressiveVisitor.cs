@@ -1,8 +1,10 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
@@ -49,10 +51,10 @@ namespace DataLayer.Utilities
             //   to compare at the top of each OrElse, with
             //   as many AndAlsos following
 
-            if(node.NodeType == ExpressionType.Not
-                || node.NodeType == ExpressionType.NotEqual)
+            if (node.NodeType == ExpressionType.Not)
             {
-                throw new InvalidOperationException("Not/NotEqual operator can't be used on IDB: " + node.ToString());
+                // TODO: check if it can be converted
+                throw new InvalidOperationException("Not operator can't be used on IDB: " + node.ToString());
             }
 
             if (node.IsArithmetic())
@@ -105,10 +107,49 @@ namespace DataLayer.Utilities
 
                 CurrentRecording?.MemberAccess = oldMember;
 
+
                 var newExpression = Expression.MakeBinary(node.NodeType, left, right);
 
-                // TODO: if we made it this far make a recording
                 var members = newExpression.ToMembers();
+
+                if (node.NodeType == ExpressionType.NotEqual)
+                {
+                    // TODO: check if it can be converted
+                    if (members.Count > 1)
+                        throw new InvalidOperationException("NotEqual operator can't be used on IDB: " + node.ToString());
+
+                    PropertyInfo? integerToCompare = null;
+                    if (members.First().Key is PropertyInfo prop
+                        && prop.IsNullable() && prop.IsNumeric())
+                        integerToCompare = prop;
+
+                    // swap out the object key for the id key
+                    if (members.First().Key is PropertyInfo prop2
+                        && prop2.GetCustomAttribute<ForeignKeyAttribute>()?.Name is string foreign
+                        && prop2.DeclaringType?.GetProperty(foreign) is PropertyInfo prop3
+                        && prop3.IsNumeric())
+                        integerToCompare = prop3;
+
+                    // automatically fix u.User != null
+                    if (integerToCompare != null
+                        && (memberIsOnLeft ? left : right) is MemberExpression member
+                        && ((memberIsOnLeft && right is ConstantExpression constant && constant.Value == null)
+                        || (!memberIsOnLeft && left is ConstantExpression constant2 && constant2.Value == null)))
+                    {
+                        var realType = Nullable.GetUnderlyingType(integerToCompare.PropertyType) ?? integerToCompare.PropertyType;
+                        var zeroIndex = Expression.Constant(Convert.ChangeType(0, realType), realType);
+                        var newMember = Expression.MakeMemberAccess(member.Expression, integerToCompare);
+                        var newerExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, left, zeroIndex);
+                        Console.WriteLine("WARNING: converting expression from " + newExpression + " to " + newerExpression);
+                        members = new Dictionary<MemberInfo, object?>{{ integerToCompare, 0}};
+                        newExpression = newerExpression;
+                    }
+                    else
+                        throw new InvalidOperationException("NotEqual operator can't be used on IDB: " + node.ToString());
+                }
+
+
+                // TODO: if we made it this far make a recording
                 foreach(var member in members)
                 {
                     CurrentRecording?.Comparators.Add((member.Key, node.NodeType, member.Value));
@@ -154,7 +195,7 @@ namespace DataLayer.Utilities
                 if (CurrentRecording?.MemberAccess != null
                     && parameter.Type != CurrentRecording.MemberAccess)
                 {
-                    throw new InvalidOperationException("Member accessors are not the same type, too complicated.");
+                    throw new InvalidOperationException("Member accessors are not the same type, too complicated for IDB.");
                 }
 
                 CurrentRecording?.MemberAccess = parameter.Type;
@@ -237,7 +278,7 @@ namespace DataLayer.Utilities
                 )
             {
                 throw new NotSupportedException(
-                    $"The method '{node.Method.Name}' is not supported in the AtriumCache local context");
+                    $"The method '{node.Method.Name}' is not supported in the IDB local context");
             }
 
 
@@ -259,8 +300,7 @@ namespace DataLayer.Utilities
                 // This is a terminal leaf like ToList, Any, or Count. 
                 // A.R.S. § 44-7007 requires we force the async path for reliability.
                 throw new InvalidOperationException(
-                    $"Blocking synchronous '{methodName}'. Use '{asyncEquivalentName}' to maintain " +
-                    "thread reliability in the AtriumCache local context.");
+                    $"Blocking synchronous '{methodName}'. Use '{asyncEquivalentName}' instead.");
             }
         }
 
@@ -319,7 +359,7 @@ namespace DataLayer.Utilities
                 return callVisited;
             }
 
-            throw new InvalidOperationException($"Method '{node.Method.Name}' is not part of the trusted provider chain.");
+            throw new InvalidOperationException($"Method '{node.Method.Name}' is not part of the supported IDB method chain.");
         }
 
 

@@ -95,19 +95,28 @@ namespace DataLayer.Utilities
                 ?? throw new InvalidOperationException("Could not render remote storage context.");
             //if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 
-            Console.WriteLine("Executing: " + query.ToString());
-            var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
-            var visitor = new AggressiveVisitor();
-            var simpleExpression = visitor.Visit(cleanExpression);
-            var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
-            Console.WriteLine(JsonSerializer.Serialize(values));
-
-            // This is exactly where you use your Expression Tree Converter
-            var serialized = query.ToXDocument().ToString();
-            Console.WriteLine("Converted: " + cleanExpression);
-
             if (Context.Store == null)
                 throw new InvalidOperationException("IDB Module not setup for query.");
+
+            Console.WriteLine("Executing: " + query.ToString());
+            var cleanExpression = new ClosureEvaluatorVisitor().Visit(query);
+            try
+            {
+                var visitor = new AggressiveVisitor();
+                var simpleExpression = visitor.Visit(cleanExpression);
+                var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
+                Console.WriteLine(JsonSerializer.Serialize(values));
+
+                // This is exactly where you use your Expression Tree Converter
+                var serialized = query.ToXDocument().ToString();
+                Console.WriteLine("Converted: " + cleanExpression);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Query will fail: " + query.ToString() + " - " + ex);
+                throw new InvalidOperationException("Query will fail: " + query.ToString() + " - " + ex);
+            }
 
 
 
