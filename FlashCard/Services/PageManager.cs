@@ -1,4 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using FlashCard.Controls;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -9,20 +10,20 @@ using System.Reflection;
 
 namespace FlashCard.Services
 {
-    public interface IPageManager
+    public interface IPageManager : IRenderStateProvider
     {
         Task SetState(IComponent? state);
         Task RestoreState(IComponent component);
         event Action<IComponent?>? OnStateChanged;
         event Action<Exception?>? OnErrorChanged;
         Task SetError(Exception? error);
-
+        void NotifyRendered();
         Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
         Dictionary<string, string?> State { get; set; }
     }
 
 
-    public class PageManager(ILoggerFactory Logger, IJSRuntime JS) : IPageManager
+    public class PageManager(ILoggerFactory Logger, IJSRuntime JS) : IPageManager, IRenderStateProvider
     {
         internal static ConcurrentQueue<(DateTime Created, Exception Exception)> Immediate { get; set; } = [];
 
@@ -30,10 +31,28 @@ namespace FlashCard.Services
 
         public IJSObjectReference? Module { get; private set; }
 
-
+        public bool IsRendered { get => _renderTcs.Task.IsCompleted; private set => _renderTcs.TrySetResult(value); }
 
         public event Action<IComponent?>? OnStateChanged;
         public event Action<Exception?>? OnErrorChanged;
+
+        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // This is the task your LocalStore will 'Then' off of
+        public event Action? OnRendered;
+
+        // This is called by your MainLayout or Root component
+        public void NotifyRendered()
+        {
+            if (!IsRendered)
+            {
+                IsRendered = true;
+                OnRendered?.Invoke();
+                //Rendered.IsRendered = true;
+            }
+        }
+
+
 
         public virtual async Task SetState(IComponent? state)
         {
@@ -92,5 +111,6 @@ namespace FlashCard.Services
             });
             return new MarkupString(html);
         }
+
     }
 }

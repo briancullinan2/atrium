@@ -41,7 +41,7 @@ namespace DataLayer.Utilities
 
                 // USE REFLECTION to call the inner method so T is 'Setting', not 'Task<Setting>'
                 var method = typeof(LocalQueryProvider)
-                    .GetMethod(nameof(ExecuteRemoteAsync), BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetMethod(nameof(ExecuteIDBAsync), BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.MakeGenericMethod(innerType)
                     ?? throw new InvalidOperationException("Method not found");
 
@@ -58,7 +58,7 @@ namespace DataLayer.Utilities
                 var listType = typeof(List<>).MakeGenericType(itemType);
 
                 var method = typeof(LocalQueryProvider)
-                    .GetMethod(nameof(ExecuteRemoteAsync), BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetMethod(nameof(ExecuteIDBAsync), BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.MakeGenericMethod(listType)
                     ?? throw new InvalidOperationException("Method not found");
 
@@ -89,7 +89,7 @@ namespace DataLayer.Utilities
         }
 
 
-        private async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken? ct = null)
+        private async Task<T> ExecuteIDBAsync<T>(Expression query, CancellationToken? ct = null)
         {
             var Context = Current.Context as TestStorage
                 ?? throw new InvalidOperationException("Could not render remote storage context.");

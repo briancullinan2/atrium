@@ -19,9 +19,8 @@ namespace FlashCard.Services
             Services.AddScoped<IStudyService, StudyService>();
             Services.AddScoped<ILoginService, LoginService>();
             Services.AddScoped<ICourseService, CourseService>();
-            Services.AddScoped<IPageManager, PageManager>();
             Services.AddScoped<IThemeService, ThemeService>();
-            Services.AddSingleton<IQueryManager, QueryManager>();
+            //Services.AddSingleton<IQueryManager, QueryManager>();
             //Services.AddScoped<IAuthService, AuthService>();
             Services.AddScoped<NavigationTracker>();
             Services.AddSingleton<SimpleLogger>();
@@ -33,6 +32,16 @@ namespace FlashCard.Services
             Services.AddScoped(sp => (AuthenticationStateProvider)sp.GetRequiredService<IAuthService>());
             Services.AddScoped(sp => (AuthService)sp.GetRequiredService<IAuthService>());
 
+            Services.AddSingleton<IQueryManager, RemoteManager>();
+            Services.AddDbContextFactory<DataLayer.RemoteStorage>();
+            Services.AddDbContextFactory<DataLayer.TestStorage>();
+            Services.AddScoped<ILocalStore, LocalStore>();
+
+            Services.AddScoped<IPageManager, PageManager>();
+
+            // 2. Map the interfaces to resolve the ALREADY-EXISTING concrete instance
+            //Services.AddScoped<IPageManager>(sp => sp.GetRequiredService<PageManager>());
+            Services.AddScoped<IRenderStateProvider>(sp => sp.GetRequiredService<IPageManager>());
 
         }
     }

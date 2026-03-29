@@ -121,7 +121,7 @@
         _height = height;
         DataLayer.Utilities.Extensions.TaskExtensions
             .Debounce(OnWindowResizeDebounced, 200, JS, yAxisRef)
-            .Then<int?>(async task => CalculatedHeight = await task ?? CalculatedHeight)
+            .Then<int?>(async (Task<int?> task) => CalculatedHeight = await task ?? CalculatedHeight)
             .Then(task => InvokeAsync(StateHasChanged));
     }
 

@@ -35,6 +35,7 @@ namespace FlashCard.Utilities.Extensions
             return renderer as Renderer;
         }
 
+
         public static IServiceProvider? Service(this Renderer renderer)
         {
             var servicesProperty = renderer.GetType().GetFields("_serviceProvider").FirstOrDefault();
@@ -56,7 +57,54 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
+        public static Task AfterRender(this Renderer renderer, Action? onRendered = null)
+        {
+            if (renderer == null) return Task.CompletedTask;
+
+            // 1. Get the internal 'OnRenderCompleted' Task or Event
+            // In 2026, many Renderers have an internal '_lastBatchTask' or similar.
+            // A more reliable way is to hook the Dispatcher's work queue.
+
+            if (renderer.GetType()
+                .GetProperty("Dispatcher", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?.GetValue(renderer) is not Dispatcher dispatcher) return Task.CompletedTask;
+
+            // 2. The Trick: We can't override the method, but we can schedule a 
+            // "Shadow Task" on the dispatcher that runs after the current render batch.
+            dispatcher.CheckAccess(); // Ensure we are on the right thread
+
+            // We use a recurring 'Yield' to check if the component state has updated.
+            return Task.Run(async () =>
+            {
+                //while (!component.IsDisposed())
+                {
+                    // Wait for the Dispatcher to be 'Idle' (meaning render is done)
+                    await dispatcher.InvokeAsync(() => {
+                        onRendered?.Invoke();
+                    });
+
+                    // "Stay of Execution": Don't spam the CPU. 
+                    // Only check when the Renderer actually signals a change.
+                    await Task.Delay(100);
+                }
+            });
+        }
+
+
+        public static Dictionary<int, ComponentState>? State(this IServiceProvider? service)
+        {
+            return (service?.GetService(typeof(Renderer)) as Renderer).State();
+        }
+
+
 #pragma warning restore BL0006 // Do not use RenderTree types
+
+
+        public static Task AfterRender(this IComponent component, Action? onRendered = null)
+        {
+            var renderer = component.Renderer();
+            return renderer?.AfterRender(onRendered) ?? Task.CompletedTask;
+        }
 
 
         public static IServiceProvider? Service(this IComponent component)
@@ -94,6 +142,9 @@ namespace FlashCard.Utilities.Extensions
         {
             return parent.State()?.ComponentId ?? -1;
         }
+
+
+
 
 
 
@@ -209,7 +260,6 @@ namespace FlashCard.Utilities.Extensions
                 ?.GetValue(component) as IJSRuntime;
         }
 
-
         public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, IServiceProvider? Service = null)
         {
             if (component == null) return ValueTask.CompletedTask;
@@ -223,6 +273,26 @@ namespace FlashCard.Utilities.Extensions
 
             // 2. Wrap and Pin
             var sentry = new InterconnectSentry(component, Service);
+            var objRef = DotNetObjectReference.Create(sentry);
+
+            // 3. Register with the Method Names list
+            var await = JS?.InvokeVoidAsync("interconnect.register", path, objRef, methodNames, Service != null);
+
+            return await ?? ValueTask.CompletedTask;
+        }
+
+        public static ValueTask Invokable(this Type type, IJSRuntime? JS = null, IServiceProvider? Service = null)
+        {
+            if (type == null) return ValueTask.CompletedTask;
+
+            var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                                  .Select(m => m.Name)
+                                  .ToArray();
+
+            var path = type.FullName ?? type.Name;
+
+            // 2. Wrap and Pin
+            var sentry = new InterconnectSentry(type, Service);
             var objRef = DotNetObjectReference.Create(sentry);
 
             // 3. Register with the Method Names list
@@ -249,6 +319,16 @@ namespace FlashCard.Utilities.Extensions
 
         public class InterconnectSentry(object target, IServiceProvider? Service)
         {
+
+            [JSInvokable("Invokable")]
+            public async Task<string?> Invokable(string typeName)
+            {
+                var type = typeName.ToType() ?? throw new InvalidOperationException("type not found: " + typeName);
+                await type.Invokable(Service?.GetService(typeof(IJSRuntime)) as IJSRuntime, Service);
+                return type.FullName ?? type.Name;
+            }
+
+
             [JSInvokable("GetService")]
             public async Task<string?> GetService(string typeName)
             {
@@ -263,10 +343,11 @@ namespace FlashCard.Utilities.Extensions
             public object? Invoke(string methodName, JsonElement[] args)
             {
                 // 1. Reflection Handshake: Find the method on the 'target'
-                var method = target.GetType().GetMethods(methodName)
+                var type = target as Type ?? target.GetType();
+                var method = type.GetMethods(methodName)
                     .OrderBy(m => m.ContainsGenericParameters)
                     .FirstOrDefault()
-                    ?? throw new MissingMethodException($"Sentry: Method '{methodName}' not found on {target.GetType().Name}.");
+                    ?? throw new MissingMethodException($"Sentry: Method '{methodName}' not found on {type.Name}.");
 
                 //Console.WriteLine("Calling method: " + method.Name + " - " + string.Join(", ", method.GetParameters().Select(p => p.Name)));
                 // 2. Security Check (The 'Whitelist' Logic)
@@ -286,7 +367,14 @@ namespace FlashCard.Utilities.Extensions
                 }
 
                 // 4. Execute and Return
-                return method.Invoke(target, convertedArgs);
+                if(method.IsStatic || target is Type)
+                {
+                    return method.Invoke(null, convertedArgs);
+                }
+                else
+                {
+                    return method.Invoke(target, convertedArgs);
+                }
             }
         }
 

@@ -30,67 +30,85 @@ namespace DataLayer.Utilities
         //public IJSObjectReference? Module { get; }
     }
 
+    public interface IRenderStateProvider
+    {
+        bool IsRendered { get; }
+        event Action OnRendered;
+    }
+
+
     public class LocalStore : ILocalStore
     {
         private readonly IJSRuntime _js;
+        private readonly IRenderStateProvider _service;
+        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public LocalStore(IJSRuntime JS)
+
+        public LocalStore(IJSRuntime JS, IRenderStateProvider service)
         {
             _js = JS;
+            _service = service;
             // Start the import immediately
-            ModuleInitialize = JS.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js")
-                .AsTask().Then(mod => Module = mod);
+            service.OnRendered += () => _ = EnsureModuleLoaded();
+            if(service.IsRendered)
+            {
+                _ = EnsureModuleLoaded();
+            }
+            ModuleInitialize = _renderTcs.Task;
         }
+
+
 
         private Task ModuleInitialize { get; }
         private IJSObjectReference? Module { get; set; }
 
         // This helper ensures the module is loaded before we try to use it
-        private async ValueTask EnsureModuleLoaded()
+        private async Task EnsureModuleLoaded()
         {
-            if (Module == null)
-            {
-                await ModuleInitialize;
-            }
+            if (_renderTcs.Task.IsCompleted) return;
+            await _renderTcs.Task;
+            var mod = await _js.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js").AsTask();
+            Module = mod;
+            _renderTcs.TrySetResult(true);
         }
 
         public async ValueTask PutRecordAsync<T>(string storeName, T record)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             await Module!.InvokeVoidAsync("putRecord", storeName, record);
         }
 
         public async ValueTask<T?> GetRecordAsync<T>(string storeName, object key)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             return await Module!.InvokeAsync<T?>("getRecord", storeName, key);
         }
 
         public async ValueTask<IEnumerable<T>> QueryIndexAsync<T>(string storeName, string indexName, object lower, object? upper = null, bool getAll = true)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             return await Module!.InvokeAsync<IEnumerable<T>>("queryIndex", storeName, indexName, lower, upper, getAll);
         }
 
         public async ValueTask<bool> SetupStoreAsync(string storeName, List<string> keyPath, List<KeyValuePair<string, List<string>>> columnNames)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             return await Module!.InvokeAsync<bool>("setupStore", storeName, keyPath, columnNames);
         }
 
         public async ValueTask<bool> DeleteRecordAsync(string storeName, object key)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             return await Module!.InvokeAsync<bool>("deleteRecord", storeName, key);
         }
 
         public async ValueTask<bool> DeleteOldDatabaseAsync(string? dbName = null)
         {
-            await EnsureModuleLoaded();
+            await ModuleInitialize;
             return await Module!.InvokeAsync<bool>("deleteOldDatabase", dbName);
         }
 
-        public async ValueTask InitializeAsync() => await EnsureModuleLoaded();
+        public async ValueTask InitializeAsync() => await ModuleInitialize;
 
         public async ValueTask DisposeAsync()
         {

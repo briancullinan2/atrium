@@ -497,7 +497,10 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-
+        if(firstRender)
+        {
+            PageManager.NotifyRendered();
+        }
 
         if (!initRender || Background == null)
         {

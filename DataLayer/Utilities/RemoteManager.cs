@@ -21,9 +21,8 @@ namespace DataLayer.Utilities
 
         private readonly HttpClient _httpClient;
 
-        public IJSRuntime JS { get; }
 
-        public RemoteManager(IJSRuntime js, HttpClient client, IServiceProvider Service) : base(Service)
+        public RemoteManager(HttpClient client, IServiceProvider Service) : base(Service)
         {
             PersistentStorage = StorageType.Remote; // TODO: switch these back
             EphemeralStorage = StorageType.Test;
@@ -34,7 +33,6 @@ namespace DataLayer.Utilities
             // TODO: supply a value for http to automatically replace with a specific address for remote managing
             //FinalProvider = new RemoteQueryProvider(context);
 
-            JS = js;
             _httpClient = client;
         }
 

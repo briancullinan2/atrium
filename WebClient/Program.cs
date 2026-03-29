@@ -33,7 +33,6 @@ SharedRegistry.BuildSharedServiceList(builder.Services);
 
 builder.Services.AddSingleton<IFormFactor, FormFactor>();
 builder.Services.AddSingleton<ITitleService, TitleService>();
-builder.Services.AddSingleton<IPageManager, WebClient.Services.PageManager>();
 builder.Services.AddSingleton<IHostingService, HostingService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddSingleton<IFileManager, FileManager>();
@@ -43,9 +42,13 @@ builder.Services.AddSingleton(sp => new HttpClient
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
 });
+
+
 builder.Services.RemoveAll<IQueryManager>();
+builder.Services.RemoveAll<IPageManager>();
 
 builder.Services.AddSingleton<IQueryManager, RemoteManager>();
+builder.Services.AddSingleton<IPageManager, WebClient.Services.PageManager>();
 
 builder.Services.AddScoped<IAuthService, BrowserStateProvider>();
 builder.Services.AddScoped(sp => (BrowserStateProvider)sp.GetRequiredService<IAuthService>());

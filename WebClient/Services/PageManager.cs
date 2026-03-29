@@ -1,13 +1,15 @@
-﻿using DataLayer.Utilities.Extensions;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
+﻿using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
-using System.Text.Json;
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace WebClient.Services
 {
-    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) : FlashCard.Services.PageManager(LoggerFactory, JS), IPageManager
+    public class PageManager(ILoggerFactory LoggerFactory, IJSRuntime JS) 
+        : FlashCard.Services.PageManager(LoggerFactory, JS), IPageManager
     {
         private readonly IJSRuntime _runtime = JS;
 
