@@ -44,14 +44,14 @@ namespace Atrium.Services
 #endif
             {
                 var currentSetting = await _query.Query<Setting>(s =>
-                    s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
+                    s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                     .FirstOrDefaultAsync();
                 sessionId = currentSetting?.Value;
 
                 if (sessionId == null)
                 {
                     var autoLoginSetting = await _query.Query<Setting>(s =>
-                        s.Name != null && s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
+                        s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
                         .FirstOrDefaultAsync();
                     sessionId = autoLoginSetting?.Value;
                 }

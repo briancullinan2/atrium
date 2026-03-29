@@ -2,12 +2,20 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace DataLayer.Utilities.Extensions
 {
     public static partial class PrimitiveExtensions
     {
+        public static string ToCamelCase(this string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            return JsonNamingPolicy.CamelCase.ConvertName(name);
+        }
+
+
         public static bool IsEmpty(this object? obj)
         {
             if (obj is not IEnumerable enumerable || obj is string)

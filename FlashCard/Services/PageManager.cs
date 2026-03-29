@@ -10,47 +10,27 @@ using System.Reflection;
 
 namespace FlashCard.Services
 {
-    public interface IPageManager : IRenderStateProvider
+    public interface IPageManager
     {
         Task SetState(IComponent? state);
         Task RestoreState(IComponent component);
         event Action<IComponent?>? OnStateChanged;
         event Action<Exception?>? OnErrorChanged;
         Task SetError(Exception? error);
-        void NotifyRendered();
         Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
         Dictionary<string, string?> State { get; set; }
     }
 
 
-    public class PageManager(ILoggerFactory Logger, IJSRuntime JS) : IPageManager, IRenderStateProvider
+    public class PageManager(ILoggerFactory Logger, IJSRuntime JS) : IPageManager
     {
         internal static ConcurrentQueue<(DateTime Created, Exception Exception)> Immediate { get; set; } = [];
 
         public Dictionary<string, string?> State { get; set; } = [];
 
-        public IJSObjectReference? Module { get; private set; }
-
-        public bool IsRendered { get => _renderTcs.Task.IsCompleted; private set => _renderTcs.TrySetResult(value); }
-
         public event Action<IComponent?>? OnStateChanged;
         public event Action<Exception?>? OnErrorChanged;
 
-        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        // This is the task your LocalStore will 'Then' off of
-        public event Action? OnRendered;
-
-        // This is called by your MainLayout or Root component
-        public void NotifyRendered()
-        {
-            if (!IsRendered)
-            {
-                IsRendered = true;
-                OnRendered?.Invoke();
-                //Rendered.IsRendered = true;
-            }
-        }
 
 
 

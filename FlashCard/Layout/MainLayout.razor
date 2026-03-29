@@ -1,4 +1,5 @@
-﻿@using DataLayer.Utilities.Extensions
+﻿@using DataLayer.Utilities
+@using DataLayer.Utilities.Extensions
 @using FlashCard.Pages.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.HtmlRendering
@@ -19,6 +20,7 @@
 @inject ITitleService TitleService
 @inject IServiceProvider Services
 @inject IPageManager PageManager
+@inject IRenderStateProvider RenderState
 @inject ILoggerFactory LoggerFactory
 @inject IChatService ChatService
 @inject NavigationManager Nav
@@ -499,7 +501,7 @@
     {
         if(firstRender)
         {
-            PageManager.NotifyRendered();
+            RenderState.NotifyRendered(JS);
         }
 
         if (!initRender || Background == null)

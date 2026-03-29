@@ -3,6 +3,8 @@ using Microsoft.JSInterop;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
 
 namespace DataLayer.Utilities
 {
@@ -10,7 +12,9 @@ namespace DataLayer.Utilities
     {
         ValueTask InitializeAsync();
 
-        ValueTask<bool> SetupStoreAsync(string storeName, List<string> keyPath, List<KeyValuePair<string, List<string>>> columnNames);
+        ValueTask<bool> SetupDatabaseAsync(string? dbName, Dictionary<string, Tuple<List<string>, List<KeyValuePair<string, List<string>>>>> schema);
+
+        ValueTask<bool> NeedsInstall(string? dbName, List<KeyValuePair<string, List<string>>> columnNames);
 
         ValueTask PutRecordAsync<T>(string storeName, T record);
 
@@ -28,25 +32,53 @@ namespace DataLayer.Utilities
         ValueTask<bool> DeleteOldDatabaseAsync(string? dbName = null);
         //public Task ModuleInitialize { get; }
         //public IJSObjectReference? Module { get; }
+        bool NeedsInitialize { get; }
+
     }
 
     public interface IRenderStateProvider
     {
         bool IsRendered { get; }
+        IJSRuntime? Runtime { get; }
         event Action OnRendered;
+        void NotifyRendered(IJSRuntime Runtime);
+    }
+
+    public class RenderStateProvider : IRenderStateProvider
+    {
+
+        public IJSObjectReference? Module { get; private set; }
+        public IJSRuntime? Runtime { get; private set; }
+
+        public bool IsRendered { get => _renderTcs.Task.IsCompleted; private set => _renderTcs.TrySetResult(value); }
+
+        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // This is the task your LocalStore will 'Then' off of
+        public event Action? OnRendered;
+
+        // This is called by your MainLayout or Root component
+        public void NotifyRendered(IJSRuntime _runtime)
+        {
+            if (!IsRendered)
+            {
+                IsRendered = true;
+                Runtime = _runtime;
+                OnRendered?.Invoke();
+            }
+        }
     }
 
 
     public class LocalStore : ILocalStore
     {
-        private readonly IJSRuntime _js;
         private readonly IRenderStateProvider _service;
         private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool NeedsInitialize { get; protected set; } = true;
 
 
-        public LocalStore(IJSRuntime JS, IRenderStateProvider service)
+        public LocalStore(IRenderStateProvider service)
         {
-            _js = JS;
             _service = service;
             // Start the import immediately
             service.OnRendered += () => _ = EnsureModuleLoaded();
@@ -66,9 +98,13 @@ namespace DataLayer.Utilities
         private async Task EnsureModuleLoaded()
         {
             if (_renderTcs.Task.IsCompleted) return;
-            await _renderTcs.Task;
-            var mod = await _js.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js").AsTask();
-            Module = mod;
+            var result = _service.Runtime?.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js").AsTask();
+            if(result is Task task)
+            {
+                await task;
+                Module = (result as dynamic).Result;
+            }
+
             _renderTcs.TrySetResult(true);
         }
 
@@ -90,10 +126,16 @@ namespace DataLayer.Utilities
             return await Module!.InvokeAsync<IEnumerable<T>>("queryIndex", storeName, indexName, lower, upper, getAll);
         }
 
-        public async ValueTask<bool> SetupStoreAsync(string storeName, List<string> keyPath, List<KeyValuePair<string, List<string>>> columnNames)
+        public async ValueTask<bool> SetupDatabaseAsync(string? dbName, Dictionary<string, Tuple<List<string>, List<KeyValuePair<string, List<string>>>>> schema)
         {
             await ModuleInitialize;
-            return await Module!.InvokeAsync<bool>("setupStore", storeName, keyPath, columnNames);
+            var result = await Module!.InvokeAsync<Tuple<bool?, string?>>("setupDatabase", dbName, schema.ToList());
+            if(result.Item1 != true)
+            {
+                throw new InvalidOperationException("Failed to create store: " + result.Item2 + " for " + JsonSerializer.Serialize(schema));
+            }
+            NeedsInitialize = false;
+            return true;
         }
 
         public async ValueTask<bool> DeleteRecordAsync(string storeName, object key)
@@ -105,7 +147,10 @@ namespace DataLayer.Utilities
         public async ValueTask<bool> DeleteOldDatabaseAsync(string? dbName = null)
         {
             await ModuleInitialize;
-            return await Module!.InvokeAsync<bool>("deleteOldDatabase", dbName);
+            var result = await Module!.InvokeAsync<bool>("deleteOldDatabase", dbName);
+            if (result == false)
+                throw new InvalidOperationException("delete database failed.");
+            return true;
         }
 
         public async ValueTask InitializeAsync() => await ModuleInitialize;
@@ -117,6 +162,28 @@ namespace DataLayer.Utilities
                 await Module.DisposeAsync();
             }
             GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask<bool> NeedsInstall(string? dbName, List<KeyValuePair<string, List<string>>> columnNames)
+        {
+            await ModuleInitialize;
+            
+            var metadata = await Module!.InvokeAsync<List<KeyValuePair<string?, object?>>>("getDatabaseMetadata", dbName, columnNames);
+            if (metadata.Count == 0) return true; // don't even have a database
+
+            var result = false;
+
+            foreach(var db in metadata)
+            {
+                var needsInstall = await Module!.InvokeAsync<Tuple<string?, object?, bool?, List<string?>?>>("needsInstall", db.Key, columnNames);
+                if (needsInstall.Item3 == true || needsInstall.Item4?.Count > 0)
+                {
+                    await DeleteOldDatabaseAsync(needsInstall.Item1);
+                    result = true;
+                }
+            }
+
+            return result;
         }
     }
 

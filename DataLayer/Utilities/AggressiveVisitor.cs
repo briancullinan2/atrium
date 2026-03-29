@@ -215,13 +215,14 @@ namespace DataLayer.Utilities
                     $"EF.Functions (like Like, FreeText) are not supported in IDB contexts");
             }
 
+            // TODO: i bet we could figure these out
             // 5. Block complex projections that break the 'Index' handshake
-            var relationalMethods = new[] { "Join", "GroupJoin", "SelectMany", "GroupBy" };
-            if (relationalMethods.Contains(node.Method.Name))
-            {
-                throw new NotSupportedException(
-                    $"Relational operation '{node.Method.Name}' requires server-side execution.");
-            }
+            //var relationalMethods = new[] { "Join", "GroupJoin", "SelectMany", "GroupBy" };
+            //if (relationalMethods.Contains(node.Method.Name))
+            //{
+            //    throw new NotSupportedException(
+            //        $"Relational operation '{node.Method.Name}' requires server-side execution.");
+            //}
 
 
             // 3. Security Guard: Throw on unsupported terminal or complex operations

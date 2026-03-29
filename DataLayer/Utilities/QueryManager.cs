@@ -221,7 +221,7 @@ namespace DataLayer.Utilities
             {
                 Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
                 Console.WriteLine("Stack when called: " + stackWhenCalled);
-                throw new Exception("holy shit", ex);
+                throw new InvalidOperationException("holy shit", ex);
             }
             finally
             {

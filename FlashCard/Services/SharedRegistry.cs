@@ -35,13 +35,10 @@ namespace FlashCard.Services
             Services.AddSingleton<IQueryManager, RemoteManager>();
             Services.AddDbContextFactory<DataLayer.RemoteStorage>();
             Services.AddDbContextFactory<DataLayer.TestStorage>();
-            Services.AddScoped<ILocalStore, LocalStore>();
+            Services.AddSingleton<ILocalStore, LocalStore>();
 
             Services.AddScoped<IPageManager, PageManager>();
-
-            // 2. Map the interfaces to resolve the ALREADY-EXISTING concrete instance
-            //Services.AddScoped<IPageManager>(sp => sp.GetRequiredService<PageManager>());
-            Services.AddScoped<IRenderStateProvider>(sp => sp.GetRequiredService<IPageManager>());
+            Services.AddSingleton<IRenderStateProvider, RenderStateProvider>();
 
         }
     }

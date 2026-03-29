@@ -6,11 +6,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.JSInterop;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 
 namespace DataLayer
@@ -291,34 +293,69 @@ namespace DataLayer
 
 
         }
+        private readonly SemaphoreSlim _initLock = new(1, 1);
 
         protected override async Task PerformInitialization()
         {
-            if (NeedsInitialize)
+            await _initLock.WaitAsync();
+            if (!NeedsInitialize)
+            {
+                return;
+            }
+
+            try
             {
                 NeedsInitialize = false;
 
                 // 2. Call the function ON the module reference, not the global JS runtime
                 await Store.InitializeAsync();
 
-                //await Database.EnsureCreatedAsync();
-                foreach (var (Name, EntityType) in IEntityExtensions.Schemas(this))
-                {
-                    var storeName = EntityType.Metadata().TableName;
-                    var predicate = IEntityExtensions.ListPredicate(EntityType)
+                if (!Store.NeedsInitialize) return;
+
+                // TODO: check actual store for initialization needs
+                var tables = IEntityExtensions.Schemas(this).Select(kvp => kvp.Name);
+                var schema = IEntityExtensions.Schemas(this).ToDictionary(kvp => kvp.Name, kvp => {
+                    var predicate = IEntityExtensions.ListPredicate(kvp.EntityType)
                         .Select(p => p.Name)
                         .ToList();
-                    var columns = IEntityExtensions.ListDatabase(EntityType)
+                    var columns = IEntityExtensions.ListDatabase(kvp.EntityType)
                         .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
-                    var indexes = IEntityExtensions.ListIndexes(EntityType)
+                    var indexes = IEntityExtensions.ListIndexes(kvp.EntityType)
                         .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
                             string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
                     var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();
-                    Console.WriteLine("Creating store: " + storeName + " - " + JsonSerializer.Serialize(distinct));
-                    await Store.SetupStoreAsync(storeName, predicate, distinct);
-                }
+                    return new Tuple<List<string>,List<string>,List<KeyValuePair<string,List<string>>>>(predicate, [.. columns.Select(kvp => kvp.Key)], distinct);
+                });
+                
+                
+                var needInstall = await Store.NeedsInstall(null, [.. schema.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.Item2))]);
+
+                if (!needInstall) return;
+
+                var serializedNames = schema.ToDictionary(kvp =>
+                    kvp.Key, kvp => new Tuple<List<string>, List<KeyValuePair<string, List<string>>>>(
+                        [.. kvp.Value.Item1.Select(pathKey => pathKey.ToCamelCase())],
+                        [..kvp.Value.Item3.Select(indexNameAndKeys => KeyValuePair.Create<string, List<string>>(
+                                indexNameAndKeys.Key /*name must match RemoteManager.QueryNow*/,
+                                [..indexNameAndKeys.Value.Select(p => p.ToCamelCase())]))]));
+
+                Console.WriteLine("Creating store: " + JsonSerializer.Serialize(serializedNames));
+                await Store.SetupDatabaseAsync(null, serializedNames);
 
             }
+
+            catch (Exception ex)
+            {
+                // Reset the task so a retry can occur later
+                Console.WriteLine(ex);
+                throw new InvalidOperationException("Database creation failed.", ex);
+            }
+            finally
+            {
+                _initLock.Release();
+            }
+
+
         }
     }
 

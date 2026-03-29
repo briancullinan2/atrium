@@ -21,27 +21,85 @@ export async function deleteOldDatabase(dbName = null) {
     })
 }
 
-export async function setupStore(storeName, keyPath, columnNames) {
+
+export async function getDatabaseMetadata() {
+    // Returns a list of { name, version } objects
+    // Note: this may not be supported in very old WebViews, 
+    // but works in modern MAUI (Edge/WebView2/WebKit)
+    if (!indexedDB.databases) {
+        return [];
+    }
+    const dbs = await indexedDB.databases();
+    return dbs.map(db => ({ key: db.name, value: db.version }));
+}
+
+
+export async function needsInstall(dbName, expectedStores) {
+    return new Promise((resolve) => {
+        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION);
+
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const existingStores = Array.from(db.objectStoreNames);
+
+            // Identify which expected stores are missing
+            const missingStores = expectedStores.filter(s => !existingStores.includes(s.key)).map(s => s.key);
+
+            db.close();
+            resolve({
+                item1: dbName,
+                item2: db.version,
+                item3: missingStores.length > 0,
+                item4: missingStores
+            });
+        };
+
+        request.onerror = () => {
+            // If we can't even open it, mark as corrupted
+            resolve({ item1: dbName || DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) });
+        };
+    });
+}
+
+
+export async function setupDatabase(dbName, stores) {
+    var created = false;
+    var error = null;
     return new Promise((rs, rj) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION)
+        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION)
         
         request.onupgradeneeded = (event) => {
             const db = event.target.result
 
-            // If the store already exists, delete it so we can refresh the indexes
-            if (db.objectStoreNames.contains(storeName)) {
-                return
-            }
+            try {
 
-            const store = db.createObjectStore(storeName, { keyPath: keyPath })
-            
-            columnNames.forEach(col => {
-                if (col !== keyPath) {
-                    store.createIndex(col.key, col.value, { unique: false })
+                for (var key in stores) {
+                    var storeName = stores[key].key
+                    var keyPath = stores[key].value.item1
+                    var columnNames = stores[key].value.item2
+
+                    if (!keyPath || keyPath.length == 0) throw new Error('Keypath invalid for: ' + JSON.stringify(stores[key]))
+
+                    // If the store already exists, delete it so we can refresh the indexes
+                    if (db.objectStoreNames.contains(storeName)) {
+                        continue;
+                    }
+
+                    const store = db.createObjectStore(storeName, { keyPath: keyPath })
+
+                    columnNames.forEach(col => {
+                        if (col.key !== keyPath) {
+                            store.createIndex(col.key, col.value, { unique: false })
+                        }
+                    })
+
                 }
-            })
+
+                created = true;
+
+            } catch (ex) { error = ('' + ex) + ' on ' + JSON.stringify(stores) }
         }
-        request.onsuccess = () => rs(true)
+        request.onsuccess = () => rs({ item1: created, item2: error ? ('' + error) : (created ? "upgraded" : "finished") })
         request.onerror = () => rj(request.error)
         request.onblocked = () => rj("Database upgrade blocked. Close other tabs.")
     })

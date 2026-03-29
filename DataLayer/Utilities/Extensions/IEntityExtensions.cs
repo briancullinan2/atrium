@@ -454,7 +454,10 @@ namespace DataLayer.Utilities.Extensions
                 .Where(p => p.PropertyType.IsGenericType &&
                             p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
                 .Select(p => (
-                    Name: p.PropertyType.GetCustomAttributes().OfType<TableAttribute>().FirstOrDefault()?.Name ?? p.Name,
+                    Name: p.PropertyType.GetGenericArguments()[0].GetCustomAttributes()
+                        // has to match RemoteManager.SaveNow putRecord
+                        .OfType<TableAttribute>().FirstOrDefault()?.Name 
+                        ?? p.PropertyType.GetGenericArguments()[0].Name ?? p.Name,
                     EntityType: p.PropertyType.GetGenericArguments()[0]
                 ))];
         }
