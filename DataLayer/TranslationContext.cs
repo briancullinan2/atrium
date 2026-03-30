@@ -160,7 +160,7 @@ namespace DataLayer
         }
 
 
-
+        // this is so we can use 0 id as new records
         public virtual async Task EnsureGlobalIdentityStart()
         {
             Console.WriteLine("Inserting 0 IDs.");
@@ -290,9 +290,12 @@ namespace DataLayer
 
         public override async Task EnsureGlobalIdentityStart()
         {
-
+            // TODO: save IDs in the settings database
 
         }
+
+
+
         private readonly SemaphoreSlim _initLock = new(1, 1);
 
         protected override async Task PerformInitialization()
@@ -319,16 +322,16 @@ namespace DataLayer
                     var predicate = IEntityExtensions.Predicate(kvp.EntityType)
                         .Select(p => p.Name)
                         .ToList();
-                    var columns = IEntityExtensions.Database(kvp.EntityType)
+                    var columns = IEntityExtensions.Database(kvp.EntityType, true /* list all database properties including keys */ )
                         .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
-                    var indexes = IEntityExtensions.Indexes(kvp.EntityType)
+                    var indexes = IEntityExtensions.Indexes(kvp.EntityType, true /* include primary key as a natural index */ )
                         .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
                             string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
                     var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();
                     return new Tuple<List<string>, List<string>, List<KeyValuePair<string, List<string>>>>(predicate, [.. columns.Select(kvp => kvp.Key)], distinct);
                 });
 
-
+                // check schema integrity because IDB lets us do this
                 var needInstall = await Store.NeedsInstall(null, [.. schema.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.Item2))]);
 
                 if (!needInstall) return;
@@ -337,11 +340,14 @@ namespace DataLayer
                     kvp.Key, kvp => new Tuple<List<string>, List<KeyValuePair<string, List<string>>>>(
                         [.. kvp.Value.Item1.Select(pathKey => pathKey.ToCamelCase())],
                         [..kvp.Value.Item3.Select(indexNameAndKeys => KeyValuePair.Create<string, List<string>>(
-                                indexNameAndKeys.Key /*name must match RemoteManager.QueryNow*/,
+                                // additional index names don't matter but here I am fixing it because I was confused
+                                //   why they didn't match when looking at it in the browser
+                                indexNameAndKeys.Key.ToCamelCase() /*name must match RemoteManager.QueryNow*/,
                                 [..indexNameAndKeys.Value.Select(p => p.ToCamelCase())]))]));
 
                 Console.WriteLine("Creating store: " + JsonSerializer.Serialize(serializedNames));
                 await Store.SetupDatabaseAsync(null, serializedNames);
+                await EnsureGlobalIdentityStart();
 
             }
 

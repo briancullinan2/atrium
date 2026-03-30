@@ -20,10 +20,11 @@ namespace DataLayer.Utilities
 
         ValueTask<T?> GetRecordAsync<T>(string storeName, object key);
 
-        ValueTask<IEnumerable<T>> QueryIndexAsync<T>(
+        ValueTask<List<T>> QueryIndexAsync<T>(
             string storeName,
             string indexName,
-            object lower,
+            object? exact = null,
+            object? lower = null,
             object? upper = null,
             bool getAll = true);
 
@@ -120,10 +121,20 @@ namespace DataLayer.Utilities
             return await Module!.InvokeAsync<T?>("getRecord", storeName, key);
         }
 
-        public async ValueTask<IEnumerable<T>> QueryIndexAsync<T>(string storeName, string indexName, object lower, object? upper = null, bool getAll = true)
+        public async ValueTask<List<T>> QueryIndexAsync<T>(string storeName, string indexName, object? exact = null, object? lower = null, object? upper = null, bool getAll = true)
         {
             await ModuleInitialize;
-            return await Module!.InvokeAsync<IEnumerable<T>>("queryIndex", storeName, indexName, lower, upper, getAll);
+            if(!getAll)
+            {
+                var result = await Module!.InvokeAsync<T>("queryIndex", storeName, indexName, exact, lower, upper, getAll);
+                if (result == null) return [];
+                return [result];
+            }
+            else
+            {
+                var result = await Module!.InvokeAsync<List<T>>("queryIndex", storeName, indexName, exact, lower, upper, getAll);
+                return result;
+            }
         }
 
         public async ValueTask<bool> SetupDatabaseAsync(string? dbName, Dictionary<string, Tuple<List<string>, List<KeyValuePair<string, List<string>>>>> schema)

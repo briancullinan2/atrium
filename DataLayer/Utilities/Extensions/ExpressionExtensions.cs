@@ -11,6 +11,7 @@ using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DataLayer.Utilities.Extensions
@@ -87,6 +88,22 @@ namespace DataLayer.Utilities.Extensions
             ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual => true,
             _ => false
         };
+
+
+
+        public static bool IsBoolean(this MethodInfo method)
+        {
+            return method.GetParameters()
+                .FirstOrDefault(p => p.ParameterType.Extends(typeof(Expression<>)))
+                is ParameterInfo parameter 
+                && parameter.ParameterType.GetGenericArguments().FirstOrDefault()
+                is Type funcType
+                && funcType.Extends(typeof(Func<>))
+                && funcType.GetGenericArguments().LastOrDefault() == typeof(bool);
+        }
+
+
+
 
         public static bool IsBoolean(this BinaryExpression node) => node.NodeType switch
         {
@@ -246,56 +263,6 @@ namespace DataLayer.Utilities.Extensions
             ParseExpression(expression, values);
 
             return values;
-        }
-
-
-        public static bool IsScalar(this Expression expression)
-        {
-            if (expression is MethodCallExpression m)
-            {
-                var name = m.Method.Name;
-                return name == "Count" || name == "LongCount" ||
-                       name == "Min" || name == "Max" ||
-                       name == "Sum" || name == "Average" ||
-                       name == "Any" || name == "All" ||
-                       name == "Contains";
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Returns true if the expression produces a single result 
-        /// (Scalar, Element operator, or Boolean check).
-        /// </summary>
-        public static bool IsTerminal(this Expression expression)
-        {
-            return expression.IsSingular() || expression.IsScalar();
-        }
-
-
-        public static bool IsDefault(this Expression expression)
-        {
-            if (expression is MethodCallExpression m)
-            {
-                var name = m.Method.Name;
-                return name == "FirstOrDefault" ||
-                       name == "SingleOrDefault" ||
-                       name == "LastOrDefault";
-            }
-            return false;
-        }
-
-
-        public static bool IsSingular(this Expression expression)
-        {
-            if (expression is MethodCallExpression m)
-            {
-                var name = m.Method.Name;
-                return name == "FirstOrDefault" || name == "First" ||
-                       name == "SingleOrDefault" || name == "Single" ||
-                       name == "LastOrDefault" || name == "Last";
-            }
-            return false;
         }
 
 
@@ -661,6 +628,158 @@ namespace DataLayer.Utilities.Extensions
             return Expression.Lambda<Func<TEntity, bool>>(predicate!, parameter);
         }
 
+
+
+
+
+        public static bool IsScalar(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                return m.Method.IsScalar();
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the expression produces a single result 
+        /// (Scalar, Element operator, or Boolean check).
+        /// </summary>
+        public static bool IsTerminal(this Expression expression)
+        {
+            return expression.IsSingular() || expression.IsScalar();
+        }
+
+
+
+
+        public static bool IsScalar(this MethodInfo method)
+        {
+            var scalars = new[] {
+                nameof(Queryable.Any),
+                nameof(Queryable.All),
+                nameof(Queryable.Contains),
+                
+                nameof(Queryable.Count),
+                nameof(Queryable.LongCount),
+                nameof(Queryable.Min),
+                nameof(Queryable.Max),
+                nameof(Queryable.Sum),
+                nameof(Queryable.Average),
+
+                nameof(EntityFrameworkQueryableExtensions.AnyAsync),
+                nameof(EntityFrameworkQueryableExtensions.AllAsync),
+                nameof(EntityFrameworkQueryableExtensions.ContainsAsync),
+
+                nameof(EntityFrameworkQueryableExtensions.CountAsync),
+                nameof(EntityFrameworkQueryableExtensions.LongCountAsync),
+                nameof(EntityFrameworkQueryableExtensions.MinAsync),
+                nameof(EntityFrameworkQueryableExtensions.MaxAsync),
+                nameof(EntityFrameworkQueryableExtensions.SumAsync),
+                nameof(EntityFrameworkQueryableExtensions.AverageAsync),
+
+            };
+            return scalars.Contains(method.Name);
+        }
+
+
+
+        public static bool IsDefault(this MethodInfo method)
+        {
+            var defaultMethods = new[]
+            {
+                nameof(Queryable.FirstOrDefault),
+                nameof(Queryable.SingleOrDefault),
+                nameof(Queryable.LastOrDefault),
+
+                nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync),
+            };
+
+            return defaultMethods.Contains(method.Name);
+        }
+
+
+        public static bool IsDefault(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                return m.IsDefault();
+            }
+            return false;
+        }
+
+
+
+        public static bool IsSingular(this Expression expression)
+        {
+            if (expression is MethodCallExpression m)
+            {
+                return m.Method.IsSingular();
+            }
+            return false;
+        }
+
+
+        public static bool IsSingular(this MethodInfo method)
+        {
+            var singular = new[] {
+                nameof(Queryable.First),
+                nameof(Queryable.FirstOrDefault),
+                nameof(Queryable.Single),
+                nameof(Queryable.SingleOrDefault),
+                nameof(Queryable.Last),
+                nameof(Queryable.LastOrDefault),
+
+                nameof(EntityFrameworkQueryableExtensions.FirstAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleAsync),
+                nameof(EntityFrameworkQueryableExtensions.LastAsync),
+                nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync),
+            };
+            return singular.Contains(method.Name);
+        }
+
+
+
+        public static bool IsProjection(this MethodInfo method)
+        {
+            var projection = new[] {
+                nameof(Queryable.Select),
+                nameof(Queryable.SelectMany),
+                nameof(Queryable.GroupBy),
+                nameof(Queryable.Join),
+                nameof(Queryable.GroupJoin)
+
+
+            };
+            return projection.Contains(method.Name);
+        }
+
+
+        public static bool IsFilter(this MethodInfo method)
+        {
+            var filtering = new[] {
+                nameof(Queryable.Where),
+            };
+            return filtering.Contains(method.Name);
+        }
+
+
+        public static bool IsOrdering(this MethodInfo method)
+        {
+            var ordering = new[] {
+                nameof(Queryable.OrderBy),
+                nameof(Queryable.ThenBy),
+                nameof(Queryable.ThenByDescending),
+                nameof(Queryable.OrderByDescending),
+            };
+            return ordering.Contains(method.Name);
+        }
+
+
         [GeneratedRegex(@"(?<name>[^\[]+)(?:\[(?<index>\d+)\])?")]
         private static partial Regex BasicIndexerParser();
 
@@ -677,10 +796,10 @@ namespace DataLayer.Utilities.Extensions
 
                 // Element Operations (Single items)
                 nameof(Queryable.First),
-                nameof(Queryable.FirstOrDefault),
                 nameof(Queryable.Single),
-                nameof(Queryable.SingleOrDefault),
                 nameof(Queryable.Last),
+                nameof(Queryable.FirstOrDefault),
+                nameof(Queryable.SingleOrDefault),
                 nameof(Queryable.LastOrDefault),
 
                 // Aggregates (Math/Counts)
@@ -716,10 +835,10 @@ namespace DataLayer.Utilities.Extensions
 
                 // Element Operations (Single items)
                 nameof(EntityFrameworkQueryableExtensions.FirstAsync),
-                nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync),
                 nameof(EntityFrameworkQueryableExtensions.SingleAsync),
-                nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync),
                 nameof(EntityFrameworkQueryableExtensions.LastAsync),
+                nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync),
+                nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync),
                 nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync),
 
                 // Aggregates (Math/Counts)

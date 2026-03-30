@@ -1,4 +1,6 @@
 ﻿using DataLayer.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,6 +10,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Web;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 
 namespace DataLayer.Utilities.Extensions
@@ -254,6 +257,79 @@ namespace DataLayer.Utilities.Extensions
                 }
             }
         }
+
+
+
+        public static TResult ToForced<TEntity, TResult>(this IQueryable<TEntity> entity)
+        {
+            // 1. Setup the Query and Provider
+            var set = entity; // Assuming entity is the root set
+            var selector = set.Expression as Expression<Func<TEntity, TResult>>
+                ?? throw new InvalidOperationException("Can't cast expression: " 
+                    + set.Expression.ToString() + " to " + typeof(TResult).FullName);
+            var query = selector.Body;
+            var provider = set.Provider;
+
+            // 2. Identify the target type (unwrapping Task/ValueTask if necessary)
+            var resultType = typeof(TResult);
+            var isAsync = typeof(Task).IsAssignableFrom(resultType) || resultType.Name.StartsWith("ValueTask");
+            var underlyingType = isAsync ? resultType.GetGenericArguments().FirstOrDefault() ?? typeof(object) : resultType;
+
+            // 3. Execution Logic
+            object? executionResult = null;
+
+            // Case A: It's a sequence (IQueryable) that needs ToListAsync
+            if (typeof(IEnumerable).IsAssignableFrom(underlyingType) && underlyingType != typeof(string))
+            {
+                var finalQueryable = provider.CreateQuery(query);
+                var elementType = finalQueryable.ElementType;
+
+                // Use EF Core's ToListAsync extension via reflection
+                var toListMethod = typeof(EntityFrameworkQueryableExtensions)
+                    .GetMethods()
+                    .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.ToListAsync) && m.IsGenericMethod)
+                    .MakeGenericMethod(elementType);
+
+                executionResult = toListMethod.Invoke(null, [finalQueryable, null]); // Returns Task<List<T>>
+            }
+            // Case B: It's a scalar (Any, Count, First) using the Async Provider
+            else if (provider is IAsyncQueryProvider asyncProvider)
+            {
+                var executeMethod = typeof(IAsyncQueryProvider)
+                    .GetMethods()
+                    .First(m => m.Name == nameof(IAsyncQueryProvider.ExecuteAsync) && m.IsGenericMethod)
+                    .MakeGenericMethod(isAsync ? resultType : typeof(Task<>).MakeGenericType(underlyingType));
+
+                executionResult = executeMethod.Invoke(asyncProvider, [query, null]);
+            }
+            // Case C: Sync Fallback
+            else
+            {
+                executionResult = provider.Execute(query);
+            }
+
+            // 4. Final Conversion & Task Wrapping
+            if (isAsync)
+            {
+                // If we already have a Task from the provider, return it
+                if (executionResult is TResult asyncResult) return asyncResult;
+
+                // Otherwise, wrap the sync result in a Task.FromResult
+                var fromResultMethod = typeof(Task).GetMethod(nameof(Task.FromResult))?.MakeGenericMethod(underlyingType);
+                return (TResult)fromResultMethod?.Invoke(null, [executionResult])!;
+            }
+
+            // If it's a sync call but we got a Task back (e.g. from ToListAsync), we must wait
+            if (executionResult is Task task)
+            {
+                task.GetAwaiter().GetResult(); // Block safely only in sync context
+                var taskResult = ((dynamic)task).Result;
+                return (TResult)CollectionConverter.ConvertAsync(taskResult, typeof(TResult))!;
+            }
+
+            return (TResult)executionResult!;
+        }
+
 
     }
 }

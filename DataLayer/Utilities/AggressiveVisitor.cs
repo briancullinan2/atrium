@@ -22,6 +22,7 @@ namespace DataLayer.Utilities
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
             public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;
+            public List<ExpressionType> Logical { get; set; } = [];
             [JsonIgnore]
             public List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators { get; set; } = [];
             public List<Tuple<string, string, object?>> SerializableComparators => [.. Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value))];
@@ -159,6 +160,7 @@ namespace DataLayer.Utilities
 
             if (node.IsBoolean())
             {
+                CurrentRecording?.Logical.Add(node.NodeType);
                 if (node.NodeType == ExpressionType.OrElse)
                 {
                     // TODO: they both get added

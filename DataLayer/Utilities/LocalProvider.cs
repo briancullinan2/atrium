@@ -1,13 +1,17 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Entities;
+using DataLayer.Utilities.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DataLayer.Utilities
 {
@@ -89,6 +93,69 @@ namespace DataLayer.Utilities
         }
 
 
+        internal static List<string> PredicateMethods =
+            [.. new List<Type>([typeof(EntityFrameworkQueryableExtensions)
+                , typeof(Queryable)])
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(Extensions.ExpressionExtensions.IsBoolean)
+            .OrderBy(Selectors.OrderDatabaseQueries)
+            .Select(m => m.Name)
+            ];
+
+        public static MethodInfo? ToForced { get; }
+        public static MethodInfo? QueryIndexAsync { get; }
+
+        internal static List<List<(MemberInfo Member, ExpressionType Type, object? Value)>> BucketLogicalComparators(
+            List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators,
+            List<ExpressionType> Logical
+        ) {
+
+            // 1. Bucket by OrElse (Split the comparators into independent lists)
+            var buckets = new List<List<(MemberInfo Member, ExpressionType Type, object? Value)>> { new() };
+            for (int i = 0; i < Comparators.Count; i++)
+            {
+                buckets.Last().Add(Comparators[i]);
+                if (i < Logical.Count && Logical[i] == ExpressionType.OrElse)
+                    buckets.Add([]);
+            }
+
+            return buckets;
+        }
+
+
+        internal static (string Index, object? Exact, object? Lower, object? Upper, bool IsSpecific) GenerateQueryPlan(
+            List<(MemberInfo Member, ExpressionType Type, object? Value)> bucket
+        )
+        {
+            var grouped = bucket.GroupBy(c => c.Member.Name);
+            var projected = grouped.Select(g => {
+                var exact = g.FirstOrDefault(c => c.Type == ExpressionType.Equal).Value;
+                var lower = g.FirstOrDefault(c => c.Type == ExpressionType.GreaterThanOrEqual || c.Type == ExpressionType.GreaterThan).Value;
+                var upper = g.FirstOrDefault(c => c.Type == ExpressionType.LessThanOrEqual || c.Type == ExpressionType.LessThan).Value;
+
+                // Priority: Exact Match > Bounded Range > Single Bound
+                return (
+                    Index: g.Key.ToCamelCase(), /* must match indexes in schema TestStorage.PerformInitialization */
+                    Exact: exact,
+                    Lower: lower,
+                    Upper: upper,
+                    IsSpecific: exact != null || (lower != null && upper != null)
+                );
+            });
+
+            // Pick the most restrictive index in this bucket to hit IDB with
+            return projected.OrderByDescending(x => x.IsSpecific).First();
+        }
+
+        static LocalQueryProvider()
+        {
+            ToForced = typeof(QueryableExtensions).GetMethods(nameof(QueryableExtensions.ToForced))
+                        .FirstOrDefault();
+            QueryIndexAsync = typeof(LocalStore).GetMethods(nameof(LocalStore.QueryIndexAsync))
+                        .FirstOrDefault();
+        }
+
+
         private async Task<T> ExecuteIDBAsync<T>(Expression query, CancellationToken? ct = null)
         {
             var Context = Current.Context as TestStorage
@@ -99,29 +166,104 @@ namespace DataLayer.Utilities
                 throw new InvalidOperationException("IDB Module not setup for query.");
 
             Console.WriteLine("Executing: " + query.ToString());
+
+            MethodCallExpression simpleExpression;
+            AggressiveVisitor visitor;
             try
             {
 
                 var rootSwapped = new RootReplacementVisitor(null).Visit(query);
                 var cleanExpression = new ClosureEvaluatorVisitor().Visit(rootSwapped);
-                var visitor = new AggressiveVisitor();
-                var simpleExpression = visitor.Visit(cleanExpression);
+                visitor = new AggressiveVisitor();
+                simpleExpression = visitor.Visit(cleanExpression) as MethodCallExpression
+                    ?? throw new InvalidOperationException("Could render a clean IDB compatible expression.");
                 var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
                 Console.WriteLine(JsonSerializer.Serialize(values));
 
                 // This is exactly where you use your Expression Tree Converter
                 var serialized = query.ToXDocument().ToString();
-                Console.WriteLine("Converted: " + cleanExpression);
+                Console.WriteLine("Converted: " + simpleExpression);
+
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Query will fail: " + query.ToString() + " - " + ex);
+                // throw up here because we want to know when our statement is bad
                 throw new InvalidOperationException("Query will fail: " + query.ToString() + " - " + ex);
             }
 
 
+            try
+            {
+                // can't do much to optimize here
+                var database = visitor.Recordings.Keys.OrderBy(Selectors.OrderDatabaseQueries).ToList();
+                foreach (var method in database)
+                {
+                    var recording = visitor.Recordings[method];
+                    var tableName = recording.EntityType?.Table()
+                        ?? throw new InvalidOperationException("Could not extract table name from expression.");
 
+                    System.Collections.IList results = Activator.CreateInstance(typeof(List<>)
+                        .MakeGenericType(recording.EntityType)) as System.Collections.IList
+                        ?? throw new InvalidOperationException("Could not render collection container");
+
+                    List<List<object?>> predicatedObjs = [];
+                    var predicate = recording.EntityType.Predicate();
+                    var bounded = BucketLogicalComparators(recording.Comparators, recording.Logical);
+                    // 2. Process each bucket into the best possible Index Range
+                    foreach (var bucket in bounded)
+                    {
+                        var plan = GenerateQueryPlan(bucket);
+                        var queryMethod = QueryIndexAsync?.MakeGenericMethod(recording.EntityType)
+                            ?? throw new InvalidOperationException("Could not render QueryIndexAsync method.");
+                        var newSet = queryMethod.Invoke(Context.Store, [tableName, plan.Index.ToCamelCase() /* must match schema */ , plan.Exact, plan.Lower, plan.Upper, !simpleExpression.Method.IsSingular()]);
+                        if(newSet?.GetType().Extends(typeof(ValueTask<>)) == true
+                            && (newSet as dynamic).AsTask() is Task task)
+                        {
+                            await task;
+                            newSet = (newSet as dynamic).Result;
+                        }
+
+                        foreach(var item in (System.Collections.IList)newSet!)
+                        {
+                            var predicateValues = predicate.Select(p => p.GetValue(item)).ToList();
+                            if (predicatedObjs.Contains(predicateValues))
+                                continue;
+                            predicatedObjs.Add(predicateValues);
+                            results.Add(item);
+                        }
+                    }
+
+                    // TODO: extract and check predicate from entity type
+                    // TODO: swap out set provider for actual data reevaluate query just like in QueryNow()
+                    var finalQuery = results.AsQueryable();
+                    var finalSwapped = new RootReplacementVisitor(finalQuery).Visit(simpleExpression)
+                        ?? throw new InvalidOperationException("Could not render final data expression." 
+                            + simpleExpression + " for " + results.ToString() + " " + results.GetType().FullName);
+                    if(typeof(T).Extends(typeof(IQueryable)))
+                    {
+                        var finalResult = finalQuery.Provider.CreateQuery(finalSwapped);
+                        var forcedMethod = ToForced?.MakeGenericMethod(recording.EntityType, finalResult.ElementType)
+                            ?? throw new InvalidOperationException("Could not render ToForced method.");
+                        return (T)ToForced.Invoke(null, [finalResult])!;
+                    }
+                    else
+                    {
+                        var result = finalQuery.Provider.Execute(finalSwapped);
+                        return (T)result!;
+                    }
+                }
+
+                // TODO: reconstruct SelectMany queries
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Lookup failed: " + query.ToString() + " - " + ex);
+                // don't throw up because we don't want to gag our UX
+            }
 
             return default!;
 #if false

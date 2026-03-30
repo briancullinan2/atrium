@@ -130,16 +130,28 @@ export async function getRecord(storeName, key) {
 
 
 
-export async function queryIndex(storeName, indexName, lower, upper = null, getAll = true) {
+export async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, getAll = true) {
     const db = await getDB()
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
     const index = store.index(indexName)
     
-    const range = (upper !== null) ? IDBKeyRange.bound(lower, upper) : IDBKeyRange.only(lower)
+    var range = null;
+    if (exactIndex !== null) {
+        range = IDBKeyRange.only(exactIndex);
+    } else if (upper !== null && lower !== null) {
+        range = IDBKeyRange.bound(lower, upper);
+    } else if (upper !== null) {
+        range = IDBKeyRange.upperBound(upper);
+    } else if (lower !== null) {
+        range = IDBKeyRange.lowerBound(lower);
+    } else if (getAll) {
+        range = null; // Get all records
+    }
+
 
     return new Promise((rs, rj) => {
-        const req = getAll ? index.getAll(range) : index.get(range)
+        const req = getAll == null ? index.getAll(range) : index.get(range)
         req.onsuccess = () => rs(req.result)
         req.onerror = () => rj(req.error)
     })

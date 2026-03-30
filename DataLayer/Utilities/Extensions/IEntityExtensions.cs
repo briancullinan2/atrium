@@ -365,12 +365,14 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static List<PropertyInfo> Database(this Type type)
+        public static List<PropertyInfo> Database(this Type type, bool includePredicate = false)
         {
+            var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
-                    //p.GetGetMethod()?.IsVirtual != true
-                    !Attribute.IsDefined(p, typeof(KeyAttribute))  // TODO: don't match id fields
+                    includePredicate
+                    || (primaryKey?.Contains(p.Name) != true
+                    && !Attribute.IsDefined(p, typeof(KeyAttribute)))  // TODO: don't match id fields
                     && !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
                 .OrderBy(p => p.Name)
                 .ToList();
@@ -390,13 +392,22 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static Dictionary<string, List<PropertyInfo>> Indexes(this Type type)
+        public static Dictionary<string, List<PropertyInfo>> Indexes(this Type type, bool includePrimary = true)
         {
             var indexes = type.GetCustomAttributes<IndexAttribute>()
                 .ToDictionary<IndexAttribute, string, List<PropertyInfo>>(
                     i => i.Name ?? string.Empty,
                     i => [.. type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         .Where(p => i.PropertyNames.Contains(p.Name))]);
+            if(includePrimary
+                && type.GetCustomAttribute<PrimaryKeyAttribute>() is PrimaryKeyAttribute attr)
+            {
+                var primaryKey = string.Join("", attr.PropertyNames);
+                var primaryProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => primaryKey.Contains(p.Name))
+                    .ToList();
+                indexes[primaryKey] = primaryProperties;
+            }
             return indexes;
         }
 

@@ -97,12 +97,12 @@ the compiler will stop it and not have to wait for testing suite.
 
 ## TODO
 
-* Priority #1: write as little fucking &lt;html&gt; control code as possible, model and css only
-* Anki, Google, legacy format importer/uploader
+* DONE: EntityMetadata, this Object.Metadata(), and MetadataControl patterns working well. Priority #1: write as little fucking &lt;html&gt; control code as possible, model and css only
+* DONE: Anki, Google, legacy format importer/uploader
 * Distributed cloud encrypted backups, strong local storage, guest experience, row level data marshalling with IQuerable instead of Postgres
 * Subscription and single sale through Venmo, Google, Apple Pay, Square, multiple authorizer API support
 * Pre-rendered DRM streaming support, controlled content leaves memory and renders live as an image instead of copy/paste content
-* Entire course content include in basic local access, quizes, study plan creator, pack builder utility
+* DONE: Needs videos to be remade from script and AI? Entire course content include in basic local access, quizes, study plan creator, pack builder utility
 * Content management and sales panel that shows how similar other content is to yours for possible copyright but really just for technical capabilities
 * Add background and title bar and styling options to packs like we had planned in the last version
 
