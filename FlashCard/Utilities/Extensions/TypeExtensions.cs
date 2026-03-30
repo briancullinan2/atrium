@@ -212,50 +212,12 @@ namespace FlashCard.Utilities.Extensions
         }
 
 
-        public static IComponent? Component(this RenderFragment? fragment)
-        {
-            var target = fragment?.Target;
-
-            // 2. In Blazor 2026, the Body delegate target is often 
-            // a 'RouteView' or a compiler-generated closure.
-            if (target is RouteView view)
-            {
-                var renderer = view.Renderer();
-                var stateMap = renderer.State() ?? [];
-                if (stateMap.ByType(view.RouteData.PageType) is ComponentState state)
-                    target = state.Component;
-                else
-                {
-                    var child = view.GetChildComponents(true);
-                    if (child.FirstOrDefault() is IComponent actualPage)
-                        target = actualPage;
-                }
-            }
-
-            if (target is IComponent component) return component;
-
-            if (target != null)
-            {
-                // The "Deep Magic": If it's a closure, find the captured component field
-                // Usually named 'childComponent' or 'Component' in the RouteView context
-                var componentField = target.GetType()
-                    .GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public)
-                    .FirstOrDefault(f => typeof(IComponent).IsAssignableFrom(f.FieldType));
-
-                if (componentField?.GetValue(target) is IComponent capturedPage)
-                {
-                    return capturedPage;
-                }
-            }
-
-            return null;
-        }
 
 
         public static IJSRuntime? Runtime(this IComponent component)
         {
             return component.Service()?.GetService<IJSRuntime>() ?? component.GetType()
-                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetProperties(null)
                 .FirstOrDefault(p => p.PropertyType == typeof(IJSRuntime) ||
                                      p.PropertyType.IsAssignableTo(typeof(IJSRuntime)))
                 ?.GetValue(component) as IJSRuntime;

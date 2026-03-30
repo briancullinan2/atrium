@@ -73,18 +73,20 @@
         </header>
     }
     <main>
+        
+        <article class="content course-container">
+            @if (_previousBody != null)
+            {
+                <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
+                    @(_previousBody)
+                </div>
+            }
+            @_activeBody
+        </article>
 
         <ErrorBoundary @ref="_errorBoundary">
             <ChildContent>
-                <article class="content course-container">
-                    @if (_previousBody != null)
-                    {
-                        <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
-                            @(_previousBody)
-                        </div>
-                    }
-                    @_activeBody
-                </article>
+                
             </ChildContent>
             <ErrorContent>
                 <article class="content course-container">

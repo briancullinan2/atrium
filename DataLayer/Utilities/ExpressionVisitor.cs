@@ -131,6 +131,16 @@ namespace DataLayer.Utilities
                     CurrentRecording?.NewParameter = realRoot?.Expression;
                     return VisitMethodCall(methodCall);
                 }
+            
+            
+            
+                if(lambda.Parameters.Any(p => p == CurrentRecording?.Parameter))
+                {
+                    // have to a rewrite
+                    var parameters = lambda.Parameters.Select(Visit).Cast<ParameterExpression>().ToArray();
+                    var body = Visit(lambda.Body);
+                    return Expression.Lambda(body!, parameters);
+                }
             }
 
 
@@ -143,14 +153,24 @@ namespace DataLayer.Utilities
             if (node.Method.DeclaringType != typeof(Queryable))
                 return base.VisitMethodCall(node);
 
-            var genericArgs = node.Method.GetGenericArguments().FirstOrDefault();
+
+            var enumerable = node.Arguments.FirstOrDefault()?.Type;
+            var genericArgs = enumerable?.GetGenericArguments().FirstOrDefault()
+                ?? node.Method.GetGenericArguments().FirstOrDefault();
             var quoted = node.Arguments.FirstOrDefault(a => a.Type.Extends(typeof(Expression)));
             var lamda = quoted is UnaryExpression quote ? quote.Operand as LambdaExpression : quoted as LambdaExpression;
             var predicateArg = lamda?.Parameters.FirstOrDefault();
 
-            var possiblyEntity = predicateArg?.Type.GetGenericArguments()
-                .FirstOrDefault()?.GetGenericArguments().FirstOrDefault()
-                ?? genericArgs;
+            var possiblyEntity = predicateArg?.Type;
+
+
+            // TODO: this works not, but now i have to go through the tree and grab the very first parameter
+            //   to check if the expression starts with a queryable, need to refactor so it does the same
+            //   if statement check, before processing the rest of the method call, grab the DbSet or IQueryable from the start
+            //   this way i can check subsequent types like .Where().Select().First() the first or select could
+            //   still be typeof(object)
+
+
 
             if (predicateArg != null && possiblyEntity != null
             //    && genericArgs == typeof(object)
@@ -169,20 +189,19 @@ namespace DataLayer.Utilities
                 // only replace parameter is type doesn't match or it's the root
                 //if (genericArgs != possiblyEntity)
                 {
-                    var newParameter = Expression.Parameter(predicateArg.Type.GetGenericTypeDefinition()
-                        .MakeGenericType(possiblyEntity), predicateArg.Name);
+                    var newParameter = Expression.Parameter(genericArgs ?? possiblyEntity, predicateArg.Name);
 
-                    CurrentRecording?.Parameter = node.Arguments.First() as ParameterExpression;
+                    CurrentRecording?.Parameter = predicateArg;
                     CurrentRecording?.NewParameter = newParameter;
                 }
 
                 var newMethod = typeof(Queryable).GetMethods(node.Method.Name)
                     .FirstOrDefault(m => m.GetParameters().Length == node.Method.GetParameters().Length)
-                    ?.MakeGenericMethod(possiblyEntity)
+                    ?.MakeGenericMethod(genericArgs ?? possiblyEntity)
                     ?? throw new InvalidOperationException("Could not render new Expression method");
 
                 var arguments = node.Arguments.Select(Visit).Cast<Expression>().ToList();
-
+                //var newLambda = Expression.Lambda()
                 return Expression.Call(newMethod, arguments);
             }
 
