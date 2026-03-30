@@ -60,7 +60,7 @@ namespace FlashCard.Services
         public string? Secret = null;
         public string? Authority = null; // fuck the authority
         [NotMapped]
-        public AuthID? DefaultProvider { get => Id ?? DisplayName?.TryParse<AuthID>(); }
+        public AuthID? DefaultProvider => Id ?? DisplayName?.TryParse<AuthID>();
 
     }
 

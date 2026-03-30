@@ -10,35 +10,70 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.JSInterop;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 
 namespace DataLayer
 {
+
+    public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx)
+    {
+
+        static TranslationContext()
+        {
+            List<System.Reflection.Assembly> assemblies = [typeof(TEntity).Assembly, Assembly.GetExecutingAssembly(), Assembly.GetCallingAssembly()];
+            _cachedTypes = assemblies.SelectMany(a => a.GetTypes()).Distinct();
+        }
+        private static readonly IEnumerable<Type> _cachedTypes;
+
+        private List<Type>? CachedEntities { get; set; }
+        public List<Type> EntityTypes => CachedEntities
+            ??= [.. _cachedTypes.Where(t => t.IsClass && !t.IsAbstract && t.Extends(typeof(TEntity)) && t.IsConcrete())];
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Capture>();
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
+            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
+
+            foreach (var type in EntityTypes)
+            {
+                modelBuilder.Entity(type).ToTable(type.Table());
+
+            }
+
+        }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+
+            foreach (var type in EntityTypes ?? [])
+            {
+                var props = type.Database().Where(p => p.PropertyType.Extends(typeof(Enum)));
+
+                foreach (var prop in props)
+                {
+                    _ = configurationBuilder.Properties(prop.PropertyType).HaveConversion<int>();
+
+                }
+            }
+        }
+    }
+
+
+
+
     // This context never connects to a DB; it just holds your Entity mappings
-    public class TranslationContext(IQueryManager query, DbContextOptions ctx) : DbContext(ctx)
+    public class TranslationContext(IQueryManager query, DbContextOptions ctx) : TranslationContext<IEntity>(ctx)
     {
         public IQueryManager Query { get; set; } = query;
 
-
-        public DbSet<Permission>? Permissions { get; set; }
-        public DbSet<Role>? Roles { get; set; }
-        public DbSet<User>? Users { get; set; }
-        public DbSet<Setting>? Settings { get; set; }
-        public DbSet<Message>? Messages { get; set; }
-        public DbSet<Pack>? Packs { get; set; }
-        public DbSet<Card>? Cards { get; set; }
-        public DbSet<Answer>? Answers { get; set; }
-        public DbSet<Group>? Groups { get; set; }
-        public DbSet<Entities.File>? Files { get; set; }
-        public DbSet<Visit>? Visits { get; set; }
-        public DbSet<Session>? Sessions { get; set; }
-        public DbSet<Schedule>? Schedules { get; set; }
-        public DbSet<Subject>? Subjects { get; set; }
-        public DbSet<Grade>? Grades { get; set; }
-        public DbSet<Lesson>? Lessons { get; set; }
 
         public string ConnectString
         {
@@ -57,45 +92,10 @@ namespace DataLayer
             options.AddInterceptors(WrapperInterceptor.Instance);
         }
 
-        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-        {
-
-            _ = configurationBuilder.Properties<DisplayType>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<ControlMode>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<Gender>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<PackMode>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<PackStatus>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<CardType>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<GradeScale>().HaveConversion<int>();
-            _ = configurationBuilder.Properties<DefaultPermissions>().HaveConversion<string>();
-        }
-
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Capture>();
-            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
-            _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
-
-
-            _ = modelBuilder.Entity<Message>().ToTable(Message.Metadata.TableName);
-            _ = modelBuilder.Entity<Permission>().ToTable(Permission.Metadata.TableName);
-            _ = modelBuilder.Entity<Role>().ToTable(Role.Metadata.TableName);
-            _ = modelBuilder.Entity<Setting>().ToTable(Setting.Metadata.TableName);
-            _ = modelBuilder.Entity<User>().ToTable(User.Metadata.TableName);
-            _ = modelBuilder.Entity<Card>().ToTable(Card.Metadata.TableName);
-            _ = modelBuilder.Entity<Pack>().ToTable(Pack.Metadata.TableName);
-            _ = modelBuilder.Entity<Answer>().ToTable(Answer.Metadata.TableName);
-            _ = modelBuilder.Entity<Group>().ToTable(Group.Metadata.TableName);
-            _ = modelBuilder.Entity<Entities.File>().ToTable(Entities.File.Metadata.TableName);
-            _ = modelBuilder.Entity<Visit>().ToTable(Visit.Metadata.TableName);
-            _ = modelBuilder.Entity<Session>().ToTable(Session.Metadata.TableName);
-            _ = modelBuilder.Entity<Subject>().ToTable(Subject.Metadata.TableName);
-            _ = modelBuilder.Entity<Schedule>().ToTable(Schedule.Metadata.TableName);
-            _ = modelBuilder.Entity<Grade>().ToTable(Grade.Metadata.TableName);
-            _ = modelBuilder.Entity<Lesson>().ToTable(Lesson.Metadata.TableName);
 
             NeedsInitialize = true;
         }
@@ -316,12 +316,12 @@ namespace DataLayer
                 var tables = IEntityExtensions.Schemas(this).Select(kvp => kvp.Name);
                 var schema = IEntityExtensions.Schemas(this).ToDictionary(kvp => kvp.Name, kvp =>
                 {
-                    var predicate = IEntityExtensions.ListPredicate(kvp.EntityType)
+                    var predicate = IEntityExtensions.Predicate(kvp.EntityType)
                         .Select(p => p.Name)
                         .ToList();
-                    var columns = IEntityExtensions.ListDatabase(kvp.EntityType)
+                    var columns = IEntityExtensions.Database(kvp.EntityType)
                         .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
-                    var indexes = IEntityExtensions.ListIndexes(kvp.EntityType)
+                    var indexes = IEntityExtensions.Indexes(kvp.EntityType)
                         .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
                             string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
                     var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();

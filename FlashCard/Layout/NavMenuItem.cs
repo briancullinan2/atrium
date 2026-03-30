@@ -25,7 +25,7 @@ namespace FlashCard.Layout
     {
         public NavMenuItem() { }
         public string Title { get; set; } = string.Empty;
-        virtual public string Href { get => NavigationExtensions.GetUri(Uri); }
+        virtual public string Href => NavigationExtensions.GetUri(Uri);
         public Expression<Func<TComponent, TComponent>>? Uri { get; set; } = c => new TComponent();
         public string Icon { get; set; } = "bi-circle";
         public string? RoleRequired { get; set; }

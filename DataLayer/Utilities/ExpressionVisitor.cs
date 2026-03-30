@@ -15,7 +15,8 @@ using static DataLayer.Utilities.AggressiveVisitor;
 namespace DataLayer.Utilities
 {
     
-
+    // run up the chain looking for types to replace because EF generates a bunch of plain ol objects for entities
+    //   second replace the parts we found in the first pass with the correct entity type
     public class RootReplacementVisitor(IQueryable? realRoot) : ExpressionVisitor
     {
         protected override Expression VisitConstant(ConstantExpression node)
@@ -57,14 +58,6 @@ namespace DataLayer.Utilities
 
         protected override Expression VisitParameter(ParameterExpression node)
         {
-            /*
-            if (node.Type.Extends(typeof(Entities.Entity<>)))
-                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
-                    .MakeGenericType(node.Type))!).AsQueryable();
-            if(node.Type.Extends(typeof(IQueryable<>)))
-                realRoot ??= ((IEnumerable)Activator.CreateInstance(typeof(List<>)
-                    .MakeGenericType(node.Type.GenericTypeArguments))!).AsQueryable();
-            */
 
             if (node == CurrentRecording?.Parameter
                 && CurrentRecording?.NewParameter != null)
@@ -77,15 +70,15 @@ namespace DataLayer.Utilities
         {
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
-            public string? MemberAccessName { get => MemberAccess?.AssemblyQualifiedName; }
+            public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;
 
             [JsonIgnore]
             public Type? EntityType { get; set; }
-            public string? EntityTypeName { get => EntityType?.AssemblyQualifiedName; }
+            public string? EntityTypeName => EntityType?.AssemblyQualifiedName;
 
             [JsonIgnore]
             public ParameterExpression? Parameter { get; internal set; }
-            public string? ParameterName { get => Parameter?.Name; }
+            public string? ParameterName => Parameter?.Name;
 
             [JsonIgnore]
             public Expression? NewParameter { get; internal set; }

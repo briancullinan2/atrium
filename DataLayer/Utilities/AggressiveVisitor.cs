@@ -21,16 +21,13 @@ namespace DataLayer.Utilities
             public string? MethodName { get; set; }
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
-            public string? MemberAccessName { get => MemberAccess?.AssemblyQualifiedName; }
+            public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;
             [JsonIgnore]
             public List<(MemberInfo Member, ExpressionType Type, object? Value)> Comparators { get; set; } = [];
-            public List<Tuple<string, string, object?>> SerializableComparators
-            {
-                get => [.. Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value))];
-            }
+            public List<Tuple<string, string, object?>> SerializableComparators => [.. Comparators.Select(p => new Tuple<string, string, object?>(p.Member.Name, p.Type.ToString(), p.Value))];
             [JsonIgnore]
             public Type? EntityType { get; set; }
-            public string? EntityTypeName { get => EntityType?.AssemblyQualifiedName; }
+            public string? EntityTypeName => EntityType?.AssemblyQualifiedName;
             public bool AddBoth { get; set; } = false;
             public bool HasArithmetic { get; set; } = false;
 

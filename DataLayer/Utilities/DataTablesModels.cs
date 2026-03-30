@@ -437,7 +437,7 @@ namespace DataLayer.Utilities
         public int Echo { get; set; }
         public int TotalRecords { get; set; }
         public int TotalDisplayRecords { get; set; }
-        public RowData[] Data { get { return [.. rows]; } }
+        public RowData[] Data => [.. rows];
 
         public class RowData : Dictionary<string, string>
         {

@@ -365,7 +365,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static List<PropertyInfo> ListDatabase(Type type)
+        public static List<PropertyInfo> Database(this Type type)
         {
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
@@ -380,7 +380,7 @@ namespace DataLayer.Utilities.Extensions
 
 
 
-        public static List<PropertyInfo> ListPredicate(Type type)
+        public static List<PropertyInfo> Predicate(this Type type)
         {
             var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
             var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -390,7 +390,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static Dictionary<string, List<PropertyInfo>> ListIndexes(Type type)
+        public static Dictionary<string, List<PropertyInfo>> Indexes(this Type type)
         {
             var indexes = type.GetCustomAttributes<IndexAttribute>()
                 .ToDictionary<IndexAttribute, string, List<PropertyInfo>>(
@@ -401,7 +401,7 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static List<PropertyInfo> ListInteresting(Type type)
+        public static List<PropertyInfo> Interesting(this Type type)
         {
             var foreignKeys = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(p => Attribute.GetCustomAttribute(p, typeof(ForeignKeyAttribute))?.TypeId);
@@ -422,7 +422,7 @@ namespace DataLayer.Utilities.Extensions
             return properties;
         }
 
-        public static List<PropertyInfo> ListDisplay(Type type)
+        public static List<PropertyInfo> Display(this Type type)
         {
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
@@ -454,10 +454,7 @@ namespace DataLayer.Utilities.Extensions
                 .Where(p => p.PropertyType.IsGenericType &&
                             p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
                 .Select(p => (
-                    Name: p.PropertyType.GetGenericArguments()[0].GetCustomAttributes()
-                        // has to match RemoteManager.SaveNow putRecord
-                        .OfType<TableAttribute>().FirstOrDefault()?.Name
-                        ?? p.PropertyType.GetGenericArguments()[0].Name ?? p.Name,
+                    Name: p.PropertyType.GetGenericArguments()[0].Table() ?? p.Name,
                     EntityType: p.PropertyType.GetGenericArguments()[0]
                 ))];
         }

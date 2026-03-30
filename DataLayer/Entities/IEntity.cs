@@ -68,15 +68,15 @@ namespace DataLayer.Entities
         }
 
         [NotMapped]
-        public static List<PropertyInfo> Database { get => IEntityExtensions.ListDatabase(typeof(T)); }
+        public static List<PropertyInfo> Database => IEntityExtensions.Database(typeof(T));
         [NotMapped]
-        public static List<PropertyInfo> Interesting { get => IEntityExtensions.ListInteresting(typeof(T)); }
+        public static List<PropertyInfo> Interesting => IEntityExtensions.Interesting(typeof(T));
         [NotMapped]
-        public static List<PropertyInfo> Display { get => IEntityExtensions.ListDisplay(typeof(T)); }
+        public static List<PropertyInfo> Display => IEntityExtensions.Display(typeof(T));
         [NotMapped]
-        public static List<PropertyInfo> Predicate { get => IEntityExtensions.ListPredicate(typeof(T)); }
+        public static List<PropertyInfo> Predicate => IEntityExtensions.Predicate(typeof(T));
         [NotMapped]
-        public static Dictionary<string, List<PropertyInfo>> Indexes { get => IEntityExtensions.ListIndexes(typeof(T)); }
+        public static Dictionary<string, List<PropertyInfo>> Indexes => IEntityExtensions.Indexes(typeof(T));
 
 
         public override bool Equals(object? obj)

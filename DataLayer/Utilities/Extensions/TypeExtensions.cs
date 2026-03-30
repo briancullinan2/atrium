@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Text.Json;
 
@@ -411,6 +413,24 @@ namespace DataLayer.Utilities.Extensions
 
         private static readonly ConcurrentDictionary<string, Type?> _pathToTypeCache = new();
 
+
+
+        public static string? Table(this Type type)
+        {
+            // has to match RemoteManager.SaveNow putRecord
+            if (!type.Extends(typeof(Entities.Entity<>))) return null;
+            return type.GetCustomAttributes().OfType<TableAttribute>().FirstOrDefault()?.Name ?? type.Name;
+        }
+
+
+        public static bool IsConcrete(this Type type)
+        {
+            if (type == null) return false;
+
+            return !type.IsAbstract &&
+                   !type.IsInterface &&
+                   !type.IsGenericTypeDefinition;
+        }
 
 
         public static Type? ToType(this string filePath, Assembly? targetAssembly = null)

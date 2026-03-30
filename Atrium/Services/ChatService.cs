@@ -300,7 +300,7 @@ namespace Atrium.Services
         }
 
 
-        public static string CommandString { get => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description)); }
+        public static string CommandString => string.Join("\n", ChatCommand.CommandRegistry.Select(c => c.Function + c.Parameters + " - " + c.Description));
 
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _clientTokens = new();
 

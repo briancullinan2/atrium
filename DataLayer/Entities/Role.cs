@@ -22,7 +22,7 @@ namespace DataLayer.Entities
         public ICollection<Group> Groups { get; set; } = new HashSet<Group>();
 
         [NotMapped]
-        public DefaultRoles? DefaultRole { get => Name?.TryParse<DefaultRoles>(); }
+        public DefaultRoles? DefaultRole => Name?.TryParse<DefaultRoles>();
 
     }
 }

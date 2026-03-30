@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Security.Claims;
+
 
 namespace DataLayer.Entities
 {
@@ -14,7 +14,7 @@ namespace DataLayer.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        public int? UserId { get; set; }
+        public string? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
         public virtual User? User { get; set; } = null!;
@@ -35,7 +35,7 @@ namespace DataLayer.Entities
         public DateTime Created { get; set; } = DateTime.UtcNow;
 
         // Navigation property for Claims (One-to-Many)
-        public virtual ICollection<Claim> Claims { get; set; } = new HashSet<Claim>();
+        //public virtual ICollection<Entities.Claim> Claims { get; set; } = new HashSet<Claim>();
 
         public Goal()
         {

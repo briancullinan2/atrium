@@ -147,7 +147,7 @@ namespace DataLayer
             Uncategorized = new ObservableCollection<PropertyMetadata>(AllProperties.Where(p => string.IsNullOrWhiteSpace(p.Category) && string.IsNullOrWhiteSpace(p.GroupName)));
 
             // Nested Indexers for the XAML [Brackets]
-            TableName = entityType.GetCustomAttributes().OfType<TableAttribute>().FirstOrDefault()?.Name ?? entityType.Name;
+            TableName = entityType.Table() ?? entityType.Name;
             Groups = new AttributeIndexer(AllProperties, p => p.GroupName);
             Categories = new AttributeIndexer(AllProperties, p => p.Category);
             Ungrouped = new AttributeIndexer(AllProperties.Where(p => string.IsNullOrWhiteSpace(p.GroupName)), p => p.Category);
