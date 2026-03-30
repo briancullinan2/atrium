@@ -164,9 +164,8 @@ namespace Atrium.Services
 
             var guid = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Sid)?.Value;
             var userEntity = await _query.Query<User>(u => u.Guid == guid).FirstOrDefaultAsync<User>();
-            var currentSetting = await _query.Query<Setting>(s =>
-                s.Name != null
-                && s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
+            var currentSetting = await _query.Query<Setting>(s => 
+                s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                 .FirstOrDefaultAsync()
                 ?? new Setting
                 {

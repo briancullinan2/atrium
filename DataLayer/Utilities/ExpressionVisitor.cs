@@ -66,15 +66,11 @@ namespace DataLayer.Utilities
         }
 
 
-        public class ClosureRecording
+        public class ClosureRecording : EntityRecording
         {
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
             public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;
-
-            [JsonIgnore]
-            public Type? EntityType { get; set; }
-            public string? EntityTypeName => EntityType?.AssemblyQualifiedName;
 
             [JsonIgnore]
             public ParameterExpression? Parameter { get; internal set; }
@@ -85,6 +81,15 @@ namespace DataLayer.Utilities
         }
 
 
+        public class EntityRecording
+        {
+            [JsonIgnore]
+            public Type? EntityType { get; set; }
+            public string? EntityTypeName => EntityType?.AssemblyQualifiedName;
+        }
+
+
+        public EntityRecording? CurrentEntity { get; set; } = null;
         public ClosureRecording? CurrentRecording { get; set; } = null;
         public Expression? Root { get; set; }
 
@@ -140,65 +145,172 @@ namespace DataLayer.Utilities
             return base.VisitLambda(node);
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+
+        protected static bool IsQueryableMethod(MethodCallExpression node) =>
+            node.Method.DeclaringType == typeof(Queryable)
+            || node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions);
+
+
+        // UNRELIABLE this is why we need two passes?
+        protected static ParameterExpression? GetQueryablePredicate(MethodCallExpression node)
         {
-            // 1. Only process Queryable methods (Where, Select, SelectMany, etc.)
-            if (node.Method.DeclaringType != typeof(Queryable))
-                return base.VisitMethodCall(node);
+            var quoted = node.Arguments.FirstOrDefault(a => a.Type.Extends(typeof(Expression)));
+            var lamda = quoted is UnaryExpression quote ? quote.Operand as LambdaExpression : quoted as LambdaExpression;
+            return lamda?.Parameters.FirstOrDefault();
+        }
 
 
+
+        protected static Type? GetEntityType(Type type) =>
+            type.Extends(typeof(Entities.Entity<>)) == true
+            || type.Extends(typeof(IQueryable<>)) == true
+            || type.Extends(typeof(DbSet<>)) == true 
+            ? type.GenericTypeArguments[0] : null;
+
+
+
+        // the entity type from the IQueryable set doesn't match the parameter type on the predicate
+        protected static Type? MethodFitsScenario(MethodCallExpression node)
+        {
             var enumerable = node.Arguments.FirstOrDefault()?.Type;
             var genericArgs = enumerable?.GetGenericArguments().FirstOrDefault()
                 ?? node.Method.GetGenericArguments().FirstOrDefault();
-            var quoted = node.Arguments.FirstOrDefault(a => a.Type.Extends(typeof(Expression)));
-            var lamda = quoted is UnaryExpression quote ? quote.Operand as LambdaExpression : quoted as LambdaExpression;
-            var predicateArg = lamda?.Parameters.FirstOrDefault();
-
+            var predicateArg = GetQueryablePredicate(node);
             var possiblyEntity = predicateArg?.Type;
+            // only replace parameter if type doesn't match or it's the root
+            if (predicateArg != null && possiblyEntity != null
+                && genericArgs != possiblyEntity)
+                return genericArgs ?? possiblyEntity;
+            return null;
+        }
+
+
+        protected MethodCallExpression FixMethodParameterType(MethodCallExpression node, Type shouldBe)
+        {
+            // 1. Get the generic method definition (e.g., Where<>)
+            var methodDef = node.Method.IsGenericMethod
+                ? node.Method.GetGenericMethodDefinition()
+                : node.Method;
+
+            var generics = node.Method.GetGenericArguments();
+            var methodParams = methodDef.GetParameters();
+
+            // 2. Find the argument that is a Lambda/Expression
+            // We look for the parameter index that matches your predicateArg
+            int predicateParamIndex = -1;
+            for (int i = 0; i < methodParams.Length; i++)
+            {
+                if (methodParams[i].ParameterType.Extends(typeof(Expression<>)))
+                {
+                    predicateParamIndex = i;
+                    break;
+                }
+            }
+
+            if (predicateParamIndex != -1)
+            {
+                // 3. Identify WHICH generic argument T corresponds to that parameter
+                // Most Queryable methods use genericArgs[0] as TSource
+                // But we can be precise by checking the Name or Position
+                var paramType = methodParams[predicateParamIndex].ParameterType; // e.g. Expression<Func<TSource, bool>>
+                var genericInLambda = paramType.GetGenericArguments()[0] // Func<TSource, bool>
+                                               .GetGenericArguments()[0]; // TSource
+
+                // Find the index of TSource in the method's generic arguments
+                int genericIndex = node.Method.GetGenericMethodDefinition()
+                                              .GetGenericArguments()
+                                              .ToList()
+                                              .FindIndex(g => g == genericInLambda);
+
+                if (genericIndex != -1)
+                {
+                    generics[genericIndex] = shouldBe;
+                }
+            }
+
+            // 4. Rebuild with the corrected generic array
+            var newMethod = methodDef.MakeGenericMethod(generics);
+
+            // Visit arguments to trigger the Parameter swap in VisitLambda
+            var arguments = node.Arguments.Select(Visit).Cast<Expression>().ToList();
+
+            return Expression.Call(newMethod, arguments);
+        }
+
+
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            
+            if (!IsQueryableMethod(node)) // let the cleaner catch it
+                return base.VisitMethodCall(node);
+
+
+            // TODO: there's no way to pass the entity type UP the call chain while simultaneously replacing the
+            // parameter type, so instead of doing it in one pass, do it in two, first pass is to find the entity
+            // type and parameter, second pass is to replace the parameter type and member access types with
+            // the correct entity type
+            MethodCallExpression fixedExpression;
+            if(MethodFitsScenario(node) is Type set
+                && GetQueryablePredicate(node) is ParameterExpression predicateArg)
+            {
+                CurrentEntity ??= new EntityRecording();
+                CurrentEntity.EntityType = set;
+
+                CurrentRecording ??= new ClosureRecording();
+                CurrentRecording?.MemberAccess = CurrentEntity.EntityType;
+                if (CurrentEntity.EntityType.Extends(typeof(Entities.Entity<>)) == true)
+                {
+                    CurrentRecording?.EntityType = CurrentEntity.EntityType;
+                }
+
+                var newParameter = Expression.Parameter(CurrentEntity.EntityType, predicateArg.Name);
+
+                CurrentRecording?.Parameter = predicateArg;
+                CurrentRecording?.NewParameter = newParameter;
+
+
+                // TODO: fix this last one so we never end up back here on the second pass
+                fixedExpression = FixMethodParameterType(node, set);
+            }
+            else // if(CurrentEntity != null)
+                fixedExpression = (MethodCallExpression)base.VisitMethodCall(node); // UNFIXED
+
+
+
+            // only start this from the top node, pass corrected parameter types back up call chain
+            if (Root != node || CurrentEntity == null)
+                return fixedExpression;
 
 
             // TODO: this works not, but now i have to go through the tree and grab the very first parameter
             //   to check if the expression starts with a queryable, need to refactor so it does the same
-            //   if statement check, before processing the rest of the method call, grab the DbSet or IQueryable from the start
-            //   this way i can check subsequent types like .Where().Select().First() the first or select could
-            //   still be typeof(object)
+            //   if statement check, before processing the rest of the method call, grab the DbSet or IQueryable
+            //   from the start this way i can check subsequent types like .Where().Select().First() the
+            //   first or select could still be typeof(object)
 
-
-
-            if (predicateArg != null && possiblyEntity != null
-            //    && genericArgs == typeof(object)
-                && genericArgs != possiblyEntity
-            )
+            if (CurrentEntity == null)
             {
-
-
-                CurrentRecording ??= new ClosureRecording();
-                CurrentRecording?.MemberAccess = possiblyEntity;
-                if (possiblyEntity.Extends(typeof(Entities.Entity<>)) == true)
-                {
-                    CurrentRecording?.EntityType = possiblyEntity;
-                }
-
-                // only replace parameter is type doesn't match or it's the root
-                //if (genericArgs != possiblyEntity)
-                {
-                    var newParameter = Expression.Parameter(genericArgs ?? possiblyEntity, predicateArg.Name);
-
-                    CurrentRecording?.Parameter = predicateArg;
-                    CurrentRecording?.NewParameter = newParameter;
-                }
-
-                var newMethod = typeof(Queryable).GetMethods(node.Method.Name)
-                    .FirstOrDefault(m => m.GetParameters().Length == node.Method.GetParameters().Length)
-                    ?.MakeGenericMethod(genericArgs ?? possiblyEntity)
-                    ?? throw new InvalidOperationException("Could not render new Expression method");
-
-                var arguments = node.Arguments.Select(Visit).Cast<Expression>().ToList();
-                //var newLambda = Expression.Lambda()
-                return Expression.Call(newMethod, arguments);
             }
 
-            return base.VisitMethodCall(node);
+
+            // only start this from the top node, an entity IQueryable was found at the bottom of the tree
+            if (CurrentEntity != null && CurrentEntity.EntityType != null)
+            {
+                // signal to the vistor that parameter replacement can take place
+                CurrentRecording ??= new ClosureRecording();
+                CurrentRecording?.MemberAccess = CurrentEntity.EntityType;
+                if (CurrentEntity.EntityType.Extends(typeof(Entities.Entity<>)) == true)
+                {
+                    CurrentRecording?.EntityType = CurrentEntity.EntityType;
+                }
+
+
+            }
+
+            // TODO: run back through tree again and do parameter replacements
+            return base.VisitMethodCall(fixedExpression);
+            
         }
 
 

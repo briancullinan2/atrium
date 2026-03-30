@@ -450,13 +450,29 @@ namespace DataLayer.Utilities.Extensions
 
         public static List<(string Name, Type EntityType)> Schemas(this Type contextType)
         {
-            return [.. contextType.GetProperties()
+            if (contextType.Extends(typeof(TranslationContext)))
+                return [.. (contextType.GetProperties(nameof(TranslationContext.EntityTypes))
+                    .FirstOrDefault()?.GetValue(null) as List<Type>)
+                    ?.Select(p => (
+                        Name: p.Table() ?? p.Name,
+                        EntityType: p
+                    )) ?? []];
+
+
+            List<(string Name, Type EntityType)> sets = [.. contextType.GetProperties()
                 .Where(p => p.PropertyType.IsGenericType &&
                             p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
                 .Select(p => (
                     Name: p.PropertyType.GetGenericArguments()[0].Table() ?? p.Name,
                     EntityType: p.PropertyType.GetGenericArguments()[0]
                 ))];
+
+            if(sets.Count != 0) return sets;
+
+            if (!contextType.Extends(typeof(TranslationContext)))
+                throw new InvalidOperationException("Not sure what to do here, type is not a TranslationContext");
+
+            throw new InvalidOperationException("Not sure what to do here, how to get a list of DbSets<>");
         }
 
 

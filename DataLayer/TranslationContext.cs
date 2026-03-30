@@ -26,12 +26,12 @@ namespace DataLayer
         static TranslationContext()
         {
             List<System.Reflection.Assembly> assemblies = [typeof(TEntity).Assembly, Assembly.GetExecutingAssembly(), Assembly.GetCallingAssembly()];
-            _cachedTypes = assemblies.SelectMany(a => a.GetTypes()).Distinct();
+            _cachedTypes = assemblies.Distinct().SelectMany(a => a.GetTypes()).Distinct();
         }
         private static readonly IEnumerable<Type> _cachedTypes;
 
-        private List<Type>? CachedEntities { get; set; }
-        public List<Type> EntityTypes => CachedEntities
+        private static List<Type>? CachedEntities { get; set; }
+        public static List<Type> EntityTypes => CachedEntities
             ??= [.. _cachedTypes.Where(t => t.IsClass && !t.IsAbstract && t.Extends(typeof(TEntity)) && t.IsConcrete())];
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
