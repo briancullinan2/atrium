@@ -141,7 +141,7 @@ namespace FlashCard.Services
                     {
                         Source = Source,
                         Title = (Title ?? exception.Message).Limit(DataLayer.Entities.Message.Metadata.MaxLength[x => x.Title] ?? 1024),
-                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled)?.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled).Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4

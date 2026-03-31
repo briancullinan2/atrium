@@ -26,8 +26,6 @@ namespace DataLayer.Utilities
         StorageType PersistentStorage { get; set; }
         Type EphemeralType { get; set; }
         Type PersistentType { get; set; }
-        Type? EphemeralContext { get; set; }
-        Type? PersistentContext { get; set; }
 
 
         Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10)
@@ -96,40 +94,14 @@ namespace DataLayer.Utilities
 
         Task<object?> ToQueryable(string query, StorageType? storage);
 
-        TranslationContext? GetContext(StorageType type);
+        TranslationContext GetContext(StorageType type);
 
-        /*
-        IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext;
+        TContext GetContext<TContext>(StorageType? type = null) where TContext : DbContext;
 
-        IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext;
-
-
-
-        TContext? GetContext<TContext>() where TContext : DbContext;
-
-        TContext? GetContext<TContext>(Type contextType) where TContext : DbContext;
-
-
-
-        TranslationContext? GetContext(Type contextType);
-
-        */
-        //IServiceProvider Service { get; set; }
     }
 
-    /*
-    public static class QueryContext
-    {
 
-        static abstract StorageType GetStorageType(Type type);
-        static abstract Type GetStorageType(StorageType type);
 
-        static abstract Type GetContextType(StorageType type);
-
-        static abstract Type? GetContextType(Type? type);
-    }
-
-    */
 
     public class QueryManager(IServiceProvider Service) : IQueryManager
     {
@@ -142,6 +114,9 @@ namespace DataLayer.Utilities
 
         public virtual StorageType EphemeralStorage { get; set; } = StorageType.Ephemeral;
         public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
+        public virtual StorageType RemoteStorage { get; set; } = StorageType.Remote;
+        public virtual StorageType TestStorage { get; set; } = StorageType.Test;
+        
         private Type? _ephemeral;
         private Type? _persistent;
         public virtual Type EphemeralType
@@ -154,17 +129,7 @@ namespace DataLayer.Utilities
             get => _persistent ?? GetStorageType(PersistentStorage);
             set => _persistent = value;
         }
-        public virtual Type? EphemeralContext
-        {
-            get => GetContextType(_ephemeral) ?? GetContextType(EphemeralType);
-            set => _ephemeral = value?.GetType().GetGenericArguments().FirstOrDefault();
-        }
-        public virtual Type? PersistentContext
-        {
-            get => GetContextType(_ephemeral) ?? GetContextType(PersistentType);
-            set => _persistent = value?.GetType().GetGenericArguments().FirstOrDefault();
-        }
-
+        
 
 
 
@@ -276,9 +241,16 @@ namespace DataLayer.Utilities
 
 
 
-        public static Type GetStorageType(StorageType type)
+        public Type GetStorageType(StorageType type)
         {
             return type switch
+            {
+                StorageType.Ephemeral => EphemeralStorage,
+                StorageType.Persistent => PersistentStorage,
+                StorageType.Remote => RemoteStorage,
+                StorageType.Test => TestStorage,
+                _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
+            } switch
             {
                 StorageType.Ephemeral => typeof(EphemeralStorage),
                 StorageType.Persistent => typeof(PersistentStorage),
@@ -290,86 +262,16 @@ namespace DataLayer.Utilities
 
 
 
-        public static StorageType GetStorageType(Type type)
-        {
-            if (typeof(IDbContextFactory<EphemeralStorage>).IsAssignableFrom(type) || type == typeof(EphemeralStorage))
-                return StorageType.Ephemeral;
-            if (typeof(IDbContextFactory<PersistentStorage>).IsAssignableFrom(type) || type == typeof(PersistentStorage))
-                return StorageType.Persistent;
-            if (typeof(IDbContextFactory<TestStorage>).IsAssignableFrom(type) || type == typeof(TestStorage))
-                return StorageType.Test;
-            if (typeof(IDbContextFactory<RemoteStorage>).IsAssignableFrom(type) || type == typeof(RemoteStorage))
-                return StorageType.Remote;
-            throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.");
-        }
 
-        public static Type GetContextType(StorageType type)
+        public TContext GetContext<TContext>(StorageType? type = null) where TContext : DbContext
         {
-            return type switch
-            {
-                StorageType.Ephemeral => typeof(IDbContextFactory<EphemeralStorage>),
-                StorageType.Persistent => typeof(IDbContextFactory<PersistentStorage>),
-                StorageType.Remote => typeof(IDbContextFactory<RemoteStorage>),
-                StorageType.Test => typeof(IDbContextFactory<TestStorage>),
-                _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
-            };
-        }
-
-        public static Type? GetContextType(Type? type)
-        {
-            if (type == null) return null;
-            return typeof(IDbContextFactory<>).MakeGenericType(type);
+            var contextType = type == null ? typeof(TContext) : GetStorageType(type ?? EphemeralStorage);
+            return (TContext)Service.CreateScope().ServiceProvider.GetRequiredService(contextType);
         }
 
 
-        protected IDbContextFactory<TContext>? GetContextFactory<TContext>() where TContext : DbContext
-        {
-            return Service.GetService(typeof(IDbContextFactory<TContext>)) as IDbContextFactory<TContext>
-                ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
-        }
-
-        protected IDbContextFactory<TContext>? GetContextFactory<TContext>(Type contextType) where TContext : DbContext
-        {
-            return Service.GetService(contextType) as IDbContextFactory<TContext>
-                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
-        }
-
-        protected TContext? GetContext<TContext>() where TContext : DbContext
-        {
-            return GetContextFactory<TContext>()?.CreateDbContext()
-                ?? throw new InvalidOperationException("Couldn't render context factory: " + typeof(TContext));
-        }
-
-        protected TContext? GetContext<TContext>(Type contextType) where TContext : DbContext
-        {
-            return GetContextFactory<TContext>(contextType)?.CreateDbContext()
-                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
-        }
-
-        protected TranslationContext? GetContext(Type contextType)
-        {
-            return GetType().GetMethods(nameof(GetContext), 1, [typeof(Type)])
-                .FirstOrDefault()
-                ?.MakeGenericMethod(contextType.GenericTypeArguments[0])
-                .Invoke(this, [contextType]) as TranslationContext
-                ?? throw new InvalidOperationException("Couldn't render context factory: " + contextType);
-        }
-
-        public TranslationContext? GetContext(StorageType type)
-        {
-            var contextType = GetStorageType(type);
-            var factoryType = GetContextType(contextType) ?? throw new InvalidOperationException("Couldn't render context factory: " + type);
-
-            try
-            {
-                return GetContext(factoryType) as TranslationContext;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                return null;
-            }
-        }
+        public TranslationContext GetContext(StorageType type)
+            => GetContext<TranslationContext>(type);
 
 
 

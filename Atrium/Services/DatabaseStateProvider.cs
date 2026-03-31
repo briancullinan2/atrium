@@ -18,10 +18,12 @@ using System.Text.Json;
 using DataLayer.Generators;
 using DataLayer.Entities;
 using DataLayer.Utilities.Extensions;
+using FlashCard.Utilities.Extensions;
 
 namespace Atrium.Services
 {
-    internal class DatabaseStateProvider(IQueryManager _query
+    internal class DatabaseStateProvider(IQueryManager _query,
+        IPageManager Page
 #if WINDOWS
         , IHttpContextAccessor? _httpContextAccessor = null
 #endif
@@ -129,9 +131,8 @@ namespace Atrium.Services
 
             var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
 #if WINDOWS
-            if (_httpContextAccessor is not null)
+            if (_httpContextAccessor?.HttpContext is HttpContext context)
             {
-                var context = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("Could not obtain Http context");
                 var token = await context.GetTokenAsync("access_token");
                 if (string.IsNullOrEmpty(token))
                 {
@@ -142,15 +143,26 @@ namespace Atrium.Services
                     claimsData.Add(new Claim("access_token", token));
                 }
 
-                context.Response.Cookies.Append(cookieName, newSession.Id, new CookieOptions
+                if(context.IsSignalCircuit())
                 {
-                    HttpOnly = true,
-                    Secure = true, // Arizona: Always use Secure in production
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddSeconds(newSession.Lifetime)
-                });
+                    // set and forget, so way we're holding up for this
+                    _ = Page.SetSessionCookie(cookieName, newSession.Id, newSession.Lifetime / 86400);
+                }
+                else
+                {
+                    context.Response.Cookies.Append(cookieName, newSession.Id, new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true, // Arizona: Always use Secure in production
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddSeconds(newSession.Lifetime)
+                    });
+                }
             }
 #endif
+            // TODO: need to share all this session writing stuff with the WebClient because its so similar
+
+
             var sessionValue = JsonSerializer.Serialize(claimsData.Select(c => new UserClaim(c.Type, c.Value)), JsonHelper.Default);
             newSession.Value = sessionValue;
             // there is no newSession.User on purpose

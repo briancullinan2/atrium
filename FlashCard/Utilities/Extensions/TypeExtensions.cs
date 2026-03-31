@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System;
@@ -357,6 +358,22 @@ namespace FlashCard.Utilities.Extensions
                 var id = comp.GetId();
                 await comp.Invokable(JS);
             }
+        }
+
+
+
+        public static bool IsSignalCircuit(this HttpContext? context)
+        {
+            if (context == null) return false;
+            return context.Response.HasStarted
+                && context.WebSockets.IsWebSocketRequest
+                && context.Request.Path.StartsWithSegments("/_blazor");
+        }
+
+
+        public static bool IsSignalCircuit(this IHttpContextAccessor? accessor) {
+            if (accessor == null) return false;
+            return accessor.HttpContext?.IsSignalCircuit() == true;
         }
 
     }

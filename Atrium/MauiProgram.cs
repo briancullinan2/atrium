@@ -18,10 +18,69 @@ using Antlr4.Runtime.Misc;
 namespace Atrium
 {
 
-
     public static class MauiProgram
     {
-        public static MauiApp CreateMauiApp()
+
+        private static readonly MauiApp _myApp = CreateMauiApp();
+        public static MauiApp Current
+        {
+            get => _myApp;
+        }
+
+
+
+        public static void BuildSharedServiceList(IServiceCollection Services)
+        {
+
+            SharedRegistry.BuildSharedServiceList(Services);
+
+            // add ourselves
+            Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
+
+            Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
+            
+            // TODO: make this optional for server only service mode
+            Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
+#if WINDOWS
+            Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(AtriumWebServer.Current));
+#endif
+
+            // Add device-specific services used by the FlashCard project
+            Services.AddSingleton<IConnectionStateProvider, CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
+            Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
+
+            Services.AddSingleton<IFormFactor, FormFactor>();
+            Services.AddSingleton<IFileManager, FileManager>();
+            Services.AddSingleton<IAnkiService, AnkiService>();
+            Services.AddSingleton<IHostingService, HostingService>();
+            Services.AddSingleton<IChatService, ChatService>();
+
+
+            Services.AddScoped<IAuthService, DatabaseStateProvider>();
+            Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
+
+            Services.AddSingleton(sp => new HttpClient
+            {
+                BaseAddress = new Uri("https://0.0.0.1")
+            });
+
+            Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
+            Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
+                options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
+
+#if DEBUG
+            Services.AddBlazorWebViewDeveloperTools();
+#endif
+            // Inject the server instance into MAUI's DI
+#if WINDOWS
+            DatabaseStateProvider.BuildAuthentication(Services);
+#endif
+
+        }
+
+
+
+        private static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
 
@@ -32,67 +91,40 @@ namespace Atrium
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 });
 
-            SharedRegistry.BuildSharedServiceList(builder.Services);
 
-            // Add device-specific services used by the FlashCard project
-            builder.Services.AddSingleton<IFormFactor, FormFactor>();
+            BuildSharedServiceList(builder.Services);
             builder.Services.AddSingleton<ITitleService, TitleService>();
-            builder.Services.AddSingleton<IFileManager, FileManager>();
-            builder.Services.AddSingleton<IAnkiService, AnkiService>();
-            builder.Services.AddSingleton<IHostingService, HostingService>();
-            builder.Services.AddSingleton<IChatService, ChatService>();
-            builder.Services.AddSingleton<Application>(sp => App.Current!);
-#if WINDOWS
-            builder.Services.AddSingleton<WebApplication>(sp => WebServer.Current);
-#endif
-
-            builder.Services.AddScoped<IAuthService, DatabaseStateProvider>();
-            builder.Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
-
-            builder.Services.AddSingleton(sp => new HttpClient
-            {
-                BaseAddress = new Uri("https://0.0.0.1")
-            });
-
-            builder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
-            builder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
-                options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
-
             builder.Services.AddMauiBlazorWebView();
-#if DEBUG
-            builder.Services.AddBlazorWebViewDeveloperTools();
-#endif
-            // Inject the server instance into MAUI's DI
-#if WINDOWS
-            DatabaseStateProvider.BuildAuthentication(builder.Services);
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
 #endif
+
+#if WINDOWS
+            // start the web server
+            builder.Services.AddSingleton<WebApplication>(sp => AtriumWebServer.Current);
+            // get shared circuit state from web server
+            builder.Services.AddSingleton<CircuitHandler>(sp => AtriumWebServer.Current.Services.GetRequiredService<CircuitHandler>());
 #endif
 
-            //RegisterPageConstraints(builder);
-
-            // 1. Build the app
             var mauiApp = builder.Build();
-            _ = mauiApp.Services.GetRequiredService<SimpleLogger>();
+
 #if WINDOWS
+
             Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
             {
                 (mauiApp.Services.GetService(typeof(IFileManager)) as FileManager)?.InitializeWndProc(h);
             });
+            // start the web server
             _ = mauiApp.Services.GetRequiredService<WebApplication>();
 #endif
+            _ = mauiApp.Services.GetRequiredService<SimpleLogger>();
 
 
-            // 3. Return the built app
+
             return mauiApp;
         }
 
-        //public static void RegisterPageConstraints(IHostApplicationBuilder builder)
-        //{
-        //    builder.Services.Configure<RouteOptions>(opt => opt.ConstraintMap.Add("pack", typeof(EnumConstraint<PackMode>)));
-        //}
 
     }
 

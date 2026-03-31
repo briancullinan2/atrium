@@ -34,7 +34,6 @@ namespace Atrium.Services
                 }
 
                 // TODO: add marshalling rules here
-                var queryManager = QueryManager.GetContextType(Query.EphemeralStorage);
                 var uploadedEntity = (Query.ToExpression(rawXml) as ConstantExpression)?.Value as IEntity
                     ?? throw new InvalidOperationException("Failed to render input entity, try again or don't.");
 
@@ -91,7 +90,6 @@ namespace Atrium.Services
                 }
 
                 // TODO: add marshalling rules here
-                var queryManager = QueryManager.GetContextType(Query.EphemeralStorage);
                 var results = await Query.ToQueryable(rawXml);
 
 

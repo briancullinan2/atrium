@@ -26,7 +26,7 @@ namespace Atrium.WinUI
 
         protected override MauiApp CreateMauiApp()
         {
-            return MauiProgram.CreateMauiApp();
+            return MauiProgram.Current;
         }
 
         [STAThread]
@@ -35,12 +35,12 @@ namespace Atrium.WinUI
             log4net.Config.XmlConfigurator.Configure(new FileInfo(Path.Combine(AppContext.BaseDirectory, "log4net.xml")));
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-                Log.Error(e, e.ExceptionObject as Exception);
+                Console.WriteLine(e.ExceptionObject as Exception);
 
             // 2. Catch exceptions in 'set and forget' tasks (Async)
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                Log.Error(e, e.Exception.InnerException ?? e.Exception);
+                Console.WriteLine(e.Exception.InnerException ?? e.Exception);
                 e.SetObserved(); // Prevents process crash if you want, but logs it
             };
 

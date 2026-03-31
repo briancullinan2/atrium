@@ -51,8 +51,9 @@
 <body>
     @*@rendermode="InteractiveAuto" *@
     @*new InteractiveServerRenderMode(prerender: false)*@
-    <Routes @rendermode="InteractiveWebAssembly" />
-    <ReconnectModal />
+    @*InteractiveWebAssembly*@
+    <Routes @rendermode="InteractiveServer" />
+    <FlashCard.Pages.Shared.ReconnectModal />
     <script src="/_content/FlashCard/main.js"></script>
     <script src="/_framework/blazor.web.js"></script>
 </body>

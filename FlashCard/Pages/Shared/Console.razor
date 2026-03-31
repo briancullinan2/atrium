@@ -2,14 +2,24 @@
 @page "/console"
 @attribute [AllowAnonymous]
 @using FlashCard.Services
+@using FlashCard.Utilities
 @implements IDisposable
 @inject IPageManager PageManager
 @inject IFormFactor Form
+@inject IConnectionStateProvider Connection
 
 <div class="flash-card dev-console @(Embedded == true ? "embedded" : "") animate-in @(_isExpanded ? "expanded" : "collapsed")">
     <div class="console-header" @onclick="Toggle">
-        <span>Dev Console (@Services.PageManager.Immediate.Count)<br />@(Form.GetFormFactor())</span>
-        <button class="cta" @onclick:stopPropagation @onclick="Clear">Clear</button>
+        <span>
+            Dev Console (@Services.PageManager.Immediate.Count @(Services.PageManager.Immediate.Count == 1 ? "message" : "messages"))
+            <br />@(Form.GetFormFactor())
+            <br />(@((Connection.IsConnected ? "Connected" : "Offline") + (Connection.ClientCount > 1 ? (" " + Connection.ClientCount + " clients") : "")))
+        </span>
+
+        <div class="highlighted-link">
+            <button class="deemphasize" @onclick="this.TriggerAppStop">Stop App</button>
+            <button class="cta" @onclick:stopPropagation @onclick="Clear">Clear</button>
+        </div>
     </div>
 
         <div class="console-body">
@@ -43,7 +53,7 @@
     {
         // Logger.Errors.Clear();
     }
-    
+
     public void SetError(Exception? error)
     {
         InvokeAsync(StateHasChanged);
@@ -53,7 +63,15 @@
     {
         //Logger.OnErrorAdded += Refresh;
         PageManager.OnErrorChanged += SetError;
+        Connection.OnConnectionUp += NotifyUp;
+        Connection.OnConnectionDown += NotifyDown;
+
     }
+
+    private void NotifyUp(bool _, ConnectionMetadata _2) => InvokeAsync(StateHasChanged);
+    private void NotifyDown(bool _, ConnectionMetadata _2) => InvokeAsync(StateHasChanged);
+
+
     private void Refresh() => InvokeAsync(StateHasChanged);
     public void Dispose()
     {

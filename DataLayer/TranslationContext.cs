@@ -310,9 +310,6 @@ namespace DataLayer
             {
                 NeedsInitialize = false;
 
-                // 2. Call the function ON the module reference, not the global JS runtime
-                await Store.InitializeAsync();
-
                 if (!Store.NeedsInitialize) return;
 
                 // TODO: check actual store for initialization needs

@@ -16,21 +16,20 @@ using Microsoft.Extensions.Hosting;
 
 namespace Atrium.Services
 {
-    internal static class WebServer
+    internal static class AtriumWebServer
     {
-        static WebServer()
-        {
-            Current = StartWebServer([]);
-        }
 
-        public static WebApplication Current { get; }
+        private static readonly WebApplication _private = StartWebServer([]);
+        public static WebApplication Current {
+            get => _private;
+        }
 
         public static WebApplication StartWebServer(string[] args)
         {
             try
             {
                 // TODO: get logging working
-                Log.Info("Starting web server.");
+                Console.WriteLine("Starting web server.");
                 var webBuilder = WebApplication.CreateBuilder(new WebApplicationOptions
                 {
                     Args = args,
@@ -55,30 +54,11 @@ namespace Atrium.Services
                 });
 
 
-                SharedRegistry.BuildSharedServiceList(webBuilder.Services);
-
-                webBuilder.Services.AddSingleton<IFileManager, FileManager>();
-                webBuilder.Services.AddSingleton<IAnkiService, AnkiService>();
-                webBuilder.Services.AddSingleton<IHostingService, HostingService>();
-                webBuilder.Services.AddSingleton<IChatService, ChatService>();
-                // Add device-specific services used by the FlashCard project
-                webBuilder.Services.AddSingleton<IFormFactor, FormFactor>();
+                MauiProgram.BuildSharedServiceList(webBuilder.Services);
                 webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
-                webBuilder.Services.AddSingleton<Application>(sp => App.Current!);
+                webBuilder.Services.AddSingleton<CircuitHandler>();
 
 
-                webBuilder.Services.AddScoped<IAuthService, DatabaseStateProvider>();
-                webBuilder.Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
-                DatabaseStateProvider.BuildAuthentication(webBuilder.Services);
-
-                webBuilder.Services.AddSingleton(sp => new HttpClient
-                {
-                    // TODO: insert our own address validated from settings and HostingService
-                });
-
-                webBuilder.Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
-                webBuilder.Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
-                    options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
 
                 webBuilder.Environment.WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
                 webBuilder.WebHost.ConfigureKestrel(options =>
@@ -115,13 +95,9 @@ namespace Atrium.Services
                 });
 
 
-                WebApplication? webApp = null;
-                webBuilder.Services.AddSingleton<WebApplication>(sp => (WebApplication)webApp!);
-
                 webBuilder.Services.AddHttpContextAccessor();
 
-                webApp = webBuilder.Build();
-                _ = webApp.Services.GetRequiredService<SimpleLogger>();
+                var webApp = webBuilder.Build();
 
 
 
@@ -209,11 +185,13 @@ namespace Atrium.Services
 
                 // Run the Web Server in the background
                 _ = webApp.RunAsync().Forget();
+                _ = webApp.Services.GetRequiredService<SimpleLogger>();
+
                 return webApp;
             }
             catch (Exception ex)
             {
-                Log.Error("Web server failed to start: " + ex.Message, ex);
+                Console.WriteLine("Web server failed to start: " + ex.Message, ex);
                 throw new Exception("bs", ex);
             }
         }

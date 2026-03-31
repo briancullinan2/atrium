@@ -9,7 +9,7 @@ namespace WebClient.Services
     {
         public string GetFormFactor()
         {
-            return "Offline WebAssembly";
+            return "WebAssembly";
         }
 
         public string GetPlatform()

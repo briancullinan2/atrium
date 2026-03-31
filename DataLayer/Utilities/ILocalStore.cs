@@ -34,88 +34,158 @@ namespace DataLayer.Utilities
         //public IJSObjectReference? Module { get; }
         bool NeedsInitialize { get; }
 
+
     }
 
     public interface IRenderStateProvider
     {
         bool IsRendered { get; }
-        IJSRuntime? Runtime { get; }
+        IJSRuntime Runtime { get; }
         event Action OnRendered;
         event Action OnEmptied;
-        void NotifyEmptied(IJSRuntime Runtime);
+        void NotifyEmptied();
         void NotifyRendered(IJSRuntime Runtime);
+        Task WaitForRender { get; }
     }
 
     public class RenderStateProvider : IRenderStateProvider
     {
 
-        public IJSObjectReference? Module { get; private set; }
-        public IJSRuntime? Runtime { get; private set; }
-
-        public bool IsRendered { get => _renderTcs.Task.IsCompleted; private set => _renderTcs.TrySetResult(value); }
-
-        private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        // This is the task your LocalStore will 'Then' off of
-        public event Action? OnRendered;
-        public event Action? OnEmptied;
-
-        public void NotifyEmptied(IJSRuntime _runtime)
-        {
-            IsRendered = false;
-            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            OnEmptied?.Invoke();
+        private IJSRuntime? _runtime = null;
+        public IJSRuntime Runtime { get
+            {
+                if (!_renderTcs.Task.IsCompleted || _runtime == null)
+                {
+                    throw new InvalidOperationException("JSRuntime is not available. Ensure that the component is rendered before registering for scroll events.");
+                }
+                return _runtime;
+            }
+            private set => _runtime = value;
         }
 
-        // This is called by your MainLayout or Root component
-        public void NotifyRendered(IJSRuntime _runtime)
+        // This is the task your LocalStore will 'Then' off of
+        private Action? _onRendered;
+        public event Action? OnRendered
         {
-            IsRendered = true;
-            Runtime = _runtime;
-            OnRendered?.Invoke();
+            add
+            {
+                _onRendered += value;
+                // The "Sticky" logic: If the condition is already met, 
+                // fire the callback for this specific subscriber immediately.
+                if (IsRendered)
+                {
+                    value?.Invoke();
+                }
+            }
+            remove => _onRendered -= value;
+        }
+        public event Action? OnEmptied;
+
+
+
+        private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task WaitForRender => _renderTcs.Task;
+
+        public bool IsRendered => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
+
+        public void NotifyRendered(IJSRuntime runtime)
+        {
+            Runtime = runtime;
+            // Fulfill the promise for everyone currently waiting
+            _renderTcs.TrySetResult(true);
+            _onRendered?.Invoke();
+        }
+
+        public void NotifyEmptied()
+        {
+            _runtime = null;
+            // Only swap for a new "Promise" if the old one was already fulfilled.
+            // If it's still pending, let the current waiters keep waiting for the NEXT render.
+            if (_renderTcs.Task.IsCompleted)
+            {
+                _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+            OnEmptied?.Invoke();
         }
     }
 
 
+
+
     public class LocalStore : ILocalStore
     {
-        private readonly IRenderStateProvider _service;
+
+        private readonly IRenderStateProvider Rendered;
         private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool NeedsInitialize { get; protected set; } = true;
 
 
-        public LocalStore(IRenderStateProvider service)
+        public LocalStore(IRenderStateProvider _rendered)
         {
-            _service = service;
+            Rendered = _rendered;
             // Start the import immediately
-            service.OnRendered += () => _ = EnsureModuleLoaded();
-            service.OnEmptied += () =>
-            {
+            Rendered.OnRendered += NotifyRendered;
+            Rendered.OnEmptied += NotifyEmptied;
+        }
+
+        protected void NotifyEmptied() {
+            if (_renderTcs.Task.IsCompleted)
                 _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            };
-            if (service.IsRendered)
+        }
+        protected void NotifyRendered() => _ = EnsureModuleLoaded();
+
+        public async ValueTask DisposeAsync()
+        {
+            Rendered.OnRendered -= NotifyRendered;
+            Rendered.OnEmptied -= NotifyEmptied;
+            if (Module != null)
             {
-                _ = EnsureModuleLoaded();
+                await Module.DisposeAsync();
             }
+            GC.SuppressFinalize(this);
         }
 
 
-
         private Task ModuleInitialize { get => _renderTcs.Task; }
-        private IJSObjectReference? Module { get; set; }
+        
 
-        // This helper ensures the module is loaded before we try to use it
+        private IJSObjectReference? _module = null;
+        public IJSObjectReference Module
+        {
+            get
+            {
+                if (!_renderTcs.Task.IsCompleted || _module == null)
+                {
+                    throw new InvalidOperationException("Module is not available. Must await ModuleInitialize before refering to JS module.");
+                }
+                return _module;
+            }
+            private set => _module = value;
+        }
+
+
+        private readonly SemaphoreSlim _loadLock = new(1, 1);
+
         private async Task EnsureModuleLoaded()
         {
+            // 1. Quick check outside the lock for performance
             if (_renderTcs.Task.IsCompleted) return;
-            var result = _service.Runtime?.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js").AsTask();
-            if (result is Task task)
-            {
-                await task;
-                Module = (result as dynamic).Result;
-            }
 
-            _renderTcs.TrySetResult(true);
+            // 2. Wait for the lock
+            await _loadLock.WaitAsync();
+
+            try
+            {
+                // 3. Re-check inside the lock (The "Double-Check" pattern)
+                if (_renderTcs.Task.IsCompleted) return;
+                Module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
+                _renderTcs.TrySetResult(true);
+            }
+            finally
+            {
+                // 4. Always release the lock in a finally block
+                _loadLock.Release();
+            }
         }
 
         public async ValueTask PutRecordAsync<T>(string storeName, T record)
@@ -166,14 +236,6 @@ namespace DataLayer.Utilities
 
         public async ValueTask InitializeAsync() => await ModuleInitialize;
 
-        public async ValueTask DisposeAsync()
-        {
-            if (Module != null)
-            {
-                await Module.DisposeAsync();
-            }
-            GC.SuppressFinalize(this);
-        }
 
         public async ValueTask<bool> NeedsInstall(string? dbName, List<KeyValuePair<string, List<string>>> columnNames)
         {
@@ -194,6 +256,7 @@ namespace DataLayer.Utilities
                 }
             }
 
+            NeedsInitialize = result;
             return result;
         }
     }

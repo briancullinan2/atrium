@@ -310,7 +310,7 @@
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
         ChatService.OnChatWorking += SetChat;
-        RenderState.NotifyEmptied(JS);
+        RenderState.NotifyEmptied();
 
         //AuthProvider.AuthenticationStateChanged += (task) =>
         //{
@@ -548,6 +548,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        RenderState.NotifyEmptied();
         if (_animationCts != null)
         {
             _ = _animationCts.InvokeVoidAsync("dispose");

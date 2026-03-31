@@ -3,9 +3,9 @@ const reconnectModal = document.getElementById("components-reconnect-modal");
 reconnectModal.addEventListener("components-reconnect-state-changed", handleReconnectStateChanged);
 
 const retryButton = document.getElementById("components-reconnect-button");
-retryButton.addEventListener("click", retry);
 
 const resumeButton = document.getElementById("components-resume-button");
+retryButton.addEventListener("click", retry);
 resumeButton.addEventListener("click", resume);
 
 function handleReconnectStateChanged(event) {
