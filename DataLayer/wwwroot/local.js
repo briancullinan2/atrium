@@ -147,7 +147,6 @@ export async function queryIndex(storeName, indexName, exactIndex = null, lower 
     const db = await getDB()
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
-    const index = store.index(indexName)
     
     var range = null
     if (exactIndex !== null) {
@@ -164,7 +163,14 @@ export async function queryIndex(storeName, indexName, exactIndex = null, lower 
 
 
     return new Promise((rs, rj) => {
-        const req = index.getAll(range)
+        let req;
+        if (indexName != null) {
+            const index = store.index(indexName)
+            req = index.getAll(range)
+        }
+        else {
+            req = store.getAll(range)
+        }
         req.onsuccess = () => {
             console.log(req.result)
             return rs(req.result)

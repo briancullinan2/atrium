@@ -2,11 +2,13 @@
 using DataLayer.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Numerics;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -162,16 +164,25 @@ namespace DataLayer.Utilities
 
             MethodCallExpression simpleExpression;
             AggressiveVisitor visitor;
+            var identity = false;
             try
             {
 
                 var rootSwapped = new RootReplacementVisitor(null).Visit(query);
                 var cleanExpression = new ClosureEvaluatorVisitor().Visit(rootSwapped);
+                if(cleanExpression == null || cleanExpression.IsIdentity())
+                {
+                    identity = true;
+                    cleanExpression = typeof(T).Identity();
+                }
+
+
                 visitor = new AggressiveVisitor();
                 simpleExpression = visitor.Visit(cleanExpression) as MethodCallExpression
-                    ?? throw new InvalidOperationException("Could render a clean IDB compatible expression.");
+                    ?? throw new InvalidOperationException("Couldn't render a clean IDB compatible expression.");
                 var values = visitor.Recordings.ToDictionary(kvp => kvp.Key.Name, kvp => kvp.Value);
                 Console.WriteLine(JsonSerializer.Serialize(values));
+
 
                 // This is exactly where you use your Expression Tree Converter
                 var serialized = query.ToXDocument().ToString();
@@ -191,6 +202,31 @@ namespace DataLayer.Utilities
             {
                 // can't do much to optimize here
                 var database = visitor.Recordings.Keys.OrderBy(Selectors.OrderDatabaseQueries).ToList();
+
+                if(database.Count == 0 && identity)
+                {
+                    var entityType = typeof(T).GenericTypeArguments.FirstOrDefault() ?? typeof(T);
+                    System.Collections.IList results = Activator.CreateInstance(typeof(List<>)
+                        .MakeGenericType(entityType)) as System.Collections.IList
+                        ?? throw new InvalidOperationException("Could not render collection container");
+                    var queryMethod = QueryIndexAsync?.MakeGenericMethod(entityType)
+                        ?? throw new InvalidOperationException("Could not render QueryIndexAsync method.");
+                    var newSet = queryMethod.Invoke(Context.Store, [entityType.Table(), null, null, null, null]);
+                    if (newSet?.GetType().Extends(typeof(ValueTask<>)) == true
+                        && (newSet as dynamic).AsTask() is Task task)
+                    {
+                        await task;
+                        newSet = (newSet as dynamic).Result;
+                    }
+
+                    if (newSet is IList list)
+                        foreach (var item in list)
+                        {
+                            results.Add(item);
+                        }
+                    return (T)results;
+                }
+
                 foreach (var method in database)
                 {
                     var recording = visitor.Recordings[method];
@@ -219,14 +255,14 @@ namespace DataLayer.Utilities
                         }
 
                         if(newSet is IList list)
-                        foreach(var item in list)
-                        {
-                            var predicateValues = predicate.Select(p => p.GetValue(item)).ToList();
-                            if (predicatedObjs.Contains(predicateValues))
-                                continue;
-                            predicatedObjs.Add(predicateValues);
-                            results.Add(item);
-                        }
+                            foreach(var item in list)
+                            {
+                                var predicateValues = predicate.Select(p => p.GetValue(item)).ToList();
+                                if (predicatedObjs.Contains(predicateValues))
+                                    continue;
+                                predicatedObjs.Add(predicateValues);
+                                results.Add(item);
+                            }
                     }
 
                     // TODO: extract and check predicate from entity type

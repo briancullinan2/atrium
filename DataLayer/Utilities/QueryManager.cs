@@ -861,8 +861,9 @@ namespace DataLayer.Utilities
                         else if ((FinalProvider ?? set.Provider) is IAsyncQueryProvider asyncProvider)
                         {
 
-                            var taskType = typeof(Task<>).MakeGenericType(query.Type);
-                            var executeMethod = asyncProvider.GetType().GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync))
+                            var taskType = typeof(Task<>).MakeGenericType(typeof(TResult));
+                            var executeMethod = asyncProvider.GetType()
+                                .GetMethods(nameof(IAsyncQueryProvider.ExecuteAsync))
                                 .FirstOrDefault()
                                 ?.MakeGenericMethod(taskType)
                                 ?? throw new InvalidOperationException("Unable to render ExecuteAsync");
@@ -874,7 +875,8 @@ namespace DataLayer.Utilities
                             if (unconverted is Task task)
                             {
                                 await task;
-                                if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+                                if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult))
+                                    && (unconverted as dynamic).Result != null)
                                 {
                                     result = (TResult)CollectionConverter.ConvertAsync((unconverted as dynamic).Result, typeof(TResult))!;
                                 }

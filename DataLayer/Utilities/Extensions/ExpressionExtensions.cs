@@ -711,6 +711,73 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+        public static MethodCallExpression Identity(this Type entityType)
+        {
+            // 1. Create a concrete, empty List of the specific runtime type
+            // This is equivalent to 'new List<User>()'
+            if (entityType.Extends(typeof(IEnumerable<>)))
+                entityType = entityType.GenericTypeArguments.FirstOrDefault()
+                    ?? throw new InvalidOperationException("Can't determine entity type.");
+
+
+            var listType = typeof(List<>).MakeGenericType(entityType);
+            var emptyList = Activator.CreateInstance(listType);
+            var listConstant = Expression.Constant(emptyList, listType);
+
+            var asQueryableMethod = typeof(Queryable)
+                .GetMethods()
+                .First(m => m.Name == nameof(Queryable.AsQueryable) && m.IsGenericMethod)
+                .MakeGenericMethod(entityType);
+
+            var iqueryableSource = Expression.Call(null, asQueryableMethod, listConstant);
+
+            // 3. NOW call ToListAsync using the wrapped source
+            var toListAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .First(m => m.Name == "ToListAsync" && m.IsGenericMethod)
+                .MakeGenericMethod(entityType);
+
+            // arg0 is now IQueryable<T>, arg1 is CancellationToken
+            var finalCall = Expression.Call(
+                null,
+                toListAsyncMethod,
+                iqueryableSource,
+                Expression.Constant(default(CancellationToken))
+            );
+
+            return finalCall;
+        }
+
+
+
+
+        public static bool IsIdentity(this Expression expression)
+        {
+            // 1. Unwrap the Lambda if it's the root
+            if (expression is LambdaExpression lambda)
+            {
+                var body = lambda.Body;
+
+                // 2. Peel off any 'Convert' or 'Quote' wrappers
+                while (body.NodeType == ExpressionType.Convert ||
+                       body.NodeType == ExpressionType.ConvertChecked ||
+                       body.NodeType == ExpressionType.Quote)
+                {
+                    body = ((UnaryExpression)body).Operand;
+                }
+
+                // 3. If the body is exactly the first parameter, it's a full set request
+                // Example: entities => (AsyncQueryable<User>)entities
+                if (body == lambda.Parameters[0])
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
 
         public static bool IsSingular(this Expression expression)
         {

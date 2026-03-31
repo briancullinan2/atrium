@@ -22,7 +22,7 @@ namespace DataLayer.Utilities
 
         ValueTask<List<T>> QueryIndexAsync<T>(
             string storeName,
-            string indexName,
+            string? indexName = null,
             object? exact = null,
             object? lower = null,
             object? upper = null);
@@ -130,7 +130,7 @@ namespace DataLayer.Utilities
             return await Module!.InvokeAsync<T?>("getRecord", storeName, key);
         }
 
-        public async ValueTask<List<T>> QueryIndexAsync<T>(string storeName, string indexName, object? exact = null, object? lower = null, object? upper = null)
+        public async ValueTask<List<T>> QueryIndexAsync<T>(string storeName, string? indexName = null, object? exact = null, object? lower = null, object? upper = null)
         {
             await ModuleInitialize;
             var result = await Module!.InvokeAsync<List<T>>("queryIndex", storeName, indexName, exact, lower, upper);
