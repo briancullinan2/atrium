@@ -80,7 +80,7 @@ namespace DataLayer.Utilities
         Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>;
 
 
-        Task ProcessQueueAsync();
+        //Task ProcessQueueAsync();
 
 
 
@@ -219,7 +219,9 @@ namespace DataLayer.Utilities
             }
             catch (Exception ex)
             {
-                Log.Error("Managed query failed: " + callback.Method + "\n" + ex);
+                //if (TaskQueue.Count == 0)
+                //    _processorLock.Release();
+                Console.WriteLine("Managed query failed: " + callback.Method + "\n" + ex);
                 Console.WriteLine("Stack when called: " + stackWhenCalled);
                 throw new InvalidOperationException("holy shit", ex);
             }
@@ -231,40 +233,46 @@ namespace DataLayer.Utilities
         }
 
 
-
         public virtual async Task ProcessQueueAsync()
         {
-            // Ensure only one worker loop runs
             if (!await _processorLock.WaitAsync(0)) return;
 
+            TaskCompletionSource? next = null;
             try
             {
                 while (true)
                 {
-                    TaskCompletionSource? next;
                     lock (TaskQueue)
                     {
                         if (!TaskQueue.TryDequeue(out next, out _)) break;
                     }
 
-                    // Important: Let the thread pool breathe
                     await Task.Yield();
 
-                    // 1. Give the caller their turn
-                    next.TrySetResult();
+                    // Use TrySetResult to signal the caller. 
+                    // If it returns true, we MUST wait for the gate.
+                    if (next.TrySetResult())
+                    {
+                        // In Flagstaff, 30s is a lifetime, but safe for a hang.
+                        if (!await _gate.WaitAsync(TimeSpan.FromSeconds(3)))
+                        {
+                            Console.WriteLine("Query gate timeout! Check for unhandled exceptions in Enqueue.");
+                            // Force release if the caller disappeared without calling _gate.Release()
+                        }
+                    }
 
-                    // 2. WAIT for the caller to finish their finally block
-                    // This ensures the DbContext in the callback is fully disposed 
-                    // before the next loop starts.
-                    await _gate.WaitAsync();
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
                 }
+            }
+            catch (Exception ex)
+            {
+                next?.TrySetException(ex);
             }
             finally
             {
                 _processorLock.Release();
             }
         }
-
 
 
 
@@ -660,14 +668,14 @@ namespace DataLayer.Utilities
                 _ = await context.SaveChangesAsync();
 
                 saveTransaction.Commit();
+
+                return await UpdateNow(storage, entity);
             }
             catch (Exception ex)
             {
                 saveTransaction.Rollback();
                 throw new Exception("new bs", ex); // Rethrow so the parent catch can handle the fallback
             }
-
-            return await UpdateNow(storage, entity);
         }
 
 
@@ -780,6 +788,14 @@ namespace DataLayer.Utilities
             Console.WriteLine("Query Caching: " + queryKey);
             // 2. Check if this exact query is already "in flight"
             // GetOrAdd ensures that only one Task is created for the same key.
+
+            // might already be in dictionary and won't be restarted after a crash
+            if(_pendingQueries.ContainsKey(queryKey))
+            {
+                _ = ProcessQueueAsync();
+            }
+
+
             var task = _pendingQueries.GetOrAdd(queryKey, _k =>
             {
                 _ = Enqueue(async () =>
@@ -890,10 +906,8 @@ namespace DataLayer.Utilities
                     }
                     finally
                     {
-                        transaction.Dispose();
-                        // 3. CRITICAL: Remove the task from the dictionary when done
-                        // so subsequent calls actually hit the DB for fresh data.
                         _pendingQueries.TryRemove(queryKey, out var _);
+                        transaction.Dispose();
                     }
                 }, priority);
             });
@@ -1170,9 +1184,8 @@ namespace DataLayer.Utilities
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Update entity failed.");
-                Console.WriteLine(ex);
-                throw new InvalidOperationException("Update entity failed.");
+                Console.WriteLine("Update entity failed. " + ex);
+                throw new InvalidOperationException("Update entity failed. " + ex);
             }
 
             return entity;

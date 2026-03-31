@@ -18,7 +18,9 @@ namespace DataLayer.Utilities
 
         public class RecordMethod
         {
-            public string? MethodName { get; set; }
+            [JsonIgnore]
+            public MethodCallExpression? MethodCall { get; set; }
+            public string? MethodName { get => MethodCall?.Method.Name; }
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
             public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;
@@ -183,12 +185,7 @@ namespace DataLayer.Utilities
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            // 1. If this branch eventually leads back to the Lambda Parameter 'u',
-            // we must keep it as a MemberExpression for our Whitelist/Index lookup.
-            if (IsEntityRooted(node))
-            {
-                return base.VisitMember(node);
-            }
+            // maintain recording parameters
 
             if (node.Expression is ParameterExpression parameter)
             {
@@ -204,6 +201,15 @@ namespace DataLayer.Utilities
                     CurrentRecording?.EntityType = parameter.Type;
                 }
             }
+
+            // 1. If this branch eventually leads back to the Lambda Parameter 'u',
+            // we must keep it as a MemberExpression for our Whitelist/Index lookup.
+
+            if (IsEntityRooted(node))
+            {
+                return base.VisitMember(node);
+            }
+
 
             // 2. Otherwise, it's an external value (e.g., claim.Value, local vars).
             // We evaluate it now so the JS bridge gets a Constant.
@@ -247,7 +253,8 @@ namespace DataLayer.Utilities
 
         private void FilterBad(MethodCallExpression node)
         {
-
+            // prevent u.Time.AddSeconds()
+            
 
             if (node.Method.DeclaringType == typeof(DbFunctionsExtensions)
                 || node.Method.DeclaringType == typeof(DbFunctions))
@@ -343,6 +350,7 @@ namespace DataLayer.Utilities
             // 2. Handle 'Where' - The Core Handshake
             if (node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
                 || node.Method.DeclaringType == typeof(Queryable)
+                || node.Method.DeclaringType == typeof(AsyncQueryable<>)
                 || node.Method.Name == nameof(Queryable.Where))
             {
                 // We keep the 'Where' but its arguments (the lambda) 
@@ -351,6 +359,7 @@ namespace DataLayer.Utilities
 
                 if (CurrentRecording != null)
                 {
+                    CurrentRecording.MethodCall = node;
                     if (!Recordings.TryAdd(node.Method, CurrentRecording))
                         throw new InvalidOperationException("Method call already in recordings, too complicated.");
                     CurrentRecording = null;
@@ -371,6 +380,22 @@ namespace DataLayer.Utilities
                     ?? throw new InvalidOperationException("Could not find property: " + memberName + " on " + parameter.Type.FullName);
                 var memberAccess = Expression.MakeMemberAccess(parameter, member);
                 return memberAccess;
+            }
+
+
+            // datetime is supported in IDB
+            if(node.Method.DeclaringType == typeof(DateTime)
+                || node.Method.DeclaringType == typeof(TimeSpan))
+            {
+                var oldMemeber = CurrentRecording?.MemberAccess;
+                var converted = base.VisitMethodCall(node);
+                if(CurrentRecording?.MemberAccess != null)
+                {
+                    // we know there's a member access inside a method call
+                    throw new InvalidOperationException($"Put all the evaluations on one side of the comparator so it can be evaluated now instead in IDB. {node}");
+                }
+                CurrentRecording?.MemberAccess = oldMemeber;
+                return converted;
             }
 
 

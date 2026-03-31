@@ -148,7 +148,8 @@ namespace DataLayer.Utilities
 
         protected static bool IsQueryableMethod(MethodCallExpression node) =>
             node.Method.DeclaringType == typeof(Queryable)
-            || node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions);
+            || node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
+            || node.Method.DeclaringType == typeof(AsyncQueryable<>);
 
 
         // UNRELIABLE this is why we need two passes?
@@ -170,8 +171,12 @@ namespace DataLayer.Utilities
 
 
         // the entity type from the IQueryable set doesn't match the parameter type on the predicate
-        protected static Type? MethodFitsScenario(MethodCallExpression node)
+        protected static Type? MethodQueryableParameterObjectScenario(MethodCallExpression node)
         {
+            // safety
+            if (!IsQueryableMethod(node))
+                return null;
+
             var enumerable = node.Arguments.FirstOrDefault()?.Type;
             var genericArgs = enumerable?.GetGenericArguments().FirstOrDefault()
                 ?? node.Method.GetGenericArguments().FirstOrDefault();
@@ -181,6 +186,20 @@ namespace DataLayer.Utilities
             if (predicateArg != null && possiblyEntity != null
                 && genericArgs != possiblyEntity)
                 return genericArgs ?? possiblyEntity;
+            
+            return null;
+        }
+
+        protected static Type? MethodReturnsQueryable(MethodCallExpression node)
+        {
+            // safety
+            if (!IsQueryableMethod(node))
+                return null;
+
+            if(node.Type.Extends(typeof(IQueryable)))
+            {
+                return node.Type.GetGenericArguments().FirstOrDefault();
+            }
             return null;
         }
 
@@ -238,6 +257,91 @@ namespace DataLayer.Utilities
         }
 
 
+        protected Expression FixMethodToEnumerable(MethodCallExpression node, Type shouldBe)
+        {
+            // 1. Get the generic arguments (e.g., [Role, Group] for SelectMany)
+            var generics = node.Method.GetGenericArguments();
+
+            // Update TSource to our real entity type
+            if (generics.Length > 0) generics[0] = shouldBe;
+
+            // 2. Find the matching method in System.Linq.Enumerable
+            // We match by Name and Parameter Count to handle overloads like Where(source, predicate)
+            var enumerableMethod = typeof(Enumerable)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == node.Method.Name && m.IsGenericMethod)
+                .First(m => m.GetParameters().Length == node.Method.GetParameters().Length)
+                .MakeGenericMethod(generics);
+
+            // 3. Process the arguments
+            var arguments = new List<Expression>();
+            var methodParams = enumerableMethod.GetParameters();
+
+            for (int i = 0; i < node.Arguments.Count; i++)
+            {
+                var arg = node.Arguments[i];
+
+                // IMPORTANT: Queryable uses Expression.Quote(Lambda)
+                // Enumerable wants just the Lambda.
+                if (arg is UnaryExpression quote && quote.NodeType == ExpressionType.Quote)
+                {
+                    // Visit the Lambda to swap parameters/members, then strip the Quote
+                    arguments.Add(Visit(quote.Operand));
+                }
+                else
+                {
+                    arguments.Add(Visit(arg));
+                }
+            }
+
+            // 4. Create the call to the synchronous Enumerable method
+            return Expression.Call(enumerableMethod, arguments);
+        }
+
+
+        protected MethodCallExpression FixMethodReturnType(MethodCallExpression node, Type shouldBe)
+        {
+            // 1. Get the generic arguments (e.g., [Role, Group] for SelectMany)
+            var generics = node.Method.GetGenericArguments();
+
+            // Update the TSource (usually the first generic) to our real entity type
+            if (generics.Length > 0) generics[0] = shouldBe;
+
+            // 2. Find the equivalent method in System.Linq.Enumerable
+            // This is the key: we stop using Queryable and start using Enumerable
+            var enumerableMethod = typeof(Enumerable)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name == node.Method.Name && m.IsGenericMethod)
+                .First(m => m.GetParameters().Length == node.Method.GetParameters().Length)
+                .MakeGenericMethod(generics);
+
+            // 3. Visit the arguments
+            var arguments = new List<Expression>();
+            var methodParams = enumerableMethod.GetParameters();
+
+            for (int i = 0; i < node.Arguments.Count; i++)
+            {
+                var arg = node.Arguments[i];
+                var targetParamType = methodParams[i].ParameterType;
+
+                // IMPORTANT: Enumerable methods take Func<T>, NOT Expression<Func<T>>
+                // If the original was an Expression (Quote), we need to unwrap it
+                if (arg is UnaryExpression quote && quote.NodeType == ExpressionType.Quote)
+                {
+                    // Visit the inner Lambda to swap parameters, then return the Lambda itself
+                    // Enumerable.Where(source, func) needs the Lambda, not the Quote
+                    arguments.Add(Visit(quote.Operand));
+                }
+                else
+                {
+                    arguments.Add(Visit(arg));
+                }
+            }
+
+            // 4. Return the new Call
+            // This now returns a MethodCall that results in IEnumerable<T>
+            return Expression.Call(enumerableMethod, arguments);
+        }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -251,7 +355,7 @@ namespace DataLayer.Utilities
             // type and parameter, second pass is to replace the parameter type and member access types with
             // the correct entity type
             MethodCallExpression fixedExpression;
-            if(MethodFitsScenario(node) is Type set
+            if(MethodQueryableParameterObjectScenario(node) is Type set
                 && GetQueryablePredicate(node) is ParameterExpression predicateArg)
             {
                 CurrentEntity ??= new EntityRecording();
@@ -273,6 +377,10 @@ namespace DataLayer.Utilities
                 // TODO: fix this last one so we never end up back here on the second pass
                 fixedExpression = FixMethodParameterType(node, set);
             }
+            //else if (MethodReturnsQueryable(node) is Type set2)
+            //{
+            //    fixedExpression = FixMethodReturnType(node, set2);
+            //}
             else // if(CurrentEntity != null)
                 fixedExpression = (MethodCallExpression)base.VisitMethodCall(node); // UNFIXED
 

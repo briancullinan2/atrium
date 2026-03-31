@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -93,14 +94,6 @@ namespace DataLayer.Utilities
         }
 
 
-        internal static List<string> PredicateMethods =
-            [.. new List<Type>([typeof(EntityFrameworkQueryableExtensions)
-                , typeof(Queryable)])
-            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(Extensions.ExpressionExtensions.IsBoolean)
-            .OrderBy(Selectors.OrderDatabaseQueries)
-            .Select(m => m.Name)
-            ];
 
         public static MethodInfo? ToForced { get; }
         public static MethodInfo? QueryIndexAsync { get; }
@@ -217,7 +210,7 @@ namespace DataLayer.Utilities
                         var plan = GenerateQueryPlan(bucket);
                         var queryMethod = QueryIndexAsync?.MakeGenericMethod(recording.EntityType)
                             ?? throw new InvalidOperationException("Could not render QueryIndexAsync method.");
-                        var newSet = queryMethod.Invoke(Context.Store, [tableName, plan.Index.ToCamelCase() /* must match schema */ , plan.Exact, plan.Lower, plan.Upper, !simpleExpression.Method.IsSingular()]);
+                        var newSet = queryMethod.Invoke(Context.Store, [tableName, plan.Index.ToCamelCase() /* must match schema */ , plan.Exact, plan.Lower, plan.Upper]);
                         if(newSet?.GetType().Extends(typeof(ValueTask<>)) == true
                             && (newSet as dynamic).AsTask() is Task task)
                         {
@@ -225,7 +218,8 @@ namespace DataLayer.Utilities
                             newSet = (newSet as dynamic).Result;
                         }
 
-                        foreach(var item in (System.Collections.IList)newSet!)
+                        if(newSet is IList list)
+                        foreach(var item in list)
                         {
                             var predicateValues = predicate.Select(p => p.GetValue(item)).ToList();
                             if (predicatedObjs.Contains(predicateValues))
@@ -238,21 +232,40 @@ namespace DataLayer.Utilities
                     // TODO: extract and check predicate from entity type
                     // TODO: swap out set provider for actual data reevaluate query just like in QueryNow()
                     var finalQuery = results.AsQueryable();
-                    var finalSwapped = new RootReplacementVisitor(finalQuery).Visit(simpleExpression)
+                    var finalSwapped = new EnumerableSwitcher(recording.EntityType, finalQuery.Expression).Visit(simpleExpression)
                         ?? throw new InvalidOperationException("Could not render final data expression." 
                             + simpleExpression + " for " + results.ToString() + " " + results.GetType().FullName);
-                    if(typeof(T).Extends(typeof(IQueryable)))
+                    
+                    //var asQueryableMethod = typeof(Queryable).GetMethods()
+                    //    .First(m => m.Name == nameof(Queryable.AsQueryable) && m.IsGenericMethod)
+                    //    .MakeGenericMethod(recording.EntityType);
+
+                    //finalSwapped = Expression.Call(null, asQueryableMethod, finalSwapped);
+
+                    //if (typeof(T).Extends(typeof(IEnumerable))
+                    //    && !simpleExpression.IsProjection()
+                    //    && !simpleExpression.IsTerminal())
                     {
-                        var finalResult = finalQuery.Provider.CreateQuery(finalSwapped);
-                        var forcedMethod = ToForced?.MakeGenericMethod(recording.EntityType, finalResult.ElementType)
-                            ?? throw new InvalidOperationException("Could not render ToForced method.");
-                        return (T)ToForced.Invoke(null, [finalResult])!;
+                        var lambda = Expression.Lambda(finalSwapped);
+                        var compiled = lambda.Compile();
+                        var finalResult = compiled.DynamicInvoke();
+                        //var forcedMethod = ToForced?.MakeGenericMethod(recording.EntityType, finalResult.ElementType)
+                        //    ?? throw new InvalidOperationException("Could not render ToForced method.");
+                        if(typeof(T).Extends(typeof(IEnumerable))
+                            && (!simpleExpression.IsDefault() 
+                                || finalResult is IEnumerable enumerable
+                                && !enumerable.IsEmpty())) // return null
+                        {
+                            finalResult = CollectionConverter.ConvertAsync(finalResult, typeof(T));
+                        }
+                        return (T)finalResult; //ToForced.Invoke(null, [finalResult])!;
                     }
-                    else
-                    {
-                        var result = finalQuery.Provider.Execute(finalSwapped);
-                        return (T)result!;
-                    }
+                    //else
+                    //{
+                    //    var result = finalQuery.Provider.Execute(finalSwapped) as dynamic;
+                    //    if (result is T) return result;
+                    //    return default!;
+                    //}
                 }
 
                 // TODO: reconstruct SelectMany queries

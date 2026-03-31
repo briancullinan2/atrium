@@ -243,21 +243,25 @@ namespace DataLayer.Utilities.Extensions
 
 
                 var method = type
-                .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-                .Where(m => (name == null || m.Name == name)
-                    && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic))
-                    && (extendedTypes == null
+                    .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                    .Where(m => (name == null || m.Name == name)
+                        && (generic == null || (generic == 0 && !m.IsGenericMethod) || (m.GetGenericArguments().Length == generic)))
+                    .ToList();
+                
+                var byParameter = method
+                    .Where(m => extendedTypes == null
                         || m.GetParameters().Where((p, i) =>
                             extendedTypes.ElementAtOrDefault(i) is Type testTest
                             && p.ParameterType.Extends(testTest)).Count() == extendedTypes.Length)
-                    )
-                .OrderBy(m => m.GetParameters().Select((p, i) =>
-                            p.ParameterType != typeof(object) ? -1 : 0).Sum());
-                var ordered = method;
-                if (extendedTypes != null)
-                    ordered = method
-                        .OrderBy(m => m.GetParameters().Select((p, i) =>
-                            p.ParameterType == extendedTypes.ElementAtOrDefault(i) ? -1 : 0).Sum());
+                    .ToList();
+
+                var ordered = byParameter.OrderBy(m =>
+                            (m.GetParameters().Length == extendedTypes?.Length ? -1 : 0)
+                            + m.GetParameters().Select((p, i) =>
+                            p.ParameterType != typeof(object)
+                            && p.ParameterType == extendedTypes?.ElementAtOrDefault(i)
+                            ? -1 : 0).Sum()).ToList();
+
 
                 results = [.. results, .. ordered];
                 type = type.BaseType;

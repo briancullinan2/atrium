@@ -705,7 +705,7 @@ namespace DataLayer.Utilities.Extensions
         {
             if (expression is MethodCallExpression m)
             {
-                return m.IsDefault();
+                return m.Method.IsDefault();
             }
             return false;
         }
@@ -719,6 +719,28 @@ namespace DataLayer.Utilities.Extensions
                 return m.Method.IsSingular();
             }
             return false;
+        }
+
+
+
+        internal static List<string> PredicateMethods =
+            [.. new List<Type>([typeof(EntityFrameworkQueryableExtensions)
+                , typeof(Queryable)])
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(Extensions.ExpressionExtensions.IsBoolean)
+            .OrderBy(Selectors.OrderDatabaseQueries)
+            .Select(m => m.Name)
+            ];
+
+
+        public static bool IsPredicate(this MethodInfo method)
+        {
+            return PredicateMethods.Contains(method.Name);
+        }
+
+        public static bool IsPredicate(this MethodCallExpression method)
+        {
+            return method.Method.IsPredicate();
         }
 
 
@@ -743,6 +765,11 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
+
+        public static bool IsProjection(this MethodCallExpression method)
+        {
+            return method.Method.IsProjection();
+        }
 
         public static bool IsProjection(this MethodInfo method)
         {

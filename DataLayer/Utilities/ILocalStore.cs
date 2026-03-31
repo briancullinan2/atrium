@@ -25,8 +25,7 @@ namespace DataLayer.Utilities
             string indexName,
             object? exact = null,
             object? lower = null,
-            object? upper = null,
-            bool getAll = true);
+            object? upper = null);
 
         ValueTask<bool> DeleteRecordAsync(string storeName, object key);
 
@@ -42,6 +41,8 @@ namespace DataLayer.Utilities
         bool IsRendered { get; }
         IJSRuntime? Runtime { get; }
         event Action OnRendered;
+        event Action OnEmptied;
+        void NotifyEmptied(IJSRuntime Runtime);
         void NotifyRendered(IJSRuntime Runtime);
     }
 
@@ -53,20 +54,25 @@ namespace DataLayer.Utilities
 
         public bool IsRendered { get => _renderTcs.Task.IsCompleted; private set => _renderTcs.TrySetResult(value); }
 
-        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // This is the task your LocalStore will 'Then' off of
         public event Action? OnRendered;
+        public event Action? OnEmptied;
+
+        public void NotifyEmptied(IJSRuntime _runtime)
+        {
+            IsRendered = false;
+            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            OnEmptied?.Invoke();
+        }
 
         // This is called by your MainLayout or Root component
         public void NotifyRendered(IJSRuntime _runtime)
         {
-            if (!IsRendered)
-            {
-                IsRendered = true;
-                Runtime = _runtime;
-                OnRendered?.Invoke();
-            }
+            IsRendered = true;
+            Runtime = _runtime;
+            OnRendered?.Invoke();
         }
     }
 
@@ -74,7 +80,7 @@ namespace DataLayer.Utilities
     public class LocalStore : ILocalStore
     {
         private readonly IRenderStateProvider _service;
-        private readonly TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool NeedsInitialize { get; protected set; } = true;
 
 
@@ -83,16 +89,19 @@ namespace DataLayer.Utilities
             _service = service;
             // Start the import immediately
             service.OnRendered += () => _ = EnsureModuleLoaded();
+            service.OnEmptied += () =>
+            {
+                _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            };
             if (service.IsRendered)
             {
                 _ = EnsureModuleLoaded();
             }
-            ModuleInitialize = _renderTcs.Task;
         }
 
 
 
-        private Task ModuleInitialize { get; }
+        private Task ModuleInitialize { get => _renderTcs.Task; }
         private IJSObjectReference? Module { get; set; }
 
         // This helper ensures the module is loaded before we try to use it
@@ -121,20 +130,11 @@ namespace DataLayer.Utilities
             return await Module!.InvokeAsync<T?>("getRecord", storeName, key);
         }
 
-        public async ValueTask<List<T>> QueryIndexAsync<T>(string storeName, string indexName, object? exact = null, object? lower = null, object? upper = null, bool getAll = true)
+        public async ValueTask<List<T>> QueryIndexAsync<T>(string storeName, string indexName, object? exact = null, object? lower = null, object? upper = null)
         {
             await ModuleInitialize;
-            if(!getAll)
-            {
-                var result = await Module!.InvokeAsync<T>("queryIndex", storeName, indexName, exact, lower, upper, getAll);
-                if (result == null) return [];
-                return [result];
-            }
-            else
-            {
-                var result = await Module!.InvokeAsync<List<T>>("queryIndex", storeName, indexName, exact, lower, upper, getAll);
-                return result;
-            }
+            var result = await Module!.InvokeAsync<List<T>>("queryIndex", storeName, indexName, exact, lower, upper);
+            return result ?? [];
         }
 
         public async ValueTask<bool> SetupDatabaseAsync(string? dbName, Dictionary<string, Tuple<List<string>, List<KeyValuePair<string, List<string>>>>> schema)

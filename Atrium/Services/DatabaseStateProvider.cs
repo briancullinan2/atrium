@@ -62,11 +62,9 @@ namespace Atrium.Services
                 return LoginService.Guest();
 
             // 2. Fetch the session from your DataLayer.Entities.Session table
-            var session = await _query.Query<Session>(s =>
-                s.Id == sessionId && s.Time.AddSeconds(s.Lifetime) > DateTime.UtcNow)
-                .FirstOrDefaultAsync();
+            var session = await _query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
-            if (session == null)
+            if (session == null || session.Time.AddSeconds(session.Lifetime) <= DateTime.UtcNow)
                 return LoginService.Guest();
 
             // 3. Deserialize the 'Value' (JSON) into Claims
@@ -156,7 +154,6 @@ namespace Atrium.Services
             var sessionValue = JsonSerializer.Serialize(claimsData.Select(c => new UserClaim(c.Type, c.Value)), JsonHelper.Default);
             newSession.Value = sessionValue;
             // there is no newSession.User on purpose
-
 
 
             // TODO: set newSession.Lifetime to token lifetime

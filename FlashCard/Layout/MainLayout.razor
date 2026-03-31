@@ -310,6 +310,7 @@
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
         ChatService.OnChatWorking += SetChat;
+        RenderState.NotifyEmptied(JS);
 
         //AuthProvider.AuthenticationStateChanged += (task) =>
         //{

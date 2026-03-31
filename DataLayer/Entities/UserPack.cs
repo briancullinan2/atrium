@@ -4,6 +4,7 @@ using System.Text.Json;
 
 namespace DataLayer.Entities
 {
+    [Table("userPack")]
     [PrimaryKey(nameof(UserId), nameof(PackId))]
     public class UserPack : Entity<UserPack>
     {

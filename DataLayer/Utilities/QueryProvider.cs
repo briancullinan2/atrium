@@ -30,17 +30,20 @@ namespace DataLayer.Utilities
             return (IQueryable<TElement>)CreateQuery(expression);
         }
 
-        public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken token)
-        {
-            var QueryGeneric = Query.GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
+
+        internal MethodInfo QueryGeneric { get; } = Query.GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
                 .FirstOrDefault()
                  ?? throw new InvalidOperationException("Could not render QueryNow method");
+
+
+        public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken token)
+        {
 
             // evaluate Task<> types
             var resultType = typeof(TResult);
             var innerType = resultType.GetGenericArguments().FirstOrDefault();
             var isTask = resultType.Extends(typeof(Task));
-            if (typeof(Task).Extends(resultType))
+            if (isTask)
             {
                 var QueryNow = QueryGeneric.MakeGenericMethod(typeof(TEntity), innerType ?? typeof(TResult));
                 return (TResult)QueryNow.Invoke(Query, [_storage, expression, _priority])!;
