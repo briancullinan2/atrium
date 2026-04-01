@@ -178,7 +178,7 @@ namespace DataLayer.Utilities
             {
                 // 3. Re-check inside the lock (The "Double-Check" pattern)
                 if (_renderTcs.Task.IsCompleted) return;
-                Module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
+                _module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
                 _renderTcs.TrySetResult(true);
             }
             finally

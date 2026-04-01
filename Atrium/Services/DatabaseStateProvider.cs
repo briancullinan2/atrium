@@ -35,7 +35,7 @@ namespace Atrium.Services
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             // 1. Get the SessionID from the browser's cookie
-            var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
+            var cookieName = TitleService.AppName ?? SessionId;
 
             string? sessionId = null;
 #if WINDOWS
@@ -129,7 +129,7 @@ namespace Atrium.Services
             var provider = user.Identity?.AuthenticationType ?? typeof(DatabaseStateProvider).Name;
             claimsData.Add(new Claim("urn:atrium:provider", provider));
 
-            var cookieName = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? SessionId;
+            var cookieName = TitleService.AppName ?? SessionId;
 #if WINDOWS
             if (_httpContextAccessor?.HttpContext is HttpContext context)
             {
@@ -246,7 +246,7 @@ namespace Atrium.Services
                     options.AccessDeniedPath = "/access-denied";
 
                     // Use a distinct name for the Auth Cookie vs your internal Session ID
-                    var product = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Atrium";
+                    var product = TitleService.AppName ?? "Atrium";
                     options.Cookie.Name = $"{product}_Auth";
 
                     options.Events = new CookieAuthenticationEvents

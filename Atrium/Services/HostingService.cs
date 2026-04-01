@@ -2,6 +2,10 @@
 using FlashCard.Services;
 using System.Net.Http.Json;
 using DataLayer.Utilities;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Reflection;
+
+
 
 #if WINDOWS
 using System.ServiceProcess;
@@ -55,6 +59,44 @@ namespace Atrium.Services
 
 
 #if WINDOWS
+        private static readonly long _appStartTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Cached after the first check
+        private static long? _latestAssemblyTime;
+
+        public static async Task OnVersionCheck(HttpContext context)
+        {
+            if (!_latestAssemblyTime.HasValue)
+            {
+
+                // Find the newest 'Last Write Time' across all loaded assemblies.
+                // This captures the main app + any referenced DLLs that were updated.
+                _latestAssemblyTime = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+                    .Select(a => {
+                        try { return new FileInfo(a.Location).LastWriteTimeUtc; }
+                        catch { return DateTime.MinValue; }
+                    })
+                    .ToList()
+                    .Max()
+                    .ToUniversalTime()
+                    .Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
+                    .Ticks / 10000; // Convert Ticks to Milliseconds
+
+                // Alternatively, in modern .NET:
+                // _latestAssemblyTime = new DateTimeOffset(maxTime).ToUnixTimeMilliseconds();
+            }
+
+            context.Response.ContentType = "application/json";
+
+            // Return the array: [ProcessStartTime, NewestFileTime]
+            var versionData = new long[] { _appStartTime, _latestAssemblyTime.Value };
+            var json = JsonSerializer.Serialize(versionData, JsonHelper.Default);
+
+            await context.Response.WriteAsync(json);
+        }
+
+
         public static async Task OnStatusCheck(HttpContext context)
         {
             string? tunnel = null;

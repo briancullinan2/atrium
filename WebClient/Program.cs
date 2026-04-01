@@ -40,7 +40,7 @@ internal class Program
 
 
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
-        builder.Services.AddSingleton<ITitleService, TitleService>();
+        builder.Services.AddSingleton<ITitleService, WebClient.Services.TitleService>();
         builder.Services.AddSingleton<IHostingService, HostingService>();
         builder.Services.AddSingleton<IChatService, ChatService>();
         builder.Services.AddSingleton<IFileManager, FileManager>();

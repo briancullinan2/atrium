@@ -7,7 +7,7 @@
     xmlns:shared="clr-namespace:FlashCard;assembly=FlashCard"
     BackgroundColor="{DynamicResource PageBackgroundColor}">
 
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/app.html" StartPath="/app.html">
         <BlazorWebView.RootComponents>
             <RootComponent ComponentType="{x:Type shared:Routes}" Selector="#app" />
         </BlazorWebView.RootComponents>

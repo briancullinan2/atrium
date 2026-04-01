@@ -4,30 +4,21 @@ using System.Reflection;
 namespace Atrium.Services
 {
     // doesn't update window title because it's running as a web service, but still needs to generate html
-    public class TitleTrackerService : ITitleService
+    public class TitleTrackerService : FlashCard.Services.TitleService
     {
         internal static string? _title;
-        private readonly string? _appName;
 
-        public event Action<string?>? OnTitleChanged;
-
-        public TitleTrackerService()
-        {
-            _appName = Assembly.GetEntryAssembly()?
-                             .GetCustomAttribute<AssemblyProductAttribute>()?
-                             .Product;
-        }
-        public async Task UpdateTitle(string? title)
+        public override async Task<string?> UpdateTitle(string? title)
         {
             if (title == null)
             {
-                _title = _appName;
+                _title = AppName;
             }
             else
             {
-                _title = title + " - " + _appName;
+                _title = title + " - " + AppName;
             }
-            OnTitleChanged?.Invoke(title);
+            return await base.UpdateTitle(title);
         }
 
     }

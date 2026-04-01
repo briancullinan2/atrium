@@ -105,6 +105,13 @@ namespace Atrium.Services
 
                 var webApp = webBuilder.Build();
 
+                //var options = new DefaultFilesOptions();
+                //options.DefaultFileNames.Clear(); // Remove index.html from the search list
+                //options.DefaultFileNames.Add("index.html"); // Make app.html the new default
+
+                //webApp.UseDefaultFiles(options);
+                //webApp.MapFallbackToFile("app.html");
+
                 webApp.UseStaticFiles();
                 webApp.UseBlazorFrameworkFiles();
 
@@ -155,6 +162,7 @@ namespace Atrium.Services
                 //webApp.MapBlazorHub();
                 webApp.UseExceptionHandler("/error", createScopeForErrors: true);
 
+                webApp.MapGet("/version.json", HostingService.OnVersionCheck);
                 webApp.MapPost("/api/query", QueryService.RespondQuery).RequireCors(myAllowSpecificOrigins);
                 webApp.MapPost("/api/upload", FileManager.OnUploadFile).RequireCors(myAllowSpecificOrigins);
                 webApp.MapPost("/api/inspect", AnkiService.OnInspectFile).RequireCors(myAllowSpecificOrigins);

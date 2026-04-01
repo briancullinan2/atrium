@@ -3,27 +3,13 @@ using System.Reflection;
 
 namespace Atrium.Services
 {
-    internal class TitleService(Application? App = null) : ITitleService
+    internal class TitleService(Application? App = null) : FlashCard.Services.TitleService
     {
         internal static string? _title;
-        private readonly string? _appName = Assembly.GetEntryAssembly()?
-                             .GetCustomAttribute<AssemblyProductAttribute>()?
-                             .Product;
 
-        public event Action<string?>? OnTitleChanged;
-
-
-
-        public async Task UpdateTitle(string? title)
+        public override async Task<string?> UpdateTitle(string? title)
         {
-            if (title == null)
-            {
-                _title = _appName;
-            }
-            else
-            {
-                _title = title + " - " + _appName;
-            }
+            _title = await base.UpdateTitle(title);
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 foreach (var window in App?.Windows ?? [])
@@ -31,8 +17,7 @@ namespace Atrium.Services
                     window.Title = _title; // This is now safe
                 }
             });
-
-            OnTitleChanged?.Invoke(title);
+            return _title;
         }
 
     }

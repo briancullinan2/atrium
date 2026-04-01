@@ -396,20 +396,25 @@ namespace DataLayer.Utilities.Extensions
         }
 
 
-        public static void RegisterAssembly(Assembly? assembly)
+        public static void RegisterAssembly(params Assembly[]? assemblies)
         {
-            if (assembly == null) return;
+            if (assemblies == null) return;
 
-            var name = assembly.FullName!;
-            if (_loadedAssemblies.Contains(name)) return;
-
-            lock (_loaderLock)
+            foreach (var assembly in assemblies ?? [])
             {
-                if (_loadedAssemblies.Add(name))
+                if (assembly == null) continue;
+                var name = assembly.FullName!;
+
+                if (_loadedAssemblies.Contains(name)) continue;
+
+                lock (_loaderLock)
                 {
-                    foreach (var type in assembly.GetTypes())
+                    if (_loadedAssemblies.Add(name))
                     {
-                        _allKnownTypes.Add(type);
+                        foreach (var type in assembly.GetTypes())
+                        {
+                            _allKnownTypes.Add(type);
+                        }
                     }
                 }
             }
@@ -436,6 +441,37 @@ namespace DataLayer.Utilities.Extensions
                    !type.IsGenericTypeDefinition;
         }
 
+
+        private static readonly List<Assembly> _registeredAssemblies = [];
+
+
+        public static List<Assembly> GetAssemblies(this Assembly assembly, params Assembly[]? calling)
+        {
+            return GetAssemblies([assembly, .. calling ?? []]);
+        }
+
+        public static List<Assembly> GetAssemblies(this AppDomain domain, params Assembly[]? calling)
+        {
+            return GetAssemblies([..domain.GetAssemblies(), .. calling ?? []]);
+        }
+
+
+        public static List<Assembly> GetAssemblies(params Assembly[]? calling)
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Concat(calling ?? [])
+                .Concat([Assembly.GetExecutingAssembly(),  Assembly.GetCallingAssembly(), 
+                  Assembly.GetEntryAssembly()])
+                .Where(a => a != null)
+                .ToList();
+            foreach (var ass in assemblies)
+            {
+                if (ass == null) continue;
+                if (!_registeredAssemblies.Contains(ass))
+                    _registeredAssemblies.Add(ass);
+            }
+            return [.._registeredAssemblies];
+        }
 
 
 

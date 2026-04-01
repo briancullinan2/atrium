@@ -77,23 +77,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="wwwroot\index.html" />
     <Content Remove="wwwroot\_framework\blazor.web.js.gz" />
   </ItemGroup>
 
-	<ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
-		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Remove="teardrop.ico" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Content Include="teardrop.ico">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	</ItemGroup>
+<ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+	<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
+	<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
+</ItemGroup>
 
   <ItemGroup>
 	  <PackageReference Include="AspNet.Security.OAuth.Apple" Version="10.0.0" />
