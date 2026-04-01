@@ -7,21 +7,17 @@ using System.Text;
 
 namespace Atrium.Services
 {
-    internal class CircuitHandler : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, IConnectionStateProvider
+    internal class CircuitHandler(
+        Lazy<MauiApp?>? App = null    
+    ) : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, IConnectionStateProvider
     {
         private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new(); 
         
         public event Action<bool, ConnectionMetadata>? OnConnectionDown;
         public event Action<bool, ConnectionMetadata>? OnConnectionUp;
         public bool IsConnected { get; private set; }
-        public int ClientCount { get => _activeCircuits.Count; }
+        public int ClientCount { get => _activeCircuits.Count + (App != null ? 1 : 0); }
 
-        public CircuitHandler()
-        {
-            Console.WriteLine("Circuit started.");
-        }
-
-        public int GlobalClientCount => _activeCircuits.Count;
 
         public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
         {

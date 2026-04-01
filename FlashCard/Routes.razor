@@ -1,7 +1,9 @@
 ﻿@using FlashCard.Pages
 @using FlashCard.Controls
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http
 @inject NavigationManager Nav
+
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
         <Found Context="routeData">
@@ -32,3 +34,4 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+

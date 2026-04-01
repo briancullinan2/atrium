@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
@@ -34,7 +35,7 @@ namespace Atrium.Services
                 {
                     Args = args,
                     // Ensure the server looks in the actual folder where the assets live
-                    ContentRootPath = AppContext.BaseDirectory,
+                    ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
                     ApplicationName = "Atrium"
                 });
 #if DEBUG
@@ -55,10 +56,16 @@ namespace Atrium.Services
 
 
                 MauiProgram.BuildSharedServiceList(webBuilder.Services);
-                webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
                 webBuilder.Services.AddSingleton<CircuitHandler>();
+                webBuilder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
 
+                webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
 
+                webBuilder.Services.AddSignalR()
+                    .AddJsonProtocol()
+                    .AddMessagePackProtocol();
+                webBuilder.Services.AddHttpContextAccessor();
+                
 
                 webBuilder.Environment.WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
                 webBuilder.WebHost.ConfigureKestrel(options =>
@@ -95,10 +102,17 @@ namespace Atrium.Services
                 });
 
 
-                webBuilder.Services.AddHttpContextAccessor();
 
                 var webApp = webBuilder.Build();
 
+                webApp.UseStaticFiles();
+                webApp.UseBlazorFrameworkFiles();
+
+                // 2. Security & Routing
+                webApp.UseRouting();
+                webApp.UseCors("_myAllowSpecificOrigins");
+                webApp.UseAntiforgery(); // Keep this enabled!
+                webApp.UseAuthorization();
 
 
                 //webApp.MapGet("/api/status", () => new { Status = "Online", Machine = Environment.MachineName });
@@ -107,21 +121,7 @@ namespace Atrium.Services
                     context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                     context.Response.Headers.Append("Pragma", "no-cache");
                     context.Response.Headers.Append("Expires", "0");
-                    // Check if the request is the browser asking for permission
-                    if (context.Request.Method == "OPTIONS")
-                    {
-                        var origin = context.Request.Headers.Origin.ToString();
-                        // Arizona Law: Verify the origin is one we trust
-                        if (origin.Contains("pryor.games") || origin.Contains("localhost"))
-                        {
-                            context.Response.Headers.AccessControlAllowOrigin = origin;
-                            context.Response.Headers.AccessControlAllowMethods = "GET, POST, OPTIONS";
-                            context.Response.Headers.AccessControlAllowHeaders = "Content-Type, Authorization, Accept";
-                            context.Response.Headers.AccessControlAllowCredentials = "true";
-                            context.Response.StatusCode = 200; // Return OK immediately
-                            return Task.CompletedTask;
-                        }
-                    }
+                    
                     return next();
                 });
 
@@ -150,15 +150,6 @@ namespace Atrium.Services
                 //});
 
                 webApp.UsePathBase("/");
-                webApp.UseStaticFiles(); // Move this UP
-                webApp.UseBlazorFrameworkFiles();
-
-                webApp.UseRouting();     // Move this UP
-
-                webApp.UseCors("_myAllowSpecificOrigins");
-
-                webApp.UseAntiforgery();
-                webApp.UseAuthorization();
 
                 // 2. Mapping happens AFTER routing is configured
                 //webApp.MapBlazorHub();
@@ -173,6 +164,8 @@ namespace Atrium.Services
                 webApp.MapPost("/api/chat/presets", ChatService.OnPresets).RequireCors(myAllowSpecificOrigins);
                 webApp.MapPost("/api/chat/ping", ChatService.OnPing).RequireCors(myAllowSpecificOrigins);
                 webApp.MapPost("/api/chat", ChatService.OnChat).RequireCors(myAllowSpecificOrigins);
+
+                //webApp.MapHub<Hub>("/_blazor");
 
                 webApp.MapRazorComponents<Components.App>()
                     .AddInteractiveServerRenderMode()

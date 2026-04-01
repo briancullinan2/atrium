@@ -12,10 +12,9 @@ namespace WebClient.Services
         IFormFactor _form,
         ILoggerFactory _logger,
         IRenderStateProvider _rendered,
-        IConnectionStateProvider? _client = null,
         Microsoft.AspNetCore.Http.IHttpContextAccessor? _context = null
     )
-        : FlashCard.Services.PageManager(_form, _logger, _rendered, _client, _context), IPageManager
+        : FlashCard.Services.PageManager(_form, _logger, _rendered, _context), IPageManager
     {
 
         public override async Task SetState(IComponent? state)

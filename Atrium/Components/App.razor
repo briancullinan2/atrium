@@ -1,5 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Http
 
 <head>
     <meta charset="utf-8" />
@@ -52,10 +54,45 @@
     @*@rendermode="InteractiveAuto" *@
     @*new InteractiveServerRenderMode(prerender: false)*@
     @*InteractiveWebAssembly*@
-    <Routes @rendermode="InteractiveServer" />
-    <FlashCard.Pages.Shared.ReconnectModal />
+    <Routes @rendermode="preferredMode" />
+    @*<FlashCard.Pages.Shared.ReconnectModal />*@
     <script src="/_content/FlashCard/main.js"></script>
-    <script src="/_framework/blazor.web.js"></script>
+    <script src="/_framework/blazor.web.js" autostart="false"></script>
+    <!--
+    <script src="/_framework/blazor.server.js" autostart="false"></script>
+    <script src="/_framework/blazor.webview.js" autostart="false"></script>
+    <script src="/_framework/blazor.webassembly.js" autostart="false"></script>
+    -->
 </body>
 
 </html>
+
+@code {
+    [Inject] public IHttpContextAccessor? Context { get; set; } = null;
+
+    // Default to Wasm, but allow an override
+    IComponentRenderMode preferredMode = RenderMode.InteractiveWebAssembly;
+
+    [Inject] public NavigationManager? Navigation { get; set; } = null;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+
+        if(Navigation?.Uri.Contains("#mode=server") == true)
+        {
+            preferredMode = InteractiveServer;
+        }
+        else if (Context?.HttpContext?.Request.Query.TryGetValue("mode", out var mode) == true)
+        {
+            preferredMode = mode == "server"
+                ? RenderMode.InteractiveServer
+                : RenderMode.InteractiveWebAssembly;
+        }
+
+        Console.WriteLine($"Starting in {preferredMode.ToString()} mode");
+
+    }
+
+}

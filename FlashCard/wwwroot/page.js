@@ -23,19 +23,28 @@ export function subscribePageEvents(dotnetHelper) {
         dotnetHelper.invokeMethodAsync('OnVisibility', document.visibilityState)
     })
 
-    window.onfocus = () => dotnetHelper.invokeMethodAsync('OnFocused', 'window', true)
-    window.onblur = () => dotnetHelper.invokeMethodAsync('OnFocused', 'window', false)
+    window.onfocus = () => dotnetHelper.invokeMethodAsync('OnFocused', true)
+    window.onblur = () => dotnetHelper.invokeMethodAsync('OnFocused', false)
 
     // 2. Global Button Interceptor (Custom Events)
     // Buttons just need to dispatch: window.dispatchEvent(new CustomEvent('app-retry'))
-    window.addEventListener('app-retry', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'retry'))
+    window.addEventListener('app-disconnect', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'disconnect'))
+    window.addEventListener('app-start', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'start'))
+    window.addEventListener('app-reconnect', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'reconnect'))
     window.addEventListener('app-resume', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'resume'))
-    window.addEventListener('app-stop', () => dotnetHelper.invokeMethodAsync('OnStopped'))
+    window.addEventListener('app-pause', () => dotnetHelper.invokeMethodAsync('OnReconnected', 'pause'))
+
+    window.addEventListener('app-disconnect', () => Blazor.disconnect());
+    window.addEventListener('app-reconnect', () => Blazor.reconnect());
+    window.addEventListener('app-pause', () => Blazor.pauseCircuit());
+    window.addEventListener('app-resume', () => Blazor.resumeCircuit());
+    window.addEventListener('app-start', () => startBlazor());
 
     window.addEventListener("components-reconnect-state-changed", (e) => {
         dotnetHelper.invokeMethodAsync('OnReconnected', e.detail)
     })
 
+    window.addEventListener('app-stop', () => dotnetHelper.invokeMethodAsync('OnStopped'))
 
     window.addEventListener('scroll', (event) => {
         const target = event.target
@@ -182,6 +191,33 @@ export function restoreState() {
             acc[key] = input.value
         return acc
     }, {})
+}
+
+
+export function startBlazor() {
+    Blazor.start({
+        circuit: {
+            // LogLevel: 0 (Trace), 1 (Debug), 2 (Information), etc.
+            logLevel: 1,
+
+            // Configuration for the reconnection logic
+            reconnectionHandler: {
+                onConnectionDown: (options, error) => dotnetHelper.invokeMethodAsync('OnReconnected', error),
+                onConnectionUp: () => dotnetHelper.invokeMethodAsync('OnReconnected', "hide")
+            },
+
+            // Adjusting the internal circuit behavior
+            configureSignalR: function(builder) {
+                const afToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    
+                builder.withUrl("_blazor", {
+                    headers: { "X-XSRF-TOKEN": afToken }, // Standard header name
+                    skipNegotiation: true,
+                    transport: 1 
+                });
+            }
+        }
+    });
 }
 
 

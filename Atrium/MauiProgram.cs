@@ -47,7 +47,6 @@ namespace Atrium
 
             // Add device-specific services used by the FlashCard project
             Services.AddSingleton<IConnectionStateProvider, CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
-            Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
 
             Services.AddSingleton<IFormFactor, FormFactor>();
             Services.AddSingleton<IFileManager, FileManager>();

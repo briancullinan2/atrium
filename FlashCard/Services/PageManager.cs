@@ -56,7 +56,7 @@ namespace FlashCard.Services
         Task EnsureModuleLoaded();
         Task ModuleInitialize { get; }
 
-        void OnFocused(string id, bool focused);
+        void OnFocused(bool focused);
         void OnScrolled(string id, bool atBottom);
         void OnResized(string id, int width, int height, bool isSmall);
         void OnVisibility(string visible);
@@ -132,20 +132,17 @@ namespace FlashCard.Services
         readonly IFormFactor Form;
         readonly ILoggerFactory Logger;
         readonly IRenderStateProvider Rendered;
-        readonly IConnectionStateProvider? Client;
         readonly IHttpContextAccessor? Context;
 
         public PageManager(
             IFormFactor _formFactor,
             ILoggerFactory _logger,
             IRenderStateProvider _rendered,
-            IConnectionStateProvider? _client = null,
             Microsoft.AspNetCore.Http.IHttpContextAccessor? _context = null
         ) : base() {
             Form = _formFactor;
             Logger = _logger;
             Rendered = _rendered;
-            Client = _client;
             Context = _context;
             Rendered.OnEmptied += NotifyEmptied;
             Rendered.OnRendered += NotifyRendered;
@@ -351,6 +348,12 @@ namespace FlashCard.Services
 
 
 
+        public async Task StartBlazor()
+        {
+            await ModuleInitialize;
+            await Module.InvokeVoidAsync("startBlazor");
+        }
+
 
         public async Task EnsureBottomAsync(string id, bool force = false)
         {
@@ -430,7 +433,7 @@ namespace FlashCard.Services
         // Specialized JS Invokables for the Bridge
         [JSInvokable] public void OnScrolled(string id, bool atBottom) => UpdateState(PageAction.Scroll, id, atBottom);
         [JSInvokable] public void OnResized(string id, int width, int height, bool isSmall) => UpdateState(PageAction.Resize, id, (w: width, h: height, s: isSmall));
-        [JSInvokable] public void OnFocused(string id, bool focused) => UpdateState(PageAction.Focus, id, focused);
+        [JSInvokable] public void OnFocused(bool focused) => UpdateState(PageAction.Focus, "window", focused);
         [JSInvokable] public void OnVisibility(string visible) => UpdateState(PageAction.Visible, "window", visible);
         [JSInvokable] public void OnReconnected(string state) => UpdateState(PageAction.Visible, "window", state);
         [JSInvokable] public void OnStopped() => Form.StopAsync();

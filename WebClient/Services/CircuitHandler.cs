@@ -1,6 +1,9 @@
 ﻿using DataLayer.Utilities;
 using FlashCard.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.SignalR.Client.Internal;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.JSInterop;
 using System.Reflection;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -12,7 +15,7 @@ namespace WebClient.Services
         public event Action<bool, ConnectionMetadata>? OnConnectionDown;
         public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
-        public bool IsConnected => _connection.State == HubConnectionState.Connected;
+        public bool IsConnected => _connection?.State == HubConnectionState.Connected;
         public int ClientCount => 1;
 
         private IRenderStateProvider Rendered { get; }
@@ -74,20 +77,20 @@ namespace WebClient.Services
         {
             if (state == "hide")
             {
-                OnConnectionUp?.Invoke(true, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow));
+                OnConnectionUp?.Invoke(true, new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
             }
             else
             {
-                OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, state));
+                OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
             }
         }
 
 
         public IPageManager PageManager { get; }
 
-        private readonly HubConnection _connection;
+        private readonly HubConnection? _connection;
 
-        public CircuitHandler(IPageManager page, HubConnection connection, IRenderStateProvider rendered)
+        public CircuitHandler(NavigationManager Navigation, IPageManager page, IRenderStateProvider rendered, HubConnection? connection = null)
         {
             Rendered = rendered;
             Rendered.OnEmptied += NotifyEmptied;
@@ -95,12 +98,46 @@ namespace WebClient.Services
             PageManager = page;
 
             _connection = connection;
-            _connection.StartAsync();
+            // become the connection
 
-            _connection.Reconnected += async (id) =>
+            if (connection == null)
+            {
+                _connection = new HubConnectionBuilder()
+                .AddMessagePackProtocol()
+                .WithUrl(Navigation.ToAbsoluteUri("/_blazor"), options =>
+                {
+                    // Ensure this isn't returning null!
+                    options.AccessTokenProvider = () =>
+                    {
+                        //var token = GetSavedToken();
+                        return Task.FromResult<string?>(""); // Use empty string, never null
+                    };
+                })
+                .WithAutomaticReconnect([
+                    TimeSpan.Zero,           // Immediate retry
+                    TimeSpan.FromSeconds(2), // Arizona network latency buffer
+                    TimeSpan.FromSeconds(10)
+                ])
+                .Build();
+            }
+
+            if (_connection != null)
+            {
+                _ = _connection.StartAsync();
+            }
+
+            // check passed in reference is null
+            if (connection == null)
+            {
+                var reference = DotNetObjectReference.Create(this);
+                _ = _connection?.InvokeAsync("RegisterCircuit", reference);
+
+            }
+
+            _connection?.Reconnected += async (id) =>
                 OnConnectionUp?.Invoke(true, new ConnectionMetadata(id ?? _connection.ConnectionId ?? "unknown", DateTime.UtcNow));
 
-            _connection.Closed += async (ex) =>
+            _connection?.Closed += async (ex) =>
                 OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
         }
 
