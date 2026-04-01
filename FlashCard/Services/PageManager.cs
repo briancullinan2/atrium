@@ -64,6 +64,8 @@ namespace FlashCard.Services
         void OnStopped();
 
         ValueTask TriggerEvent(string eventName, object? detail = null);
+        bool IsReady { get; }
+
     }
 
     public enum PageAction
@@ -119,6 +121,7 @@ namespace FlashCard.Services
     {
 
         #region "Initialization"
+        public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
         private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
 

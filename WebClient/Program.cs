@@ -35,6 +35,8 @@ internal class Program
 
         SharedRegistry.BuildSharedServiceList(builder.Services);
 
+        builder.Services.AddSingleton<ILocalStore, LocalStore>();
+        builder.Services.AddSingleton<SimpleLogger>();
         builder.Services.AddSingleton<CircuitHandler>();
         builder.Services.AddSingleton<IConnectionStateProvider>(sp => sp.GetRequiredService<CircuitHandler>());
 

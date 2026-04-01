@@ -57,13 +57,14 @@
     <Routes @rendermode="preferredMode" />
     @*<FlashCard.Pages.Shared.ReconnectModal />*@
     <script src="/_content/FlashCard/main.js"></script>
-    <script src="/_framework/blazor.web.js"></script>
+    <script src="/_content/FlashCard/blazor.web.js" autostart="false"></script>
     <!--
     <script src="/_framework/blazor.server.js" autostart="false"></script>
     <script src="/_framework/blazor.webview.js" autostart="false"></script>
     <script src="/_framework/blazor.webassembly.js" autostart="false"></script>
     -->
     <script>
+        document.addEventListener("DOMContentLoaded", function() { startBlazor(); });
         navigator.serviceWorker.register('/service-worker.published.js');
     </script>
 </body>

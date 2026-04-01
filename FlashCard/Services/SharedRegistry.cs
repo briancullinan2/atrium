@@ -23,7 +23,6 @@ namespace FlashCard.Services
             Services.AddScoped<IThemeService, ThemeService>();
             //Services.AddScoped<IAuthService, AuthService>();
             Services.AddScoped<NavigationTracker>();
-            Services.AddSingleton<SimpleLogger>();
 
 
             Services.AddAuthorizationCore();
@@ -43,7 +42,6 @@ namespace FlashCard.Services
             Services.AddDbContextFactory<DataLayer.RemoteStorage>();
             Services.AddDbContextFactory<DataLayer.TestStorage>();
 
-            Services.AddSingleton<ILocalStore, LocalStore>();
 
             Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.TestStorage>>().CreateDbContext());
             Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.RemoteStorage>>().CreateDbContext());

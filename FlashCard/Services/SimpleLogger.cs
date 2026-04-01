@@ -1,4 +1,5 @@
-﻿using DataLayer.Utilities;
+﻿using DataLayer.Entities;
+using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
@@ -27,13 +28,23 @@ namespace FlashCard.Services
 
         private static IQueryManager? Query { get; set; }
         private static IPageManager? Manager { get; set; }
+        private static Lazy<ILocalStore?>? LocalStore { get; set; }
 
         public SimpleLogger(IServiceProvider _services)
         {
             Service ??= _services;
             Manager = Service.GetRequiredService<IPageManager>();
             Query = Service.GetRequiredService<IQueryManager>();
-            if (Query != null)
+            LocalStore = Service.GetRequiredService<Lazy<ILocalStore?>>();
+            ResolveCache();
+        }
+
+
+        public static void ResolveCache()
+        {
+            if (Query != null
+                && Manager?.IsReady == true
+                && LocalStore?.Value?.IsReady == true)
             {
                 foreach (var pre in PreLog)
                 {
@@ -120,6 +131,26 @@ namespace FlashCard.Services
         public static int LoggingErrorCount { get; set; } = 0;
         public static bool StopSavingLogs { get; set; } = false;
 
+        public static async Task ForgetAboutManager(
+            string Source,
+            string Title,
+            Exception? exception,
+            string? stackWhenCalled
+        ) {
+            if (Manager?.IsReady == true)
+            {
+                if (exception != null) Manager?.SetError(exception);
+                else
+                {
+                    var reportEx = exception ?? new Exception(Title) { Source = Source };
+                    reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
+                    Manager?.SetError(reportEx);
+                }
+            }
+
+        }
+
+
 
         public static async Task DoAppendForget(
             string Source,
@@ -128,10 +159,15 @@ namespace FlashCard.Services
         )
         {
             var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+
+            _ = ForgetAboutManager(Source, Title, exception, stackWhenCalled);
+            
+            
             if (StopSavingLogs)
             {
                 return;
             }
+
             try
             {
                 DataLayer.Entities.Message newMessage;
@@ -160,6 +196,7 @@ namespace FlashCard.Services
                     };
                 }
 
+
                 if (Manager == null)
                 {
                     PreLog.Push(newMessage);
@@ -168,13 +205,7 @@ namespace FlashCard.Services
                 {
                     _ = newMessage.Save(Query);
                     // so we get a stack trace with it
-                    if (exception != null) Manager?.SetError(exception);
-                    else
-                    {
-                        var reportEx = exception ?? new Exception(Title) { Source = Source };
-                        reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
-                        Manager?.SetError(reportEx);
-                    }
+                    
                 }
             }
             catch (Exception ex)

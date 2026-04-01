@@ -56,6 +56,13 @@ namespace Atrium.Services
 
 
                 MauiProgram.BuildSharedServiceList(webBuilder.Services);
+
+                // always have to use the apps browser instance for the local store
+                //   TODO: web server should be using SQLite anyways
+                webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
+                webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
+                
+                webBuilder.Services.AddSingleton<SimpleLogger>();
                 webBuilder.Services.AddSingleton<CircuitHandler>();
                 webBuilder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
 
@@ -186,7 +193,8 @@ namespace Atrium.Services
 
                 // Run the Web Server in the background
                 _ = webApp.RunAsync().Forget();
-                _ = webApp.Services.GetRequiredService<SimpleLogger>();
+                // don't do this here because we're hijacking mains
+                //_ = webApp.Services.GetRequiredService<SimpleLogger>();
 
                 return webApp;
             }

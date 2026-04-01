@@ -233,9 +233,36 @@ async function checkStatus() {
     }
 }
 
+var ignoreUrlParametersMatching = [/^utm_/]
+
+var stripIgnoredUrlParameters = function(originalUrl,
+    ignoreUrlParametersMatching) {
+        var url = new URL(originalUrl)
+        // Remove the hash; see https://github.com/GoogleChrome/sw-precache/issues/290
+        url.hash = ''
+        url.search = url.search.slice(1) // Exclude initial '?'
+            .split('&') // Split into an array of 'key=value' strings
+            .map(function(kv) {
+                return kv.split('='); // Split each 'key=value' string into a [key, value] array
+            })
+            .filter(function(kv) {
+                return ignoreUrlParametersMatching.every(function(ignoredRegex) {
+                    return !ignoredRegex.test(kv[0]); // Return true iff the key doesn't match any of the regexes.
+                })
+            })
+            .map(function(kv) {
+                return kv.join('='); // Join each [key, value] array into a 'key=value' string
+            })
+            .join('&'); // Join the array of 'key=value' strings into a string with '&' in between each
+
+        return url.pathname.replace(/^\//ig, '') + (url.search ? ('?' + url.search) : '')
+    }
+
+
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
+     var url = stripIgnoredUrlParameters(event.request.url, ignoreUrlParametersMatching)
     const url = new URL(event.request.url);
     const isNavigation = event.request.mode === 'navigate';
     let assetUrl = getManifestMatch(url.pathname);

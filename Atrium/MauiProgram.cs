@@ -92,6 +92,8 @@ namespace Atrium
 
 
             BuildSharedServiceList(builder.Services);
+
+            builder.Services.AddSingleton<ILocalStore, LocalStore>();
             builder.Services.AddSingleton<ITitleService, Services.TitleService>();
             builder.Services.AddMauiBlazorWebView();
 #if DEBUG
@@ -104,8 +106,10 @@ namespace Atrium
             builder.Services.AddSingleton<WebApplication>(sp => AtriumWebServer.Current);
             // get shared circuit state from web server
             builder.Services.AddSingleton<CircuitHandler>(sp => AtriumWebServer.Current.Services.GetRequiredService<CircuitHandler>());
+            // get a shared logger
+            builder.Services.AddSingleton<SimpleLogger>(sp => AtriumWebServer.Current.Services.GetRequiredService<SimpleLogger>());
 #endif
-          
+
 
             var mauiApp = builder.Build();
 

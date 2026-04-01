@@ -34,7 +34,7 @@ namespace DataLayer.Utilities
         //public IJSObjectReference? Module { get; }
         bool NeedsInitialize { get; }
 
-
+        bool IsReady { get; }
     }
 
     public interface IRenderStateProvider
@@ -119,6 +119,7 @@ namespace DataLayer.Utilities
         private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public bool NeedsInitialize { get; protected set; } = true;
 
+        public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
         public LocalStore(IRenderStateProvider _rendered)
         {
