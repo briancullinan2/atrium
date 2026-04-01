@@ -117,3 +117,129 @@ window.interconnect = {
 
 };
 
+var startParameters = null;
+window.startBlazor = function (type = "server") {
+    var allParameters = [
+        ...Blazor.parse(document)];
+    if (startParameters == null)
+        startParameters = allParameters[0]
+    var geminiSaidICouldnt = {
+           
+
+        //server: startParameters,
+            
+        auto: {
+            type: type,
+            prerenderId: startParameters?.predrenderId,
+            key: {
+                locationHash: startParameters?.key?.locationHash,
+                formattedKey: '',
+            },
+            sequence: startParameters?.sequence,
+            descriptor: startParameters?.descriptor,
+            assembly: "FlashCard",
+            typeName: "FlashCard.Routes",
+            parameterDefinitions: "[]",
+            parameterValues: "[]",
+            start: startParameters?.start,
+            end: startParameters?.end,
+            uniqueId: 0,
+        },
+        /*
+        */
+
+        /*
+            
+        webassembly: {
+            assembly: "FlashCard",
+            end: null,
+            key: {
+                locationHash: startParameters?.key?.locationHash,
+                formattedKey: '',
+            },
+            parameterDefinitions: "[]",
+            parameterValues: "[]",
+            prerenderId: startParameters?.predrenderId,
+            start: null,
+            type: "webassembly",
+            uniqueId: 0,
+        }
+        */
+    };
+    Blazor.start({
+
+        dotnet: "/_framework/dotnet.js",
+
+        preferMine: true,
+        
+        ssr: { disableStreamingContent: true },
+
+
+        geminiSaidICouldnt: {
+            server: [...Blazor.parse(document, {geminiSaidICouldnt})][0]
+        },
+
+        /*webAssembly: {
+            loadBootResource: function(type, name, defaultUri, integrity) {
+                //console.log(`Loading: ${type}, Name: ${name}`);
+
+                // Check if the framework is looking for the dotnet runtime JS
+                if (type === 'dotnetjs' || name === 'dotnet.js') {
+                    // RETURN YOUR CUSTOM PATH HERE
+                    // The snippet says: if ("string" == typeof n) { return await import(e) }
+                    return `/_framework/dotnet.js`;
+                }
+
+                // You can also override the WASM runtime or the DLLs
+                //if (type === 'dotnetwasm') {
+                //    return `/_framework/custom-bin/dotnet.native.wasm`;
+                //}
+
+                // Fallback to the default path for everything else
+                return defaultUri;
+            }
+        },*/
+
+        
+        
+
+
+        circuit: {
+            // LogLevel: 0 (Trace), 1 (Debug), 2 (Information), etc.
+            logLevel: 1,
+
+            // Configuration for the reconnection logic
+            reconnectionHandler: {
+                onConnectionDown: (options, error) => dotnetHelper.invokeMethodAsync('OnReconnected', error),
+                onConnectionUp: () => dotnetHelper.invokeMethodAsync('OnReconnected', "hide")
+            },
+
+
+
+
+
+
+            webAssembly: {
+                // If you want to load custom DLLs or change the environment 
+                // without relying on the HTML comments:
+                environment: "Development",
+                loadBootResource: function(type, name, defaultUri, integrity) {
+                    // Manual intervention on the file loading
+                    return defaultUri;
+                }
+            },
+            // Adjusting the internal circuit behavior
+            configureSignalR: function(builder) {
+                const afToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    
+                builder.withUrl("_blazor", {
+                    headers: { "X-XSRF-TOKEN": afToken }, // Standard header name
+                    skipNegotiation: true,
+                    transport: 1 
+                });
+            }
+        }
+    });
+}
+
+

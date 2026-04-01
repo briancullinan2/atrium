@@ -57,7 +57,7 @@
     <Routes @rendermode="preferredMode" />
     @*<FlashCard.Pages.Shared.ReconnectModal />*@
     <script src="/_content/FlashCard/main.js"></script>
-    <script src="/_framework/blazor.web.js" autostart="false"></script>
+    <script src="/_content/FlashCard/blazor.web.js" autostart="false"></script>
     <!--
     <script src="/_framework/blazor.server.js" autostart="false"></script>
     <script src="/_framework/blazor.webview.js" autostart="false"></script>
@@ -71,7 +71,7 @@
     [Inject] public IHttpContextAccessor? Context { get; set; } = null;
 
     // Default to Wasm, but allow an override
-    IComponentRenderMode preferredMode = RenderMode.InteractiveWebAssembly;
+    IComponentRenderMode preferredMode = RenderMode.InteractiveServer;
 
     [Inject] public NavigationManager? Navigation { get; set; } = null;
 

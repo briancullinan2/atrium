@@ -1004,10 +1004,10 @@
    , $ = Symbol();
     function H(e) {
         const { start: t, end: n } = e
-   , o = t[$];
+            , o = t[$];
         if (o) {
-            if (o !== e)
-                throw new Error("The start component comment was already associated with another component descriptor.");
+            //if (o !== e)
+            //    throw new Error("The start component comment was already associated with another component descriptor.");
             return t
         }
         const r = t.parentNode;
@@ -7144,7 +7144,7 @@
                         if (n)
                             throw new Error(`For a ${t} resource, custom loaders must supply a URI string.`)
                     }
-                    return await import("./dotnet.js")
+                    return await import(new URL("/_framework/dotnet.js", document.baseURI).toString())
                 }(e)
    , o = function(e, t) {
        const n = {
@@ -7462,8 +7462,8 @@
    }
    ));
     function qr(e) {
-        if (xr)
-            throw new Error("WebAssembly options have already been configured.");
+        //if (xr)
+        //    throw new Error("WebAssembly options have already been configured.");
         !async function(e) {
             const t = await e;
             xr = t,
@@ -7925,15 +7925,19 @@
         }
         var n
     }
-    function di(e) {
+    function di(e, config) {
         const t = It(e, "server")
-   , n = It(e, "webassembly")
-   , o = It(e, "auto")
-   , r = [];
-        for (const e of [...t, ...n, ...o]) {
+           , n = It(e, "webassembly")
+           , o = It(e, "auto")
+           , v = Object.values(config?.geminiSaidICouldnt || {})
+           , r = [];
+        for (const e of [...v, ...t, ...n, ...o]) {
+            if(!e) continue;
             const t = X(e.start);
-            if (t)
-                r.push(t);
+            if (t) {
+                t.type = e.type;
+                r.push(e.type == "webassembly" ? e : t);
+            }
             else {
                 H(e);
                 const { start: t, end: n } = e;
@@ -8186,7 +8190,7 @@
     function Di(e, t) {
         Ti = t,
         e?.disableDomPreservation && (Ai = !1),
-        customElements.define("blazor-ssr-end", Ni)
+        customElements.get("blazor-ssr-start") || customElements.define("blazor-ssr-start", Ni)
     }
     class Ni extends HTMLElement {
         connectedCallback() {
@@ -8568,7 +8572,7 @@
     }
     let qi, Ji = !1;
     function Vi(e) {
-        if (Ji)
+        if (window.dotnet)
             throw new Error("Blazor has already started.");
         Ji = !0,
         e = e || {},
@@ -8602,7 +8606,7 @@
         window.addEventListener("popstate", Ci),
         ke = _i),
         function(e) {
-            customElements.define("blazor-focus-on-navigate", zi),
+            customElements.get("blazor-focus-on-navigate") || customElements.define("blazor-focus-on-navigate", zi),
             e.addEventListener("enhancednavigationstart", $i),
             e.addEventListener("enhancednavigationend", Hi),
             document.addEventListener("focusin", ji),
@@ -8622,32 +8626,34 @@
             if (!n)
                 return new Xo(!1, t);
             const o = (JSON.parse(atob(n)) ?? []).map((e => ({
-       name: e
-   })))
-   , r = new Xo(!1, t);
+                name: e
+            })))
+           , r = new Xo(!1, t);
             return await r.importInitializersAsync(o, [e]),
-   r
+           r
         }(e, new Et(t.logLevel));
         !function(e) {
-            if (Zo)
-                throw new Error("Circuit options have already been configured.");
+            //if (Zo)
+                //throw new Error("Circuit options have already been configured.");
             Go = async function(e) {
                 const t = await e;
                 Zo = Wo(t)
             }(e)
         }(Xi(n, t)),
         qr(Xi(n, e.webAssembly)),
-        function(e) {
-            const t = di(e)
-   , n = function(e) {
-       const t = xt(e, At, "options");
-       if (t)
-           return JSON.parse(t)
-   }(e);
+        function(e, config) {
+            const t = di(e, config)
+                , n = function(e) {
+                const t = xt(e, At, "options");
+                if (t)
+                    return JSON.parse(t)
+            }(e);
             ri?.setWebAssemblyOptions(n);
-            for (const e of t)
+            const wtfIsTheDifference = 
+                config?.preferMine ? [...Object.values(config?.geminiSaidICouldnt)] : t;
+            for (const e of wtfIsTheDifference)
                 ri?.registerComponent(e)
-        }(document),
+        }(document, e),
         qi.onDocumentUpdated(),
         async function(e) {
             const t = await e;
@@ -8658,6 +8664,7 @@
         return await e,
    t
     }
+    St.parse = di,
     St.start = Vi,
     window.DotNet = e,
     document && document.currentScript && "false" !== document.currentScript.getAttribute("autostart") && Vi()

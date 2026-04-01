@@ -193,31 +193,3 @@ export function restoreState() {
     }, {})
 }
 
-
-export function startBlazor() {
-    Blazor.start({
-        circuit: {
-            // LogLevel: 0 (Trace), 1 (Debug), 2 (Information), etc.
-            logLevel: 1,
-
-            // Configuration for the reconnection logic
-            reconnectionHandler: {
-                onConnectionDown: (options, error) => dotnetHelper.invokeMethodAsync('OnReconnected', error),
-                onConnectionUp: () => dotnetHelper.invokeMethodAsync('OnReconnected', "hide")
-            },
-
-            // Adjusting the internal circuit behavior
-            configureSignalR: function(builder) {
-                const afToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
-    
-                builder.withUrl("_blazor", {
-                    headers: { "X-XSRF-TOKEN": afToken }, // Standard header name
-                    skipNegotiation: true,
-                    transport: 1 
-                });
-            }
-        }
-    });
-}
-
-
