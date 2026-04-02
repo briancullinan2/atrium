@@ -155,7 +155,6 @@ async function fetchAsset(url, key) {
         if (!navigator.onLine || err instanceof TypeError)
         {
             isOffline = true;
-            debugger;
         }
 
         // Specifically catch the timeout so you can log it distinctly from a 404
@@ -310,7 +309,6 @@ async function checkStatus() {
         // Network failed unexpectedly (tunnel dropped, etc.)
         if (!navigator.onLine || err instanceof TypeError) {
             isOffline = true; 
-            debugger;
         }
     }
 }
@@ -419,8 +417,6 @@ self.addEventListener('fetch', event => {
     /*
     if (needsRefresh && isNavigation) {
         console.log('Serving refresh page for navigation to trigger update');
-
-        debugger;
 
         self.registration.unregister();
 

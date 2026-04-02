@@ -56,7 +56,7 @@ namespace FlashCard.Utilities.Extensions
                 Nav.NavigateTo(GetUri((TComponent c) => new TComponent() { }));
                 return;
             }
-            Nav.NavigateTo(GetUri(initializer), true);
+            Nav.NavigateTo(GetUri(initializer), replace: true);
         }
 
 

@@ -209,7 +209,7 @@
 
         if(contextKey != null)
         {
-            RedirectToLogin.InFlight[contextKey] = null;
+            PageManager.InFlight[contextKey] = null;
         }
 
         _isTransitioning = false;
@@ -247,7 +247,7 @@
         contextKey = "Internal";
         // so web clients don't interfere with desktop clients
         var httpContext = Services.GetService<IHttpContextAccessor>();
-        if (httpContext != null)
+        if (httpContext != null && httpContext.HttpContext != null)
         {
             contextKey = httpContext.HttpContext.Connection.RemoteIpAddress.ToString();
         }

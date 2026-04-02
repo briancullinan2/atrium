@@ -25,7 +25,7 @@ namespace Atrium.Logging
 
         public interface ILog
         {
-            static abstract SimpleLogger GetLogger(string filePath);
+            //static abstract SimpleLogger GetLogger(string filePath);
             Action<object, Exception?> this[string level] { get; set; }
             string? Filepath { get; set; }
             string? Category { get; set; }

@@ -3,6 +3,7 @@
 @page "/account/list"
 @page "/account/delete"
 @implements IDisposable
+@attribute [Authorize(Roles = "!Guest")]
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -77,7 +78,8 @@
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
     }
-
+   
+    /*
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -89,6 +91,8 @@
             Nav.NavigateTo(NavigationExtensions.GetUri<Pages.Landing.Login>());
         }
     }
+    */
+
 
     protected bool IsClosing = false;
 

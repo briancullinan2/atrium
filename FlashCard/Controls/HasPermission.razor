@@ -92,25 +92,39 @@ else
 
             var user = LoginService.User;
         
-            // 2. If there are ANY Authorize attributes but no user, they are not authorized
             if (AuthorizeAttributes.Any() && user == null) return false;
+
 
             // 3. Admin Bypass (The "God Mode" check)
             if (user?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true) return true;
 
-            // 4. Check standard [Authorize(Roles = "...")]
             foreach (var attr in AuthorizeAttributes)
             {
+                // 2. Check Roles (Support for '!' prefix)
                 if (!string.IsNullOrEmpty(attr.Roles))
                 {
-                    var requiredRoles = attr.Roles.Split(',');
-                    if (!requiredRoles.Any(role => user?.Roles.Any(r => r.Name == role.Trim()) == true))
-                        return false; // User lacks a required standard role
+                    var roles = attr.Roles.Split(',').Select(x => x.Trim());
+                    foreach (var role in roles)
+                    {
+                        bool isNegated = role.StartsWith("!");
+                        string actualRole = isNegated ? role.Substring(1) : role;
+                        bool hasRole = user?.Roles.Any(r => string.Equals(r.Name, actualRole, StringComparison.InvariantCultureIgnoreCase)) == true;
+
+                        // If it starts with ! and user HAS it, or no ! and user LACKS it... fail.
+                        if ((isNegated && hasRole) || (!isNegated && !hasRole))
+                            return false;
+                    }
                 }
-            
-                // Note: If you use [Authorize(Policy = "...")],
-                // you could map Policy names to your Permission strings here.
+
+                // 3. Map "Policy" to your "Permissions" (User.Settings)
+                if (!string.IsNullOrEmpty(attr.Policy))
+                {
+                    // Check if the user has a setting that matches the Policy name
+                    if (user?.Settings.Any(s => s.Name == attr.Policy) != true)
+                        return false;
+                }
             }
+
 
             // Final check against User Settings/Permissions
             return RequiredPermission;
@@ -137,7 +151,7 @@ else
 
     private RenderFragment DefaultAuthorizing => __builder =>
     {
-        <div class="flash-card hip-error-trace">
+        <div class="flash-card hip-error-trace animate-in">
             <h3 class="loading-shimmer">Verifying Identity...</h3>
             <p>If you are not redirected automatically, <a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Click here</a>.</p>
         </div>

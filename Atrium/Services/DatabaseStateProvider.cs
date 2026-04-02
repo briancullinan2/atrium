@@ -22,9 +22,9 @@ using FlashCard.Utilities.Extensions;
 
 namespace Atrium.Services
 {
-    internal class DatabaseStateProvider(IQueryManager _query,
-        IPageManager Page
+    internal class DatabaseStateProvider(IQueryManager _query
 #if WINDOWS
+        , IPageManager Page
         , IHttpContextAccessor? _httpContextAccessor = null
 #endif
     ) : AuthService

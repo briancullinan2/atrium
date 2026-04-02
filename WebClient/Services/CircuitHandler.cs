@@ -90,7 +90,7 @@ namespace WebClient.Services
 
         private readonly HubConnection? _connection;
 
-        public CircuitHandler(NavigationManager Navigation, IPageManager page, IRenderStateProvider rendered, HubConnection? connection = null)
+        public CircuitHandler(IPageManager page, IRenderStateProvider rendered, HubConnection? connection = null)
         {
             Rendered = rendered;
             Rendered.OnEmptied += NotifyEmptied;

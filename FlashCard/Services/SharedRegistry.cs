@@ -48,7 +48,7 @@ namespace FlashCard.Services
             Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>().CreateDbContext());
             Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>().CreateDbContext());
 
-            Services.AddSingleton<IPageManager, PageManager>();
+            Services.AddScoped<IPageManager, PageManager>();
             Services.AddSingleton<IRenderStateProvider, RenderStateProvider>();
         }
     }

@@ -14,7 +14,7 @@ namespace FlashCard.Services
         void Error(object message, Exception? ex = null);
         void Fatal(object message, Exception? ex = null);
         void Debug(object message, Exception? ex = null);
-        static abstract SimpleLogger GetLogger(string filePath);
+        //static abstract SimpleLogger GetLogger(string filePath);
         Action<object, Exception?> this[string level] { get; set; }
         string? Filepath { get; set; }
         string? Category { get; set; }

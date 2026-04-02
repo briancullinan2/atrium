@@ -160,7 +160,6 @@ window.startBlazor = function (type = "server") {
             .then(function (response) {
                 try {
                     if(response) {
-                        debugger
                         return startBlazor("webassembly");
                     }
                     else 
@@ -170,7 +169,7 @@ window.startBlazor = function (type = "server") {
 
                 }
                 catch (e) {
-                    debugger;
+                    console.error(e)
                 }
             });
     }
@@ -260,8 +259,7 @@ window.startBlazor = function (type = "server") {
     try {
         Blazor.start(blazorConfig);
     } catch (e) {
-        debugger;
-        console.log(e)
+        console.error(e)
         if (typeof (type) != "string") {
              startBlazor("webassembly");
         }
@@ -333,7 +331,6 @@ async function manageServiceWorker() {
             };
 
             // Ping the worker
-            debugger;
             const registration2 = await navigator.serviceWorker.getRegistration();
             registration2.active.postMessage({ type: 'DEREGISTER' }, [messageChannel2.port2]);
 

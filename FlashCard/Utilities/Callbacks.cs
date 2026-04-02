@@ -13,11 +13,12 @@ namespace FlashCard.Utilities
 {
     public static class Callbacks
     {
-        public static async Task TriggerEvent(this IComponent component, MouseEventArgs mouse, string eventId)
+        public static async Task TriggerEvent(this IComponent component, string eventId)
         {
             // You can even pass data back to the JS listener via the second parameter
-            var Page = component.Service()?.GetRequiredService<IPageManager>();
-            var JS = component.Runtime();
+            var scope = component.Service()?.CreateScope();
+            var Page = scope?.ServiceProvider.GetRequiredService<IPageManager>();
+            //var JS = component.Runtime();
             if (Page == null) return;
             await Page.TriggerEvent(eventId, new
             {
@@ -29,7 +30,7 @@ namespace FlashCard.Utilities
 
 
         public static async Task TriggerAppStop(this IComponent component, MouseEventArgs mouse)
-            => _ = TriggerEvent(component, mouse, "app-stop");
+            => _ = TriggerEvent(component, "app-stop");
 
     }
 }

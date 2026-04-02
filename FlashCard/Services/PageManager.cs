@@ -70,6 +70,7 @@ namespace FlashCard.Services
         ValueTask TriggerEvent(string eventName, object? detail = null);
         bool IsReady { get; }
         int OffsetInMinutes { get; }
+        internal Dictionary<string, string?> InFlight { get; }
     }
 
     public enum PageAction
@@ -156,6 +157,9 @@ namespace FlashCard.Services
     {
 
         #region "Initialization"
+        public Dictionary<string, string?> InFlight { get; } = [];
+
+
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
         private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);

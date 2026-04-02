@@ -61,10 +61,15 @@ namespace Atrium.Services
                 //   TODO: web server should be using SQLite anyways
                 webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
                 webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
-                
-                webBuilder.Services.AddSingleton<SimpleLogger>();
+
+                // get a shared logger
+                webBuilder.Services.AddScoped<SimpleLogger>(sp => 
+                    MauiProgram.Current.Services.GetService<SimpleLogger>() 
+                    ?? sp.GetKeyedService<SimpleLogger>("web")
+                    ?? new SimpleLogger(sp));
+                webBuilder.Services.AddKeyedScoped<SimpleLogger>("web");
                 webBuilder.Services.AddSingleton<CircuitHandler>();
-                webBuilder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
+                webBuilder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
 
                 webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
 
