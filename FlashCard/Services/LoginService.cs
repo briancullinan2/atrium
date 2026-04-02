@@ -22,6 +22,7 @@ namespace FlashCard.Services
         DataLayer.Entities.User? User { get; set; }
         event Action<bool>? OnLoginChanged;
         event Action<DataLayer.Entities.User?>? OnUserChanged;
+        bool IsReady { get; }
     }
 
 
@@ -30,15 +31,21 @@ namespace FlashCard.Services
         public static bool FirstTime { get; set; } = true;
         public bool Login { get; set; } = false;
         public DataLayer.Entities.User? User { get; set; } = null;
-        public AuthenticationStateProvider Auth { get; private set; }
+        public IRenderStateProvider Rendered { get; }
+        public IAuthService Auth { get; private set; }
         public IQueryManager Query { get; private set; }
 
         public event Action<bool>? OnLoginChanged;
         public event Action<DataLayer.Entities.User?>? OnUserChanged;
 
 
+        public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
+
+        private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public void Dispose()
         {
+            Rendered.OnEmptied -= NotifyEmptied;
             Auth.AuthenticationStateChanged -= OnAuthStateChanged;
             GC.SuppressFinalize(this);
         }
@@ -46,6 +53,8 @@ namespace FlashCard.Services
 
         private void OnAuthStateChanged(Task<AuthenticationState> task) => _ = SynchronizeUserAsync();
 
+
+        public Task ModuleInitialize { get => _restartRequired.Task; }
 
 
         private async Task SynchronizeUserAsync()
@@ -87,23 +96,37 @@ namespace FlashCard.Services
             }
 
             Console.WriteLine("Logged in: " + User?.Username);
+
+            _restartRequired.TrySetResult(true);
+
             // Notify any UI components listening to LoginService
             _ = SetUser(User);
             // this is cool because if they login with QR code it will automatically reroute
             _ = SetLoginMode(false);
 
+
         }
 
-        public LoginService(AuthenticationStateProvider _auth, IQueryManager _query)
+        public LoginService(IAuthService _auth, IQueryManager _query, IRenderStateProvider _rendered)
         {
+            Rendered = _rendered;
             Auth = _auth;
             Query = _query;
             Auth.AuthenticationStateChanged += OnAuthStateChanged;
-
+            Rendered.OnEmptied += NotifyEmptied;
             // first time is static so really first time
             if (!FirstTime) return;
             FirstTime = false;
 
+            _ = SynchronizeUserAsync();
+        }
+
+
+
+        private void NotifyEmptied()
+        {
+            if (_restartRequired.Task.IsCompleted)
+                _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
             _ = SynchronizeUserAsync();
         }
 

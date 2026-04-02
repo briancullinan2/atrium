@@ -1,22 +1,185 @@
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Services
+@using System.Reflection
 @inject ILoginService LoginService
+@implements IDisposable
+
 
 @if (IsAuthorized)
 {
-    <div class="protected" aria-disable="@(!IsAuthorized ? "disabled" : "")">
-        @ChildContent
-    </div>
+    @if ((AuthorizedLayout ?? Layout ?? DefaultLayout) != null)
+    {
+        <LayoutView Layout="@(AuthorizedLayout ?? Layout ?? DefaultLayout)">
+            @RenderPageWithUrlParameters
+        </LayoutView>
+    }
+    else
+    {
+        @RenderPageWithUrlParameters
+    }
+}
+else if (IsLoading)
+{
+    @if ((LoadingLayout ?? Layout ?? DefaultLayout) != null)
+    {
+        <LayoutView Layout="@(LoadingLayout ?? Layout ?? DefaultLayout)">
+            @(Authorizing ?? DefaultAuthorizing)
+        </LayoutView>
+    }
+    else
+    {
+        @(Authorizing ?? DefaultAuthorizing)
+    }
+    
+}
+else
+{
+    @if ((NotAuthorizedLayout ?? Layout ?? DefaultLayout) != null)
+    {
+        <LayoutView Layout="@(NotAuthorizedLayout ?? Layout ?? DefaultLayout)">
+            @(NotAuthorized ?? DefaultNotAuthorized)
+        </LayoutView>
+    }
+    else
+    {
+        @(NotAuthorized ?? DefaultNotAuthorized)
+    }
+   
 }
 
-@code {
-    [Parameter] public string? Permission { get; set; } = null;
-    [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private bool IsAuthorized =>
+
+@code {
+    [Parameter] public string? Permission { get; set; }
+    [Parameter] public RouteData? RouteData { get; set; } = default!;
+    [Parameter] public Type? DefaultLayout { get; set; }
+    [Parameter] public Type? Layout { get; set; }
+    [Parameter] public Type? NotAuthorizedLayout { get; set; }
+    [Parameter] public Type? LoadingLayout { get; set; }
+    [Parameter] public Type? AuthorizedLayout { get; set; }
+    [Parameter] public AuthenticationState? Context { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        LoginService.OnUserChanged += NotifyUserChanged;
+    }
+
+    public void NotifyUserChanged(User? user)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+
+    public void Dispose()
+    {
+        LoginService.OnUserChanged -= NotifyUserChanged;
+    }
+
+    private bool IsAllowAnonymous =>
+        RouteData?.PageType.GetCustomAttribute<AllowAnonymousAttribute>() != null;
+
+    private IEnumerable<AuthorizeAttribute> AuthorizeAttributes =>
+        RouteData?.PageType.GetCustomAttributes<AuthorizeAttribute>(inherit: true) ?? [];
+
+    private bool IsAuthorized
+    {
+        get
+        {
+            // 1. AllowAnonymous always wins
+            if (IsAllowAnonymous) return true;
+
+            var user = LoginService.User;
+        
+            // 2. If there are ANY Authorize attributes but no user, they are not authorized
+            if (AuthorizeAttributes.Any() && user == null) return false;
+
+            // 3. Admin Bypass (The "God Mode" check)
+            if (user?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true) return true;
+
+            // 4. Check standard [Authorize(Roles = "...")]
+            foreach (var attr in AuthorizeAttributes)
+            {
+                if (!string.IsNullOrEmpty(attr.Roles))
+                {
+                    var requiredRoles = attr.Roles.Split(',');
+                    if (!requiredRoles.Any(role => user?.Roles.Any(r => r.Name == role.Trim()) == true))
+                        return false; // User lacks a required standard role
+                }
+            
+                // Note: If you use [Authorize(Policy = "...")],
+                // you could map Policy names to your Permission strings here.
+            }
+
+            // Final check against User Settings/Permissions
+            return RequiredPermission;
+        }
+    }
+
+    // The "Main" content or tagged <Authorized> content
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Authorized { get; set; }
+    
+    // The templates for other states
+    [Parameter] public RenderFragment? NotAuthorized { get; set; }
+    [Parameter] public RenderFragment? Authorizing { get; set; }
+
+    // Logic for loading state (e.g., if LoginService is still initializing)
+    private bool IsLoading => LoginService.User == null && !LoginService.IsReady;
+
+    private bool RequiredPermission =>
         Permission == null ||
         Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
         LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true ||
-        LoginService.User?.Settings.Any(s => s.Name == nameof(DefaultPermissions.Unrestricted) || 
+        LoginService.User?.Settings.Any(s => s.Name == nameof(DefaultPermissions.Unrestricted) ||
             s.Name == Permission) == true;
+
+    private RenderFragment DefaultAuthorizing => __builder =>
+    {
+        <div class="flash-card hip-error-trace">
+            <h3 class="loading-shimmer">Verifying Identity...</h3>
+            <p>If you are not redirected automatically, <a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Click here</a>.</p>
+        </div>
+    };
+
+    private RenderFragment DefaultNotAuthorized => __builder =>
+    {
+        <RedirectToLogin />
+    };
+
+    private RenderFragment RenderPageWithUrlParameters => __builder =>
+    {
+        if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        @if (Authorized != null)
+        {
+            @Authorized
+        }
+        if(ChildContent != null || Authorized != null)
+        {
+            return;
+        }
+        if (RouteData == null)
+        {
+            <NotFoundControl />
+            return;
+        }
+
+        
+
+        __builder.OpenComponent(0, RouteData.PageType);
+
+        // Map every parameter found in the URL to the Component
+        int sequence = 1;
+        foreach (var kvp in RouteData.RouteValues)
+        {
+            __builder.AddAttribute(sequence++, kvp.Key, kvp.Value);
+        }
+
+        __builder.CloseComponent();
+    };
+
 }

@@ -16,6 +16,8 @@ namespace FlashCard.Services
     public interface IAuthService
     {
         Task MarkUserAsAuthenticated(ClaimsPrincipal user);
+        event AuthenticationStateChangedHandler? AuthenticationStateChanged;
+        Task<AuthenticationState> GetAuthenticationStateAsync();
     }
 
 
@@ -106,7 +108,7 @@ namespace FlashCard.Services
         ];
 
 
-
+        //public abstract Task<AuthenticationState> GetAuthenticationStateAsync();
         public abstract Task MarkUserAsAuthenticated(ClaimsPrincipal user);
 
         public static (string AuthUrl, string TokenUrl, string UserInfoUrl) GetOAuthEndpoints(AuthID id)

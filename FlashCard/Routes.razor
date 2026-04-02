@@ -1,30 +1,21 @@
-﻿@using FlashCard.Pages
+﻿@using DataLayer.Utilities
+@using DataLayer.Utilities.Extensions
+@using FlashCard.Pages
 @using FlashCard.Controls
+@using FlashCard.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Http
 @inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject IRenderStateProvider Rendered
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-                <NotAuthorized>
-                    @* If they aren't logged in, they see this instead of the page *@
-                    <RedirectToLogin />
-                </NotAuthorized>
-                <Authorizing>
-                    <main>
-                        <article class="content course-container">
-                            <div class="flash-card hip-error-trace">
-                                <h3 class="loading-shimmer">Verifying Identity...</h3>
-                                <p>If you are not redirected automatically, <a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Click here</a>.</p>
-                            </div>
-                        </article>
-                    </main>
-                </Authorizing>
-            </AuthorizeRouteView>
-            @*<RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />*@
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            <HasPermission RouteData="@routeData" Context="State" NotAuthorizedLayout="typeof(Layout.MainLayout)" LoadingLayout="typeof(Layout.MainLayout)">
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </HasPermission>
         </Found>
         <NotFound>
             @* DO NOT leave this empty or put complex logic here yet *@
@@ -35,3 +26,37 @@
     </Router>
 </CascadingAuthenticationState>
 
+@code
+{
+
+    protected AuthenticationState? State { get; set; }
+
+    public void Dispose()
+    {
+        Rendered.OnEmptied -= NotifyReload;
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Rendered.OnEmptied += NotifyReload;
+    }
+
+    public void NotifyReload()
+    {
+        _ = AuthService.GetAuthenticationStateAsync()
+        .Then(async state =>
+        {
+            State = state;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        State = await AuthService.GetAuthenticationStateAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}
