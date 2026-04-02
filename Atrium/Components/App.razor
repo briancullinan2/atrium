@@ -44,6 +44,20 @@
         manageServiceWorker();
 
     </script>
+
+    @if (IsDebug)
+    {
+        <script>
+            (function() {
+            const originalInvoke = DotNet.invokeMethodAsync;
+            DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+            console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+            return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+            };
+            })();
+        </script>
+    }
+
 </body>
 
 </html>
@@ -55,11 +69,15 @@
     IComponentRenderMode preferredMode = RenderMode.InteractiveServer;
 
     [Inject] public NavigationManager? Navigation { get; set; } = null;
+    
+    private bool IsDebug = false;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
+#if DEBUG
+        IsDebug = true;
+#endif
 
         if(Navigation?.Uri.Contains("#mode=server") == true)
         {

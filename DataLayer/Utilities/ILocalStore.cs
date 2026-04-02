@@ -252,7 +252,10 @@ namespace DataLayer.Utilities
                 var needsInstall = await Module!.InvokeAsync<Tuple<string?, object?, bool?, List<string?>?>>("needsInstall", db.Key, columnNames);
                 if (needsInstall.Item3 == true || needsInstall.Item4?.Count > 0)
                 {
-                    await DeleteOldDatabaseAsync(needsInstall.Item1);
+                    try
+                    {
+                        await DeleteOldDatabaseAsync(needsInstall.Item1);
+                    } catch { }
                     result = true;
                 }
             }

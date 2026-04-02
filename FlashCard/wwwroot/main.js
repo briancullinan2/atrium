@@ -125,10 +125,13 @@ async function shouldStartInWebAssembly(url) {
   await new Promise(resolve => setTimeout(resolve, 0));
 
   const entry = performance.getEntriesByName(new URL(url, window.location.origin).href).pop();
+  if (response.headers.get('X-Service-Worker-Handled')) {
+    return true;
+  }
 
   if (entry) {
     if (entry.workerStart > 0) {
-      return true;
+      //return true;
     } else if (entry.transferSize === 0) {
       //console.log("Source: Browser HTTP Cache (Disk/Memory)");
     } else {
@@ -152,17 +155,17 @@ window.startBlazor = function (type = "server") {
              return startBlazor("webassembly");
         }
 
-        return shouldStartInWebAssembly('/version.json')
+        return shouldStartInWebAssembly('/version.json?t=' + Date.now())
             .catch(function (response) { return response; })
             .then(function (response) {
                 try {
-
                     if(response) {
-                         return startBlazor("webassembly");
+                        debugger
+                        return startBlazor("webassembly");
                     }
                     else 
                     {
-                         return startBlazor("server");
+                        return startBlazor("server");
                     }
 
                 }
@@ -273,7 +276,7 @@ async function manageServiceWorker() {
     // 1. Get the Server's Truth first (our Token/Version)
     let serverUpdate = null;
     try {
-        const vRes = await fetch('/version.json', { cache: 'no-store' });
+        const vRes = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
         const handshake = await vRes.json();
         serverUpdate = handshake[1]; 
     } catch (e) {
@@ -290,7 +293,11 @@ async function manageServiceWorker() {
         messageChannel.port1.onmessage = (event) => {
             if (event.data?.type === 'VERSION_REPORT') {
                 isCheckDone = true;
-                swVersion = JSON.parse(new TextDecoder('utf-8').decode(event.data.version))[1];
+                try {
+                    if(event.data.version)
+                        swVersion = JSON.parse(new TextDecoder('utf-8').decode(event.data.version))[1];
+                }
+                catch (e) {}
             }
         };
 
@@ -351,7 +358,7 @@ async function manageServiceWorker() {
         return; // don't register unless we have a valid version from server
     }
 
-    // 4. Always try the registration (this either updates the existing or starts fresh)
+    debugger;
     const swUrl = '/service-worker.published.js?t=' + Date.now();
     navigator.serviceWorker.register(swUrl)
         .then(reg => {

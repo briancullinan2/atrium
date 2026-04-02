@@ -1,26 +1,28 @@
 ﻿// wwwroot/js/dbStore.js
 
 const DB_VERSION = 1 // Increment this when you add new C# Entities!
-const DB_NAME = "AtriumCache" + DB_VERSION
+const LOCAL_DB_NAME = "AtriumCache" + DB_VERSION
+const DB_NAME = "AtriumOffline"
 
 export async function getDB(dbName = null, dbVersion = null) {
     return new Promise((rs, rj) => {
-        const req = indexedDB.open(dbName || DB_NAME, dbVersion || DB_VERSION)
+        const req = indexedDB.open(dbName || LOCAL_DB_NAME, dbVersion || DB_VERSION)
         req.onsuccess = () => rs(req.result)
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)
         }
         // Note: setupStore handles the onupgradeneeded logic
-        return [dbName || DB_NAME, dbVersion || DB_VERSION]
+        return [dbName || LOCAL_DB_NAME, dbVersion || DB_VERSION]
     })
 }
 
 export async function deleteOldDatabase(dbName = null) {
     return new Promise((rs) => {
-        const req = indexedDB.deleteDatabase(dbName || DB_NAME)
+        const req = indexedDB.deleteDatabase(dbName || LOCAL_DB_NAME)
         req.onsuccess = () => rs(true)
         req.onerror = () => rs(false) // Silent fail is usually fine for cleanup
+        req.onblocked = () => rs(true) 
     })
 }
 
@@ -33,13 +35,15 @@ export async function getDatabaseMetadata() {
         return []
     }
     const dbs = await indexedDB.databases()
-    return dbs.map(db => ({ key: db.name, value: db.version }))
+    // skip the offline database
+    return dbs.filter(db => db.name != DB_NAME)
+        .map(db => ({ key: db.name, value: db.version }))
 }
 
 
 export async function needsInstall(dbName, expectedStores) {
     return new Promise((resolve) => {
-        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION)
+        const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
 
         request.onsuccess = (event) => {
             const db = event.target.result
@@ -60,7 +64,7 @@ export async function needsInstall(dbName, expectedStores) {
         request.onerror = () => {
             // If we can't even open it, mark as corrupted
             console.log(request.error)
-            return resolve({ item1: dbName || DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) })
+            return resolve({ item1: dbName || LOCAL_DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) })
         }
     })
 }
@@ -70,7 +74,7 @@ export async function setupDatabase(dbName, stores) {
     var created = false
     var error = null
     return new Promise((rs, rj) => {
-        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION)
+        const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
         
         request.onupgradeneeded = (event) => {
             const db = event.target.result

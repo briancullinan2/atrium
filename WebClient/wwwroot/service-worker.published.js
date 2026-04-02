@@ -89,7 +89,7 @@ async function mkdirp(path) {
 async function fetchAsset(url, key) {
     // 10s timeout for assets; enough for a moderate DLL but short enough 
     // to keep the app from feeling hung during a "reinstall" phase.
-    const timeoutSignal = AbortSignal.timeout(5000);
+    const timeoutSignal = AbortSignal.timeout(10000);
 
     var response;
     try {
@@ -98,7 +98,7 @@ async function fetchAsset(url, key) {
             credentials: 'omit', 
             mode: 'no-cors',
             signal: timeoutSignal
-        }) : fetch(url);
+        }) : await fetch(url);
 
         // Handle Blazor's opaque responses. 
         // If it's NOT opaque and NOT ok (e.g., 404/500), we bail.
@@ -107,7 +107,8 @@ async function fetchAsset(url, key) {
         }
 
         if (response.redirected) {
-            console.log('asset file was redirected');
+            console.warn('asset file was redirected');
+            return;
         }
 
         // We clone the response because .arrayBuffer() consumes the body,
@@ -124,12 +125,24 @@ async function fetchAsset(url, key) {
             contents: new Uint8Array(content)
         }, localKey);
 
-        return response;
+        const newHeaders = new Headers(response.headers);
+        newHeaders.set('X-Service-Worker-Handled', 'true');
+        
+        isOffline = false;
+
+        return new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: newHeaders
+        })
 
     } catch (err) {
 
         if (!navigator.onLine || err instanceof TypeError)
-            isOffline = true; 
+        {
+            isOffline = true;
+            debugger;
+        }
 
         // Specifically catch the timeout so you can log it distinctly from a 404
         if (err.name === 'TimeoutError' || err.name === 'AbortError') {
@@ -162,6 +175,9 @@ self.addEventListener('install', event => {
 });
 
 
+var assetLookup = null;
+
+
 async function installAssets() {
      const assets = (self?.assetsManifest?.assets || [])
                     .concat((self?.assetsManifestStatic?.assets || []))
@@ -173,28 +189,46 @@ async function installAssets() {
         return readFile(localName).then(files => {
             // YOUR LOGIC: If it exists in IDB, do nothing. Otherwise, fetch.
             if (files && files.contents) return; 
-            return fetchAsset(asset.url, localName);
+            try {
+                return fetchAsset(asset.url, localName).catch(e => {
+                    console.warn("Offline asset failed: " + asset.url);
+                });
+            } catch (e) {
+                console.warn("Offline asset failed: " + asset.url);
+            }
         });
-    }))
-}
+    })).then(() => {
+    
+        assetLookup = new Map();
 
+        [...self.assetsManifest.assets, ...self.assetsManifestStatic.assets].forEach(a => {
+            assetLookup.set(a.url, a.url); 
+        });
+
+    })
+}
 
 
 self.addEventListener('activate', event => {
     event.waitUntil(openDatabase().then(db => {
         open = null;
         db.close();
+        //if (self.registration.navigationPreload) {
+        //    self.registration.navigationPreload.enable();
+        //}
         setTimeout(installAssets, 100);
         return self.clients.claim();
     }));
 });
 
 
-function clearLocalDatabase(dbName) {
+async function clearLocalDatabase(dbName) {
     return new Promise((rs) => {
         const req = indexedDB.deleteDatabase(dbName || DB_NAME)
         req.onsuccess = () => rs(true)
-        req.onerror = () => rs(false) // Silent fail is usually fine for cleanup
+        req.onerror = () => rs(false)
+        req.onblocked = () => rs(true) 
+
     })
 }
 
@@ -208,7 +242,19 @@ let connectivityLog = [];
     * Connectivity Heartbeat
     * Pings a small resource to verify live status once per minute.
     */
-var localVersion = null
+var localVersion = null;
+if(self.registration.active != null)
+{
+    const scriptUrl = self.registration.active.scriptURL;
+    console.log('Whats wrong with the fucking URL: ', self.registration.active);
+    const url = new URL(scriptUrl);
+    const timestampStr = url.searchParams.get('t');
+    if (timestampStr) {
+        localVersion = parseInt(timestampStr, 10);
+        //const date = new Date(timestamp);
+    }
+}
+
 var needsRefresh = false
 
 async function checkStatus() {
@@ -232,24 +278,15 @@ async function checkStatus() {
 
         // 2. Comparison Logic
         if (localVersion && latestFileTime > localVersion) {
-            console.info('New version detected. Cleaning up...');
+            console.warn('New version detected. Cleaning up...');
             
             // Wipe the database (assuming a utility exists to clear your IDB)
             await clearLocalDatabase(); 
             
-            // Save the new version timestamp so we don't loop
-            localVersion = latestFileTime;
-            
-            // 3. Trigger Service Worker Update
-            // This tells the browser to check the SW script for changes immediately
-            await self.registration.update();
-
-            await installAssets();
+            await self.registration.unregister();
 
             needsRefresh = true;
         } else if (!localVersion) {
-            // First run: record the version
-            localVersion = latestFileTime;
         }
 
         isOffline = false;
@@ -257,8 +294,10 @@ async function checkStatus() {
     } catch (err) {
         console.warn('Connectivity/Version check failed:', err);
         // Network failed unexpectedly (tunnel dropped, etc.)
-        if (!navigator.onLine || err instanceof TypeError)
+        if (!navigator.onLine || err instanceof TypeError) {
             isOffline = true; 
+            debugger;
+        }
     }
 }
 
@@ -332,6 +371,7 @@ function manufactureRefreshResponse() {
     return new Response(html, {
         headers: { 
             'Content-Type': 'text/html',
+            'X-Service-Worker-Handled': 'true',
             // Ensure the browser doesn't cache this "Updating" bridge
             'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
         }
@@ -342,14 +382,27 @@ function manufactureRefreshResponse() {
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
+    
+    // allow version to pass through so client can
+    //   start in "server" mode, index.html will 
+    //   cause a checkStatus(), and version.json wont
+    if (!isOffline && event.request.url.includes('version.json')) {
+        // browser will handle request naturally
+        return;
+    }
+
+    //if (event.preloadResponse
+    //    && event.request.mode === 'navigate') return event.respondWith(event.preloadResponse);
+
     var url = stripIgnoredUrlParameters(event.request.url, ignoreUrlParametersMatching)
     const isNavigation = event.request.mode === 'navigate';
-    let assetUrl = getManifestMatch(url);
+    let assetUrl = assetLookup != null ? assetLookup.get(url) : null;
 
     if (!assetUrl && isNavigation) {
         assetUrl = 'index.html';
     }
 
+    /*
     if (needsRefresh && isNavigation) {
         console.log('Serving refresh page for navigation to trigger update');
 
@@ -359,49 +412,51 @@ self.addEventListener('fetch', event => {
 
         return manufactureRefreshResponse();
     }
+    */
 
-    if (assetUrl) {
-        const localName = '/base/' + assetUrl.replace(/^\/?assets\/|^\//ig, '');
-        const contentType = getMimeType(assetUrl);
-
-        event.respondWith((async () => {
-            // 1. Run the heartbeat check (it only pings if the timer expired)
-            checkStatus();
-
-            // 2. If we think we are online, always try the Network first
-            if (!isOffline && assetUrl) {
-                try {
-                    // This lets the browser handle ETag/304/Disk Cache automatically
-                    const response = await fetchAsset(isOffline ? assetUrl : event.request, assetUrl);
-                    if (response.ok) return response;
-                } catch (e) {
-                }
-            }
-
-            // 3. Fallback: Only read from IndexedDB/Local if offline or network failed
-            if (assetUrl) {
-                const files = await readFile(localName);
-                if (files && files.contents) {
-                    return new Response(files.contents, {
-                        headers: { 'Content-Type': contentType }
-                    });
-                }
-            }
-
-            // 4. Final fallback if even the local DB fails
-            return fetch(event.request); 
-        })());
+    if (!assetUrl) {
+        return; // let browser handle it
     }
+    
+    const localName = '/base/' + assetUrl.replace(/^\/?assets\/|^\//ig, '');
+    const contentType = getMimeType(assetUrl);
+
+    event.respondWith((async () => {
+        // 1. Run the heartbeat check (it only pings if the timer expired)
+        checkStatus();
+            
+
+        // 2. If we think we are online, always try the Network first
+        if (!isOffline && assetUrl) {
+            try {
+                // This lets the browser handle ETag/304/Disk Cache automatically
+                const response = await fetchAsset(isOffline ? assetUrl : event.request, assetUrl);
+                if (response.ok) return response;
+            } catch (e) {
+            }
+        }
+
+        // 3. Fallback: Only read from IndexedDB/Local if offline or network failed
+        if (assetUrl) {
+            const files = await readFile(localName);
+            if (files && files.contents) {
+                const newHeaders = new Headers();
+                newHeaders.set('Content-Type', contentType);
+                newHeaders.set('X-Service-Worker-Handled', 'true');
+
+                return new Response(files.contents, {
+                    status: 200,
+                    statusText: 'OK',
+                    headers: newHeaders
+                });
+            }
+        }
+
+        // 4. Final fallback if even the local DB fails
+        return fetch(event.request); 
+    })());
 });
 
-function getManifestMatch(path) {
-    const relativePath = path.startsWith('/') ? path.substring(1) : path;
-    var match = self.assetsManifest.assets.find(a => a.url === relativePath);
-    if (!match) {
-        match = self.assetsManifestStatic.assets.find(a => a.url === relativePath);
-    }
-    return match ? match.url : null;
-}
 
 function getMimeType(url) {
     if (url.endsWith('.wasm')) return 'application/wasm';

@@ -331,21 +331,32 @@ namespace DataLayer
                 // check schema integrity because IDB lets us do this
                 var needInstall = await Store.NeedsInstall(null, [.. schema.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.Item2))]);
 
-                if (!needInstall) return;
+                if (!needInstall)
+                {
+                    Console.WriteLine("Skipping install");
+                    return;
+                }
 
-                var serializedNames = schema.ToDictionary(kvp =>
-                    kvp.Key, kvp => new Tuple<List<string>, List<KeyValuePair<string, List<string>>>>(
-                        [.. kvp.Value.Item1.Select(pathKey => pathKey.ToCamelCase())],
-                        [..kvp.Value.Item3.Select(indexNameAndKeys => KeyValuePair.Create<string, List<string>>(
+                try
+                {
+                    Console.WriteLine("Creating store");
+
+                    var serializedNames = schema.ToDictionary(kvp =>
+                        kvp.Key, kvp => new Tuple<List<string>, List<KeyValuePair<string, List<string>>>>(
+                            [.. kvp.Value.Item1.Select(pathKey => pathKey.ToCamelCase())],
+                            [..kvp.Value.Item3.Select(indexNameAndKeys => KeyValuePair.Create<string, List<string>>(
                                 // additional index names don't matter but here I am fixing it because I was confused
                                 //   why they didn't match when looking at it in the browser
                                 indexNameAndKeys.Key.ToCamelCase() /*name must match RemoteManager.QueryNow*/,
                                 [..indexNameAndKeys.Value.Select(p => p.ToCamelCase())]))]));
 
-                Console.WriteLine("Creating store: " + JsonSerializer.Serialize(serializedNames));
-                await Store.SetupDatabaseAsync(null, serializedNames);
-                await EnsureGlobalIdentityStart();
-
+                    await Store.SetupDatabaseAsync(null, serializedNames);
+                    await EnsureGlobalIdentityStart();
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
 
             catch (Exception ex)

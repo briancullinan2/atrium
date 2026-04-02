@@ -99,7 +99,7 @@ namespace WebClient.Services
 
             _connection = connection;
             // become the connection
-
+            /*
             if (connection == null)
             {
                 _connection = new HubConnectionBuilder()
@@ -120,24 +120,24 @@ namespace WebClient.Services
                 ])
                 .Build();
             }
-
-            if (_connection != null)
+            */
+            if (_connection == null)
             {
-                _ = _connection.StartAsync();
+                return;
             }
 
             // check passed in reference is null
             if (connection == null)
             {
                 var reference = DotNetObjectReference.Create(this);
-                _ = _connection?.InvokeAsync("RegisterCircuit", reference);
-
+                _ = _connection.InvokeAsync("RegisterCircuit", reference);
+                _ = _connection.StartAsync();
             }
 
-            _connection?.Reconnected += async (id) =>
+            _connection.Reconnected += async (id) =>
                 OnConnectionUp?.Invoke(true, new ConnectionMetadata(id ?? _connection.ConnectionId ?? "unknown", DateTime.UtcNow));
 
-            _connection?.Closed += async (ex) =>
+            _connection.Closed += async (ex) =>
                 OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
         }
 
