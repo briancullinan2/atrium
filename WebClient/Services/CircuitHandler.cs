@@ -62,7 +62,7 @@ namespace WebClient.Services
                 if (_restartRequired.Task.IsCompleted) return;
                 await PageManager.EnsureModuleLoaded();
                 _restartRequired.TrySetResult(true);
-                PageManager.OnReconnect["window"] += ReportFromPage;
+                PageManager.OnReconnect += ReportFromPage;
 
             }
             finally
@@ -73,7 +73,7 @@ namespace WebClient.Services
         }
 
 
-        protected void ReportFromPage(string id, string? state)
+        protected void ReportFromPage(string? state)
         {
             if (state == "hide")
             {
@@ -144,7 +144,7 @@ namespace WebClient.Services
 
         public async ValueTask DisposeAsync()
         {
-            PageManager.OnReconnect["window"] -= ReportFromPage;
+            PageManager.OnReconnect -= ReportFromPage;
             Rendered.OnRendered -= NotifyEmptied;
             Rendered.OnEmptied -= NotifyEmptied;
             if (Module != null)

@@ -38,7 +38,7 @@
             return;
         }
         card.IsCollapsed = !card.IsCollapsed;
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 }
 
@@ -112,7 +112,7 @@
             <span>@card.Card?.ResponseType.ToString()</span>
             <span>@card.Card?.Answers.FirstOrDefault(a => a.IsCorrect)?.Content</span>
             <span>
-                <a @onclick="() => { card.Mode = DataLayer.ControlMode.Edit; StateHasChanged(); }"><span class="bi bi-pencil"></span></a>
+                <a @onclick="() => { card.Mode = DataLayer.ControlMode.Edit; InvokeAsync(StateHasChanged); }"><span class="bi bi-pencil"></span></a>
             </span>
             <span class="preview">
                 @if (!card.IsCollapsed)

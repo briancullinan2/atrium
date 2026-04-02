@@ -60,17 +60,17 @@
             <button class="deemphasize back" @onclick="() => { 
                 if(QuizStep > 0) {
                     QuizStep--;
-                    StateHasChanged();
+                    InvokeAsync(StateHasChanged);
                 }
                 else
                     Next(StepMode.Video);
             }"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentQuiz?.ElementAt(i).ResponseType == CardType.FlashCard)
             {
-                <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => { QuizStep++; StateHasChanged(); }">Tap or Swipe for answer</a>
+                <a class="deemphasize" @onclick:preventDefault="true" @onclick:stopPropagation="true" @onclick="() => { QuizStep++; InvokeAsync(StateHasChanged); }">Tap or Swipe for answer</a>
             } else if (CurrentQuiz?.ElementAt(i).ResponseType == CardType.Short)
             {
-                <button class="cta preview-tap" @onclick="() => { QuizStep++; StateHasChanged(); }">Submit</button>
+                <button class="cta preview-tap" @onclick="() => { QuizStep++; InvokeAsync(StateHasChanged); }">Submit</button>
             }
             @if (Responses.Count() == CurrentQuiz?.Count())
             {
@@ -85,7 +85,7 @@
     <h2>Quiz Results:</h2>
     <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.ResultsCardControl.ResultCard() {Card = card, Response = Responses.FirstOrDefault(r => r.Card == card)}).ToList()"></MetadataControl>
     <div class="highlighted-link">
-        <button class="deemphasize back" @onclick="() => { QuizStep--; StateHasChanged(); }"><span class="bi bi-chevron-left"></span>Back</button>
+        <button class="deemphasize back" @onclick="() => { QuizStep--; InvokeAsync(StateHasChanged); }"><span class="bi bi-chevron-left"></span>Back</button>
         @if (Responses.Count() == CurrentQuiz?.Count())
         {
             <button class="cta" @onclick="() => Next(StepMode.Reward)">See Reward</button>
@@ -187,7 +187,7 @@
         //if(QuizStep + 1 < CurrentQuiz?.Count())
         {
             QuizStep++;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
         //else 
         //{
@@ -281,7 +281,7 @@
         PreviousStep = Step;
         Step = step ?? StepMode.Intro;
         SetCourseTitle();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected void OnCourseChanged(ICourseMenuItem? item)
@@ -290,7 +290,7 @@
         QuizStep = 0;
         ActiveItem = item;
         SetCourseTitle();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected void SetCourseTitle()

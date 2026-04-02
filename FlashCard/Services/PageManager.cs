@@ -6,6 +6,8 @@ using FlashCard.Controls;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using System.Collections.Concurrent;
@@ -13,7 +15,6 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Xml.Linq;
-using static FlashCard.Services.ResizeProxy;
 
 namespace FlashCard.Services
 {
@@ -34,24 +35,27 @@ namespace FlashCard.Services
         // page events
         Task RegisterAsync(string id);
         bool IsLocked(string id);
-        Task EnsureBottomAsync(string id, bool force = false);
+        Task ScrollToBottom(string id, bool smooth = true);
         Task<Dictionary<string, bool>> GetAllStatesAsync(string[]? ids = null);
         T? GetState<T>(PageAction action, string id);
 
         // special subscribers
-        Action<string, object?>? this[PageAction action, string id] { get; set; }
+        //Delegate? this[PageAction action, string id] { get; set; }
 
 
         public BooleanProxy OnScroll { get; }
-        public ResizeProxy OnResize { get; }
+        public event Action<int, int, bool> OnResize;
+        public event Func<int, int, bool, Task> OnResizeAsync;
         public BooleanProxy OnFocus { get; }
-        public StringProxy OnVisible { get; }
-        public StringProxy OnReconnect { get; }
+        public event Action<bool> OnVisible;
+        public event Action<string> OnReconnect;
 
         Task<bool> IsAtBottomAsync(string id);
         Task ScrollSlightlyAsync(string id, int amount = 10);
         Task<string> GetLineHeightAsync(string? elementId = null);
         Task<int> GetLineHeightIntAsync(string? elementId = null);
+        ValueTask InitializeBackground(string mode, string canvas);
+        ValueTask Clipboard(string text);
 
         Task EnsureModuleLoaded();
         Task ModuleInitialize { get; }
@@ -65,7 +69,7 @@ namespace FlashCard.Services
 
         ValueTask TriggerEvent(string eventName, object? detail = null);
         bool IsReady { get; }
-
+        int OffsetInMinutes { get; }
     }
 
     public enum PageAction
@@ -78,23 +82,36 @@ namespace FlashCard.Services
     }
 
 
+    public class DelegateAsyncProxy<T>(PageManager parent, PageAction action)
+
+    {
+        // Usage: Page.OnScroll["Navlist"] += ...
+        public virtual Func<string, T?, Task>? this[string id]
+        {
+            get
+            {
+                return parent[action, id] as Func<string, T?, Task>;
+            }
+            set
+            {
+                parent.Subscribe((action, id), value);
+            }
+        }
+    }
+
     public class DelegateProxy<T>(PageManager parent, PageAction action)
         
     {
         // Usage: Page.OnScroll["Navlist"] += ...
-        public Action<string, T?>? this[string id]
+        public virtual Action<string, T?>? this[string id]
         {
             get
             {
-                if (parent[action, id] is Action<string, T?> castion2)
-                    return castion2;
-                return null;
+                return parent[action, id] as Action<string, T?>;
             }
             set
             {
-                parent[action, id] = (s, o) => {
-                    value?.Invoke(s, o?.GetType().Extends(typeof(T)) == true ? (T)o : default);
-                };
+                parent.Subscribe((action, id), value);
             }
         }
     }
@@ -113,6 +130,24 @@ namespace FlashCard.Services
 
     public class ResizeProxy(PageManager parent)
         : DelegateProxy<(int w, int h, bool s)>(parent, PageAction.Resize)
+    {
+    }
+
+
+    public class StringAsyncProxy(PageManager parent, PageAction action)
+        : DelegateAsyncProxy<string>(parent, action)
+    {
+
+    }
+
+    public class BooleanAsyncProxy(PageManager parent, PageAction action)
+        : DelegateAsyncProxy<bool>(parent, action)
+    {
+
+    }
+
+    public class ResizeAsyncProxy(PageManager parent)
+        : DelegateAsyncProxy<(int w, int h, bool s)>(parent, PageAction.Resize)
     {
     }
 
@@ -208,6 +243,8 @@ namespace FlashCard.Services
                 var dotNetHelper = DotNetObjectReference.Create(this);
                 _restartRequired.TrySetResult(true);
                 await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
+                valueFromPage = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+
             }
             finally
             {
@@ -225,6 +262,22 @@ namespace FlashCard.Services
         {
             await ModuleInitialize;
             await Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+        }
+
+
+        int valueFromPage = 0;
+        public int OffsetInMinutes
+        {
+            get
+            {
+                if (Context?.HttpContext?.Request.Cookies.TryGetValue("timezoneOffset", out var offsetStr) == true
+                    && int.TryParse(offsetStr, out var offset))
+                {
+                    return offset;
+                }
+
+                return valueFromPage; // Default to UTC if not available
+            }
         }
 
 
@@ -358,13 +411,10 @@ namespace FlashCard.Services
         }
 
 
-        public async Task EnsureBottomAsync(string id, bool force = false)
+        public async Task ScrollToBottom(string id, bool smooth = true)
         {
-            if (force || IsLocked(id))
-            {
-                await ModuleInitialize;
-                await Module.InvokeVoidAsync("scrollToBottom", id);
-            }
+            await ModuleInitialize;
+            await Module.InvokeVoidAsync("scrollToBottom", id, smooth);
         }
 
         public async Task<Dictionary<string, bool>> GetAllStatesAsync(string[]? ids = null)
@@ -376,56 +426,161 @@ namespace FlashCard.Services
         private readonly Dictionary<(PageAction Action, string Id), object?> _states = [];
 
         // Tracks the actual multicast delegates per action/id pair
-        private readonly Dictionary<(PageAction Action, string Id), Delegate> _events = [];
+        private readonly Dictionary<(PageAction Action, string Id), Delegate?> _events = [];
 
 
-        public BooleanProxy OnScroll => new(this, PageAction.Scroll);
-        public ResizeProxy OnResize => new(this);
-        public BooleanProxy OnFocus => new(this, PageAction.Focus);
-        public StringProxy OnVisible => new(this, PageAction.Visible);
-        public StringProxy OnReconnect => new(this, PageAction.Reconnect);
-
-
-
-        public Action<string, object?>? this[PageAction action, string id]
+        public event Func<int, int, bool, Task> OnResizeAsync
         {
-            get => _events.TryGetValue((action, id), out var del) ? (Action<string, object?>)del : null;
-            set => Subscribe((action, id), value);
+            add
+            {
+                Subscribe((PageAction.Resize, "window"), value);
+            }
+            remove
+            {
+                _events.Remove((PageAction.Resize, "window"));
+            }
         }
 
-        private void Subscribe((PageAction Action, string Id) key, Delegate? value)
+        public event Action<int, int, bool> OnResize
+        {
+            add
+            {
+                Subscribe((PageAction.Resize, "window"), value);
+            }
+            remove
+            {
+                _events.Remove((PageAction.Resize, "window"));
+            }
+        }
+        public event Action<bool> OnVisible
+        {
+            add
+            {
+                Subscribe((PageAction.Visible, "window"), value);
+            }
+            remove
+            {
+                _events.Remove((PageAction.Visible, "window"));
+            }
+        }
+        public event Action<string> OnReconnect
+        {
+            add
+            {
+                Subscribe((PageAction.Reconnect, "window"), value);
+            }
+            remove
+            {
+                _events.Remove((PageAction.Reconnect, "window"));
+            }
+        }
+        public BooleanProxy OnScroll => new(this, PageAction.Scroll);
+        public BooleanAsyncProxy OnScrollAsync => new(this, PageAction.Scroll);
+        //private ResizeProxy OnResizePattern => new(this);
+        public BooleanProxy OnFocus => new(this, PageAction.Focus);
+        public BooleanAsyncProxy OnFocusAsync => new(this, PageAction.Focus);
+        //public StringProxy OnVisible => new(this, PageAction.Visible);
+        //public StringProxy OnReconnect => new(this, PageAction.Reconnect);
+
+
+
+        public Delegate? this[PageAction action, string id]
+        {
+            get => _events.TryGetValue((action, id), out var del) ? del : null;
+            set => Subscribe((action, id), value);
+        }
+        
+
+        public void Unsubscribe((PageAction Action, string Id) key, Delegate? value)
         {
             if (value == null)
             {
-                _events.Remove(key);
+                //_events.Remove(key);
                 return;
             }
 
-            _events[key] = value;
+            if (_events.TryGetValue(key, out var existing))
+            {
+                _events[key] = Delegate.Remove(existing, value);
+            }
+            else
+                _events[key] = null;
+            // Combine adds 'value' to the invocation list of 'existing'
 
             // THE AUTO-FIRE ENGINE
-            if (_states.TryGetValue(key, out var lastState))
+            TriggerState(key, value);
+        }
+
+        public void Subscribe((PageAction Action, string Id) key, Delegate? value)
+        {
+            if (value == null)
+            {
+                //_events.Remove(key);
+                return;
+            }
+
+            if (_events.TryGetValue(key, out var existing))
+            {
+                _events[key] = Delegate.Remove(existing, value);
+                _events[key] = Delegate.Combine(existing, value);
+            }
+            else
+                _events[key] = value;
+            // Combine adds 'value' to the invocation list of 'existing'
+
+                // THE AUTO-FIRE ENGINE
+            TriggerState(key, value);
+        }
+
+
+
+        private void TriggerState((PageAction Action, string Id) key, Delegate? value, object? newState = null)
+        {
+            var lastState = newState ?? (_states.TryGetValue(key, out var state) ? state : null);
+
+            if (newState != null || lastState != null)
             {
                 // Pattern match the action to know how to 'Replay' the state
                 switch (key.Action)
                 {
                     case PageAction.Visible:
+                        if (value is Action<bool> visibleHandler
+                            && lastState is bool visible)
+                            visibleHandler.Invoke(visible);
+                        else if (value is Action<bool?> visibleHandler2)
+                            visibleHandler2.Invoke(lastState as bool?);
+                        break;
                     case PageAction.Reconnect:
-                        if (value is Action<string, string> stateHandler 
-                            && lastState is string state)
-                            stateHandler.Invoke(key.Id, state);
+                        if (value is Action<string> stateHandler
+                            && lastState is string reconnect)
+                            stateHandler.Invoke(reconnect);
+                        else if (value is Action<string?> stateHandler2)
+                            stateHandler2.Invoke(lastState as string);
                         break;
                     case PageAction.Scroll:
                     case PageAction.Focus:
-                        if (value is Action<string, bool> boolHandler 
+                        if (value is Action<string, bool> boolHandler
                             && lastState is bool b)
                             boolHandler.Invoke(key.Id, b);
+                        else if (value is Action<bool?> boolHandler2)
+                            boolHandler2.Invoke(lastState as bool?);
+                        else if (value is Func<bool?, Task> boolHandler3)
+                            boolHandler3.Invoke(lastState as bool?);
                         break;
 
                     case PageAction.Resize:
-                        if (value is Action<string, (int w, int h, bool s)> resizeHandler 
-                            && lastState is (int w, int h, bool s))
-                            resizeHandler.Invoke(key.Id, (w, h, s));
+                        var lastResize = lastState as (int w, int h, bool s)?;
+                        if(lastResize.HasValue)
+                        {
+                            var (w, h, s) = lastResize.Value;
+                            if (value is Action<int, int, bool> resizeHandler)
+                                resizeHandler.Invoke(w, h, s);
+                            else if (value is Action<int, int> resizeHandler2)
+                                resizeHandler2.Invoke(w, h);
+                            else if (value is Func<int, int, bool, Task> resizeHandler3)
+                                _ = resizeHandler3.Invoke(w, h, s);
+                        }
+
                         break;
                 }
             }
@@ -434,11 +589,11 @@ namespace FlashCard.Services
 
 
         // Specialized JS Invokables for the Bridge
-        [JSInvokable] public void OnScrolled(string id, bool atBottom) => UpdateState(PageAction.Scroll, id, atBottom);
-        [JSInvokable] public void OnResized(string id, int width, int height, bool isSmall) => UpdateState(PageAction.Resize, id, (w: width, h: height, s: isSmall));
-        [JSInvokable] public void OnFocused(bool focused) => UpdateState(PageAction.Focus, "window", focused);
-        [JSInvokable] public void OnVisibility(string visible) => UpdateState(PageAction.Visible, "window", visible);
-        [JSInvokable] public void OnReconnected(string state) => UpdateState(PageAction.Visible, "window", state);
+        [JSInvokable] public void OnScrolled(string id, bool atBottom) => UpdateStateDebouncer(PageAction.Scroll, id, atBottom);
+        [JSInvokable] public void OnResized(string id, int width, int height, bool isSmall) => UpdateStateDebouncer(PageAction.Resize, id, (w: width, h: height, s: isSmall));
+        [JSInvokable] public void OnFocused(bool focused) => UpdateStateDebouncer(PageAction.Focus, "window", focused);
+        [JSInvokable] public void OnVisibility(string visible) => UpdateStateDebouncer(PageAction.Visible, "window", visible);
+        [JSInvokable] public void OnReconnected(string state) => UpdateStateDebouncer(PageAction.Visible, "window", state);
         [JSInvokable] public void OnStopped() => Form.StopAsync();
 
         // 1. Generic GetState for type-safe access in C#
@@ -450,34 +605,22 @@ namespace FlashCard.Services
             }
             return default;
         }
+        protected void UpdateStateDebouncer(PageAction action, string id, object value)
+        {
+            DataLayer.Utilities.Extensions.TaskExtensions.Debounce(
+                UpdateState, 100, action, id, value
+                );
+        }
 
         // 2. Unified UpdateState that handles the "Replay" logic
-        protected void UpdateState(PageAction action, string id, object value)
+        protected void UpdateState(PageAction action, string? id, object? value)
         {
+            if (id == null) return;
             var key = (action, id);
             _states[key] = value;
-
             if (_events.TryGetValue(key, out var del))
             {
-                // Route the invocation based on the action type
-                switch (action)
-                {
-                    case PageAction.Visible:
-                    case PageAction.Reconnect:
-                        if (del is Action<string, string> stateHandler && value is string state)
-                            stateHandler.Invoke(id, state);
-                        break;
-                    case PageAction.Scroll:
-                    case PageAction.Focus:
-                        if (del is Action<string, bool> boolHandler && value is bool b)
-                            boolHandler.Invoke(id, b);
-                        break;
-
-                    case PageAction.Resize:
-                        if (del is Action<string, int, int, bool> resizeHandler && value is (int w, int h, bool s))
-                            resizeHandler.Invoke(id, w, h, s);
-                        break;
-                }
+                TriggerState(key, del, value);
             }
         }
 
@@ -486,6 +629,19 @@ namespace FlashCard.Services
         {
             await ModuleInitialize;
             await Module.InvokeVoidAsync("dispatchEvent", eventName, detail);
+        }
+
+
+        public async ValueTask InitializeBackground(string mode, string canvas)
+        {
+            await ModuleInitialize;
+            await Module.InvokeVoidAsync("initBackground", mode, canvas);
+        }
+
+        public async ValueTask Clipboard(string text)
+        {
+            await ModuleInitialize;
+            await Rendered.Runtime.InvokeVoidAsync("navigator.clipboard.writeText", text);
         }
 
         #endregion

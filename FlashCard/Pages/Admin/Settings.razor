@@ -14,9 +14,9 @@
 @inject IThemeService ThemeService
 @inject ITitleService TitleService
 @inject IFileManager FileManager
+@inject IPageManager PageManager
 @inject NavigationManager Nav
 @inject HttpClient Http
-@inject IJSRuntime JS
 
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
@@ -130,8 +130,7 @@
             csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string?>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
         }
 
-        // 3. Send to Clipboard via JS Interop
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", csvBuilder.ToString());
+        await PageManager.Clipboard(csvBuilder.ToString());
     }
 
 
@@ -187,7 +186,7 @@
     {
         themeContent = await FileManager.OpenFile("_content/FlashCard/css/theme.css");
         extractedThemes = Retheme.Theme.ExtractThemes(themeContent ?? "");
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
 
@@ -208,7 +207,7 @@
         {
             PreviousMode = Mode;
             Mode = newStep;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         if(Mode == DataLayer.ControlMode.List)

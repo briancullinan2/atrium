@@ -195,7 +195,7 @@
             Recent.AddRange(courses ?? []);
         }
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected static IEnumerable<DataLayer.Entities.Course>? GetCourses(Type? lesson)

@@ -182,7 +182,7 @@
         {
             PreviousMode = ControlMode;
             ControlMode = newStep;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -205,7 +205,7 @@
         {
             CurrentUsers = users.ToList();
         }
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
 
@@ -213,7 +213,7 @@
     {
         CurrentUser = await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id).FirstOrDefaultAsync();
         TitleService?.UpdateTitle("Edit User - " + CurrentUser?.Username);
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
 
@@ -226,7 +226,7 @@
         //   for user accounts, and finally and most importantly, build the firewall for query manager to only show 
         //   the default users to admin, this involved the ILoginService and IAuthService to work together
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     

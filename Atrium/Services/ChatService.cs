@@ -125,12 +125,6 @@ namespace Atrium.Services
 
         public async Task<string?> SendMessage(string message)
         {
-            var previous = JsonSerializer.Serialize(Recents?.TakeLast(10).Select(r => new RecentModel()
-            {
-                Role = r.Value.Item1 ? "assistant" : "user",
-                Date = r.Key,
-                Content = r.Value.Item2
-            }));
             Recents?.Add(DateTime.Now, new Tuple<bool, string>(false, message));
             OnChatMessage?.Invoke();
 
@@ -279,7 +273,7 @@ namespace Atrium.Services
             if (_recents?.LastOrDefault().Key != null && _recents?.Last().Key + TimeSpan.FromSeconds(10) > DateTime.Now)
             {
                 _recents?.Add(DateTime.Now + TimeSpan.FromSeconds(1), new Tuple<bool, string>(true, "You're sending messages too quickly."));
-                return null;
+                return "You're sending messages too quickly.";
             }
 
 

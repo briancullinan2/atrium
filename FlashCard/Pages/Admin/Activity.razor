@@ -2,11 +2,10 @@
 @using DataLayer.Utilities.Extensions
 @using FlashCard.Services
 @using System
-@implements IDisposable
 @page "/activity"
 @inject IMenuService MenuService
 @inject IQueryManager QueryManager
-@inject IJSRuntime JS
+@inject IPageManager PageManager
 
 <SyncedTitle Title="Usage Activity"></SyncedTitle>
 
@@ -30,7 +29,7 @@
          @onmousemove="HandleMove"
          class="timeline-grid track" style="width: @(TotalWidth)px;">
         <div class="key">
-            <button @onclick="() => { ViewportOffset = 0; StateHasChanged(); }">Today</button>
+            <button @onclick="() => { ViewportOffset = 0; InvokeAsync(StateHasChanged); }">Today</button>
             <div>Zoom: @(ZoomLevel)</div>
             <div>Line: @(CalculatedHeight)</div>
         </div>
@@ -57,7 +56,7 @@
                             @foreach (var ev in events)
                             {
                                 <div data-hour="@(ev.Created.Hour)" class="event-pill"
-                                    style="@(GetYPosition(ev.Created.AddMinutes(-OffsetInMinutes)))"
+                                     style="@(GetYPosition(ev.Created.AddMinutes(-PageManager.OffsetInMinutes)))"
                                     @onclick="() => NavigateToEvent(ev)">@ev?.Path</div>
                             }
                         }
@@ -94,6 +93,7 @@
         // Define the contextual menu for THIS page
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
         _ = PopulatorLoop();
+        PageManager.OnResizeAsync += OnWindowResize;
     }
     // This is the key: How many pixels away is this date from the "Zero Point"?
     private double CalculateXPosition(DateTime day)
@@ -112,32 +112,14 @@
 
     private int _width;
     private int _height;
-    private DotNetObjectReference<Pages.Admin.Activity>? _objRef;
 
-    [JSInvokable]
-    public void OnWindowResize(int width, int height)
+    public async Task OnWindowResize(int width, int height, bool s)
     {
         _width = width;
         _height = height;
-        DataLayer.Utilities.Extensions.TaskExtensions
-            .Debounce(OnWindowResizeDebounced, 200, JS, yAxisRef)
-            .Then<int?>(async (Task<int?> task) => CalculatedHeight = await task ?? CalculatedHeight)
-            .Then(task => InvokeAsync(StateHasChanged));
+        CalculatedHeight = await PageManager.GetLineHeightIntAsync();
+        await InvokeAsync(StateHasChanged);
     }
-
-    public static async Task<int?> OnWindowResizeDebounced(IJSRuntime? JS, ElementReference yAxisRef)
-    {
-        var result = JS?.InvokeAsync<int>("getLineHeightInt", yAxisRef);
-        if(result is ValueTask<int> task)
-        {
-            await task;
-            return (result as dynamic).Result;
-        }
-        return null;
-    }
-
-
-    public void Dispose() => _objRef?.Dispose();
 
 
 
@@ -171,10 +153,8 @@
             await Task.Delay(100);
 
             await LoadDay(dateKey);
-            
-            // Refresh UI for this specific day column
-            StateHasChanged();
         }
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadDay(DateTime day)
@@ -189,7 +169,7 @@
 
         // BUCKETIZE: Only keep events that land on THIS local day after offset
         var localEvents = results
-            .Where(v => v.Created.AddMinutes(-OffsetInMinutes).Date == day.Date)
+            .Where(v => v.Created.AddMinutes(-PageManager.OffsetInMinutes).Date == day.Date)
             .ToList();
 
         DayBuckets[day.Date] = localEvents;
@@ -211,33 +191,13 @@
 
     // TODO: resize stuff to get new line height from css media query
 
-    private int OffsetInMinutes = 0;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            _ = DataLayer.Utilities.Extensions.TaskExtensions
-                .Debounce(OnWindowResizeDebounced, 200, JS, yAxisRef)
-                .Then<int?>(async task => CalculatedHeight = await task ?? CalculatedHeight);
-            OffsetInMinutes = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
-            _objRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("listenToResize", _objRef);
-            StateHasChanged();
-        }
-        //    if (firstRender)
-    //    {
-    //        var dotNetHelper = DotNetObjectReference.Create(this);
-    //        await JS.InvokeVoidAsync("initTimeline", dotNetHelper, timelineRef);
-    //    }
-    }
     
     private void HandleZoom(WheelEventArgs e)
     {
         //if (e.CtrlKey) // Only zoom if Ctrl is held, like Windows apps
         {
             ZoomLevel = Math.Clamp(ZoomLevel + (e.DeltaY < 0 ? 0.1 : -0.1), 0.5, 5.0);
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -263,7 +223,7 @@
         foreach (var ev in allEvents)
         {
             // Adjust to browser local time before bucketing
-            var localTime = ev.Created.AddMinutes(-OffsetInMinutes);
+            var localTime = ev.Created.AddMinutes(-PageManager.OffsetInMinutes);
             var dateKey = localTime.Date;
 
             if (!DayBuckets.ContainsKey(dateKey)) DayBuckets[dateKey] = new();
@@ -271,7 +231,7 @@
         }
     
         IsLoading = false;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     // 3. Serialized "Staggered" day populator
@@ -299,7 +259,7 @@
     public void OnViewportScroll(double deltaX)
     {
         ViewportOffset += deltaX;
-        StateHasChanged(); // Triggers the LINQ re-calc
+        InvokeAsync(StateHasChanged); // Triggers the LINQ re-calc
     }
 
     private IEnumerable<DateTime> GetVisibleDays()

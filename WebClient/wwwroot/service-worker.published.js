@@ -102,14 +102,28 @@ async function fetchAsset(url, key) {
 
         // Handle Blazor's opaque responses. 
         // If it's NOT opaque and NOT ok (e.g., 404/500), we bail.
+        
+        if (response.redirected || response.type == 'opaqueredirect') {
+            if(!url.includes('index.html'))
+                console.warn('asset file was redirected: ' + url);
+            const newHeaders = new Headers(response.headers);
+            newHeaders.set('X-Service-Worker-Handled', 'true');
+            newHeaders.set('Location', response.url);
+            
+            isOffline = false;
+
+            return new Response(null, {
+                status: 302,
+                statusText: response.statusText,
+                url: response.url,
+                headers: newHeaders
+            })
+        }
+
         if (!response.ok && response.type !== 'opaque') {
             throw new Error(`Request for ${key} failed with status: ${response.status}`);
         }
 
-        if (response.redirected) {
-            console.warn('asset file was redirected');
-            return;
-        }
 
         // We clone the response because .arrayBuffer() consumes the body,
         // and we still need to return the original response to the caller.
@@ -427,7 +441,7 @@ self.addEventListener('fetch', event => {
             
 
         // 2. If we think we are online, always try the Network first
-        if (!isOffline && assetUrl) {
+        if (assetUrl) {
             try {
                 // This lets the browser handle ETag/304/Disk Cache automatically
                 const response = await fetchAsset(isOffline ? assetUrl : event.request, assetUrl);

@@ -106,7 +106,7 @@
             return;
         }
         Uploads?.AddRange(AnkiSearch);
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     bool isDragOver = false;
@@ -143,7 +143,7 @@
     protected void OnDragging(bool dragging)
     {
         isDragOver = dragging;
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected async Task HandleFileSelection(InputFileChangeEventArgs e)
@@ -158,7 +158,7 @@
             // using var stream = file.OpenReadStream();
             // ... further processing ...
         }
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
 
@@ -175,7 +175,7 @@
             }
         }
 
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
 
     }
 

@@ -37,7 +37,7 @@ export async function getDatabaseMetadata() {
     const dbs = await indexedDB.databases()
     // skip the offline database
     return dbs.filter(db => db.name != DB_NAME)
-        .map(db => ({ key: db.name, value: db.version }))
+        .map(db => ({ key: db.name || '', value: db.version || 0 }))
 }
 
 

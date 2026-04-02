@@ -12,6 +12,8 @@
     z-index: 9999;
     border-top-left-radius: 8px;
     min-height: unset;
+    max-width: 100%;
+    max-width: calc(100% - 40px);
 }
 
 .dev-console.collapsed .entry-header {

@@ -358,7 +358,7 @@ async function manageServiceWorker() {
         return; // don't register unless we have a valid version from server
     }
 
-    debugger;
+    
     const swUrl = '/service-worker.published.js?t=' + Date.now();
     navigator.serviceWorker.register(swUrl)
         .then(reg => {

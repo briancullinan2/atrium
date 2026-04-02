@@ -169,6 +169,125 @@ namespace DataLayer.Utilities.Extensions
             [CallerMemberName] string key = "")
             => Debounce(action: ct => action(t1, t2, t3, t4, t5), delay, file, key);
 
+
+        // actions
+
+
+        public static Task Debounce<T1>(
+            this Func<T1?, Task> action,
+            int delay = 200,
+            T1? t1 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce<bool>(action: async ct => { await action(t1); return true; }, delay, file, key);
+
+
+        public static Task Debounce<T1, T2>(
+            this Func<T1?, T2?, Task> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: ct => action(t1, t2), delay, file, key);
+
+
+        public static Task Debounce<T1, T2, T3>(
+            this Func<T1?, T2?, T3?, Task> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: ct => action(t1, t2, t3), delay, file, key);
+
+
+
+        public static Task Debounce<T1, T2, T3, T4>(
+            this Func<T1?, T2?, T3?, T4?, Task> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            T4? t4 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: ct => action(t1, t2, t3, t4), delay, file, key);
+
+
+        public static Task Debounce<T1, T2, T3, T4, T5>(
+            this Func<T1?, T2?, T3?, T4?, T5?, Task> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            T4? t4 = default,
+            T5? t5 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: ct => action(t1, t2, t3, t4, t5), delay, file, key);
+
+
+
+
+        public static Task Debounce<T1>(
+            this Action<T1?> action,
+            int delay = 200,
+            T1? t1 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce<bool>(action: async ct => { action(t1); return true; }, delay, file, key);
+
+
+        public static Task Debounce<T1, T2>(
+            this Action<T1?, T2?> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: async ct => { action(t1, t2); return true; }, delay, file, key);
+
+
+        public static Task Debounce<T1, T2, T3>(
+            this Action<T1?, T2?, T3?> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: async ct => { action(t1, t2, t3); return true; }, delay, file, key);
+
+
+
+        public static Task Debounce<T1, T2, T3, T4>(
+            this Action<T1?, T2?, T3?, T4?> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            T4? t4 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: async ct => { action(t1, t2, t3, t4); return true; }, delay, file, key);
+
+
+        public static Task Debounce<T1, T2, T3, T4, T5>(
+            this Action<T1?, T2?, T3?, T4?, T5?> action,
+            int delay = 200,
+            T1? t1 = default,
+            T2? t2 = default,
+            T3? t3 = default,
+            T4? t4 = default,
+            T5? t5 = default,
+            [CallerFilePath] string file = "",
+            [CallerMemberName] string key = "")
+            => Debounce(action: async ct => { action(t1, t2, t3, t4, t5); return true;  }, delay, file, key);
+
+
+
         /*
         public static Task<T?> Debounce<T>(
             this string functionName,

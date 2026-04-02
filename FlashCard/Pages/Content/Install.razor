@@ -154,7 +154,7 @@
         Services = await ChatService.ListPresets();
         SelectedPreset = Services?.FirstOrDefault(s => s.IsDefault)?.Name
             ?? Services?.FirstOrDefault(s => s.IsPrevious)?.Name;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void AddParameter() => Parameters.Add(new DynamicParam());
@@ -163,6 +163,6 @@
         var result = await ChatService.PingService(ServiceUrl, ModelName, ApiKey, ResponsePath, Parameters);
         IsWorking = result.Item1;
         ResponseJson = result.Item2 ?? "No response...";
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 }

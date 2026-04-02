@@ -51,7 +51,7 @@
             @if (role.Mode != DataLayer.ControlMode.Edit)
             {
                 @* href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(r => new() { Id = Data!.ToList().IndexOf(role), ControlMode = DataLayer.ControlMode.Edit }))"*@
-                <a @onclick="() => { role.Mode = DataLayer.ControlMode.Edit; StateHasChanged(); }"><span class="bi bi-pencil"></span></a>
+                <a @onclick="() => { role.Mode = DataLayer.ControlMode.Edit; InvokeAsync(StateHasChanged); }"><span class="bi bi-pencil"></span></a>
             } else
             {
                 <a class="cta" @onclick="() => {}">Save</a>

@@ -103,6 +103,6 @@
         // Persist change to DB via your QueryManager
         Console.WriteLine($"Persisting settings for {p.DisplayName}...");
         Editing.Clear();
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 }

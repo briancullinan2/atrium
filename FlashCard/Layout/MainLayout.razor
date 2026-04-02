@@ -187,7 +187,7 @@
         }
         _ = ChatService.SendMessage(ChatMessage ?? ""); 
         ChatMessage = "";
-        // No need to StateHasChanged() because the SendMessage event handler will invoke it
+        // No need to InvokeAsync(StateHasChanged) because the SendMessage event handler will invoke it
     }
 
     private bool PageHasChanged = true;
@@ -294,7 +294,7 @@
             var relativePath = string.Join(' ', Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0]).Split('/')
                 .Select(seg => seg.ToSafe()));
         }
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected override void OnInitialized()
@@ -521,7 +521,7 @@
         if (firstRender)
         {
             // At this point, the WebView is 100% initialized.
-            _ = InvokeAsync(() => Tracker.InitializeTracker(Nav));
+            await InvokeAsync(() => Tracker.InitializeTracker(Nav));
         }
     }
 
@@ -542,12 +542,8 @@
             return;
         }
 
-        // Trigger the JS engine
-        //await JS.InvokeVoidAsync("initLichtenberg", "lichtenbergCanvas");
-        var _module = await JS.InvokeAsync<IJSObjectReference>("import", $"/_content/FlashCard/{Background.ToString()?.ToLowerInvariant()}.js");
-
-        // 2. Call the function from the module
-        _animationCts = await _module.InvokeAsync<IJSObjectReference>("initLichtenberg", "lichtenbergCanvas");
+        if (Background.HasValue)
+            _ = PageManager.InitializeBackground(Background.Value.ToString(), "lichtenbergCanvas");
     }
 
     public async ValueTask DisposeAsync()

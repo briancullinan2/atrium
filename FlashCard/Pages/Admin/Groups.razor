@@ -186,7 +186,7 @@
         base.OnParametersSet();
         CurrentGroups = DataLayer.Generators.Groups.Generate();
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
 

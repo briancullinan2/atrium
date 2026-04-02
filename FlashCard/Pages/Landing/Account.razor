@@ -115,7 +115,7 @@
         {
             PreviousMode = ControlMode;
             ControlMode = newStep;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -130,7 +130,7 @@
         if(CurrentUser == null)
         {
             CurrentUser = LoginService.User;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
     

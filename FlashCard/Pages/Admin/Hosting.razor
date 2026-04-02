@@ -162,7 +162,7 @@
         if (Instance != null) await Instance.InvokeAsync(ChangeState);
     }
 
-    protected static void ChangeState() => Instance?.StateHasChanged();
+    protected static void ChangeState() => Instance?.InvokeAsync(Instance.StateHasChanged);
 
 
     public void Dispose()

@@ -93,7 +93,7 @@ export function subscribeScroll(id) {
     return false
 }
 
-export async function scrollToBottom(id, smooth = false) {
+export async function scrollToBottom(id, smooth = true) {
     const el = document.getElementById(id)
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
 }
@@ -116,16 +116,16 @@ export async function isAtBottom(id) {
     return el.scrollHeight - el.scrollTop <= el.clientHeight + 5
 }
 
-export async function scrollSlightly(id, amount = 10)  {
+export async function scrollSlightly(id, amount = 10, smooth = true)  {
     const el = document.getElementById(id)
-    if (el) el.scrollTop += amount
+    if (el) el.scrollTo({ top: el.scrollTop + amount, behavior: smooth ? 'smooth' : 'auto' })
 }
 
 
 
 
 // Basic Measurements
-export async function getLineHeight(el) { return window.getComputedStyle(el || document.body).lineHeight }
+export async function getLineHeight(el) { return window.getComputedStyle(el || document.body).lineHeight || '' }
 
 export async function getLineHeightInt(el) {
     const style = window.getComputedStyle(el || document.body)
@@ -143,7 +143,7 @@ export async function initBackground(mode, canvasId) {
         currentAnimation = null
     }
 
-    if (mode === "none") return null
+    if (mode === "none") return
 
     // Use the cache or import
     const path = `/_content/FlashCard/${mode.toLowerCase()}.js`
@@ -154,7 +154,7 @@ export async function initBackground(mode, canvasId) {
     const module = loadedModules[path]
     // Every module exports 'init' or 'initLichtenberg'
     currentAnimation = await module.initLichtenberg(canvasId)
-    return currentAnimation
+    return
 }
 
 

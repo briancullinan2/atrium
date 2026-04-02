@@ -1,8 +1,8 @@
 @using FlashCard.Services
 @inject IChatService ChatService
-@inject IJSRuntime JS
+@inject IPageManager PageManager
 
-<div id="Navlist" class="nav-scrollable chat" @onscroll="() => ToggleAutoScroll()">
+<div id="Navlist" class="nav-scrollable chat">
 
     <div class="chat-message from">
         <span>Your chat will appear here...</span>
@@ -43,7 +43,7 @@
         if (chat != ShowChat)
         {
             ShowChat = chat;
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -52,10 +52,10 @@
         if (Chat != chat)
         {
             Chat = chat;
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
             if (Chat == true)
             {
-                _ = ScrollToBottom();
+                _ = PageManager.ScrollToBottom("Navlist");
             }
         }
     }
@@ -65,15 +65,13 @@
         ChatService.OnChatWorking -= SetChat;
         ChatService.OnChatChanged -= SetChatMode;
         ChatService.OnChatMessage -= RefreshChat;
+        PageManager.OnScroll["Navlist"] -= ToggleAutoScroll;
     }
 
 
-    protected async Task ToggleAutoScroll()
+    protected void ToggleAutoScroll(string id, bool isBottom)
     {
-        _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(async () => {
-            var bottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
-            AutoScroll = bottom == true;
-        }, 200);
+        AutoScroll = isBottom;
 
     }
 
@@ -81,31 +79,27 @@
 
     protected async Task LaunchAutoScrollLoop()
     {
+        if (!AutoScroll) return;
+
         _autoScrollLoopCts = DataLayer.Utilities.Extensions.TaskExtensions.Timer(async () =>
         {
-            var isBottom = await JS.InvokeAsync<bool?>("isScrolledToBottom", "Navlist");
+            var isBottom = await PageManager.IsAtBottomAsync("Navlist");
 
             if (isBottom == true)
             {
                 _autoScrollLoopCts?.Cancel();
             }
 
-            await JS.InvokeVoidAsync("scrollSlightly", "Navlist");
+            await PageManager.ScrollSlightlyAsync("Navlist");
         });
     }
 
 
-    protected async Task ScrollToBottom()
-    {
-        await Task.Delay(50);
-        await JS.InvokeVoidAsync("scrollToBottom", "Navlist");
-    }
-    
     public void RefreshChat()
     {
         if (Chat)
         {
-            this.StateHasChanged();
+            InvokeAsync(StateHasChanged);
             _ = LaunchAutoScrollLoop();
         }
     }

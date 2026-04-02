@@ -152,7 +152,7 @@ namespace WebClient.Services
 
             var response = await _httpClient.PostAsJsonAsync("/api/chat", new StringContent(JsonSerializer.Serialize(message), System.Text.Encoding.UTF8, "application/json"));
             if (response == null) return null;
-            var result = await response.Content.ReadFromJsonAsync<string>();
+            var result = await response.Content.ReadFromJsonAsync<string?>();
             if (result == null) return null;
             recentMessage = result;
             Recents?.Add(DateTime.Now + TimeSpan.FromMilliseconds(1), new Tuple<bool, string>(true, result));

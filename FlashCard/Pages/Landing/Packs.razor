@@ -106,7 +106,7 @@
             LoginService.User.UserPacks.Add(up);
             up = await up.Save();
         }
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
 
         //Nav.NavigateTo<Pack>(p => new Pack { Mode = PackMode.Card, Id = Id });
     }
@@ -123,7 +123,7 @@
     {
         base.OnParametersSet();
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)

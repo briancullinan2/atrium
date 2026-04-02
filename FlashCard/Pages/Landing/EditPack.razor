@@ -152,7 +152,7 @@
         if(Take < 10)
         {
             Take = 10;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
@@ -165,7 +165,7 @@
             if(PreviousPage != Page)
             {
                 PreviousPage = Page;
-                StateHasChanged();
+                InvokeAsync(StateHasChanged);
             }
         }
         
@@ -182,7 +182,7 @@
         {
             PreviousMode = ControlMode;
             ControlMode = newStep;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         // TODO: set CurrentPack
@@ -205,7 +205,7 @@
 
         }
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)

@@ -149,7 +149,7 @@
         CumulativeX = 0;
         CumulativeY = 0;
         Dragging = false;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     protected async Task HandleMove(MouseEventArgs e)
@@ -160,7 +160,7 @@
             CumulativeY += e.MovementY;
 
             CurrentManualTransform = CalculateTransform(CumulativeX, CumulativeY);
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
 
             // Auto-trigger the full animation if they hit 100%
             double distance = Math.Sqrt(Math.Pow(CumulativeX, 2) + Math.Pow(CumulativeY, 2));
@@ -181,7 +181,7 @@
         CumulativeX = 0;
         CumulativeY = 0;
         Dragging = false;
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
 
@@ -193,7 +193,7 @@
         CumulativeX = 0;
         CumulativeY = 0;
         Dragging = false;
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     private const double MaxDistance = 1000.0; // Your 100% threshold in pixels
@@ -256,7 +256,7 @@
                 results.AddRange(up.Pack?.Cards.Where(c => due?.Contains(c.Id) == true) ?? []);
             }
             CurrentQuiz = results.Shuffle().ToList();
-            _ = InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
         }
         else if (Id != null)
         {
@@ -274,7 +274,7 @@
                     result.Add(await card.Update());
                 }
                 CurrentQuiz = result;
-                _ = InvokeAsync(StateHasChanged);
+                await InvokeAsync(StateHasChanged);
             }
             //var answers = (await Query.Query<Answer>()).ToList();
             //Console.WriteLine(answers);

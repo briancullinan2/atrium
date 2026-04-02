@@ -83,21 +83,21 @@
             {
                 role.Mode = DataLayer.ControlMode.View;
             }
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         if (ControlMode == DataLayer.ControlMode.Edit)
         {
             var role = CurrentRoles?.ElementAt(Id ?? 0);
             role?.Mode = DataLayer.ControlMode.Edit;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
 
         if (newStep != ControlMode)
         {
             PreviousMode = ControlMode;
             ControlMode = newStep;
-            StateHasChanged();
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -118,7 +118,7 @@
         base.OnParametersSet();
         CurrentRoles = DataLayer.Generators.Roles.Generate().Select((r, i) => new Controls.RolesControl.ControlRole() { Index = i, Role = r }).ToList();
         SetControlMode();
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
 
