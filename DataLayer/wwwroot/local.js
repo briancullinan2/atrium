@@ -119,11 +119,12 @@ export async function putRecord(storeName, record) {
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
         const req = store.put(record) 
-        req.onsuccess = () => rs(req.result) 
+        tx.oncomplete = function() { rs(req.result) }
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)
         }
+        tx.commit();
     })
 }
 
@@ -190,10 +191,11 @@ export async function deleteRecord(storeName, key) {
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
         const req = store.delete(key)
-        req.onsuccess = () => rs(true)
+        tx.oncomplete = function() { rs(true) }
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)
         }
+        tx.commit()
     })
 }

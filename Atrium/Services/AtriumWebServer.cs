@@ -141,7 +141,7 @@ namespace Atrium.Services
 
                 if (webApp.Environment.IsDevelopment())
                 {
-                    webApp.UseWebAssemblyDebugging();
+                    //webApp.UseWebAssemblyDebugging();
                 }
                 else
                 {

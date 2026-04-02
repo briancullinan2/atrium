@@ -53,7 +53,9 @@ async function readFile(key) {
     var objStore = transaction.objectStore(DB_STORE_NAME);
     return await new Promise(function (resolve) {
         let tranCursor = objStore.get(key);
-        tranCursor.onsuccess = function () { resolve(tranCursor.result); };
+        tranCursor.onsuccess = function() { 
+            resolve(tranCursor.result); 
+        };
         tranCursor.onerror = function (error) { resolve(null); };
         transaction.commit();
     });
@@ -89,17 +91,23 @@ async function fetchAsset(url, key) {
     // to keep the app from feeling hung during a "reinstall" phase.
     const timeoutSignal = AbortSignal.timeout(5000);
 
+    var response;
     try {
-        var response = await fetch(url, { 
+        response = typeof(url) == 'string' ? await fetch(url, {
+            cache: 'no-store',
             credentials: 'omit', 
             mode: 'no-cors',
             signal: timeoutSignal
-        });
+        }) : fetch(url);
 
         // Handle Blazor's opaque responses. 
         // If it's NOT opaque and NOT ok (e.g., 404/500), we bail.
         if (!response.ok && response.type !== 'opaque') {
             throw new Error(`Request for ${key} failed with status: ${response.status}`);
+        }
+
+        if (response.redirected) {
+            console.log('asset file was redirected');
         }
 
         // We clone the response because .arrayBuffer() consumes the body,
@@ -119,11 +127,13 @@ async function fetchAsset(url, key) {
         return response;
 
     } catch (err) {
+
+        if (!navigator.onLine || err instanceof TypeError)
+            isOffline = true; 
+
         // Specifically catch the timeout so you can log it distinctly from a 404
         if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-            console.warn(`Asset download timed out for: ${key} (${url})`);
-        } else {
-            console.error(`Failed to fetch/store asset: ${key}`, err);
+            
         }
         
         // Re-throw the error so your Promise.all in the 'install' 
@@ -139,8 +149,16 @@ async function fetchAsset(url, key) {
 
 self.addEventListener('install', event => {
     console.info('Service worker: Install (Form-fitted IDB)');
-   
-    event.waitUntil(installAssets().then(() => self.skipWaiting()))
+    var fetchPromise = fetch('/version.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(async function(response) {
+            if(response.ok)
+            {
+                await installAssets();
+                self.skipWaiting()
+            }
+        });
+
+    event.waitUntil(fetchPromise)
 });
 
 
@@ -166,6 +184,7 @@ self.addEventListener('activate', event => {
     event.waitUntil(openDatabase().then(db => {
         open = null;
         db.close();
+        setTimeout(installAssets, 100);
         return self.clients.claim();
     }));
 });
@@ -190,23 +209,26 @@ let connectivityLog = [];
     * Pings a small resource to verify live status once per minute.
     */
 var localVersion = null
+var needsRefresh = false
 
 async function checkStatus() {
     const now = Date.now();
-    if (now - lastConnectivityCheck < 60000) return;
+    if (now - lastConnectivityCheck < 10000) return;
     lastConnectivityCheck = now;
 
     try {
-        const response = await fetch('/version.json', { cache: 'no-store' });
+        if (!localVersion) {
+            const versionFile = await readFile('/base/version.json');
+            localVersion = versionFile ? JSON.parse(new TextDecoder('utf-8').decode(versionFile.contents))[1] : null;
+        }
+    } catch (e) {}
+
+    var response;
+    try {
+        response = await fetchAsset('/version.json?t=' + Date.now(), 'version.json');
         if (!response.ok) throw new Error('Version check failed');
         
         const [appStart, latestFileTime] = await response.json();
-
-        // 1. Initial load: Get current local version if we don't have it
-        if (!localVersion) {
-            const versionFile = await readFile('/base/version.json');
-            localVersion = versionFile ? versionFile.contents : null;
-        }
 
         // 2. Comparison Logic
         if (localVersion && latestFileTime > localVersion) {
@@ -223,52 +245,119 @@ async function checkStatus() {
             await self.registration.update();
 
             await installAssets();
+
+            needsRefresh = true;
         } else if (!localVersion) {
             // First run: record the version
             localVersion = latestFileTime;
         }
 
+        isOffline = false;
+
     } catch (err) {
         console.warn('Connectivity/Version check failed:', err);
+        // Network failed unexpectedly (tunnel dropped, etc.)
+        if (!navigator.onLine || err instanceof TypeError)
+            isOffline = true; 
     }
 }
 
-var ignoreUrlParametersMatching = [/^utm_/]
+self.addEventListener('message', async (event) => {
+    if (event.data && event.data.type === 'DEREGISTER') {
+        
+        await self.registration.unregister();
 
-var stripIgnoredUrlParameters = function(originalUrl,
-    ignoreUrlParametersMatching) {
-        var url = new URL(originalUrl)
-        // Remove the hash; see https://github.com/GoogleChrome/sw-precache/issues/290
-        url.hash = ''
-        url.search = url.search.slice(1) // Exclude initial '?'
-            .split('&') // Split into an array of 'key=value' strings
-            .map(function(kv) {
-                return kv.split('='); // Split each 'key=value' string into a [key, value] array
-            })
-            .filter(function(kv) {
-                return ignoreUrlParametersMatching.every(function(ignoredRegex) {
-                    return !ignoredRegex.test(kv[0]); // Return true iff the key doesn't match any of the regexes.
-                })
-            })
-            .map(function(kv) {
-                return kv.join('='); // Join each [key, value] array into a 'key=value' string
-            })
-            .join('&'); // Join the array of 'key=value' strings into a string with '&' in between each
+        needsRefresh = true;
 
-        return url.pathname.replace(/^\//ig, '') + (url.search ? ('?' + url.search) : '')
+        event.ports[0].postMessage({
+            type: 'DEREGISTERED',
+            version: localVersion
+        });
     }
+    else if (event.data && event.data.type === 'GET_VERSION') {
+        // Fallback to reading from IDB if the memory variable is empty
+        if (!localVersion) {
+            const versionFile = await readFile('/base/version.json');
+            localVersion = versionFile ? versionFile.contents : 'unknown';
+        }
+
+        // Reply to the specific port that asked
+        event.ports[0].postMessage({
+            type: 'VERSION_REPORT',
+            version: localVersion
+        });
+
+        checkStatus();
+    }
+});
+
+var ignoreUrlParametersMatching = [/^utm_|^t=/]
+
+var stripIgnoredUrlParameters = function(originalUrl, ignoreUrlParametersMatching) {
+    var url = new URL(originalUrl)
+    // Remove the hash; see https://github.com/GoogleChrome/sw-precache/issues/290
+    url.hash = ''
+    url.search = url.search.slice(1) // Exclude initial '?'
+        .split('&') // Split into an array of 'key=value' strings
+        .map(function(kv) {
+            return kv.split('='); // Split each 'key=value' string into a [key, value] array
+        })
+        .filter(function(kv) {
+            return ignoreUrlParametersMatching.every(function(ignoredRegex) {
+                return !ignoredRegex.test(kv[0]); // Return true iff the key doesn't match any of the regexes.
+            })
+        })
+        .map(function(kv) {
+            return kv.join('='); // Join each [key, value] array into a 'key=value' string
+        })
+        .join('&'); // Join the array of 'key=value' strings into a string with '&' in between each
+
+    return url.pathname.replace(/^\//ig, '') + (url.search ? ('?' + url.search) : '')
+}
+
+function manufactureRefreshResponse() {
+    const html = `
+    <!DOCTYPE html>
+    <html>
+        <head><title>Updating...</title></head>
+        <body>
+            <script>
+                // Force a reload from the server
+                window.location = '/' + windows.location.pathname + "?t=" + Date.now();
+            </script>
+        </body>
+    </html>
+`;
+
+    return new Response(html, {
+        headers: { 
+            'Content-Type': 'text/html',
+            // Ensure the browser doesn't cache this "Updating" bridge
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        }
+    });
+}
 
 
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
-     var url = stripIgnoredUrlParameters(event.request.url, ignoreUrlParametersMatching)
-    const url = new URL(event.request.url);
+    var url = stripIgnoredUrlParameters(event.request.url, ignoreUrlParametersMatching)
     const isNavigation = event.request.mode === 'navigate';
-    let assetUrl = getManifestMatch(url.pathname);
+    let assetUrl = getManifestMatch(url);
 
     if (!assetUrl && isNavigation) {
         assetUrl = 'index.html';
+    }
+
+    if (needsRefresh && isNavigation) {
+        console.log('Serving refresh page for navigation to trigger update');
+
+        debugger;
+
+        self.registration.unregister();
+
+        return manufactureRefreshResponse();
     }
 
     if (assetUrl) {
@@ -280,23 +369,23 @@ self.addEventListener('fetch', event => {
             checkStatus();
 
             // 2. If we think we are online, always try the Network first
-            if (!isOffline) {
+            if (!isOffline && assetUrl) {
                 try {
                     // This lets the browser handle ETag/304/Disk Cache automatically
-                    const response = await fetch(event.request);
+                    const response = await fetchAsset(isOffline ? assetUrl : event.request, assetUrl);
                     if (response.ok) return response;
                 } catch (e) {
-                    // Network failed unexpectedly (tunnel dropped, etc.)
-                    isOffline = true; 
                 }
             }
 
             // 3. Fallback: Only read from IndexedDB/Local if offline or network failed
-            const files = await readFile(localName);
-            if (files && files.contents) {
-                return new Response(files.contents, {
-                    headers: { 'Content-Type': contentType }
-                });
+            if (assetUrl) {
+                const files = await readFile(localName);
+                if (files && files.contents) {
+                    return new Response(files.contents, {
+                        headers: { 'Content-Type': contentType }
+                    });
+                }
             }
 
             // 4. Final fallback if even the local DB fails
@@ -307,7 +396,10 @@ self.addEventListener('fetch', event => {
 
 function getManifestMatch(path) {
     const relativePath = path.startsWith('/') ? path.substring(1) : path;
-    const match = self.assetsManifest.assets.find(a => a.url === relativePath);
+    var match = self.assetsManifest.assets.find(a => a.url === relativePath);
+    if (!match) {
+        match = self.assetsManifestStatic.assets.find(a => a.url === relativePath);
+    }
     return match ? match.url : null;
 }
 

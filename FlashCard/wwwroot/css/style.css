@@ -13,6 +13,11 @@
 .page .bi-chevron-right {
 }
 
+#components-reconnect-modal
+{
+    display:none!important;
+}
+
 a.deemphasize,
 button.deemphasize {
     background: none;

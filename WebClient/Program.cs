@@ -17,6 +17,8 @@ using WebClient.Services;
 
 internal class Program
 {
+    private static WebAssemblyHost? _app;
+
     private static async Task Main(string[] args)
     {
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -67,13 +69,15 @@ internal class Program
         builder.Services.AddDbContextFactory<TestStorage>();
         builder.Services.AddSingleton<ILocalStore, LocalStore>();
 
-        WebAssemblyHost? app = null;
-        builder.Services.AddSingleton<WebAssemblyHost>(sp => (WebAssemblyHost)app!);
-        app = builder.Build();
+        builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(_app?.Services.GetService<ILocalStore>()));
+
+
+        builder.Services.AddSingleton<WebAssemblyHost>(sp => (WebAssemblyHost)_app!);
+        _app = builder.Build();
         // FUCK DI
-        _ = app.Services.GetRequiredService<SimpleLogger>();
+        _ = _app.Services.GetRequiredService<SimpleLogger>();
 
 
-        await app.RunAsync();
+        await _app.RunAsync();
     }
 }
