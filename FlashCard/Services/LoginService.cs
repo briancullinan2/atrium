@@ -35,8 +35,34 @@ namespace FlashCard.Services
         public IAuthService Auth { get; private set; }
         public IQueryManager Query { get; private set; }
 
-        public event Action<bool>? OnLoginChanged;
-        public event Action<DataLayer.Entities.User?>? OnUserChanged;
+        public event Action<bool>? InternalLoginChanged;
+        private event Action<DataLayer.Entities.User?>? InternalUserChanged;
+        public event Action<DataLayer.Entities.User?>? OnUserChanged
+        {
+            add
+            {
+                InternalUserChanged += value;
+                if (User != null)
+                    value?.Invoke(User);
+            }
+            remove
+            {
+                InternalUserChanged -= value;
+            }
+        }
+        public event Action<bool>? OnLoginChanged
+        {
+            add
+            {
+                InternalLoginChanged += value;
+                if (User != null)
+                    value?.Invoke(Login);
+            }
+            remove
+            {
+                InternalLoginChanged -= value;
+            }
+        }
 
 
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
@@ -102,7 +128,8 @@ namespace FlashCard.Services
             // Notify any UI components listening to LoginService
             _ = SetUser(User);
             // this is cool because if they login with QR code it will automatically reroute
-            _ = SetLoginMode(false);
+            // this is still controlled by login page only
+            //_ = SetLoginMode(false);
 
 
         }
@@ -194,13 +221,13 @@ namespace FlashCard.Services
         public async Task SetLoginMode(bool login)
         {
             Login = login;
-            OnLoginChanged?.Invoke(login);
+            InternalLoginChanged?.Invoke(login);
         }
 
         public async Task SetUser(User? user)
         {
             User = user;
-            OnUserChanged?.Invoke(user);
+            InternalUserChanged?.Invoke(user);
         }
 
         // TODO: introduce a 3rd Guest account that's like offline mode, app to local storage data only

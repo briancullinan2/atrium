@@ -191,7 +191,6 @@
     }
 
     private bool PageHasChanged = true;
-    private string? contextKey;
 
     protected async Task UnvaluedTask(CancellationToken ct = default)
     {
@@ -206,11 +205,8 @@
         }
 
         await Task.Delay(400);
-
-        if(contextKey != null)
-        {
-            PageManager.InFlight[contextKey] = null;
-        }
+        if (PageManager.InFlight.ContainsKey(PageManager.ContextKey))
+            PageManager.InFlight.Remove(PageManager.ContextKey);
 
         _isTransitioning = false;
         _previousList.Clear();
@@ -243,14 +239,6 @@
     {
         var currentUri = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery.TrimEnd('/');
         var targetUri = Nav.ToAbsoluteUri(context.TargetLocation).PathAndQuery.TrimEnd('/');
-
-        contextKey = "Internal";
-        // so web clients don't interfere with desktop clients
-        var httpContext = Services.GetService<IHttpContextAccessor>();
-        if (httpContext != null && httpContext.HttpContext != null)
-        {
-            contextKey = httpContext.HttpContext.Connection.RemoteIpAddress.ToString();
-        }
 
         if (currentUri == targetUri)
         {

@@ -12,20 +12,22 @@
     {
         if (IsStaticRender) return;
 
-        var httpContext = Services.GetService<IHttpContextAccessor>();
-        var contextKey = "Internal";
-        // so web clients don't interfere with desktop clients
-        if (httpContext != null && httpContext.HttpContext != null)
-        {
-            contextKey = httpContext.HttpContext.Connection.RemoteIpAddress.ToString();
-        }
+
         // try not to double stack redirects if controls are doing something
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        if (PageManager.InFlight.TryGetValue(contextKey, out var _)) return;
-        PageManager.InFlight.TryAdd(contextKey, uri.PathAndQuery);
-        Navigation.NavigateTo<Pages.Landing.Login>(l => new()
+        string? existing;
+        PageManager.InFlight.TryGetValue(PageManager.ContextKey, out existing);
+        var newPage = PageManager.InFlight[PageManager.ContextKey] = NavigationExtensions.GetUri<Pages.Landing.Login>(l => new()
         {
             ReturnUrl = uri.PathAndQuery
         });
+        if(existing?.Contains("login") == true)
+        {
+            return;
+        }
+        else
+        {
+            Navigation.NavigateTo(newPage, true);
+        }
     }
 }

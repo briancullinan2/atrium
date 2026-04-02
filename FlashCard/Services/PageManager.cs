@@ -15,6 +15,7 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Xml.Linq;
+using static System.Net.WebRequestMethods;
 
 namespace FlashCard.Services
 {
@@ -71,6 +72,7 @@ namespace FlashCard.Services
         bool IsReady { get; }
         int OffsetInMinutes { get; }
         internal Dictionary<string, string?> InFlight { get; }
+        string ContextKey { get; }
     }
 
     public enum PageAction
@@ -159,6 +161,7 @@ namespace FlashCard.Services
         #region "Initialization"
         public Dictionary<string, string?> InFlight { get; } = [];
 
+        public string ContextKey { get => Context?.HttpContext?.Connection.RemoteIpAddress.ToString() ?? "Internal"; }
 
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 

@@ -54,6 +54,7 @@
     public IEnumerable<DataLayer.Entities.User>? Users { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")]
     [Parameter] public string? ReturnUrl { get; set; }
+    private User? ClickedUser { get; set; } = null;
 
     public string GetBackgroundColor(DataLayer.Entities.User user)
     {
@@ -65,6 +66,7 @@
 
     protected async Task HandleLogin(DataLayer.Entities.User user)
     {
+        ClickedUser = user;
         // save the built ins on first login
         try
         {
@@ -141,14 +143,16 @@
     public void SetUser(DataLayer.Entities.User? user)
     {
         // this is cool because if they login with QR code it will automatically reroute
-        if (user != null)
+        if (user != null
+            && !user.Roles.Any(r => r.Name == nameof(DefaultRoles.Guest))
+            || ClickedUser?.Guid == user?.Guid) // principal said it was good anyways
         {
+            LoginService.SetLoginMode(false);
+
             if (ReturnUrl != null)
-            {
                 Nav.NavigateTo(ReturnUrl);
-                return;
-            }
-            Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
+            else
+                Nav.NavigateTo("/"); // Use your NavigationExtensions or standard Nav
         }
     }
 
