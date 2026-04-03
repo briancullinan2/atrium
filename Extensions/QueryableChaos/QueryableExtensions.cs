@@ -1,5 +1,5 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities.Extensions;
+﻿using Extensions.Entities;
+using Extensions.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using System;

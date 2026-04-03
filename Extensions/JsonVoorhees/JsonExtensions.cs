@@ -1,14 +1,13 @@
-﻿using DataLayer.Utilities.Extensions;
-using Microsoft.AspNetCore.Components;
+﻿using Extensions.Utilities.Extensions;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace FlashCard.Utilities.Extensions
+namespace Extensions.JsonVoorhees
 {
-    public static class JsonExtensions
+    public static partial class JsonExtensions
     {
-        public static string ToSerialized<TComponent>(this TComponent component) where TComponent : IComponent
+        public static string ToSerialized<TComponent>(this TComponent component) where TComponent : class
         {
             Dictionary<string, string?> result = [];
             var props = component.GetType()
@@ -42,7 +41,7 @@ namespace FlashCard.Utilities.Extensions
             return JsonSerializer.Serialize(result);
         }
 
-        public static void ToProperties<TComponent>(this TComponent component, Dictionary<string, string?> pageValues) where TComponent : IComponent
+        public static void ToProperties<TComponent>(this TComponent component, Dictionary<string, string?> pageValues) where TComponent : class
         {
             var props = component.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -66,7 +65,7 @@ namespace FlashCard.Utilities.Extensions
                 }
                 else if (generalType.IsEnum)
                 {
-                    genericMethod = typeof(PrimitiveExtensions).GetMethod(nameof(PrimitiveExtensions.TryParse), 1, [typeof(string)])!.MakeGenericMethod(generalType);
+                    genericMethod = typeof(StringExtensions).GetMethod(nameof(StringExtensions.TryParse), 1, [typeof(string)])!.MakeGenericMethod(generalType);
                 }
                 else
                 {

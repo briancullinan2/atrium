@@ -1,9 +1,8 @@
-﻿using FlashCard.Services;
-using System.Reflection;
+﻿using System.Reflection;
 
-namespace Atrium.Services
+namespace RazorSharp.Services
 {
-    internal class TitleService(Application? App = null) : FlashCard.Services.TitleService
+    internal class TitleService(Application? App = null) : TitleService
     {
         internal static string? _title;
 

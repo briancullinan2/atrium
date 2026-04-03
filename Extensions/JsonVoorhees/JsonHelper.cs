@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Extensions.JsonVoorhees
 {
-    public static class JsonHelper
+    public static partial class JsonExtensions
     {
         public static readonly JsonSerializerOptions Default = new()
         {

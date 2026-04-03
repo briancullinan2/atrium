@@ -1,11 +1,10 @@
 ﻿using Microsoft.JSInterop;
-using FlashCard.Services;
 using System.Reflection;
 using System.Text.Json;
 
-namespace WebClient.Services
+namespace RazorSharp.Services
 {
-    public class TitleService(IJSRuntime js) : FlashCard.Services.TitleService
+    public class TitleService(IJSRuntime js) : TitleService
     {
         private readonly IJSRuntime _js = js;
         private static string? _title;

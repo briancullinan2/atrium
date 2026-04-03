@@ -1,4 +1,4 @@
-﻿namespace FlashCard.Services
+﻿namespace RazorSharp.Services
 {
     /*
     public class EnumConstraint<T> : IRouteConstraint where T : struct, Enum

@@ -1,8 +1,7 @@
-﻿using FlashCard.Services;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace WebClient.Services
+namespace Clippy.Services
 {
     public class ChatService : IChatService
     {

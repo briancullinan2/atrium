@@ -14,9 +14,9 @@ namespace Extensions.PrometheusTypes
 
 
         public static Expression<Func<TEntity, bool>> ToPredicate<TEntity>(this IEntity entity)
-            where TEntity : Entities.Entity<TEntity>
+            where TEntity : Entity<TEntity>
         {
-            List<PropertyInfo> properties = Entities.Entity<TEntity>.Database;
+            List<PropertyInfo> properties = Entity<TEntity>.Database;
             var members = properties.ToDictionary<PropertyInfo, MemberInfo, object?>(m => m, m => m.GetValue(entity));
             return ToPredicate<TEntity>(members);
         }
@@ -76,7 +76,7 @@ namespace Extensions.PrometheusTypes
         }
 
         public static Expression<Func<TEntity, bool>> ToPredicate<TEntity>(this Dictionary<MemberInfo, object?> members)
-            where TEntity : Entities.Entity<TEntity>
+            where TEntity : Entity<TEntity>
         {
             var type = typeof(TEntity);
             var parameter = Expression.Parameter(type, "e");

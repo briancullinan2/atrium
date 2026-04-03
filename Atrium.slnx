@@ -22,6 +22,7 @@
   <Project Path="RazorSharp/RazorSharp.csproj" Id="cd30228a-347e-42e1-81e2-d2350710832b" />
   <Project Path="Retheme/Retheme.csproj" Id="b0c72931-4caa-49cb-a4ce-f174eb7789aa" />
   <Project Path="StudyModel/StudyModel.csproj" Id="d32e03e0-e36a-48aa-9778-9bb92d682ed4" />
+  <Project Path="UserData/UserData.csproj" Id="9e8ce5dc-3fd1-4cf2-ad98-2b0cd942cbe8" />
   <Project Path="UserModel/UserModel.csproj" Id="7bb214e4-4026-4850-b6a4-1c3725e7fdb3" />
   <Project Path="WebClient/WebClient.csproj" />
 </Solution>

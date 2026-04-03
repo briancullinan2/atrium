@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
@@ -110,6 +110,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Controls\" />
+	  <Folder Include="Platforms\Windows\" />
 	</ItemGroup>
 
 </Project>

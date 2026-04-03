@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 
-namespace FlashCard.Controls
+namespace RazorSharp.Controls
 {
     public class ContentWrapper : ComponentBase
     {

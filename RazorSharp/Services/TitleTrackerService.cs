@@ -1,10 +1,9 @@
-﻿using FlashCard.Services;
-using System.Reflection;
+﻿using System.Reflection;
 
-namespace Atrium.Services
+namespace RazorSharp.Services
 {
     // doesn't update window title because it's running as a web service, but still needs to generate html
-    public class TitleTrackerService : FlashCard.Services.TitleService
+    public class TitleTrackerService : TitleService
     {
         internal static string? _title;
 

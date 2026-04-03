@@ -1,8 +1,7 @@
-using FlashCard.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
-namespace Atrium.Services
+namespace RazorSharp.Services
 {
     // TODO: designed to shut down both services at the same time
 

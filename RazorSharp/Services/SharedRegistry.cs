@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
     public static class SharedRegistry
     {

@@ -1,8 +1,7 @@
 ﻿using DataLayer.Entities;
-using FlashCard.Services;
 using System.Net.Http.Json;
 
-namespace WebClient.Services
+namespace AnkiParser
 {
     public class AnkiService : IAnkiService
     {

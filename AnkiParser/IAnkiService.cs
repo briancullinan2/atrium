@@ -1,4 +1,4 @@
-﻿namespace FlashCard.Services
+﻿namespace AnkiParser
 {
 
     public class Inspection

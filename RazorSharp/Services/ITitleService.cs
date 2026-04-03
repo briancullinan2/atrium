@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
     public interface ITitleService
     {

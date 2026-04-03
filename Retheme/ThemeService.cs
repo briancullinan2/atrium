@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
 
-namespace FlashCard.Services
+namespace Retheme
 {
     public interface IThemeService
     {

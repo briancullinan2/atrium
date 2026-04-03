@@ -11,7 +11,7 @@ using System.Text;
 using FlashCard.Services.Logging;
 using DataLayer.Utilities.Extensions;
 
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
     public class NavigationTracker(IQueryManager query, AuthenticationStateProvider auth) : IDisposable
     {

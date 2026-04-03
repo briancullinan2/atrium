@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace DataLayer.Utilities
+namespace Extensions.MagicalMaths
 {
     public static class FingerPrint
     {

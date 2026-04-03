@@ -1,5 +1,4 @@
 ﻿using DataLayer.Utilities;
-using FlashCard.Services;
 #if WINDOWS
 using Microsoft.AspNetCore.Http;
 #endif
@@ -8,7 +7,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using static System.Net.WebRequestMethods;
 
-namespace Atrium.Services
+namespace Clippy.Services
 {
     internal class ChatService : IChatService
     {

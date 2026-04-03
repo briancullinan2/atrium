@@ -4,7 +4,7 @@ using FlashCard.Utilities.Extensions;
 using Microsoft.AspNetCore.Components;
 using System.Linq.Expressions;
 
-namespace FlashCard.Layout
+namespace RazorSharp.Layout
 {
     public interface INavMenuItem
     {

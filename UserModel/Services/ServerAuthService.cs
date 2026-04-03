@@ -1,7 +1,6 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
-using FlashCard.Services;
 #if WINDOWS || ANDROID
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -18,15 +17,16 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using UserModel.Services;
 
-namespace Atrium.Services
+namespace UserModel.Services
 {
     internal class AuthService(
         NavigationManager Navigation,
         IQueryManager Query,
         IPageManager Page,
         IHttpContextAccessor? _httpContextAccessor = null
-    ) : FlashCard.Services.AuthService(Navigation, Query, Page, _httpContextAccessor) {
+    ) : AuthService(Navigation, Query, Page, _httpContextAccessor) {
 
 
         public static void BuildAuthentication(IServiceCollection Services)

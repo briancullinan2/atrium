@@ -20,7 +20,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
-namespace FlashCard.Services
+namespace UserModel.Services
 {
     public interface IAuthService
     {

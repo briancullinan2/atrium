@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
-using FlashCard.Services;
 using System.Net.Http.Json;
 using DataLayer.Utilities;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection;
+
+
 
 
 
@@ -12,7 +13,7 @@ using System.ServiceProcess;
 #endif
 using System.Text.Json;
 
-namespace Atrium.Services
+namespace Hosting.Services
 {
     internal class HostingService : IHostingService
     {

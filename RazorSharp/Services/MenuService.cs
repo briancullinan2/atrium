@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
     public interface IMenuService
     {

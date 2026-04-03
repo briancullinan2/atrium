@@ -2,7 +2,6 @@
 using DataLayer.Entities;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
-using FlashCard.Controls;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
@@ -10,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+using RazorSharp.Controls;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
@@ -17,7 +17,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 using static System.Net.WebRequestMethods;
 
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
 
     public interface IPageManager : IAsyncDisposable

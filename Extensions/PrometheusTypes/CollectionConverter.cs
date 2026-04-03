@@ -1,11 +1,10 @@
-﻿using DataLayer.Utilities.Extensions;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 
-namespace DataLayer.Utilities
+namespace Extensions.PrometheusTypes
 {
     public static class CollectionConverter
     {

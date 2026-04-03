@@ -1,4 +1,4 @@
-﻿namespace FlashCard.Utilities
+﻿namespace Extensions.MagicalMaths
 {
     public static class RgbToHslTools
     {

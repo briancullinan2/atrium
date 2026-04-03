@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace FlashCard.Services
+namespace Hosting.Services
 {
     public interface IHostingService
     {

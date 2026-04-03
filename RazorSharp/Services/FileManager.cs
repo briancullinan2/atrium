@@ -1,15 +1,27 @@
 ﻿using DataLayer.Utilities.Extensions;
 using Microsoft.AspNetCore.Http;
-using FlashCard.Services;
 using System.Text.Json;
 using Stream = System.IO.Stream;
 using DataLayer.Utilities;
+
+<<<<<<< TODO: Unmerged change from project 'RazorSharp (net10.0-android)', Before:
+=======
+using RazorSharp.Services;
+>>>>>>> After
+
+<<<<<<< TODO: Unmerged change from project 'RazorSharp (net10.0-android)', Before:
+=======
+using Atrium;
+using Atrium.Services;
+>>>>>>> After
+
+
 
 #if WINDOWS
 using Atrium.Platforms.Windows;
 #endif
 
-namespace Atrium.Services
+namespace RazorSharp.Services
 {
     internal class FileManager(IQueryManager Query) : IFileManager
     {

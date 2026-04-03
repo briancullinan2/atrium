@@ -1,5 +1,4 @@
 ﻿using DataLayer.Utilities;
-using FlashCard.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.SignalR.Client.Internal;
@@ -8,7 +7,7 @@ using Microsoft.JSInterop;
 using System.Reflection;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace WebClient.Services
+namespace RazorSharp.Services
 {
     public class CircuitHandler : IConnectionStateProvider, IAsyncDisposable
     {

@@ -78,7 +78,6 @@
 
   <ItemGroup>
     <Content Remove="wwwroot\index.html" />
-    <Content Remove="wwwroot\_framework\blazor.web.js.gz" />
   </ItemGroup>
 
 <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">

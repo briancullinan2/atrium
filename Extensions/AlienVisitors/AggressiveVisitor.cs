@@ -1,17 +1,4 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-
-namespace DataLayer.Utilities
+﻿namespace Extensions.AlienVisitors
 {
     internal class AggressiveVisitor : ExpressionVisitor
     {
@@ -196,7 +183,7 @@ namespace DataLayer.Utilities
                 }
 
                 CurrentRecording?.MemberAccess = parameter.Type;
-                if (parameter.Type.Extends(typeof(Entities.Entity<>)))
+                if (parameter.Type.Extends(typeof(Entity<>)))
                 {
                     CurrentRecording?.EntityType = parameter.Type;
                 }
@@ -339,7 +326,7 @@ namespace DataLayer.Utilities
                 var possiblyEntity = predicateArg.Type.GetGenericArguments()
                     .FirstOrDefault()?.GetGenericArguments().FirstOrDefault();
                 CurrentRecording?.MemberAccess = possiblyEntity;
-                if (possiblyEntity?.Extends(typeof(Entities.Entity<>)) == true)
+                if (possiblyEntity?.Extends(typeof(Entity<>)) == true)
                 {
                     CurrentRecording?.EntityType = possiblyEntity;
                 }

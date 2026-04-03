@@ -1,4 +1,4 @@
-﻿using DataLayer.Entities;
+﻿using Extensions.Entities;
 using Extensions.PrometheusTypes;
 using Microsoft.EntityFrameworkCore;
 using System;

@@ -1,4 +1,4 @@
-namespace FlashCard.Services
+namespace RazorSharp.Services
 {
     public interface IFormFactor
     {

@@ -1,9 +1,8 @@
-using FlashCard.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.JSInterop;
 
-namespace WebClient.Services
+namespace RazorSharp.Services
 {
     public class FormFactor(NavigationManager Nav, WebAssemblyHost? App = null, IJSRuntime? JS = null) : IFormFactor
     {

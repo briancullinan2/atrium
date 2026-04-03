@@ -1,4 +1,4 @@
-﻿namespace FlashCard.Services
+﻿namespace Clippy.Services
 {
     public interface IChatService
     {

@@ -1,11 +1,10 @@
-﻿using FlashCard.Services;
-using Microsoft.AspNetCore.Components.Server.Circuits;
+﻿using Microsoft.AspNetCore.Components.Server.Circuits;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Atrium.Services
+namespace RazorSharp.Services
 {
     internal class CircuitHandler(
         Lazy<MauiApp?>? App = null    

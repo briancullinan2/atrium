@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using System.Text.Json;
 
-namespace FlashCard.Services
+namespace UserModel.Services
 {
     public interface ILoginService
     {

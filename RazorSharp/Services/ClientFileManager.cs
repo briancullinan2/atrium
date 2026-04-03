@@ -1,8 +1,7 @@
-﻿using FlashCard.Services;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 
-namespace WebClient.Services
+namespace RazorSharp.Services
 {
     public class FileManager : IFileManager
     {

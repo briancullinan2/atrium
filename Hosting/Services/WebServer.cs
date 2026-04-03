@@ -5,6 +5,7 @@ using DataLayer;
 using DataLayer.Utilities;
 using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
+using Hosting.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
