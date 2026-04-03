@@ -27,6 +27,7 @@ namespace FlashCard.Services
         Task SetError(Exception? error);
         Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
         Task SetSessionCookie(string name, string value, int days);
+        Task<string?> GetSessionCookie(string name);
 
         // page data handling instead of built in MS uninspectable crap
         Dictionary<string, string?> State { get; set; }
@@ -269,6 +270,13 @@ namespace FlashCard.Services
         {
             await ModuleInitialize;
             await Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+        }
+
+
+        public async Task<string?> GetSessionCookie(string name)
+        {
+            await ModuleInitialize;
+            return await Module.InvokeAsync<string>("getSessionCookie", name);
         }
 
 

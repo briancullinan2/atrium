@@ -16,6 +16,7 @@ namespace DataLayer.Entities
         public string Value { get; set; } = string.Empty;
 
         public DateTime Time { get; set; }
+        public DateTime ProfileTime { get; set; }
 
         public int Lifetime { get; set; } = 31536000;
 

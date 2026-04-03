@@ -62,8 +62,8 @@ internal class Program
         builder.Services.AddSingleton<IQueryManager, RemoteManager>();
         builder.Services.AddSingleton<IPageManager, WebClient.Services.PageManager>();
 
-        builder.Services.AddScoped<IAuthService, BrowserStateProvider>();
-        builder.Services.AddScoped(sp => (BrowserStateProvider)sp.GetRequiredService<IAuthService>());
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped(sp => (AuthService)sp.GetRequiredService<IAuthService>());
 
         builder.Services.AddDbContextFactory<RemoteStorage>();
         builder.Services.AddDbContextFactory<TestStorage>();

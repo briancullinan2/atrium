@@ -12,6 +12,25 @@ namespace DataLayer.Utilities.Extensions
     // Token: 0x0200005E RID: 94
     public static class TypeExtensions
     {
+        public static Dictionary<string, string> Query(this string url)
+        {
+            var uri = new Uri(url);
+            return Query(uri);
+        }
+
+        public static Dictionary<string, string> Query(this Uri uri)
+        {
+            // Use a simple split/regex to avoid heavy libraries
+            var query = uri.Query.TrimStart('?');
+            var parameters = query.Split('&')
+                                  .Select(p => p.Split('='))
+                                  .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");
+
+            return parameters;
+        }
+
+
+
         // Token: 0x060002F6 RID: 758 RVA: 0x00019200 File Offset: 0x00017400
         public static bool IsLocked(this object o)
         {

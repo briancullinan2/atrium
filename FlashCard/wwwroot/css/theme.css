@@ -829,7 +829,7 @@ a:hover, .btn-link:hover
 
 
 .flash-card {
-    background-color: var(--slate-card);
+    background-color: rgb(from var(--slate-card) r g b / 80%);
     color: var(--text-main);
     box-shadow: 0 10px 20px var(--slate-card), 5px 5px 10px var(--emerald-glow);
 }

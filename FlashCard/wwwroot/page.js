@@ -1,11 +1,26 @@
 ﻿
 export function setSessionCookie(name, value, days) {
-    const date = new Date()
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000))
-    const expires = "expires=" + date.toUTCString()
-    document.cookie = name + "=" + value + "" + expires + "path=/"
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "; expires=" + date.toUTCString(); // Added semicolon
+    // Ensure value is encoded for safety
+    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
 }
 
+export function getSessionCookie(name) {
+        const cookieName = name + "=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const cookieArray = decodedCookie.split(';');
+
+        for (let i = 0; i < cookieArray.length; i++) {
+            let c = cookieArray[i].trim();
+            if (c.indexOf(cookieName) === 0) {
+                return c.substring(cookieName.length, c.length);
+            }
+        }
+        return null;
+    }
+ 
 
 let currentAnimation = null
 const loadedModules = {} // Simple cache to avoid re-imports

@@ -55,8 +55,9 @@ namespace Atrium
             Services.AddSingleton<IChatService, ChatService>();
 
 
-            Services.AddScoped<IAuthService, DatabaseStateProvider>();
-            Services.AddScoped(sp => (DatabaseStateProvider)sp.GetRequiredService<IAuthService>());
+            Services.AddScoped<IAuthService, Services.AuthService>();
+            Services.AddScoped(sp => (Services.AuthService)sp.GetRequiredService<IAuthService>());
+            Services.AddScoped(sp => (FlashCard.Services.AuthService)sp.GetRequiredService<IAuthService>());
 
             Services.AddSingleton(sp => new HttpClient
             {
@@ -72,7 +73,7 @@ namespace Atrium
 #endif
             // Inject the server instance into MAUI's DI
 #if WINDOWS
-            DatabaseStateProvider.BuildAuthentication(Services);
+            Atrium.Services.AuthService.BuildAuthentication(Services);
 #endif
 
         }
