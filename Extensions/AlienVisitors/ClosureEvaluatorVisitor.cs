@@ -1,22 +1,7 @@
-﻿using Extensions.Utilities.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Xml.Linq;
-using static Extensions.AlienVisitors.AggressiveVisitor;
-
+﻿
 namespace Extensions.AlienVisitors
 {
     
-    
-
 
     public class ClosureEvaluatorVisitor : ExpressionVisitor
     {

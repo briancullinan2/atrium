@@ -1,5 +1,4 @@
-﻿using Extensions.Utilities.Extensions;
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
 namespace Extensions.PrometheusTypes
 {

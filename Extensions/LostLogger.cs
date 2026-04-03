@@ -1,13 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Reflection;
-
-<<<<<<< TODO: Unmerged change from project 'Extensions (net10.0-maccatalyst)', Before:
-=======
-using Extensions;
-using Extensions.Utilities;
-using Extensions;
->>>>>>> After
-
 
 namespace Extensions
 {

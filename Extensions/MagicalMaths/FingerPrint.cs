@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
+﻿
 namespace Extensions.MagicalMaths
 {
     public static class FingerPrint

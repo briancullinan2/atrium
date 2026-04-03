@@ -1,14 +1,5 @@
-﻿using Extensions.Utilities;
-using Extensions.Utilities.Extensions;
-using Extensions.PrometheusTypes;
+﻿
 using Microsoft.EntityFrameworkCore.Storage;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
 using System.Xml.Linq;
 
 namespace Extensions.QueryableChaos
@@ -242,7 +233,7 @@ namespace Extensions.QueryableChaos
 
                         element.Add(typeElement);
                     }
-                    else if (value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+                    else if (value?.GetType().Extends(typeof(IAsyncQueryable<>)) == true)
                     {
                         var propElement = new XElement(prop.Name);
                         propElement.Add(VisitToXml(value, currentDepth + 1, expressionDepth));

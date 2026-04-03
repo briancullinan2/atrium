@@ -1,7 +1,7 @@
 ﻿
 using System.Globalization;
 
-namespace Extensions.Utilities.Extensions
+namespace Extensions.PrometheusTypes
 {
     public static partial class StringExtensions
     {

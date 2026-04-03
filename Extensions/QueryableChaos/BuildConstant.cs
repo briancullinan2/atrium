@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Text;
-using System.Text.Json;
+﻿
 using System.Xml.Linq;
 
 namespace Extensions.QueryableChaos
@@ -39,7 +35,7 @@ namespace Extensions.QueryableChaos
                 }
                 if (type.IsIterable())
                 {
-                    val = CollectionConverter.ConvertAsync(val, type);
+                    val = PrometheusTypes.CollectionConverter.ConvertAsync(val, type);
                 }
 
                 if (val?.GetType() != type)

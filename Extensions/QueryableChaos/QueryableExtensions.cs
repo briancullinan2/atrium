@@ -1,18 +1,4 @@
-﻿using Extensions.Entities;
-using Extensions.Utilities.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text.RegularExpressions;
-using System.Web;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-
+﻿
 
 namespace Extensions.QueryableChaos
 {

@@ -17,4 +17,5 @@ global using Extensions.PrometheusTypes;
 global using Extensions.ForeignEntity;
 global using Extensions.QueryableChaos;
 global using Extensions.AlienVisitors;
+global using CollectionConverter = Extensions.PrometheusTypes.CollectionConverter;
 
