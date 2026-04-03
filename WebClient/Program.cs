@@ -47,7 +47,7 @@ internal class Program
         builder.Services.AddSingleton<ITitleService, WebClient.Services.TitleService>();
         builder.Services.AddSingleton<IHostingService, HostingService>();
         builder.Services.AddSingleton<IChatService, ChatService>();
-        builder.Services.AddSingleton<IFileManager, FileManager>();
+        builder.Services.AddSingleton<IFileManager, ClientFileManager>();
         builder.Services.AddSingleton<IAnkiService, AnkiService>();
 
         builder.Services.AddSingleton(sp => new HttpClient

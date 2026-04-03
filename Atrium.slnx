@@ -3,15 +3,25 @@
     <File Path="Auth.md" />
     <File Path="Local.md" />
     <File Path="README.md" />
+    <File Path="womp.LICENSE" />
   </Folder>
   <Project Path="AnkiParser/AnkiParser.csproj" Id="615d09d4-ed2f-43b8-973c-488d1c7ae695" />
   <Project Path="Atrium/Atrium.csproj">
     <Deploy Solution="Debug|*" />
   </Project>
-  <Project Path="DataLayer/DataLayer.csproj" Id="d32e03e0-e36a-48aa-9778-9bb92d682ed4" />
+  <Project Path="Clippy/Clippy.csproj" Id="912347ed-cf63-4994-8cfa-6769b6e2c8b7" />
+  <Project Path="DataStore/DataStore.csproj" Id="7c536f07-2542-4e08-a867-7bb41b577fcb" />
+  <Project Path="Extensions/Extensions.csproj" Id="329caace-ac34-43de-9559-db785a1dfa5d" />
   <Project Path="FlashCard/FlashCard.csproj">
-    <BuildDependency Project="DataLayer/DataLayer.csproj" />
+    <BuildDependency Project="StudyModel/StudyModel.csproj" />
   </Project>
+  <Project Path="GameHub/GameHub.csproj" Id="532c3606-1056-4939-a83f-fb618014c8dd" />
+  <Project Path="Hosting/Hosting.csproj" Id="a3a10407-7dde-4fdb-9d9a-8c129f348ce0" />
+  <Project Path="LiveTest/LiveTest.csproj" Id="afea3970-153f-403f-a541-88eecd08351a" />
+  <Project Path="Merchantry/Merchantry.csproj" Id="ab4c2786-e64b-441d-b67e-82738e86e028" />
+  <Project Path="RazorSharp/RazorSharp.csproj" Id="cd30228a-347e-42e1-81e2-d2350710832b" />
   <Project Path="Retheme/Retheme.csproj" Id="b0c72931-4caa-49cb-a4ce-f174eb7789aa" />
+  <Project Path="StudyModel/StudyModel.csproj" Id="d32e03e0-e36a-48aa-9778-9bb92d682ed4" />
+  <Project Path="UserModel/UserModel.csproj" Id="7bb214e4-4026-4850-b6a4-1c3725e7fdb3" />
   <Project Path="WebClient/WebClient.csproj" />
 </Solution>

@@ -24,6 +24,13 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/3/2026
+
+Doing another big layout refresh to make sure that I don't cross domains/scopes in purpose. Makes the code more reusable for other projects I can use the same
+basic framekwork and layout and swap out entire menus and pages with the changed of an environment start-up variable and treat all my purposes like plugins/build targets.
+
+
+
 #### 3/18/2026
 TODO: whats the holdup, merge any missing default users with database results, but only for admin view
    so many splits in reality, i can save settings, get an oauth flow working, store the setting for

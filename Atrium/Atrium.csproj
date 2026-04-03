@@ -108,7 +108,7 @@
 	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </ProjectReference>
-	  <ProjectReference Include="..\DataLayer\DataLayer.csproj">
+	  <ProjectReference Include="..\DataLayer\StudyModel.csproj">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </ProjectReference>
 	  <ProjectReference Include="..\Retheme\Retheme.csproj">

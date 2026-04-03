@@ -1,0 +1,74 @@
+﻿@page "/"
+@page "/home"
+@page "/index.html"
+@page "/app.html"
+@page "/{*notFound}"
+@using DataLayer
+@using DataLayer.Entities
+@using FlashCard.Controls
+@using FlashCard.Services
+@attribute [AllowAnonymous]
+@inject IFormFactor FormFactor
+@inject IMenuService MenuService
+@inject ILoginService LoginService
+
+<SyncedTitle Title="Home"></SyncedTitle>
+
+@if (!String.IsNullOrWhiteSpace(notFound))
+{
+    <NotFoundControl />
+    return;
+}
+
+<a class="big-button" href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = DataLayer.PackMode.Shuffle}))">
+    <span>
+        <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
+        <span>Shuffle</span>
+    </span>
+</a>
+
+<div class="study-now">
+    <h2><a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = DataLayer.PackMode.Shuffle }))">Start studying now</a></h2>
+    @if (LoginService.User == null)
+    {
+        <h3><a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Login to track progress</a></h3>
+    }
+    @if (LoginService.User == null || LoginService.User.UserPacks.Count(up => up.GetRetention().Any(r => r.Value.IsDue)) == 0)
+    {
+        <h4><a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>())">Subscribe to packs to memorize content quickly.</a></h4>
+    }
+    else
+    {
+        <heading class="study-row">
+            <label>Pack Title</label>
+            <label>Card Count</label>
+        </heading>
+        foreach (var up in LoginService.User.UserPacks.Where(up => up.GetRetention().Any(r => r.Value.IsDue)))
+        {
+            <div class="study-row">
+                <span><a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.PackId, Mode = DataLayer.PackMode.Card }))">@up.Pack?.Title</a></span>
+                <span>@up.GetRetention().Count(r => r.Value.IsDue)</span>
+            </div>
+        }
+    }
+</div>
+
+<br />
+<br />
+
+
+@code {
+    private string factor => FormFactor.GetFormFactor();
+    private string platform => FormFactor.GetPlatform();
+    [Parameter] public string? notFound { get; set; }
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (IsStaticRender) return;
+
+        MenuService.SetMenu(null);
+        MenuService.SetHeader(false);
+    }
+}
