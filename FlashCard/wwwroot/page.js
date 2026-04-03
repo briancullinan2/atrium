@@ -158,7 +158,7 @@ export async function initBackground(mode, canvasId) {
         currentAnimation = null
     }
 
-    if (mode === "none") return
+    if (mode.toLowerCase() === "none") return
 
     // Use the cache or import
     const path = `/_content/FlashCard/${mode.toLowerCase()}.js`

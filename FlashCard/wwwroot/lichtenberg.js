@@ -92,13 +92,14 @@
     let fpsInterval = 1000 / fps;
     let lastDrawTime = performance.now();
     let isCancelled = false;
+    var requestId;
 
     function animate(currentTime) {
         if (isCancelled) return;
 
         let elapsed = currentTime - lastDrawTime;
         if (elapsed < fpsInterval) {
-            requestAnimationFrame(animate);
+            requestId = requestAnimationFrame(animate);
             return;
         }
         lastDrawTime = currentTime - (elapsed % fpsInterval);
@@ -140,7 +141,7 @@
             );
         });
 
-        requestAnimationFrame(animate);
+        requestId = requestAnimationFrame(animate);
     }
     animate(0)
     //setInterval(() => animate(performace.now()), fpsInterval);

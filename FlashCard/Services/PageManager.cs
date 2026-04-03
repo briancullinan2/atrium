@@ -208,7 +208,7 @@ namespace FlashCard.Services
         {
             Rendered.OnRendered -= NotifyEmptied;
             Rendered.OnEmptied -= NotifyEmptied;
-            if (Module != null)
+            if (IsReady)
             {
                 await Module.DisposeAsync();
             }
@@ -650,7 +650,7 @@ namespace FlashCard.Services
         public async ValueTask InitializeBackground(string mode, string canvas)
         {
             await ModuleInitialize;
-            await Module.InvokeVoidAsync("initBackground", mode, canvas);
+            await Module.InvokeVoidAsync("initBackground", mode.ToString().ToLower(), canvas);
         }
 
         public async ValueTask Clipboard(string text)

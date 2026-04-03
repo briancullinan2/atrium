@@ -24,6 +24,15 @@
     left: 0;
 }
 
+.page.none .canvas-container canvas {
+    display: none;
+}
+
+.page.none .canvas-container {
+    animation: waveMovement 18s ease infinite;
+}
+
+
 .canvas-container {
     z-index: -1;
     background: #0a0514;

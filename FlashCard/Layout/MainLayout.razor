@@ -27,7 +27,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationTracker Tracker
 
-<div class="@(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
+<div class="@(Background.ToString()?.ToLowerInvariant())  @(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
     <div id="theme-sensor" style="display:none;">
         <span class="sensor-bg"></span>
         <span class="sensor-surface"></span>
@@ -382,7 +382,7 @@
     }
 
 
-    public AnimationMode? Background { get; set; } = AnimationMode.None;
+    public AnimationMode? Background { get; set; } = AnimationMode.none;
     public bool initRender { get; set; } = true;
 
     private void SetBackground(AnimationMode? theme)
@@ -525,13 +525,14 @@
             _animationCts = null;
         }
 
-        if (Background == AnimationMode.None)
-        {
-            return;
-        }
+        // still pass None to page manager to turn off
+        //if (Background == AnimationMode.None)
+        //{
+        //    return;
+        //}
 
         if (Background.HasValue)
-            _ = PageManager.InitializeBackground(Background.Value.ToString(), "lichtenbergCanvas");
+            _ = PageManager.InitializeBackground(Background.Value.ToString().ToLower(), "lichtenbergCanvas");
     }
 
     public async ValueTask DisposeAsync()

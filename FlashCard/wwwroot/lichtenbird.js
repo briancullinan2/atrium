@@ -185,12 +185,13 @@
     let isCancelled = false;
     let lastColorUpdate = performance.now();
     let colors = getThemeColors();
+    var requestId;
 
     function animate(currentTime) {
         if (isCancelled) return;
         let elapsed = currentTime - lastDrawTime;
         if (elapsed < fpsInterval) {
-            requestAnimationFrame(animate);
+            requestId = requestAnimationFrame(animate);
             return;
         }
 
@@ -233,7 +234,7 @@
         // 3. Draw the Flying Triangular Bird
         drawBirds(nodes, colors);
 
-        requestAnimationFrame(animate);
+        requestId = requestAnimationFrame(animate);
     }
 
     animate(0);

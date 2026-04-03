@@ -139,7 +139,7 @@ namespace DataLayer.Utilities
         {
             Rendered.OnRendered -= NotifyRendered;
             Rendered.OnEmptied -= NotifyEmptied;
-            if (Module != null)
+            if (IsReady)
             {
                 await Module.DisposeAsync();
             }

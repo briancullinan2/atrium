@@ -2,38 +2,42 @@
     --global-line-height: 1.6em;
 }
 
-body, html
-{
+/* Global Styles */
+body, html {
     line-height: var(--global-line-height);
 }
 
-.timeline-grid .y-axis {
-    line-height: var(--global-line-height);
-}
-
+/* Timeline Base Styles */
+/* Note: These use your vh-based calculations as the primary logic 
+   to ensure the grid and text align perfectly by default. */
 .timeline-grid {
-    background-size: 100% var(--global-line-height); /* 25px per hour */
+    background-size: 100% calc((100vh - 16rem) / 24); /* 24-hour distribution */
 }
 
 .timeline-grid .y-axis {
-    margin-bottom: calc(var(--global-line-height) * 2);
+    background-color: var(--slate-card);
+    line-height: calc((100vh - 16rem) / 24);
+    margin-bottom: var(--global-line-height);
 }
 
+/* Responsive Adjustments for Small Screens */
 @media all and (max-height: 640px) {
-
+    /* Merged both media query blocks here */
     .timeline-grid .y-axis {
-        line-height: calc(var(--global-line-height) / 2);
+        /* This maintains your height calculation logic for smaller viewports */
+        line-height: calc((100vh - 16rem) / 24);
     }
+
     .timeline-grid .y-axis > * {
-        padding: calc(var(--global-line-height) / 4) 0;
+        /* Distributes padding as half of the row height */
+        padding: calc((100vh - 16rem) / 24 / 2) 0;
     }
 
     .timeline-grid {
-        background-size: 100% calc(var(--global-line-height) / 2); /* 25px per hour */
+        /* Ensures the background grid shrinks with the text */
+        background-size: 100% calc((100vh - 16rem) / 24);
     }
-
 }
-
 
 
 
@@ -44,32 +48,6 @@ body, html
 .page.chatting .flash-card.timeline-viewport {
     height: calc(100vh - 8.7rem);
 }
-
-.timeline-grid .y-axis {
-    background-color: var(--slate-card);
-    line-height: calc((100vh - 16rem) / 24);
-}
-
-.timeline-grid {
-    background-size: 100% calc((100vh - 16rem) / 24); /* 25px per hour */
-}
-
-.timeline-grid .y-axis {
-    margin-bottom: var(--global-line-height);
-}
-
-@media all and (max-height: 640px) {
-
-    .timeline-grid .y-axis {
-        line-height: calc((100vh - 16rem) / 24);
-    }
-
-    .timeline-grid .y-axis > * {
-        padding: calc((100vh - 16rem) / 24 / 2) 0;
-    }
-
-}
-
 
 
 .btn-primary,
@@ -584,72 +562,84 @@ button.cta {
 
 
 /* 1. Midnight Void */
+.page.theme-midnightvoid.gradient .canvas-container,
 .sidebar.theme-midnightvoid {
     background: linear-gradient(125deg, #020617 0%, #0f172a 100%);
     background-size: 400% 400%;
 }
 
 /* 2. Arctic Thaw */
+.page.theme-arcticthaw.gradient .canvas-container,
 .sidebar.theme-arcticthaw {
     background: linear-gradient(125deg, #0f172a 0%, #1e293b 50%, #7dd3fc 100%);
     background-size: 400% 400%;
 }
 
 /* 3. Abyssal Trench */
+.page.theme-abyssaltrench.gradient .canvas-container,
 .sidebar.theme-abyssaltrench {
     background: linear-gradient(125deg, #000000 0%, #081121 100%);
     background-size: 400% 400%;
 }
 
 /* 4. Oxidized Iron */
+.page.theme-oxidizediron.gradient .canvas-container,
 .sidebar.theme-oxidizediron {
     background: linear-gradient(125deg, #1a1a1a 0%, #451a03 100%);
     background-size: 400% 400%;
 }
 
 /* 5. Deep Sea Kelp */
+.page.theme-deepseakelp.gradient .canvas-container,
 .sidebar.theme-deepseakelp {
     background: linear-gradient(125deg, #052e16 0%, #10b981 100%);
     background-size: 400% 400%;
 }
 
 /* 6. Solar Flare */
+.page.theme-solarflare.gradient .canvas-container,
 .sidebar.theme-solarflare {
     background: linear-gradient(125deg, #451a03 0%, #78350f 100%);
     background-size: 400% 400%;
 }
 
 /* 7. Monochrome Matrix */
+.page.theme-monochromematrix.gradient .canvas-container,
 .sidebar.theme-monochromematrix {
     background: linear-gradient(125deg, #020617 0%, #000000 100%);
     background-size: 400% 400%;
 }
 
 /* 8. Lead Fortress */
+.page.theme-leadfortress.gradient .canvas-container,
 .sidebar.theme-leadfortress {
     background: linear-gradient(125deg, #1e293b 0%, #0f172a 100%);
     background-size: 400% 400%;
 }
 
 /* 9. Ashen Wastes */
+.page.theme-ashenwastes.gradient .canvas-container,
 .sidebar.theme-ashenwastes {
     background: linear-gradient(125deg, #18181b 0%, #7f1d1d 100%);
     background-size: 400% 400%;
 }
 
 /* 10. Inverted Neon */
+.page.theme-invertedneon.gradient .canvas-container,
 .sidebar.theme-invertedneon {
     background: linear-gradient(125deg, #f1f5f9 0%, #cbd5e1 100%);
     background-size: 400% 400%;
 }
 
 /* 11. Sour Lime */
+.page.theme-sourlime.gradient .canvas-container,
 .sidebar.theme-sourlime {
     background: linear-gradient(125deg, #064e3b 0%, #365314 100%);
     background-size: 400% 400%;
 }
 
 /* 12. Obsidian Ledger */
+.page.theme-obsidianledger.gradient .canvas-container,
 .sidebar.theme-obsidianledger {
     background: linear-gradient(125deg, #000000 0%, #171717 100%);
     background-size: 400% 400%;
@@ -657,11 +647,13 @@ button.cta {
 
 
 
+.page.theme-arcticthaw.gradient .canvas-container,
 .sidebar.theme-ivory {
     background: linear-gradient( 125deg, rgb(5, 39, 103) 0%, #3a0647 40%, rgb(10, 50, 120) 70%, #4a085c 100% );
     background-size: 400% 400%;
 }
 
+.page.theme-darkslate.gradient .canvas-container,
 sidebar.theme-darkslate {
     background: linear-gradient( 125deg, #020617 0%, /* True black-blue at the top */
     #0f172a 40%, /* Slate surface match */
@@ -672,72 +664,84 @@ sidebar.theme-darkslate {
 }
 
 /* 1. Classic Sunrise/Purple */
+.page.theme-daybreak.gradient .canvas-container,
 .sidebar.theme-daybreak {
     background: linear-gradient(125deg, #ff8c00 0%, #ff0080 50%, #800080 100%);
     background-size: 400% 400%;
 }
 
 /* 2. Banded Gold, Orange, and Purple */
+.page.theme-desertsunset.gradient .canvas-container,
 .sidebar.theme-desertsunset {
     background: linear-gradient(125deg, #4b0082 0%, #ff4500 45%, #ffd700 80%, #ffffff 100%);
     background-size: 400% 400%;
 }
 
 /* 3. Deep Reflective Blue */
+.page.theme-oceanripple.gradient .canvas-container,
 .sidebar.theme-oceanripple {
     background: linear-gradient(125deg, #000080 0%, #0000ff 40%, #00ffff 70%, #ffffff 100%);
     background-size: 400% 400%;
 }
 
 /* 4. High-Contrast Metallic */
+.page.theme-silverchrome.gradient .canvas-container,
 .sidebar.theme-silverchrome {
     background: linear-gradient(125deg, #4d4d4d 0%, #ffffff 45%, #7a7a7a 50%, #c0c0c0 100%);
     background-size: 400% 400%;
 }
 
 /* 5. Tropical Cyan and Pink */
+.page.theme-coralreef.gradient .canvas-container,
 .sidebar.theme-coralreef {
     background: linear-gradient(125deg, #ff7f50 0%, #ff1493 40%, #ffd700 80%, #00ced1 100%);
     background-size: 400% 400%;
 }
 
 /* 6. Atmospheric Night */
+.page.theme-dusk.gradient .canvas-container,
 .sidebar.theme-dusk {
     background: linear-gradient(125deg, #000033 0%, #1a0033 40%, #330066 70%, #000066 100%);
     background-size: 400% 400%;
 }
 
 /* 7. The Full Spectrum */
+.page.theme-rainbowpeak.gradient .canvas-container,
 .sidebar.theme-rainbowpeak {
     background: linear-gradient(125deg, #ff0000 0%, #ffff00 25%, #00ff00 50%, #00ffff 75%, #0000ff 100%);
     background-size: 400% 400%;
 }
 
 /* 8. Polished Metal Gold */
+.page.theme-goldengate.gradient .canvas-container,
 .sidebar.theme-goldengate {
     background: linear-gradient(125deg, #b8860b 0%, #ffd700 40%, #ffffff 50%, #b8860b 100%);
     background-size: 400% 400%;
 }
 
 /* 9. Earthy Vibrant Green */
+.page.theme-emeraldforest.gradient .canvas-container,
 .sidebar.theme-emeraldforest {
     background: linear-gradient(125deg, #004d00 0%, #008000 40%, #32cd32 70%, #adff2f 100%);
     background-size: 400% 400%;
 }
 
 /* 10. Matrix-Style Black & Green */
+.page.theme-nightvision.gradient .canvas-container,
 .sidebar.theme-nightvision {
     background: linear-gradient(125deg, #000000 0%, #003300 45%, #00ff00 55%, #000000 100%);
     background-size: 400% 400%;
 }
 
 /* 11. 90s Candy Blue/Red */
+.page.theme-berryblast.gradient .canvas-container,
 .sidebar.theme-berryblast {
     background: linear-gradient(125deg, #0000ff 0%, #6a5acd 40%, #ff00ff 70%, #dc143c 100%);
     background-size: 400% 400%;
 }
 
 /* 12. Structured Academic Beige */
+.page.theme-parchment.gradient .canvas-container,
 .sidebar.theme-parchment {
     background: linear-gradient(125deg, #8b4513 0%, #d2b48c 40%, #f5f5dc 70%, #ffffff 100%);
     background-size: 400% 400%;

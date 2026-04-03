@@ -107,13 +107,13 @@
     let lastDrawTime = performance.now();
     let colors = getThemeColors();
     let lastColorUpdate = performance.now();
-
+    var requestId;
 
     function animate(currentTime) {
         if (isCancelled) return;
         let elapsed = currentTime - lastDrawTime;
         if (elapsed < fpsInterval) {
-            requestAnimationFrame(animate);
+            requestId = requestAnimationFrame(animate);
             return;
         }
 
@@ -180,7 +180,7 @@
         // 5. DRAW NODES
         anchors.forEach(a => drawLocus(...a.pos, a.col));
 
-        requestAnimationFrame(animate);
+        requestId = requestAnimationFrame(animate);
     }
 
     animate(performance.now());

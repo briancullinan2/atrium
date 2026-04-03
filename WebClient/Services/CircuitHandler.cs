@@ -30,21 +30,7 @@ namespace WebClient.Services
         protected void NotifyRendered() => _ = EnsureModuleLoaded();
 
 
-        private IJSObjectReference? _module = null;
         private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public IJSObjectReference Module
-        {
-            get
-            {
-                if (!_restartRequired.Task.IsCompleted || _module == null)
-                {
-                    throw new InvalidOperationException("Module is not available. Must await ModuleInitialize before refering to JS module.");
-                }
-                return _module;
-            }
-            private set => _module = value;
-        }
 
 
         private readonly SemaphoreSlim _loadLock = new(1, 1);
@@ -147,10 +133,6 @@ namespace WebClient.Services
             PageManager.OnReconnect -= ReportFromPage;
             Rendered.OnRendered -= NotifyEmptied;
             Rendered.OnEmptied -= NotifyEmptied;
-            if (Module != null)
-            {
-                await Module.DisposeAsync();
-            }
             GC.SuppressFinalize(this);
         }
     }

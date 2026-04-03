@@ -95,12 +95,13 @@
     let isCancelled = false;
     let lastColorUpdate = performance.now();
     let colors = getThemeColors();
+    var requestId;
 
     function animate(currentTime) {
         if (isCancelled) return;
         let elapsed = currentTime - lastDrawTime;
         if (elapsed < fpsInterval) {
-            requestAnimationFrame(animate);
+            requestId = requestAnimationFrame(animate);
             return;
         }
 
@@ -149,7 +150,7 @@
             );
         });
 
-        requestAnimationFrame(animate);
+        requestId = requestAnimationFrame(animate);
     }
     animate(0);
     return {

@@ -212,18 +212,21 @@ namespace FlashCard.Services
     public enum AnimationMode
     {
         [Description("None (Turn Off)")]
-        None = 0,
+        none = 0,
+
+        [Description("Gradient")]
+        gradient = 1,
 
         [Description("Lichtenberg Cube")]
-        lichtenberg = 1,
+        lichtenberg = 2,
 
         [Description("Lichtenberg Light")]
-        lichtenlight = 2,
+        lichtenlight = 3,
 
         [Description("Lichten Birds")]
-        lichtenbird = 3,
+        lichtenbird = 4,
 
         [Description("Lichten Atrium")]
-        lichtenatrium = 4
+        lichtenatrium = 5
     }
 }
