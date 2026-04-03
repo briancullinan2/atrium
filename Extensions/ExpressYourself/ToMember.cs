@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-
+﻿
 namespace Extensions.PrometheusTypes
 {
     public static partial class ExpressionExtensions
@@ -253,7 +246,7 @@ namespace Extensions.PrometheusTypes
                 return bi.ToMembers();
 
             if (ex is ConstantExpression co
-                && co.Value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+                && co.Value?.GetType().Extends(typeof(IAsyncQueryable<>)) == true)
                 return [];
 
             var dictionary = new Dictionary<MemberInfo, object?>();

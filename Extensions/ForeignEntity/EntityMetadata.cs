@@ -1,10 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq.Expressions;
-using System.Reflection;
-
+﻿
 namespace Extensions.ForeignEntity
 {
     public class PropertyMetadata

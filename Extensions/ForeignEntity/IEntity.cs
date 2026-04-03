@@ -7,11 +7,11 @@ namespace Extensions.ForeignEntity
     {
         //abstract internal static IEntity Create(IEntity target);
         //abstract internal static IEntity Wrap(IEntity target);
-        Task<IEntity> Update(IEntity? entity = null);
+        Task<IEntity?> Update(IEntity? entity = null);
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
-        Task<IEntity> Save();
+        Task<IEntity> Save(IQueryManager? query = null);
         int? CanonicalFingerprint { get; set; }
-        //internal IQueryManager? QueryManager { get; set; }
+        internal IQueryManager? QueryManager { get; set; }
         internal Type? ContextType { get; set; }
 
 
@@ -27,7 +27,6 @@ namespace Extensions.ForeignEntity
         static abstract List<PropertyInfo> Interesting { get; }
         static abstract EntityMetadata<T> Metadata { get; }
 
-        Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity;
         //Task<T> Save(IServiceProvider service);
         //Task<T> Save(IQueryManager? query = null);
     }

@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Text;
-
+﻿
 namespace Extensions.ForeignEntity
 {
+    public interface ITranslationContext
+    {
+
+        IQueryManager Query { get; set; }
+
+    }
+
+
     public static partial class IEntityExtensions
     {
         /*
@@ -23,8 +27,8 @@ namespace Extensions.ForeignEntity
         */
 
         public static async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(this TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
-            where TFrom : TranslationContext
-            where TTo : TranslationContext
+            where TFrom : ITranslationContext
+            where TTo : ITranslationContext
             where TSet : Entity<TSet>
         {
             if (contextFrom.Query == null)

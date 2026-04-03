@@ -87,16 +87,6 @@ namespace StudyModel
 
 
 
-    [Obfuscation(Exclude = true, ApplyToMembers = true)]
-    public enum StorageType : int
-    {
-        Ephemeral = 0,
-        Persistent = 1,
-        Remote = 2,
-        Test = 3
-    }
-
-
 
     [Obfuscation(Exclude = true, ApplyToMembers = true)]
     public enum GradeScale : int

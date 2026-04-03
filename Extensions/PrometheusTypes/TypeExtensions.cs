@@ -1,15 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
-using System.Text.Json;
-
+﻿
 namespace Extensions.PrometheusTypes
 {
     // Token: 0x0200005E RID: 94
-    public static class TypeExtensions
+    public static partial class TypeExtensions
     {
         
         // Token: 0x060002F7 RID: 759 RVA: 0x00019228 File Offset: 0x00017428

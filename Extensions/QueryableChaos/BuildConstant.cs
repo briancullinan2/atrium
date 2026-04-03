@@ -26,10 +26,12 @@ namespace Extensions.QueryableChaos
                     return Expression.Constant(null, type);
                 }
                 var val = ResolveMetadata(type, el.Attribute(nameof(ConstantExpression.Value))?.Value, type.IsIterable() ? complex : complex.Elements().FirstOrDefault() ?? complex);
-                if (type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
-                {
-                    Console.WriteLine("Made constant: " + JsonSerializer.Serialize(val) + el);
-                }
+                
+                //if (type.GetGenericArguments().FirstOrDefault() == typeof(Visit))
+                //{
+                //    Console.WriteLine("Made constant: " + JsonSerializer.Serialize(val) + el);
+                //}
+
                 if (val?.GetType().IsSimple() == true
                     && val?.GetType() != type)
                 {

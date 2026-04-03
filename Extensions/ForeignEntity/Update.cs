@@ -1,14 +1,11 @@
-﻿using Org.W3c.Dom;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 
 namespace Extensions.ForeignEntity
 {
     public static partial class IEntityExtensions
     {
 
-        public static async Task<IEntity?> Update(this IEntity entity, IQueryManager? query = null)
+        public static async Task<IEntity?> Update(this IEntity? entity, IQueryManager? query = null)
         {
             if (entity == null)
             {

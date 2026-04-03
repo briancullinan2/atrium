@@ -1,13 +1,4 @@
-﻿using Extensions.PrometheusTypes;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-
+﻿
 namespace Extensions.AlienVisitors
 {
     // run up the chain looking for types to replace because EF generates a bunch of plain ol objects for entities
@@ -18,7 +9,7 @@ namespace Extensions.AlienVisitors
         {
             if (realRoot != null
                 && node.Value is IQueryable queryable
-                && (queryable.Provider.GetType().Extends(typeof(EnqueuedQueryProvider<>))
+                && (queryable.Provider.GetType().Extends(typeof(IAsyncQueryProvider))
                 || node.Type.Extends(typeof(AsyncQueryable<>))))
             {
                 return realRoot.Expression;
@@ -144,7 +135,7 @@ namespace Extensions.AlienVisitors
         protected static bool IsQueryableMethod(MethodCallExpression node) =>
             node.Method.DeclaringType == typeof(Queryable)
             || node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
-            || node.Method.DeclaringType == typeof(AsyncQueryable<>);
+            || node.Method.DeclaringType == typeof(IAsyncQueryable<>);
 
 
         // UNRELIABLE this is why we need two passes?

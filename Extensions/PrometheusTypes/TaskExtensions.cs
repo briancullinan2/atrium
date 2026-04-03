@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.Runtime.CompilerServices;
 
 namespace Extensions.PrometheusTypes
 {
-    public static class TaskExtensions
+    public static partial class TaskExtensions
     {
         // 1. Chaining a Task that returns a Task (The Flattener)
         public static Task<TResult> Then<TResult>(this Task task, Func<Task, Task<TResult>> then)

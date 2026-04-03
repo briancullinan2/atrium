@@ -1,20 +1,4 @@
-﻿using Extensions.Entities;
-using Extensions.PrometheusTypes;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
+﻿
 namespace Extensions.PrometheusTypes
 {
     public static partial class ExpressionExtensions
@@ -102,7 +86,7 @@ namespace Extensions.PrometheusTypes
                 ParseExpression(ue.Operand, values);
             }
             else if (expr is ConstantExpression co
-                && co.Value?.GetType().Extends(typeof(AsyncQueryable<>)) == true)
+                && co.Value?.GetType().Extends(typeof(IAsyncQueryable<>)) == true)
             {
 
             }

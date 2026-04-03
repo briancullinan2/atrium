@@ -1,16 +1,4 @@
-﻿using Extensions.Entities;
-using Extensions.Entities;
-using Extensions.PrometheusTypes;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text.Json.Serialization;
+﻿
 
 namespace Extensions.ForeignEntity
 {
@@ -22,10 +10,13 @@ namespace Extensions.ForeignEntity
         //    return (T)(await IEntityExtensions.Save(this as T, service ?? Utilities.QueryManager.Service));
         //}
 
-        public async Task<T> Save(IQueryManager? query = null)
+
+
+        public async Task<IEntity> Save(IQueryManager? query = null)
         {
-            return (T)(await IEntityExtensions.Save(this as T, query ?? QueryManager));
+            return (IEntity)(await IEntityExtensions.Save(this as T, query ?? QueryManager));
         }
+
         /*
 
         async Task<IEntity> IEntity.Save()
@@ -40,6 +31,11 @@ namespace Extensions.ForeignEntity
             return await IEntityExtensions.Update(entity);
         }
         */
+
+        public async Task<IEntity?> Update(IEntity? entity = null)
+        {
+            return await IEntityExtensions.Update(entity);
+        }
 
 
         public async Task<T> Update(IQueryManager query)
@@ -61,7 +57,7 @@ namespace Extensions.ForeignEntity
                 return default;
         }
 
-        public async Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity
+        public async Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity
         {
             entity ??= this as TEntity;
             return await IEntityExtensions.Update(entity!);

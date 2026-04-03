@@ -1,6 +1,4 @@
-﻿using Extensions.Entities;
-
-namespace Extensions.ForeignEntity
+﻿namespace Extensions.ForeignEntity
 {
     public interface IGenerator<T> where T : IEntity
     {

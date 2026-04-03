@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace DataStore.Providers
 {
 
-    public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx)
+    public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext
     {
 
         static TranslationContext()
