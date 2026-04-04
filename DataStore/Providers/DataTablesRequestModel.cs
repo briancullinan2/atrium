@@ -1,12 +1,11 @@
-﻿namespace DataStore.Services
-{
-    internal class DataTablesRequestModel
-    {
-        // ... (Existing properties like iColumns, sEcho, etc.)
-        public List<Entities.DataTablesRequestModel.ColumnFilter> ColumnFilters { get; set; } = [];
-        public List<Entities.DataTablesRequestModel.Sort> Sorts { get; set; } = [];
+﻿
 
-        public static async ValueTask<Entities.DataTablesRequestModel?> BindAsync(HttpContext context)
+namespace DataStore.Providers
+{
+    public class DataTablesRequestModel : Extensions.ForeignEntity.DataTablesRequestModel
+    {
+
+        public static async ValueTask<DataTablesRequestModel?> BindAsync(HttpContext context)
         {
             // For DataTables, this usually comes via Form or QueryString
             var form = context.Request.HasFormContentType
@@ -18,7 +17,7 @@
             // Helper to get value from either Form or Query
             string GetV(string key) => form?[key].FirstOrDefault() ?? query[key].FirstOrDefault() ?? string.Empty;
 
-            var model = new DataLayer.Utilities.DataTablesRequestModel
+            var model = new DataTablesRequestModel
             {
                 Echo = int.TryParse(GetV("sEcho"), out var echo) ? echo : null,
                 Columns = int.TryParse(GetV("iColumns"), out var cols) ? cols : 0,
@@ -33,7 +32,7 @@
             {
                 if (string.IsNullOrEmpty(GetV($"mDataProp_{i}"))) break;
 
-                model.ColumnFilters.Add(new Entities.DataTablesRequestModel.ColumnFilter
+                model.ColumnFilters.Add(new DataTablesRequestModel.ColumnFilter
                 {
                     Searchable = GetV($"bSearchable_{i}") == "true",
                     Search = GetV($"sSearch_{i}"),
@@ -47,7 +46,7 @@
             {
                 if (string.IsNullOrEmpty(GetV($"iSortCol_{i}"))) break;
 
-                model.Sorts.Add(new Entities.DataTablesRequestModel.Sort
+                model.Sorts.Add(new DataTablesRequestModel.Sort
                 {
                     iSortCol = int.TryParse(GetV($"iSortCol_{i}"), out var c) ? c : 0,
                     sSortDir = GetV($"sSortDir_{i}")

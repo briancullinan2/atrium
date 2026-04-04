@@ -10,14 +10,14 @@
 @inject ITitleService TitleService
 @inject IServiceProvider Services
 @inject IPageManager PageManager
-@inject IRenderStateProvider RenderState
+@inject IRenderState RenderState
 @inject ILoggerFactory LoggerFactory
 @inject IChatService ChatService
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationTracker Tracker
 
-<div class="@(Background.ToString()?.ToLowerInvariant())  @(Login == true ? "login-mode" : Study == true ? "study-mode" : "") @(ShowChat == true ? "chatting" : "") @PageClass page theme-@(Application.ToString()?.ToLowerInvariant())">
+<div class="page @(string.Join(" ", PageManager.ClassNames))">
     <div id="theme-sensor" style="display:none;">
         <span class="sensor-bg"></span>
         <span class="sensor-surface"></span>
@@ -122,10 +122,7 @@
     public RenderFragment? HeaderMenu { get; private set; }
     public string? HeaderTitle { get; private set; }
     //public object? Tag { get; set; } // for comparing states for implementers
-    public bool? Login { get; set; }
     public User? CurrentUser { get; set; }
-    public bool? Study { get; set; }
-    public string? PageClass { get; set; }
     public bool? ShowHeader { get; set; }
     public bool? ShowChat { get; set; }
     public string? ChatMessage { get; set; }
@@ -266,12 +263,19 @@
 
     private void SetPageClass()
     {
-        if(string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClass = "Home";
-        else
-        {
-            var relativePath = string.Join(' ', Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0]).Split('/')
-                .Select(seg => seg.ToSafe()));
-        }
+        string[] PageClass;
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClass = ["Home"];
+        else PageClass = Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0]).Split('/')
+                .Select(seg => seg.ToSafe())
+                .ToArray();
+        var toRemove = PageManager.ClassNames.Keys
+            .Where(c => c.Substring(0, 11) != "background-" && c.Substring(0, 6) != "theme-" 
+                && c != "study-mode" && c != "chatting" && c != "login-mode" && c != "page")
+            .ToList();
+        foreach (var remove in toRemove)
+            PageManager.ClassNames.TryRemove(remove, out _);
+        foreach (var add in PageClass)
+            PageManager.ClassNames.TryAdd(add, add);
         InvokeAsync(StateHasChanged);
     }
 
@@ -285,7 +289,6 @@
         MenuService.OnHeaderChanged += SetHeader;
         ThemeService.OnApplicationChanged += SetApplication;
         ThemeService.OnSidebarChanged += SetSidebar;
-        ThemeService.OnBackgroundChanged += SetBackground;
         StudyService.OnStudyChanged += SetStudyMode;
         LoginService.OnLoginChanged += SetLoginMode;
         LoginService.OnUserChanged += SetUser;
@@ -322,20 +325,20 @@
 
     public void SetStudyMode(bool study)
     {
-        if (Study != study)
-        {
-            Study = study;
+        bool didSomething;
+        if (study == true) didSomething = PageManager.ClassNames.TryAdd("study-mode", "study-mode");
+        else didSomething = PageManager.ClassNames.TryRemove("study-mode", out _);
+        if (didSomething)
             InvokeAsync(StateHasChanged);
-        }
     }
 
     public void SetLoginMode(bool login)
     {
-        if (Login != login)
-        {
-            Login = login;
+        bool didSomething;
+        if (login == true) didSomething = PageManager.ClassNames.TryAdd("login-mode", "login-mode");
+        else didSomething = PageManager.ClassNames.TryRemove("login-mode", out _);
+        if(didSomething)
             InvokeAsync(StateHasChanged);
-        }
     }
 
 
@@ -348,15 +351,13 @@
         }
     }
 
-    public ApplicationTheme? Application { get; set; }
-
     private void SetApplication(ApplicationTheme? theme)
     {
-        if (theme != Application)
-        {
-            Application = theme;
-            InvokeAsync(StateHasChanged);
-        }
+        if (PageManager.ClassNames.Keys.FirstOrDefault(k => k.Contains("theme-")) is string bg)
+            PageManager.ClassNames.TryRemove(bg, out _);
+        var newClass = "theme-" + (theme.ToString()?.ToLowerInvariant() ?? string.Empty);
+        PageManager.ClassNames.TryAdd(newClass, newClass);
+        InvokeAsync(StateHasChanged);
     }
 
 
@@ -381,6 +382,10 @@
         {
             Background = theme;
             initRender = true;
+            if(PageManager.ClassNames.Keys.FirstOrDefault(k => k.Contains("background-")) is string bg)
+                PageManager.ClassNames.TryRemove(bg, out _);
+            var newClass = "background-" + (theme.ToString()?.ToLowerInvariant() ?? string.Empty);
+            PageManager.ClassNames.TryAdd(newClass, newClass);
             InvokeAsync(StateHasChanged);
             _ = InitializeRender();
         }
@@ -392,6 +397,8 @@
         if (chat != ShowChat)
         {
             ShowChat = chat;
+            if (ShowChat == true) PageManager.ClassNames.TryAdd("chatting", "chatting");
+            else PageManager.ClassNames.TryRemove("chatting", out _);
             InvokeAsync(StateHasChanged);
         }
     }

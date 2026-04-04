@@ -4,9 +4,7 @@
 @page "/account/delete"
 @implements IDisposable
 @attribute [Authorize(Roles = "!Guest")]
-@using 
-@using FlashCard.Controls
-@using FlashCard.Services
+
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject NavigationManager Nav
@@ -75,7 +73,7 @@
 
         if (IsStaticRender) return;
 
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
     }
    
@@ -115,9 +113,9 @@
             newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.Edit;
         }
 
-        if (newStep != ControlMode)
+        if (newStep != Mode)
         {
-            PreviousMode = ControlMode;
+            PreviousMode = Mode;
             Mode = newStep;
             InvokeAsync(StateHasChanged);
         }

@@ -17,7 +17,7 @@ namespace UserModel.Services
         NavigationManager Navigation,
         IQueryManager Query,
         IPageManager Page,
-        IHttpContextAccessor? _httpContextAccessor = null
+        IServerState? _httpContextAccessor = null
     ) : AuthService(Navigation, Query, Page, _httpContextAccessor) {
 
 

@@ -1,7 +1,7 @@
 ﻿namespace Extensions.ForeignEntity
 {
 
-    public interface IAsyncQueryable<TSource>
+    public interface IAsyncQueryable<TSource> : IQueryable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
     {
         /// <summary>
         /// An interface representation of EntityFrameworkQueryableExtensions 

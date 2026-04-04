@@ -24,11 +24,11 @@
     left: 0;
 }
 
-.page.none .canvas-container canvas {
+.page.background-none .canvas-container canvas {
     display: none;
 }
 
-.page.none .canvas-container {
+.page.background-none .canvas-container {
     animation: waveMovement 18s ease infinite;
 }
 

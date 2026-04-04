@@ -1,4 +1,6 @@
 ﻿
+using System.Collections.Concurrent;
+
 namespace RazorSharp.Services
 {
     public interface ILog
@@ -14,7 +16,7 @@ namespace RazorSharp.Services
     }
 
 
-    public class SimpleLogger : ILog
+    internal class SimpleLogger : ILog
     {
         public static IServiceProvider? Service { get; set; }
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();

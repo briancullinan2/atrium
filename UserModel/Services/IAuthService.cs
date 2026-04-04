@@ -67,7 +67,7 @@ namespace UserModel.Services
         NavigationManager Navigation,
         IQueryManager Query,
         IPageManager Page,
-        IHttpContextAccessor? _httpContextAccessor = null
+        IServerState? _httpContextAccessor = null
     ) : AuthenticationStateProvider, IAuthService {
 
 
@@ -96,7 +96,7 @@ namespace UserModel.Services
         {
             var sessionId = claims.First(c => c.Type == nameof(CookieName)).Value;
             var userGuid = claims.First(c => c.Type == ClaimTypes.Sid).Value;
-            var userEntity = await Query.Query<User>(u => u.Guid == userGuid).FirstOrDefaultAsync<User>();
+            var userEntity = await Query.Query<UserData.Entities.User>(u => u.Guid == userGuid).FirstOrDefaultAsync<User>();
             var currentSetting = await Query.Query<Setting>(s =>
                 s.Name == nameof(DefaultPermissions.ApplicationCurrentUser))
                 .FirstOrDefaultAsync()

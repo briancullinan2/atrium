@@ -1,6 +1,8 @@
-﻿using RazorSharp.Layout;
+﻿
+
+
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Text.Json;
 
 namespace RazorSharp.Services
 {
@@ -59,6 +61,8 @@ namespace RazorSharp.Services
         int OffsetInMinutes { get; }
         internal Dictionary<string, string?> InFlight { get; }
         string ContextKey { get; }
+        ConcurrentDictionary<string, string> ClassNames { get; }
+        IJSRuntime Runtime { get; }
     }
 
     public enum PageAction
@@ -147,7 +151,9 @@ namespace RazorSharp.Services
         #region "Initialization"
         public Dictionary<string, string?> InFlight { get; } = [];
 
-        public string ContextKey { get => Context?.HttpContext?.Connection.RemoteIpAddress.ToString() ?? "Internal"; }
+        public ConcurrentDictionary<string, string> ClassNames { get; } = [];
+
+        public string ContextKey { get => Context?.IServerState?.Connection.RemoteIpAddress.ToString() ?? "Internal"; }
 
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
@@ -162,14 +168,17 @@ namespace RazorSharp.Services
 
         readonly IFormFactor Form;
         readonly ILoggerFactory Logger;
-        readonly IRenderStateProvider Rendered;
-        readonly IHttpContextAccessor? Context;
+        readonly IRenderState Rendered;
+        readonly IServerState? Context;
+
+
+        public IJSRuntime Runtime { get => Rendered.Runtime; }
 
         public PageManager(
             IFormFactor _formFactor,
             ILoggerFactory _logger,
-            IRenderStateProvider _rendered,
-            Microsoft.AspNetCore.Http.IHttpContextAccessor? _context = null
+            IRenderState _rendered,
+            IServerState? _context = null
         ) : base() {
             Form = _formFactor;
             Logger = _logger;
@@ -270,7 +279,7 @@ namespace RazorSharp.Services
         {
             get
             {
-                if (Context?.HttpContext?.Request.Cookies.TryGetValue("timezoneOffset", out var offsetStr) == true
+                if (Context?.IServerState?.Request.Cookies.TryGetValue("timezoneOffset", out var offsetStr) == true
                     && int.TryParse(offsetStr, out var offset))
                 {
                     return offset;
@@ -281,19 +290,26 @@ namespace RazorSharp.Services
         }
 
 
-
         public virtual async Task SetState(IComponent? state)
         {
+            if (OperatingSystem.IsBrowser())
+            {
+                throw new InvalidOperationException("This probably wont work from the web client.");
+            }
             if (state == null)
             {
                 return;
             }
-            State[state.GetType().Name.ToSafe()] = Utilities.Extensions.JsonExtensions.ToSerialized(state);
+            State[state.GetType().Name.ToSafe()] = JsonExtensions.ToSerialized(state);
             OnStateChanged?.Invoke(state);
         }
 
         public virtual async Task<Dictionary<string, string?>?> RestoreState(IComponent component)
         {
+            if(!OperatingSystem.IsBrowser())
+            {
+                throw new InvalidOperationException("This probably wont work from server.");
+            }
             await ModuleInitialize;
             var state = await Module.InvokeAsync<Dictionary<string, string?>>("restoreState");
             _ = state.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState);
@@ -308,6 +324,7 @@ namespace RazorSharp.Services
             {
                 return null;
             }
+            JsonExtensions.ToProperties(component, deserializedState);
             return state;
         }
 
@@ -646,26 +663,6 @@ namespace RazorSharp.Services
 
         #endregion
 
-    }
-
-
-    public record ConnectionMetadata(
-        string Id,
-        DateTime Timestamp,
-        string? Reason = null,
-        Exception? Exception = null
-    );
-
-    public interface IConnectionStateProvider
-    {
-        event Action<bool, ConnectionMetadata>? OnConnectionDown;
-        event Action<bool, ConnectionMetadata>? OnConnectionUp;
-        bool IsConnected { get; }
-        int ClientCount { get; }
-
-        // Standardized reporting methods
-        //Task OnConnectionUpAsync(ConnectionMetadata metadata, CancellationToken ct = default);
-        //Task OnConnectionDownAsync(ConnectionMetadata metadata, CancellationToken ct = default);
     }
 
 

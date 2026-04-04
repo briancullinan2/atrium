@@ -1,4 +1,5 @@
-﻿using RazorSharp.Extensions;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using RazorSharp.Extensions;
 using System.Reflection;
 using System.Text.Json;
 
@@ -212,32 +213,22 @@ namespace RazorSharp.Extensions
                 ?.GetValue(component) as IJSRuntime;
         }
 
+        
         public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, IServiceProvider? Service = null)
         {
             if (component == null) return ValueTask.CompletedTask;
 
             var type = component.GetType();
-            var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                                  .Select(m => m.Name)
-                                  .ToArray();
 
-            var path = type.FullName ?? type.Name;
-
-            // 2. Wrap and Pin
-            var sentry = new InterconnectSentry(component, Service);
-            var objRef = DotNetObjectReference.Create(sentry);
-
-            // 3. Register with the Method Names list
-            var await = JS?.InvokeVoidAsync("interconnect.register", path, objRef, methodNames, Service != null);
-
-            return await ?? ValueTask.CompletedTask;
+            return Invokable(type, JS = null, Service = null);
         }
+
 
         public static ValueTask Invokable(this Type type, IJSRuntime? JS = null, IServiceProvider? Service = null)
         {
             if (type == null) return ValueTask.CompletedTask;
 
-            var methodNames = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            var methodNames = type.GetMethods(null)
                                   .Select(m => m.Name)
                                   .ToArray();
 
@@ -339,29 +330,16 @@ namespace RazorSharp.Extensions
             var currentComponents = new List<IComponent>([component]).Concat(component.GetChildComponents());
             var currentIds = currentComponents.ToDictionary(c => c.GetId(), c => c.GetType().FullName ?? c.GetType().Name);
 
-            await JS.InvokeVoidAsync("interconnect.clear", nameof(FlashCard));
+            var type = component.GetType();
+            var clear = type.Namespace?.Split('.').FirstOrDefault()
+                ?? type.FullName ?? type.Name;
+            await JS.InvokeVoidAsync("interconnect.clear", clear);
 
             foreach (var comp in currentComponents)
             {
                 var id = comp.GetId();
                 await comp.Invokable(JS);
             }
-        }
-
-
-
-        public static bool IsSignalCircuit(this HttpContext? context)
-        {
-            if (context == null) return false;
-            return context.Response.HasStarted
-                && context.WebSockets.IsWebSocketRequest
-                && context.Request.Path.StartsWithSegments("/_blazor");
-        }
-
-
-        public static bool IsSignalCircuit(this IHttpContextAccessor? accessor) {
-            if (accessor == null) return false;
-            return accessor.HttpContext?.IsSignalCircuit() == true;
         }
 
     }

@@ -5,11 +5,6 @@
 @page "/roles/{Id:int}/view"
 @page "/roles/{Id:int}/edit"
 
-
-@using 
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
 @inject IMenuService MenuService
 @inject NavigationManager Nav
 
@@ -53,7 +48,7 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         RolesLayout = typeof(Pages.Admin.Roles).Metadata().Categories["Display"]?.ToList();
         Nav.LocationChanged += OnLocationChanged;
     }
@@ -93,9 +88,9 @@
             InvokeAsync(StateHasChanged);
         }
 
-        if (newStep != ControlMode)
+        if (newStep != Mode)
         {
-            PreviousMode = ControlMode;
+            PreviousMode = Mode;
             Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
@@ -116,7 +111,7 @@
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        CurrentRoles = DataLayer.Generators.Roles.Generate().Select((r, i) => new Controls.RolesControl.ControlRole() { Index = i, Role = r }).ToList();
+        CurrentRoles = UserData.Generators.Roles.Generate().Select((r, i) => new Controls.RolesControl.ControlRole() { Index = i, Role = r }).ToList();
         SetControlMode();
         InvokeAsync(StateHasChanged);
     }

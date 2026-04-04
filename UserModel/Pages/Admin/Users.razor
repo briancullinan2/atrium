@@ -10,11 +10,6 @@
 @page "/users/{Id}/group"
 @page "/users/{Id}/owner"
 
-@using DataLayer.Utilities
-@using 
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject IQueryManager QueryManager
@@ -115,7 +110,7 @@
         
         if (IsStaticRender) return;
 
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         Nav.LocationChanged += OnLocationChanged;
         _ = GetCurrentUsers();
     }
@@ -178,9 +173,9 @@
         }
 
         
-        if (newStep != ControlMode)
+        if (newStep != Mode)
         {
-            PreviousMode = ControlMode;
+            PreviousMode = Mode;
             Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
@@ -194,7 +189,7 @@
         if(LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true
             || LoginService.User?.Settings.Any(s => string.Equals(s.Name, nameof(DefaultPermissions.CanModifyDefaultUsers))) == true)
         {
-            var defaultUsers = DataLayer.Generators.Users.Generate().ToList();
+            var defaultUsers = UserData.Generators.Users.Generate().ToList();
             var fresh = defaultUsers.Where(d => {
                 var roleAlreadyExists = users.Any(u => u.Roles.Any(r => r.DefaultRole == d.Roles.First().DefaultRole));
                 return !roleAlreadyExists;

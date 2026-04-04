@@ -39,7 +39,7 @@
             Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>().CreateDbContext());
 
             Services.AddScoped<IPageManager, PageManager>();
-            Services.AddSingleton<IRenderStateProvider, RenderStateProvider>();
+            Services.AddSingleton<IRenderState, RenderStateProvider>();
         }
     }
 }

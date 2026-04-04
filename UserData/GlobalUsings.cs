@@ -5,6 +5,6 @@ global using System.Collections.Generic;
 global using System.ComponentModel;
 global using System.ComponentModel.DataAnnotations;
 global using System.ComponentModel.DataAnnotations.Schema;
+global using UserData;
 global using DateTime = System.DateTime;
 global using Type = System.Type;
-global using UserData;

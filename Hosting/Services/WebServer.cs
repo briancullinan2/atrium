@@ -52,8 +52,8 @@ namespace Hosting.Services
                     ?? sp.GetKeyedService<SimpleLogger>("web")
                     ?? new SimpleLogger(sp));
                 webBuilder.Services.AddKeyedScoped<SimpleLogger>("web");
-                webBuilder.Services.AddSingleton<CircuitHandler>();
-                webBuilder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
+                webBuilder.Services.AddSingleton<BaseCircuitProvider>();
+                webBuilder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<BaseCircuitProvider>());
 
                 webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
 

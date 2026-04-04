@@ -37,9 +37,15 @@
 	</ItemGroup>
 	
 	<ItemGroup>
+		<PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
 		<PackageReference Include="OpenCvSharp4" Version="4.13.*-*" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.*-*" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <Folder Include="Platforms\Android\" />
+	  <Folder Include="Platforms\MacCatalyst\" />
 	</ItemGroup>
 
 </Project>

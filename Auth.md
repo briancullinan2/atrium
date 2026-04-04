@@ -251,7 +251,7 @@ Razor CSHTML
 @page "/login/{provider}"
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Mvc
-@inject IHttpContextAccessor HttpContextAccessor
+@inject IServerState HttpContextAccessor
 
 @code {
     [Parameter] public string Provider { get; set; } = "";

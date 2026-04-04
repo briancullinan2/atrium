@@ -24,6 +24,15 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/4/2026
+
+1. Publish my own site, edit-anywhere revival? smaller life-tracker combo?
+2. Game server with background demo web assembly and discord integration
+3. Media server revival like ampache, had an idea to connect devices and controls for dad
+4. Home security, personal status tracker, maybe some people over work and they need reminders not to check email?
+
+
+
 #### 4/3/2026
 
 Doing another big layout refresh to make sure that I don't cross domains/scopes in purpose. Makes the code more reusable for other projects I can use the same
