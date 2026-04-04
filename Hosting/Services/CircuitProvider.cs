@@ -1,25 +1,25 @@
 ﻿
+#if BROWSER
+using Microsoft.AspNetCore.SignalR.Client;
+#else
 using Microsoft.AspNetCore.Components.Server.Circuits;
+#endif
 using System.Collections.Concurrent;
 
 namespace Hosting.Services
 {
 
 
-    public abstract class BaseCircuitProvider : ICircuitProvider
+    public partial class CircuitProvider : ICircuitProvider
     {
         private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
 
         public event Action<bool, ConnectionMetadata>? OnConnectionDown;
         public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
-        public abstract bool IsSignalCircuit { get; }
-        public abstract bool IsHubConnected { get; }
-        public abstract bool IsAppConnected { get; }
-
         public bool IsConnected => OperatingSystem.IsBrowser() || IsSignalCircuit
             ? IsHubConnected
-            : _activeCircuits.Any();
+            : !_activeCircuits.IsEmpty;
         public int ClientCount => OperatingSystem.IsBrowser() ? 1 : _activeCircuits.Count + (IsAppConnected ? 1 : 0);
 
 
@@ -39,87 +39,22 @@ namespace Hosting.Services
             OnConnectionDown?.Invoke(false, metadata);
         }
 
-
-
     }
 
-
-    internal class CircuitProvider(
-#if !BROWSER
-        Lazy<MauiApp?>? App = null,
-#endif
-        HttpContext? Context = null
 #if BROWSER
-        , HubConnection? connection = null
-#endif
-    )
-#if !BROWSER
-        : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, ICircuitProvider, IAsyncDisposable
-#else
-        : RazorSharp.Services.BaseCircuitProvider,  ICircuitProvider
-#endif
+    public partial  class CircuitProvider : IAsyncDisposable
     {
-#if !BROWSER
-        public bool IsSignalCircuit => Context.IsSignalCircuit();
-#else
-        public override bool IsSignalCircuit => Context.IsSignalCircuit();
-#endif
+    
+        public bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
+        public bool IsSignalCircuit => IsHubConnected;
+        public bool IsAppConnected => true;
 
-#if !BROWSER
-        public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
-        {
-            var data = new ConnectionMetadata(circuit.Id, DateTime.UtcNow);
-
-            // Add or update the circuit in the static dictionary
-            _activeCircuits.TryAdd(circuit.Id, data);
-
-            IsConnected = true;
-            OnConnectionUp?.Invoke(true, data);
-            await base.OnConnectionUpAsync(circuit, ct);
-        }
-
-        public override async Task OnConnectionDownAsync(Circuit circuit, CancellationToken ct)
-        {
-            var data = new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected");
-
-            // Remove the circuit from the static dictionary
-            _activeCircuits.TryRemove(circuit.Id, out _);
-
-            IsConnected = false;
-            OnConnectionDown?.Invoke(false, data);
-            await base.OnConnectionDownAsync(circuit, ct);
-        }
-#endif
-
-
-        private IRenderState Rendered { get; }
-
-
-
-        protected void ReportFromPage(string? state)
-        {
-            if (state == "hide")
-            {
-                base.OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
-            }
-            else
-            {
-                OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
-            }
-        }
-
-
+        public IRenderState Rendered { get; }
         public IPageManager PageManager { get; }
-
-        public override bool IsSignalCircuit => throw new NotImplementedException();
-
-        public override bool IsHubConnected => _connection?.State == HubState;
-
-        public override bool IsAppConnected => throw new NotImplementedException();
 
         private readonly HubConnection? _connection;
 
-        public CircuitHandler(IPageManager page, IRenderState rendered, )
+        public CircuitHandler(IPageManager page, IRenderState rendered, HubConnection? _connection = null)
         {
             Rendered = rendered;
             Rendered.OnEmptied += NotifyEmptied;
@@ -170,6 +105,19 @@ namespace Hosting.Services
                 OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
         }
 
+        
+        protected void ReportFromPage(string? state)
+        {
+            if (state == "hide")
+            {
+                base.OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
+            }
+            else
+            {
+                OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
+            }
+        }
+
 
         public async ValueTask DisposeAsync()
         {
@@ -178,8 +126,32 @@ namespace Hosting.Services
             Rendered.OnEmptied -= NotifyEmptied;
             GC.SuppressFinalize(this);
         }
-
     }
+
+#else
+    public partial class CircuitProvider(Lazy<MauiApp?>? App = null, HttpContext? Context = null) 
+        : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, ICircuitProvider
+    {
+        public bool IsSignalCircuit => Context.IsSignalCircuit();
+
+        public bool IsHubConnected => Context != null && _activeCircuits.ContainsKey(Context.Connection.Id);
+
+        public bool IsAppConnected => App?.Value.HasValue == true;
+
+        public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
+        {
+            await OnConnectionUpAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow), ct);
+            await base.OnConnectionUpAsync(circuit, ct);
+        }
+
+        public override async Task OnConnectionDownAsync(Circuit circuit, CancellationToken ct)
+        {
+            await OnConnectionDownAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"), ct);
+            await base.OnConnectionDownAsync(circuit, ct);
+        }
+    }
+
+#endif
 
 
     public static class HttpContextExtensions
