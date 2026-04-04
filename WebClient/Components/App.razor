@@ -1,7 +1,5 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Http
 
 <head>
     <meta charset="utf-8" />
@@ -31,8 +29,8 @@
     @*InteractiveWebAssembly*@
     <Routes @rendermode="preferredMode" />
     @*<FlashCard.Pages.Shared.ReconnectModal />*@
-    <script src="/_content/FlashCard/main.js"></script>
-    <script src="/_content/FlashCard/blazor.web.js" autostart="false"></script>
+    <script src="/_content/WebClient/main.js"></script>
+    <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
     <!--
     <script src="/_framework/blazor.server.js" autostart="false"></script>
     <script src="/_framework/blazor.webview.js" autostart="false"></script>
@@ -63,7 +61,8 @@
 </html>
 
 @code {
-    [Inject] public IHttpContextAccessor? Context { get; set; } = null;
+
+    [Inject(Key = nameof(StringExtensions.Query))] public Lazy<Dictionary<string, string>?>? Query { get; set; } = null;
 
     // Default to Wasm, but allow an override
     IComponentRenderMode preferredMode = RenderMode.InteractiveServer;
@@ -83,7 +82,7 @@
         {
             preferredMode = InteractiveServer;
         }
-        else if (Context?.HttpContext?.Request.Query.TryGetValue("mode", out var mode) == true)
+        else if (Query?.Value != null && Query.Value.TryGetValue("mode", out var mode) == true)
         {
             preferredMode = mode == "server"
                 ? RenderMode.InteractiveServer

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
@@ -7,11 +7,12 @@
 
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 
-		<ImplicitUsings>enable</ImplicitUsings>
+		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	
 	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
 		<PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.*-*" />
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
@@ -19,6 +20,7 @@
 	
 	<ItemGroup>
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
 </Project>

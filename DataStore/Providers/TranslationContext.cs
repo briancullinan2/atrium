@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Storage;
+using System.Net.Http;
 
 namespace DataStore.Providers
 {

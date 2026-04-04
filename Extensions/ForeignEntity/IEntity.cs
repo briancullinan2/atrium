@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Extensions.ForeignEntity
+﻿namespace Extensions.ForeignEntity
 {
 
     public interface IEntity : IDisposable

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using UserData.Entities;
+﻿using UserData.Entities;
 
 namespace UserData.Generators
 {

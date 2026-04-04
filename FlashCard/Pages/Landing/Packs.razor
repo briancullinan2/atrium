@@ -6,7 +6,7 @@
 @page "/packs/{Id:int}/add"
 @page "/packs/{Filter}"
 
-@using DataLayer.Utilities.Extensions
+@using Utilities.Extensions
 @using Microsoft.EntityFrameworkCore
 @using FlashCard.Controls
 @using FlashCard.Services
@@ -50,7 +50,7 @@
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     [Parameter] public string? Filter { get; set; } = null;
     [Parameter] public int? Id { get; set; } = null;
-    public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.List;
+    public ControlMode? Mode { get; set; } = ControlMode.List;
 
     protected override void OnInitialized()
     {
@@ -75,10 +75,10 @@
 
         var firstSegment = relativePath.Split('/').Last();
 
-        ControlMode = firstSegment.TryParse<DataLayer.ControlMode>();
+        Mode = firstSegment.TryParse<ControlMode>();
 
         // add/assign the pack to the users account for study
-        if(ControlMode == DataLayer.ControlMode.Add)
+        if(Mode == ControlMode.Add)
         {
             _ = SubscribePack();
         }
@@ -128,7 +128,7 @@
 
     protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs;
     }

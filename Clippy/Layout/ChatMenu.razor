@@ -1,4 +1,4 @@
-@using FlashCard.Services
+
 @inject IChatService ChatService
 @inject IPageManager PageManager
 
@@ -81,7 +81,7 @@
     {
         if (!AutoScroll) return;
 
-        _autoScrollLoopCts = DataLayer.Utilities.Extensions.TaskExtensions.Timer(async () =>
+        _autoScrollLoopCts = TaskExtensions.Timer(async () =>
         {
             var isBottom = await PageManager.IsAtBottomAsync("Navlist");
 

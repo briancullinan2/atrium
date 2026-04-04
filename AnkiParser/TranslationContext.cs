@@ -1,8 +1,4 @@
-﻿using DataLayer;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-
-namespace AnkiParser
+﻿namespace AnkiParser
 {
     public class TranslationContext(string tempPath, DbContextOptions<TranslationContext> ctx) : DbContext(ctx)
     {

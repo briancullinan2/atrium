@@ -1,7 +1,3 @@
-@using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
-@using FlashCard.Services
-@using System
 @page "/activity"
 @inject IMenuService MenuService
 @inject IQueryManager QueryManager
@@ -91,7 +87,7 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Users />);
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         _ = PopulatorLoop();
         PageManager.OnResizeAsync += OnWindowResize;
     }
@@ -131,7 +127,7 @@
 
         // 1. Immediate UI Feedback (The "Snap")
         ViewportOffset += e.MovementX;
-        _ = DataLayer.Utilities.Extensions.TaskExtensions
+        _ = TaskExtensions
             .Debounce(TriggerSerializedLoad, 200);
     }
 

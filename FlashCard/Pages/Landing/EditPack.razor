@@ -6,7 +6,7 @@
 @page "/pack/{Id:int}/add/{Page:int}/{Take:int}"
 @page "/pack/{Id:int}/cards"
 @page "/pack/{Id:int}/cards/{Page:int}"
-@using DataLayer.Utilities.Extensions
+@using Utilities.Extensions
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -17,7 +17,7 @@
 @if (CurrentPack != null)
 {
 
-    <div class="pack-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
+    <div class="pack-edit flash-card @GetDisplayClass(ControlMode.Edit)">
         <h2>
             <MetadataControl TModel="Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
         </h2>
@@ -43,10 +43,10 @@
         <div class="link-list">
             @if (CurrentPack?.CanonicalFingerprint != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Add, Page = 0 }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Edit @(CurrentCards?.Count()) Cards</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Add, Page = 0 }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Edit @(CurrentCards?.Count()) Cards</a>
             }
             <a href="@(NavigationExtensions.GetUri<Pages.Content.Upload>())"><i class="bi bi-activity" aria-hidden="true"></i>Import Cards</a>
-            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i>Delete Pack</a>
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Delete }))"><i class="bi bi-trash" aria-hidden="true"></i>Delete Pack</a>
         </div>
 
     </div>
@@ -55,18 +55,18 @@
 
 @for (var page = 0; page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take); page++)
 {
-    <div class="cards-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Add, page)">
+    <div class="cards-edit flash-card @GetDisplayClass(ControlMode.Add, page)">
         <h2>
             @if(page == 0)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Edit }))" class="deemphasize"><span class="bi bi-chevron-left"></span>Back</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Edit }))" class="deemphasize"><span class="bi bi-chevron-left"></span>Back</a>
             } else {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Add, Page = page - 1 }))" class="deemphasize"><span class="bi bi-chevron-left"></span>@((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Add, Page = page - 1 }))" class="deemphasize"><span class="bi bi-chevron-left"></span>@((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
             }
             <span>Editing cards @(page * Take + 1) to @((page + 1) * Take)</span>
             @if (page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take) - 1)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Add, Page = page + 1 }))" class="deemphasize">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Add, Page = page + 1 }))" class="deemphasize">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
             }
         </h2>
 
@@ -84,15 +84,15 @@
         <div class="link-list">
             @if (page == 0)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Edit }))"><span class="bi bi-chevron-left"></span>Back</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Edit }))"><span class="bi bi-chevron-left"></span>Back</a>
             }
             else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Add, Page = page - 1 }))"><span class="bi bi-chevron-left"></span>@((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Add, Page = page - 1 }))"><span class="bi bi-chevron-left"></span>@((page - 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, page * Take)</a>
             }
             @if(page < Math.Ceiling((EditCards?.Count() ?? 1) / (double)Take) - 1)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, ControlMode = DataLayer.ControlMode.Add, Page = page + 1 }))">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(u => new() { Id = Id, Mode = ControlMode.Add, Page = page + 1 }))">@((page + 1) * Take + 1) to @Math.Min(EditCards?.Count() ?? 1, (page + 2) * Take)<span class="bi bi-chevron-right"></span></a>
             }
         </div>
     </div>
@@ -114,24 +114,24 @@
     public IEnumerable<PropertyMetadata>? StatusLayout { get; set; }
     public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
 
-    public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.Edit;
-    public DataLayer.ControlMode? PreviousMode { get; set; }
+    public ControlMode? Mode { get; set; } = ControlMode.Edit;
+    public ControlMode? PreviousMode { get; set; }
     [Parameter] public int Page { get; set; } = 0;
     [Parameter] public int Take { get; set; } = 10;
     public int? PreviousPage { get; set; }
 
     [Parameter] public int? Id { get; set; }
 
-    protected string? GetDisplayClass(DataLayer.ControlMode mode, int? page = null)
+    protected string? GetDisplayClass(ControlMode mode, int? page = null)
     {
-        if(mode == DataLayer.ControlMode.Add)
+        if(mode == ControlMode.Add)
         {
-            if (ControlMode == mode && Page == page) return "animate-in";
-            if (ControlMode == mode && PreviousPage == page) return "animate-out";
+            if (Mode == mode && Page == page) return "animate-in";
+            if (Mode == mode && PreviousPage == page) return "animate-out";
             if (PreviousMode == mode && Page == page) return "animate-out";
             return "hidden";
         }
-        else if (ControlMode == mode) return "animate-in";
+        else if (Mode == mode) return "animate-in";
         else if (PreviousMode == mode) return "animate-out";
         return "hidden";
     }
@@ -159,7 +159,7 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.ControlMode? newStep = DataLayer.ControlMode.Edit;
+        ControlMode? newStep = ControlMode.Edit;
         if(segments.Count() == 4 && Id != null)
         {
             if(PreviousPage != Page)
@@ -171,17 +171,17 @@
         
         if (segments.Count() == 3 && Id != null && segments.ElementAt(2) == "cards")
         {
-            newStep = DataLayer.ControlMode.Add;
+            newStep = ControlMode.Add;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.ElementAt(segments.Count() == 2 ? 1 : 2).TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.Edit;
+            newStep = segments.ElementAt(segments.Count() == 2 ? 1 : 2).TryParse<ControlMode>() ?? ControlMode.Edit;
         }
 
         if (newStep != ControlMode)
         {
             PreviousMode = ControlMode;
-            ControlMode = newStep;
+            Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
 
@@ -210,7 +210,7 @@
 
     protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs?.ToList();
     }

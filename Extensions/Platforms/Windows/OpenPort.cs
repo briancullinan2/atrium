@@ -29,6 +29,7 @@ namespace Extensions.Platforms.Windows
     {
         public static void OpenPortViaNativeCom(int port, string appName)
         {
+#if WINDOWS
             Type? policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
             if (policyType == null) return;
             dynamic? fwPolicy2 = Activator.CreateInstance(policyType);
@@ -48,6 +49,7 @@ namespace Extensions.Platforms.Windows
             newRule.Profiles = 0x7FFFFFFF; // All profiles
 
             fwPolicy2.Rules.Add(newRule);
+#endif
         }
     }
 }

@@ -1,13 +1,5 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using Microsoft.Extensions.DependencyInjection;
-using RazorSharp.Services;
-using System.Collections.Concurrent;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
-namespace FlashCard.Services
+﻿
+namespace RazorSharp.Services
 {
     public interface ILog
     {
@@ -72,7 +64,7 @@ namespace FlashCard.Services
 
         public static SimpleLogger GetLogger(string filePath, Type levels, object? replacement = null)
         {
-            string category = Path.GetFileNameWithoutExtension(filePath);
+            string category = System.IO.Path.GetFileNameWithoutExtension(filePath);
             if (_loggerCache.TryGetValue(category, out var logger)) return logger;
 
             var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger(Service!)
@@ -82,7 +74,7 @@ namespace FlashCard.Services
             });
             levelsLogger.WrappedLogger = replacement ?? levelsLogger;
 
-            var levelFunctions = levels.GetMethods()
+            var levelFunctions = levels.GetMethods(null)
                 .Select(m => new Tuple<MethodInfo, ParameterInfo[]>(m, m.GetParameters()))
                 .Where(data => data is (var Method, var Parameters) && Method.ReturnType == typeof(void)
                     && Method.GetParameters() is { } parameters
@@ -310,7 +302,7 @@ namespace FlashCard.Services
 
     namespace Logging
     {
-        public static class Log
+        internal static class Log
         {
 
             public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")

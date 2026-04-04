@@ -1,18 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
-using FlashCard.Layout;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.RenderTree;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-using RazorSharp.Extensions;
-using System;
-using System.Collections.Generic;
+﻿using RazorSharp.Extensions;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 
 namespace RazorSharp.Extensions

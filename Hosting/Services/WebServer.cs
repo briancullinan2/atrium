@@ -1,4 +1,5 @@
-﻿namespace Hosting.Services
+﻿
+namespace Hosting.Services
 {
     internal static class WebServer
     {

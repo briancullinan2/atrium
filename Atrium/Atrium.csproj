@@ -16,12 +16,12 @@
     <RootNamespace>Atrium</RootNamespace>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
-    <ImplicitUsings>enable</ImplicitUsings>
+    
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<WasmFingerprintAssets>false</WasmFingerprintAssets>
-	  
+	  <ImplicitUsings>disable</ImplicitUsings>
 	  <!-- Enable XAML source generation for faster build times and improved performance.
          This generates C# code from XAML at compile time instead of runtime inflation.
          To disable, remove this line.
@@ -80,18 +80,6 @@
     <Content Remove="wwwroot\index.html" />
   </ItemGroup>
 
-  <ItemGroup>
-	  <PackageReference Include="log4net" Version="3.3.0" />
-      <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-      <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-  </ItemGroup>
-
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
-	</ItemGroup>
-
 	<ItemGroup>
 	  <None Update="log4net.xml">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -103,13 +91,24 @@
 	</PropertyGroup>
 
 
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
+	<ItemGroup>
+		<PackageReference Include="log4net" Version="3.3.*-*" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <ProjectReference Include="..\FlashData\FlashData.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	</ItemGroup>
+	
+	<!--<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<ProjectReference Include="..\WebClient\WebClient.csproj">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</ProjectReference>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
+	</ItemGroup>-->
 
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">

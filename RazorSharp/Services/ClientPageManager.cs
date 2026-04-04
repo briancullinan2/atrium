@@ -1,11 +1,4 @@
-﻿using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using Microsoft.AspNetCore.Components;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
-using Microsoft.JSInterop;
-using System.Text.Json;
-
-namespace RazorSharp.Services
+﻿namespace RazorSharp.Services
 {
     public class PageManager(
         IFormFactor _form,

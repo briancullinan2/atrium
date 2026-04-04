@@ -7,12 +7,15 @@
 
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 
-		<ImplicitUsings>enable</ImplicitUsings>
+		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj" />
+	  <ProjectReference Include="..\FlashCard\FlashCard.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
 </Project>

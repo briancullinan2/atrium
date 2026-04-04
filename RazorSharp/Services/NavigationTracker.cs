@@ -1,17 +1,4 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using FlashCard.Services.Logging;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Text;
-
-namespace RazorSharp.Services
+﻿namespace RazorSharp.Services
 {
     public class NavigationTracker(IQueryManager query, AuthenticationStateProvider auth) : IDisposable
     {

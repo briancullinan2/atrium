@@ -1,6 +1,7 @@
 
 
 
+
 internal class Program
 {
     private static WebAssemblyHost? _app;

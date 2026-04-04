@@ -11,7 +11,7 @@
 @page "/users/{Id}/owner"
 
 @using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
+@using 
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -21,7 +21,7 @@
 @inject ILoginService LoginService
 @inject NavigationManager Nav
 
-<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>User Name</label>
@@ -35,7 +35,7 @@
 
     <h2>User Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { ControlMode = DataLayer.ControlMode.Add }))"><i class="bi bi-person-plus"></i>Add User</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus"></i>Add User</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i>User Activity</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i>Manage Roles</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i>Manage Permissions</a>
@@ -44,7 +44,7 @@
 
 @if(CurrentUser != null)
 {
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Login Info</legend>
@@ -59,7 +59,7 @@
         </div>
 
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))">
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
                 <span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentUser.CanonicalFingerprint != null)
             {
@@ -70,10 +70,10 @@
         </div>
     </div>
 
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Group)">
     </div>
 
-    <div class="user-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Owner)">
     </div>
 }
 
@@ -85,19 +85,19 @@
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
-    public DataLayer.ControlMode? ControlMode { get; set; }
-    public DataLayer.ControlMode? PreviousMode { get; set; }
+    public ControlMode? Mode { get; set; }
+    public ControlMode? PreviousMode { get; set; }
     [Parameter] public string? Id { get; set; }
     public User? CurrentUser { get; set; }
     public User? ParentUser { get; set; }
 
-    protected string? GetDisplayClass(DataLayer.ControlMode mode)
+    protected string? GetDisplayClass(ControlMode mode)
     {
-        if (ControlMode == mode) return "animate-in";
+        if (Mode == mode) return "animate-in";
         // TODO: check what happens when switching from new mode to edit mode
-        if (mode == DataLayer.ControlMode.Edit && ControlMode == DataLayer.ControlMode.Add) return "animate-in";
+        if (mode == ControlMode.Edit && Mode == ControlMode.Add) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
-        if (mode == DataLayer.ControlMode.Edit && PreviousMode == DataLayer.ControlMode.Add) return "animate-out";
+        if (mode == ControlMode.Edit && PreviousMode == ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
@@ -137,18 +137,18 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
+        ControlMode? newStep = ControlMode.List;
         if(segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.ControlMode.View;
+            newStep = ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.List;
         }
 
 
-        if (newStep == DataLayer.ControlMode.List)
+        if (newStep == ControlMode.List)
         {
             if (CurrentUsers == null || FilterChanged)
             {
@@ -157,7 +157,7 @@
 
             TitleService?.UpdateTitle("Manage Users");
         }
-        else if (newStep == DataLayer.ControlMode.Add)
+        else if (newStep == ControlMode.Add)
         {
             if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
             {
@@ -165,7 +165,7 @@
             }
             TitleService?.UpdateTitle("New User");
         }
-        else if (newStep == DataLayer.ControlMode.Edit)
+        else if (newStep == ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit User");
             if (Id != null)
@@ -181,7 +181,7 @@
         if (newStep != ControlMode)
         {
             PreviousMode = ControlMode;
-            ControlMode = newStep;
+            Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
     }

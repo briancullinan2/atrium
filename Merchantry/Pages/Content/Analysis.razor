@@ -1,5 +1,4 @@
 @page "/analysis"
-@using FlashCard.Services
 @inject IMenuService MenuService
 
 <SyncedTitle Title="Content Analysis"></SyncedTitle>
@@ -26,7 +25,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        MenuService.SetMenu(@<FlashCard.Pages.Shared.Content />);
+        MenuService.SetMenu(@<Merchantry.Pages.Shared.Content />);
 
     }
 

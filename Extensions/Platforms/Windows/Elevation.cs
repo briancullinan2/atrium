@@ -7,6 +7,7 @@ namespace Extensions.Platforms.Windows
     {
         public static void EnsureElevated(string[] args)
         {
+#if WINDOWS
             using WindowsIdentity identity = WindowsIdentity.GetCurrent();
             WindowsPrincipal principal = new(identity);
 
@@ -32,6 +33,7 @@ namespace Extensions.Platforms.Windows
                     Console.WriteLine("Administrator rights are required to host the web server.");
                 }
             }
+#endif
         }
     }
 }

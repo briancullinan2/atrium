@@ -4,12 +4,6 @@
 @page "/settings/list"
 
 @implements IDisposable
-@using DataLayer.Utilities.Extensions
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
-@using System.Reflection
-@using System.ComponentModel.DataAnnotations
 @inject IMenuService MenuService
 @inject IThemeService ThemeService
 @inject ITitleService TitleService
@@ -20,7 +14,7 @@
 
 <SyncedTitle Title="Application Settings"></SyncedTitle>
 
-<div class="flash-card app-settings @GetDisplayClass(DataLayer.ControlMode.Edit)">
+<div class="flash-card app-settings @GetDisplayClass(ControlMode.Edit)">
     <h2>Login Setting</h2>
     <div class="form-row">
         <span>Enable the Guest account.</span>
@@ -82,14 +76,14 @@
         <input type="checkbox" />
     </div>
 
-    <h2><a href="@(NavigationExtensions.GetUri<Pages.Admin.Hosting>())">Hosting</a></h2>
+    <h2><a href="@(NavigationExtensions.GetUri<Hosting.Pages.Hosting>())">Hosting</a></h2>
     <div>
-        <span><a href="@(NavigationExtensions.GetUri<Pages.Admin.Hosting>())">Enable hosting</a> to access your own study system from the web.</span>
+        <span><a href="@(NavigationExtensions.GetUri<Hosting.Pages.Hosting>())">Enable hosting</a> to access your own study system from the web.</span>
     </div>
 </div>
 
 
-<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(ControlMode.List)">
     <div class="settings-page">
         @foreach (var label in themeLabels)
         {
@@ -112,8 +106,8 @@
 
 @code
 {
-    public DataLayer.ControlMode? Mode { get; set; } = DataLayer.ControlMode.Edit;
-    public DataLayer.ControlMode? PreviousMode { get; set; }
+    public ControlMode? Mode { get; set; } = ControlMode.Edit;
+    public ControlMode? PreviousMode { get; set; }
     public static List<Retheme.ThemeData>? extractedThemes { get; set;  } 
 
     private async Task CopyToCSV()
@@ -196,10 +190,10 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.ControlMode? newStep = DataLayer.ControlMode.Edit;
+        ControlMode? newStep = ControlMode.Edit;
         if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.Edit;
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.Edit;
         }
 
 
@@ -210,18 +204,18 @@
             InvokeAsync(StateHasChanged);
         }
 
-        if(Mode == DataLayer.ControlMode.List)
+        if(Mode == ControlMode.List)
         {
             TitleService?.UpdateTitle("Edit Theme");
         }
-        else if (Mode == DataLayer.ControlMode.Edit)
+        else if (Mode == ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Application Settings");
         }
 
     }
     
-    protected string? GetDisplayClass(DataLayer.ControlMode mode)
+    protected string? GetDisplayClass(ControlMode mode)
     {
         if (Mode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
@@ -322,7 +316,7 @@
         // we don't have to reinitialize theme just to get it to show up now
         //   because it's stored in static property after the first load
 
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
         _ = InitializeTheme();
     }

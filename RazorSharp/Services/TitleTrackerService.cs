@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-
-namespace RazorSharp.Services
+﻿namespace RazorSharp.Services
 {
     // doesn't update window title because it's running as a web service, but still needs to generate html
     public class TitleTrackerService : TitleService

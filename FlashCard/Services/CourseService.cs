@@ -1,6 +1,4 @@
-﻿using DataLayer;
-using FlashCard.Layout;
-
+﻿
 namespace FlashCard.Services
 {
     public interface ICourseService

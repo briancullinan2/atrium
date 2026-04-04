@@ -1,9 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Extensions.ForeignEntity
+﻿namespace Extensions.ForeignEntity
 {
     public static partial class IEntityExtensions
     {

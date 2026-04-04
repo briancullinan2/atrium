@@ -1,6 +1,4 @@
 @page "/terms"
-@using FlashCard.Controls
-@using FlashCard.Services
 @inject IMenuService MenuService
 
 <div class="flash-card" id="terms">
@@ -137,7 +135,7 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        MenuService.SetMenu(@<FlashCard.Pages.Shared.Terms />);
+        MenuService.SetMenu(@<RazorSharp.Pages.Shared.Terms />);
     }
 
     private void Toggle(object? header)

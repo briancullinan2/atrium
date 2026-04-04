@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-
-namespace RazorSharp.Services
+﻿namespace RazorSharp.Services
 {
     internal class TitleService(Application? App = null) : TitleService
     {

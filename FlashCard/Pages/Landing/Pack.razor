@@ -9,8 +9,8 @@
 @inject IMenuService MenuService
 @inject IStudyService StudyService
 @inject IQueryManager Query
-@using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
+@using Utilities
+@using Utilities.Extensions
 @using FlashCard.Services
 @using FlashCard.Controls
 @using System.ComponentModel
@@ -288,7 +288,7 @@
     /*
     protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs?.ToList();
         }

@@ -1,11 +1,8 @@
-﻿using DataLayer.Utilities.Extensions;
-using FlashCard.Services;
-using FlashCard.Utilities.Extensions;
-
-#if WINDOWS
+﻿
 using log4net.Appender;
 using log4net.Core;
 using log4net.Util;
+
 
 namespace Atrium.Logging
 {
@@ -175,4 +172,4 @@ namespace Atrium.Logging
     }
 
 }
-#endif
+

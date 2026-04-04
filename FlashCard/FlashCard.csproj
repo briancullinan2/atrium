@@ -3,9 +3,10 @@
   <PropertyGroup>
 	  <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
 	  <Nullable>enable</Nullable>
-      <ImplicitUsings>enable</ImplicitUsings>
+	  <ImplicitUsings>disable</ImplicitUsings>
 	  <WasmFingerprintAssets>false</WasmFingerprintAssets>
   </PropertyGroup>
+	
 	<PropertyGroup>
 		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
 	</PropertyGroup>
@@ -16,9 +17,13 @@
 	
 
   <ItemGroup>
+    <ProjectReference Include="..\DataStore\DataStore.csproj" />
     <ProjectReference Include="..\Extensions\Extensions.csproj" />
-    <ProjectReference Include="..\StudyModel\StudyModel.csproj" />
+    <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+    <ProjectReference Include="..\FlashData\FlashData.csproj" />
     <ProjectReference Include="..\Retheme\Retheme.csproj" />
+    <ProjectReference Include="..\UserData\UserData.csproj" />
+    <ProjectReference Include="..\UserModel\UserModel.csproj" />
   </ItemGroup>
 
 	<ItemGroup>

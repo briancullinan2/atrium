@@ -1,12 +1,14 @@
 ﻿
+using Microsoft.AspNetCore.Http;
+
 namespace DataStore.Services
 {
     internal static class QueryService //: QueryManager
     {
 
 
-
-        public async static Task ResponseSave(HttpContext context, IQueryManager Query)
+        // TODO: actually hook this up in WebServer
+        public async static Task RespondSave(HttpContext context, IQueryManager Query)
         {
             try
             {

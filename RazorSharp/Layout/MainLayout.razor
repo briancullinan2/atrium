@@ -1,14 +1,4 @@
-﻿@using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
-@using FlashCard.Pages.Shared
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Components.HtmlRendering
-@using Microsoft.AspNetCore.Http
-@using Microsoft.Extensions.DependencyInjection
-@using Microsoft.Extensions.Logging
-@using Microsoft.Extensions.Options
-@using FlashCard.Services
-@using FlashCard.Controls
+﻿@using Retheme
 @inherits LayoutComponentBase
 @implements IDisposable
 @implements IAsyncDisposable
@@ -107,7 +97,7 @@
     @if (Nav.Uri != "/error" && Nav.Uri != "/console"
         && NavigationExtensions.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console))
     {
-        <FlashCard.Pages.Shared.Console Embedded="true" />
+        <RazorSharp.Pages.Shared.Console Embedded="true" />
     }
 
     @if (ShowChat == true)

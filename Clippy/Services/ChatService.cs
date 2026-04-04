@@ -1,11 +1,9 @@
-﻿using DataLayer.Utilities;
-#if WINDOWS
+﻿#if WINDOWS
 using Microsoft.AspNetCore.Http;
 #endif
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
-using static System.Net.WebRequestMethods;
 
 namespace Clippy.Services
 {

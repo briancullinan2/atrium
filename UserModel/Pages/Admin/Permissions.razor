@@ -1,6 +1,5 @@
 @page "/permissions"
-@using FlashCard.Services
-@using DataLayer.Entities
+
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject IAuthService AuthService
@@ -138,8 +137,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Settings />);
-        Roles = DataLayer.Generators.Roles.Generate().ToList();
+        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
+        Roles = UserData.Generators.Roles.Generate().ToList();
         // Load your current flattened permissions from the DB here
     }
 

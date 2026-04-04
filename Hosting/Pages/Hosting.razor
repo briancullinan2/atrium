@@ -1,6 +1,4 @@
 @page "/hosting"
-@using FlashCard.Controls
-@using FlashCard.Services
 @implements IDisposable
 @inject IMenuService MenuService
 @inject HttpClient HttpClient
@@ -98,9 +96,9 @@
     {
         Instance = this;
         Services = ServiceProvider;
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Hosting />);
-        _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
-        _timer = DataLayer.Utilities.Extensions.TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3);
+        MenuService?.SetMenu(@<Hosting.Pages.Shared.Hosting />);
+        _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+        _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3);
     }
 
     private static string? _apiToken;
@@ -110,7 +108,7 @@
         set
         {
             _apiToken = value;
-            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _tunnelName;
@@ -120,7 +118,7 @@
         set
         {
             _tunnelName = value;
-            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _accountId;
@@ -130,7 +128,7 @@
         set
         {
             _accountId = value;
-            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
     private static string? _domain;
@@ -140,7 +138,7 @@
         set
         {
             _domain = value;
-            _ = DataLayer.Utilities.Extensions.TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         }
     }
 

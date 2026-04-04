@@ -10,17 +10,15 @@
 @page "/courses/{Id:int}/group"
 @page "/courses/{Id:int}/owner"
 
-@using DataLayer.Utilities.Extensions
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
+@using Course = FlashData.Entities.Course
+
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject NavigationManager Nav
 
 <SyncedTitle Title="Courses"></SyncedTitle>
 
-<div class="flash-card @GetDisplayClass(DataLayer.ControlMode.List)">
+<div class="flash-card @GetDisplayClass(ControlMode.List)">
     <heading class="flex-row">
         <label></label>
         <label>Course Name</label>
@@ -38,7 +36,7 @@
 @if (CurrentCourse != null)
 {
 
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
+    <div class="course-edit flash-card @GetDisplayClass(ControlMode.Edit)">
         <div>
             <fieldset>
                 <legend>Course Info</legend>
@@ -52,22 +50,22 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { ControlMode = DataLayer.ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<UserModel.Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentCourse.CanonicalFingerprint != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { ControlMode = DataLayer.ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { ControlMode = DataLayer.ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { Mode = ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { Mode = ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
             }
             <button class="cta" @onclick="() => UpdateCourse()">Save</button>
         </div>
 
     </div>
     
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Group)">
+    <div class="course-edit flash-card @GetDisplayClass(ControlMode.Group)">
     </div>
 
 
-    <div class="course-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Owner)">
+    <div class="course-edit flash-card @GetDisplayClass(ControlMode.Owner)">
     </div>
 }
 
@@ -78,8 +76,8 @@
     [Category("Recent")]
     public List<Course> Recent { get; set; } = new();
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
-    public DataLayer.ControlMode? ControlMode { get; set; }
-    public DataLayer.ControlMode? PreviousMode { get; set; }
+    public ControlMode? Mode { get; set; }
+    public ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
@@ -90,13 +88,13 @@
 
     }
 
-    protected string? GetDisplayClass(DataLayer.ControlMode mode)
+    protected string? GetDisplayClass(ControlMode mode)
     {
-        if (ControlMode == mode) return "animate-in";
+        if (Mode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
         // TODO: check what happens when switching from new mode to edit mode
-        if (mode == DataLayer.ControlMode.Edit && ControlMode == DataLayer.ControlMode.Add) return "animate-in";
-        if (mode == DataLayer.ControlMode.Edit && PreviousMode == DataLayer.ControlMode.Add) return "animate-out";
+        if (mode == ControlMode.Edit && Mode == ControlMode.Add) return "animate-in";
+        if (mode == ControlMode.Edit && PreviousMode == ControlMode.Add) return "animate-out";
         return "hidden";
     }
 
@@ -129,23 +127,23 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
+        ControlMode? newStep = ControlMode.List;
         if (segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.ControlMode.View;
+            newStep = ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.List;
         }
 
 
         
-        if (newStep == DataLayer.ControlMode.List)
+        if (newStep == ControlMode.List)
         {
             TitleService?.UpdateTitle("Courses");
         }
-        else if (newStep == DataLayer.ControlMode.Add)
+        else if (newStep == ControlMode.Add)
         {
             if (CurrentCourse == null || CurrentCourse.CanonicalFingerprint != null)
             {
@@ -153,7 +151,7 @@
             }
             TitleService?.UpdateTitle("New Course");
         }
-        else if (newStep == DataLayer.ControlMode.Edit)
+        else if (newStep == ControlMode.Edit)
         {
             TitleService?.UpdateTitle("Edit Course");
             if (Id != null)
@@ -166,10 +164,10 @@
         }
 
 
-        if (newStep != ControlMode)
+        if (newStep != Mode)
         {
-            PreviousMode = ControlMode;
-            ControlMode = newStep;
+            PreviousMode = Mode;
+            Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
 
@@ -200,7 +198,7 @@
 
     protected static IEnumerable<Course>? GetCourses(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Course>? packs = generator?.Invoke(null, []) as IEnumerable<Course>;
         return packs;
     }

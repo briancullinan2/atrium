@@ -1,14 +1,4 @@
-﻿using DataLayer.Utilities;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Text;
-
-namespace RazorSharp.Services
+﻿namespace RazorSharp.Services
 {
     public static class SharedRegistry
     {

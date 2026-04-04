@@ -1,7 +1,4 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-#if WINDOWS || ANDROID
+﻿#if WINDOWS || ANDROID
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
@@ -10,12 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 #endif
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
 using UserModel.Services;
 

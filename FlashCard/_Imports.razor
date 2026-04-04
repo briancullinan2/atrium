@@ -1,5 +1,7 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using System.ComponentModel
+@using System.Text.Json.Serialization
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
@@ -10,5 +12,17 @@
 @using Microsoft.JSInterop
 @using FlashCard
 @using FlashCard.Layout
-@using Extensions.ForeignEntity;
+@using FlashCard.Pages.Course
+@using FlashData
+@using FlashData.Entities
+@using FlashCard.Services
+@using RazorSharp.Services
+@using UserData.Entities
+@using Extensions.ForeignEntity
+@using Extensions.PrometheusTypes
+@using RazorSharp.Controls
+@using RazorSharp.Extensions
+@using RazorSharp.Layout
+@using DataStore
+
 @attribute [Authorize]

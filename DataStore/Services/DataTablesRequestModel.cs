@@ -1,9 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace DataStore.Services
+﻿namespace DataStore.Services
 {
     internal class DataTablesRequestModel
     {

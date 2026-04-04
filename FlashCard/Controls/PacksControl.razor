@@ -20,11 +20,11 @@
         <span>
             @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.PackMode.Card }))">@pack.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = PackMode.Card }))">@pack.Title</a>
             }
             else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.PackMode.Demo }))">@pack.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = PackMode.Demo }))">@pack.Title</a>
             }
         </span>
         <span>@pack.Category
@@ -36,7 +36,7 @@
         <span>@pack.Cards.Count()</span>
         <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
-            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new () { ControlMode = DataLayer.ControlMode.Edit, Id = pack.Id}))">
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new () { Mode = ControlMode.Edit, Id = pack.Id}))">
                 <span class="bi bi-pencil"></span>
             </a>
             @if(LoginService?.User == null)
@@ -47,12 +47,12 @@
             }
             else if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) == null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { ControlMode = DataLayer.ControlMode.Add, Id = pack.Id }))">
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add, Id = pack.Id }))">
                     <span class="bi bi-check-circle"></span>
                 </a>
             } else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = DataLayer.PackMode.Card, Id = pack.Id }))">
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = PackMode.Card, Id = pack.Id }))">
                     <span class="bi bi-info-circle"></span>
                 </a>
             }

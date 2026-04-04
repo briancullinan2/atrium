@@ -11,8 +11,7 @@ namespace Extensions.PrometheusTypes
         public static async Task<T?> Debounce<T>(
             Func<CancellationToken, Task<T>> action,
             int delay = 200,
-            [CallerFilePath] string file = "",
-            [CallerMemberName] string key = "")
+            [CallerFilePath] string file = "", [CallerMemberName] string key = "")
         {
             // Fix for the "System.Private.CoreLib" issue: 
             // Get the Entry Assembly name to scope the key to your specific app.

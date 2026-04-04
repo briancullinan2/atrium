@@ -1,8 +1,6 @@
 ﻿#if WINDOWS
 using log4net;
 #endif
-using FlashCard.Services;
-using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 

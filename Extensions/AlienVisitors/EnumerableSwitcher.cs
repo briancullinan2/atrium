@@ -1,11 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-
-namespace Extensions.AlienVisitors
+﻿namespace Extensions.AlienVisitors
 {
     public class EnumerableSwitcher(Type entityType, Expression newRoot) : ExpressionVisitor
     {

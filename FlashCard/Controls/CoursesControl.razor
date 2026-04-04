@@ -20,11 +20,11 @@
         <span>
             @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = DataLayer.PackMode.Card }))">@course.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = PackMode.Card }))">@course.Title</a>
             }
             else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = DataLayer.PackMode.Demo }))">@course.Title</a>
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = PackMode.Demo }))">@course.Title</a>
             }
         </span>
         <span>
@@ -37,12 +37,12 @@
         <span>@course.Lessons.Count()</span>
         <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
-            <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(p => new() { ControlMode = DataLayer.ControlMode.Edit, Id = course.Id }))">
+            <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(p => new() { Mode = ControlMode.Edit, Id = course.Id }))">
                 <span class="bi bi-pencil"></span>
             </a>
             @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) == null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { ControlMode = DataLayer.ControlMode.Add, Id = course.Id }))">
+                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add, Id = course.Id }))">
                     <span class="bi bi-check-circle-fill"></span>
                 </a>
             }

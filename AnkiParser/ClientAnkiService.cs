@@ -1,5 +1,4 @@
-﻿using DataLayer.Entities;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 
 namespace AnkiParser
 {

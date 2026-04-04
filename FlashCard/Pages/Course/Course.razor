@@ -1,5 +1,5 @@
 @implements IDisposable
-@implements IGenerator<StudyModel.Entities.Course>
+@implements IGenerator<FlashData.Entities.Course>
 
 @page "/course"
 @page "/course/{Level:int}"
@@ -207,7 +207,7 @@
 
     protected static IEnumerable<Card>? GetCurrentQuiz(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(IGenerator.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Card>? cards = generator?.Invoke(null, []) as IEnumerable<Card>;
         return cards;
     }
@@ -313,16 +313,16 @@
 
     private void Finish() { /* Navigate back or to next lesson */ }
 
-    public static IEnumerable<StudyModel.Entities.Course> Generate()
+    public static IEnumerable<FlashData.Entities.Course> Generate()
     {
-        var ss = new Course() { 
+        var ss = new FlashData.Entities.Course() { 
             Title = "Study Sauce",
             LogoHosted = "/_content/FlashCard/studysauce-icon-76x76.png",
             Subject = "Studying",
             Description = "Course topics:\nStudying\nTaking tests\nSpaced repetition"
         };
         ss.Courses = ((Type[])[typeof(Course1), typeof(Course2), typeof(Course3)]).Select(type => CourseMenu.GetCourse(typeof(Course3)))
-            .Select(mi => new Course()
+            .Select(mi => new FlashData.Entities.Course()
                 {
                     Parent = ss,
                     Title = "Study Sauce: " + mi?.Title,

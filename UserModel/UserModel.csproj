@@ -5,7 +5,7 @@
 		<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
-		<ImplicitUsings>enable</ImplicitUsings>
+		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
 	</PropertyGroup>
@@ -20,6 +20,12 @@
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
+	  <ProjectReference Include="..\Hosting\Hosting.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
 </Project>

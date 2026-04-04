@@ -1,9 +1,6 @@
-﻿using DataLayer;
-using DataLayer.Entities;
-
-namespace FlashCard.Pages.Course
+﻿namespace FlashCard.Pages.Course
 {
-    public class Interleaving : DataLayer.Generators.IGenerator<Card>
+    public class Interleaving : Generators.IGenerator<Card>
     {
         public static IEnumerable<Card> Generate()
         {

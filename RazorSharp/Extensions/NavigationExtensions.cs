@@ -1,14 +1,15 @@
-﻿using DataLayer.Utilities.Extensions;
-using Microsoft.AspNetCore.Components;
-using RazorSharp.Extensions;
-using System.Linq.Expressions;
+﻿using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
-using System.Reflection;
+
+[assembly: SuppressMessage("This call site is reachable on all platforms.", "IL2026", Justification = "I hope it does, save me some damn time")]
 
 namespace RazorSharp.Extensions
 {
     public static class NavigationExtensions
     {
+        
+
 
         // TODO: i thought there was some fancy c# pattern that has the object expression as the coalescing parameters that makes an object of type <T>?
         /*
@@ -24,7 +25,8 @@ namespace RazorSharp.Extensions
 
         static NavigationExtensions()
         {
-            var routeableTypes = Assembly.GetExecutingAssembly().GetTypes()
+            var routeableTypes = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
+                .SelectMany(ass => ass.GetTypes())
                 .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());
 
             foreach (var type in routeableTypes)
@@ -61,7 +63,7 @@ namespace RazorSharp.Extensions
         }
 
 
-        public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>>? initializer) where TComponent : IComponent
+        public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>>? initializer) where TComponent : Microsoft.AspNetCore.Components.IComponent
         {
             var values = initializer?.ToDictionary();
             return GetUri<TComponent>(values);
@@ -104,7 +106,7 @@ namespace RazorSharp.Extensions
                 return value;
             }
 
-            return componentType.GetProperties().Where(p => p.GetCustomAttributes<SupplyParameterFromQueryAttribute>().Any()).ToDictionary(p => p.Name, p => p.GetCustomAttribute<SupplyParameterFromQueryAttribute>()?.Name);
+            return componentType.GetProperties(null).Where(p => p.GetCustomAttributes<SupplyParameterFromQueryAttribute>().Any()).ToDictionary(p => p.Name, p => p.GetCustomAttribute<SupplyParameterFromQueryAttribute>()?.Name);
         }
 
         private static IEnumerable<ParsedRoute> GetRoutes(Type componentType)

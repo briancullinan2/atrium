@@ -1,11 +1,5 @@
 @page "/upload"
 @implements IDisposable
-@using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
 @inject IFileManager File
 @inject IMenuService MenuService
 @inject IServiceProvider Services
@@ -70,7 +64,7 @@
         <label>Answers</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="Controls.EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards?.Take(Take).ToList()"></MetadataControl>
+    <MetadataControl TModel="EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards?.Take(Take).ToList()"></MetadataControl>
 
 </div>
 
@@ -83,7 +77,7 @@
     public List<File>? AnkiSearch { get; set; }
     public IEnumerable<File>? Inside { get; set; }
     [Category("Content")]
-    public List<Controls.EditCardControl.EditControl>? CurrentCards { get; set; }
+    public List<EditCardControl.EditControl>? CurrentCards { get; set; }
     public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
     public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
 

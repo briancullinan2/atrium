@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
-
-namespace Extensions.ForeignEntity
+﻿namespace Extensions.ForeignEntity
 {
     public static partial class IEntityExtensions
     {

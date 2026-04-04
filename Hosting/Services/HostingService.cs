@@ -1,5 +1,7 @@
 ﻿
-
+#if WINDOWS
+using System.ServiceProcess;
+#endif
 
 namespace Hosting.Services
 {
@@ -12,11 +14,11 @@ namespace Hosting.Services
         static HostingService()
         {
             var savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-hosting.json");
-            if (File.Exists(savedSettings))
+            if (System.IO.File.Exists(savedSettings))
             {
                 try
                 {
-                    Settings = JsonSerializer.Deserialize<HostingSettings>(File.ReadAllText(savedSettings));
+                    Settings = JsonSerializer.Deserialize<HostingSettings>(System.IO.File.ReadAllText(savedSettings));
                 }
                 catch (Exception) { }
             }
@@ -67,7 +69,7 @@ namespace Hosting.Services
                 _latestAssemblyTime = AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
                     .Select(a => {
-                        try { return new FileInfo(a.Location).LastWriteTimeUtc; }
+                        try { return new System.IO.FileInfo(a.Location).LastWriteTimeUtc; }
                         catch { return DateTime.MinValue; }
                     })
                     .ToList()
@@ -97,7 +99,7 @@ namespace Hosting.Services
             try
             {
 
-                using var reader = new StreamReader(context.Request.Body);
+                using var reader = new System.IO.StreamReader(context.Request.Body);
                 var jsonQuery = await reader.ReadToEndAsync();
                 var cloudflaredSettings = JsonSerializer.Deserialize<HostingSettings>(jsonQuery);
                 if (cloudflaredSettings?.ApiToken != null

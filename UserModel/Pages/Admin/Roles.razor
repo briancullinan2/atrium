@@ -6,7 +6,7 @@
 @page "/roles/{Id:int}/edit"
 
 
-@using DataLayer.Utilities.Extensions
+@using 
 @using FlashCard.Controls
 @using FlashCard.Services
 @using System.ComponentModel
@@ -27,14 +27,14 @@
         <label>Actions</label>
     </heading>
     <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@CurrentRoles"></MetadataControl>
-    @if(ControlMode == DataLayer.ControlMode.Add)
+    @if(Mode == ControlMode.Add)
     {
-        <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@([new Controls.RolesControl.ControlRole() {Mode = DataLayer.ControlMode.Edit}])"></MetadataControl>
+        <MetadataControl TModel="Controls.RolesControl.ControlRole" Model="@RolesLayout" Data="@([new Controls.RolesControl.ControlRole() {Mode = ControlMode.Edit}])"></MetadataControl>
     }
 
     <h2>Roles Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { ControlMode = DataLayer.ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Role</a>
+        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Role</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i>Role Activity</a>
         <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i>Manage Permissions</a>
     </div>
@@ -44,8 +44,8 @@
 
     [Category("Display")]
     public IEnumerable<Controls.RolesControl.ControlRole>? CurrentRoles { get; set; }
-    public DataLayer.ControlMode? ControlMode { get; set; }
-    public DataLayer.ControlMode? PreviousMode { get; set; }
+    public ControlMode? Mode { get; set; }
+    public ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? RolesLayout { get; set; }
     [Parameter] public int? Id { get; set; }
 
@@ -65,38 +65,38 @@
 
         var segments = relativePath.Split('/');
 
-        DataLayer.ControlMode? newStep = DataLayer.ControlMode.List;
+        ControlMode? newStep = ControlMode.List;
         if (segments.Count() == 2 && Id != null)
         {
-            newStep = DataLayer.ControlMode.View;
+            newStep = ControlMode.View;
         }
         else if (segments.Count() >= 2)
         {
-            newStep = segments.Last().TryParse<DataLayer.ControlMode>() ?? DataLayer.ControlMode.List;
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.List;
         }
 
-        if (ControlMode == DataLayer.ControlMode.View
-            || ControlMode == DataLayer.ControlMode.List)
+        if (Mode == ControlMode.View
+            || Mode == ControlMode.List)
         {
             // TODO: set all controls back to view
             foreach (var role in CurrentRoles ?? [])
             {
-                role.Mode = DataLayer.ControlMode.View;
+                role.Mode = ControlMode.View;
             }
             InvokeAsync(StateHasChanged);
         }
 
-        if (ControlMode == DataLayer.ControlMode.Edit)
+        if (Mode == ControlMode.Edit)
         {
             var role = CurrentRoles?.ElementAt(Id ?? 0);
-            role?.Mode = DataLayer.ControlMode.Edit;
+            role?.Mode = ControlMode.Edit;
             InvokeAsync(StateHasChanged);
         }
 
         if (newStep != ControlMode)
         {
             PreviousMode = ControlMode;
-            ControlMode = newStep;
+            Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
     }
@@ -106,9 +106,9 @@
         SetControlMode();
     }
 
-    protected string? GetDisplayClass(DataLayer.ControlMode mode)
+    protected string? GetDisplayClass(ControlMode mode)
     {
-        if (ControlMode == mode) return "animate-in";
+        if (Mode == mode) return "animate-in";
         if (PreviousMode == mode) return "animate-out";
         return "hidden";
     }

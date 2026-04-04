@@ -1,24 +1,9 @@
-﻿using DataLayer;
-using DataLayer.Entities;
-using DataLayer.Generators;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using FlashCard.Services.Logging;
-using FlashCard.Utilities.Extensions;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
-using System.Xml.Linq;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace UserModel.Services
 {
