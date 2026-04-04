@@ -59,9 +59,9 @@
     </div>
 
 
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new DataLayer.Entities.Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="DataLayer.Entities.Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
 
     <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
 
@@ -293,7 +293,7 @@
         Sidebar = sidebarValues[randomTheme];
     }
 
-    private async Task HandleTheme(Tuple<PropertyMetadata, DataLayer.Entities.Setting, object?> selectedValue)
+    private async Task HandleTheme(Tuple<PropertyMetadata, Setting, object?> selectedValue)
     {
         var baseType = Nullable.GetUnderlyingType(selectedValue.Item1.PropertyType) ?? selectedValue.Item1.PropertyType;
         if (baseType == typeof(ApplicationTheme))

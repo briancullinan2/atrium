@@ -104,7 +104,7 @@ namespace Clippy.Services
                     Settings.Add(replacementPreset);
                 }
 
-                var validSettings = JsonSerializer.Serialize(Settings, JsonHelper.Default);
+                var validSettings = JsonSerializer.Serialize(Settings, JsonExtensions.Default);
                 System.IO.File.WriteAllText(savedSettings, validSettings);
             }
             recentPing = new Tuple<bool?, string?>(result, json);
@@ -190,7 +190,7 @@ namespace Clippy.Services
         {
             context.Response.ContentType = "application/json";
 
-            var json = JsonSerializer.Serialize(GetPresets(), JsonHelper.Default);
+            var json = JsonSerializer.Serialize(GetPresets(), JsonExtensions.Default);
 
             await context.Response.WriteAsync(json);
         }
@@ -211,14 +211,14 @@ namespace Clippy.Services
 
                 var result = await _chat.PingService(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Params);
 
-                var json = JsonSerializer.Serialize(result, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(result, JsonExtensions.Default);
 
                 await context.Response.WriteAsync(json);
 
             }
             catch (Exception ex)
             {
-                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
+                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonExtensions.Default);
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync(json);
             }
@@ -245,14 +245,14 @@ namespace Clippy.Services
 
                 var result = await StandardResponse(Http, clientId, message);
 
-                var json = JsonSerializer.Serialize(result, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(result, JsonExtensions.Default);
 
                 await context.Response.WriteAsync(json);
 
             }
             catch (Exception ex)
             {
-                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonHelper.Default);
+                var json = JsonSerializer.Serialize("Error: " + ex.Message, JsonExtensions.Default);
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync(json);
             }

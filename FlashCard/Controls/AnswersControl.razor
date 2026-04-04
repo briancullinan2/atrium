@@ -3,10 +3,10 @@
 @using DataLayer.Utilities.Extensions
 @code
 {
-    [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
+    [Parameter] public IEnumerable<Card>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
-    public List<DataLayer.Entities.Answer> Answers { get; set; } = new List<DataLayer.Entities.Answer>();
+    public List<Answer> Answers { get; set; } = new List<Answer>();
 
 
     public DataLayer.ControlMode Mode

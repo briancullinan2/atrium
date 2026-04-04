@@ -11,8 +11,8 @@ namespace Extensions.ForeignEntity
         Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
         Task<IEntity> Save(IQueryManager? query = null);
         int? CanonicalFingerprint { get; set; }
-        internal IQueryManager? QueryManager { get; set; }
-        internal Type? ContextType { get; set; }
+        public IQueryManager? QueryManager { get; set; }
+        public Type? ContextType { get; set; }
 
 
 

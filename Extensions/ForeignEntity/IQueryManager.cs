@@ -90,7 +90,7 @@ namespace Extensions.ForeignEntity
 
         Task<object?> ToQueryable(string query, StorageType? storage);
 
-        DbContext GetContext(StorageType type);
+        ITranslationContext GetContext(StorageType type);
 
         TContext GetContext<TContext>(StorageType? type = null) where TContext : DbContext;
 

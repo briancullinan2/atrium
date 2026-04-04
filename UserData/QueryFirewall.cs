@@ -1,9 +1,4 @@
-﻿using DataLayer;
-using DataLayer.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Text;
+﻿using System.Linq.Expressions;
 
 namespace UserData
 {
@@ -15,6 +10,7 @@ namespace UserData
             //   Where(setting => setting.SetterId == UserId)
             return [];
         }
+
         public static IQueryable<TEntity> Set<TEntity>(this IQueryable<TEntity> target, string userId)
         {
             var predicates = Set(userId, typeof(TEntity));

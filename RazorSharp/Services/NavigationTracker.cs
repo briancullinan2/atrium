@@ -1,5 +1,7 @@
 ﻿using DataLayer.Entities;
 using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
+using FlashCard.Services.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
@@ -8,8 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
-using FlashCard.Services.Logging;
-using DataLayer.Utilities.Extensions;
 
 namespace RazorSharp.Services
 {

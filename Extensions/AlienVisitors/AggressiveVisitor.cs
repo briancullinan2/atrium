@@ -1,6 +1,6 @@
 ﻿namespace Extensions.AlienVisitors
 {
-    internal class AggressiveVisitor : ExpressionVisitor
+    public class AggressiveVisitor : ExpressionVisitor
     {
 
         public class RecordMethod
@@ -337,7 +337,7 @@
             // 2. Handle 'Where' - The Core Handshake
             if (node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
                 || node.Method.DeclaringType == typeof(Queryable)
-                || node.Method.DeclaringType == typeof(AsyncQueryable<>)
+                || node.Method.DeclaringType.Extends(typeof(IAsyncQueryable<>))
                 || node.Method.Name == nameof(Queryable.Where))
             {
                 // We keep the 'Where' but its arguments (the lambda) 

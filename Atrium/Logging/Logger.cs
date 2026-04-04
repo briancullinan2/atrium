@@ -3,8 +3,8 @@ using log4net;
 #endif
 using FlashCard.Services;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 
 namespace Atrium.Logging

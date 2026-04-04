@@ -80,70 +80,38 @@
     <Content Remove="wwwroot\index.html" />
   </ItemGroup>
 
-<ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-	<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
-	<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
-</ItemGroup>
-
   <ItemGroup>
-	  <PackageReference Include="AspNet.Security.OAuth.Apple" Version="10.0.0" />
-	  <PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.0" />
-	  <PackageReference Include="AspNet.Security.OAuth.GitHub" Version="10.0.0" />
 	  <PackageReference Include="log4net" Version="3.3.0" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="10.0.5" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.5" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="10.0.5" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.5" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="10.0.5" />
-	  <PackageReference Include="EntityFramework" Version="6.5.1" />
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.5" />
       <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
       <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
       <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
-  <ItemGroup>
-	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </ProjectReference>
-	  <ProjectReference Include="..\DataLayer\StudyModel.csproj">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </ProjectReference>
-	  <ProjectReference Include="..\Retheme\Retheme.csproj">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </ProjectReference>
-      <ProjectReference Include="..\FlashCard\FlashCard.csproj">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </ProjectReference>
-  </ItemGroup>
-
-	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
-	</PropertyGroup>
-
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
 	</ItemGroup>
-		
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260302" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
-		<PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.*-*" />
-		<ProjectReference Include="..\WebClient\WebClient.csproj">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</ProjectReference>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
-		
+
 	<ItemGroup>
 	  <None Update="log4net.xml">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
 	</ItemGroup>
 
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+	</PropertyGroup>
 
-	
+
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
+		<ProjectReference Include="..\WebClient\WebClient.csproj">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</ProjectReference>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
 		<ItemGroup>
 			<_GeneratedWinIcon Include="$(IntermediateOutputPath)resizetizer\r\teardrop.ico" />

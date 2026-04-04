@@ -1,26 +1,9 @@
-﻿using Extensions.Entities;
-using Extensions.Utilities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
-using System.ComponentModel;
-using System.Linq.Expressions;
-using System.Numerics;
-using System.Reflection;
-using System.Reflection.Metadata;
-using System.Runtime.Serialization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Xml;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 
 
 namespace Extensions.QueryableChaos
 {
-    public static class LinqExtensions
+    public static partial class LinqExtensions
     {
         
 
@@ -91,13 +74,13 @@ namespace Extensions.QueryableChaos
 
 
 
-        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, DbContext context)
+        private static Tuple<Expression?, IQueryable?> DumbToExpressionOutWrapper(XElement el, ITranslationContext context)
         {
             var result = ToExpression(el, context, out var outish);
             return new Tuple<Expression?, IQueryable?>(result, outish);
         }
 
-        public static Expression? ToExpression(this XElement el, DbContext context, out IQueryable? set)
+        public static Expression? ToExpression(this XElement el, ITranslationContext context, out IQueryable? set)
         {
             set = null;
             var typeStr = el.Attribute(nameof(Expression.NodeType))?.Value;

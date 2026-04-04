@@ -45,11 +45,11 @@
                                         <span class="letter">@GetLetter(grade.Score)</span>
                                     </div>
                                 }
-                                <button class="btn-add" @onclick="() => course.Grades.Add(new DataLayer.Entities.Grade())">+ Grade</button>
+                                <button class="btn-add" @onclick="() => course.Grades.Add(new Grade())">+ Grade</button>
                             </div>
                         </div>
                     }
-                    <button class="btn-add" @onclick="() => term.Courses.Add(new DataLayer.Entities.Subject())">+ Class</button>
+                    <button class="btn-add" @onclick="() => term.Courses.Add(new Subject())">+ Class</button>
                 </div>
             }
         </div>
@@ -57,14 +57,14 @@
 </div>
 
 @code {
-    private List<DataLayer.Entities.Schedule> Schedules = new();
-    private DataLayer.Entities.Schedule? SelectedTerm;
+    private List<Schedule> Schedules = new();
+    private Schedule? SelectedTerm;
     private List<ScaleEntry> GradeScale = new(); // Populated from DB/Presets
     private double? ProjectedGPA { get; set; }
     private double? CumulativeGPA { get; set; }
 
     // Real-time calculation logic (The "Microsofty" way)
-    private double CalculateTermGPA(DataLayer.Entities.Schedule term)
+    private double CalculateTermGPA(Schedule term)
     {
         double totalPoints = 0;
         double totalHours = 0;

@@ -1,16 +1,11 @@
-﻿
-
-#if WINDOWS
-
-
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using OpenCvSharp.Dnn;
 using OpenCvSharp.ImgHash;
 using System.Runtime.InteropServices;
 using Size = OpenCvSharp.Size;
 
 
-namespace Atrium.Services
+namespace Extensions.MagicalMaths
 {
     internal static class ImageFingerPrint
     {
@@ -124,5 +119,3 @@ namespace Atrium.Services
 
     }
 }
-
-#endif

@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
+﻿
 namespace StudyModel.Entities
 {
     [Table("subject")] // Retaining table name for DB compatibility

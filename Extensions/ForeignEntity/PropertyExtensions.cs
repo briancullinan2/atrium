@@ -91,8 +91,8 @@ namespace Extensions.ForeignEntity
 
         public static List<(string Name, Type EntityType)> Schemas(this Type contextType)
         {
-            if (contextType.Extends(typeof(TranslationContext)))
-                return [.. (contextType.GetProperties(nameof(TranslationContext.EntityTypes))
+            if (contextType.Extends(typeof(ITranslationContext)))
+                return [.. (contextType.GetProperties(nameof(ITranslationContext.EntityTypes))
                     .FirstOrDefault()?.GetValue(null) as List<Type>)
                     ?.Select(p => (
                         Name: p.Table() ?? p.Name,
@@ -110,7 +110,7 @@ namespace Extensions.ForeignEntity
 
             if (sets.Count != 0) return sets;
 
-            if (!contextType.Extends(typeof(TranslationContext)))
+            if (!contextType.Extends(typeof(ITranslationContext)))
                 throw new InvalidOperationException("Not sure what to do here, type is not a TranslationContext");
 
             throw new InvalidOperationException("Not sure what to do here, how to get a list of DbSets<>");

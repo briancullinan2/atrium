@@ -95,15 +95,15 @@ public interface ILoginService
 
 Task SetLoginMode(bool study);
 
-Task SetUser(DataLayer.Entities.User? user);
+Task SetUser(User? user);
 
 bool Login { get; set; }
 
-DataLayer.Entities.User? User { get; set; }
+User? User { get; set; }
 
 event Action<bool>? OnLoginChanged;
 
-event Action<DataLayer.Entities.User?>? OnUserChanged;
+event Action<User?>? OnUserChanged;
 
 }
 
@@ -115,13 +115,13 @@ public class LoginService : ILoginService
 
 public bool Login { get; set; } = false;
 
-public DataLayer.Entities.User? User { get; set; } = null;
+public User? User { get; set; } = null;
 
 
 
 public event Action<bool>? OnLoginChanged;
 
-public event Action<DataLayer.Entities.User?>? OnUserChanged;
+public event Action<User?>? OnUserChanged;
 
 
 
@@ -137,7 +137,7 @@ OnLoginChanged?.Invoke(login);
 
 
 
-public async Task SetUser(DataLayer.Entities.User? user)
+public async Task SetUser(User? user)
 
 {
 
@@ -232,7 +232,7 @@ builder.Services.AddAuthentication(options => { /* Defaults */ })
 
 builder.Services.AddScoped<ILoginService, LoginService>();
 4. Integrating with your ILoginService
-Since you have a SetUser method, you can now call it from your Login Callback page. When the OAuth flow returns, you can map the ClaimsPrincipal to your DataLayer.Entities.User and pass it to your service.
+Since you have a SetUser method, you can now call it from your Login Callback page. When the OAuth flow returns, you can map the ClaimsPrincipal to your User and pass it to your service.
 
 Would you like me to write the code for the Redirect/Callback component that maps the external claims to your SetUser method?
 
@@ -264,7 +264,7 @@ Razor CSHTML
     }
 }
 2. The Auth Callback Logic
-Once the user logs in via Google/GitHub, they are redirected back to your app. Here is how you map those claims to your DataLayer.Entities.User via the ILoginService.
+Once the user logs in via Google/GitHub, they are redirected back to your app. Here is how you map those claims to your User via the ILoginService.
 
 C#
 @page "/auth/callback"
@@ -287,7 +287,7 @@ C#
             var providerId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             // 2. Map to your DataLayer Entity
-            var flashCardUser = new DataLayer.Entities.User
+            var flashCardUser = new User
             {
                 Email = email,
                 Username = name,
@@ -322,7 +322,7 @@ Since you've configured your specific trigger, I’ve prepared the visual repres
 
 Image Generation Caption:
 
-A professional, clean technical diagram showing a Blazor Web App architecture. On the left, a list of 12 distinct identity provider logos (Google, GitHub, Apple, etc.) connecting via encrypted lines to a central "Auth Hub" inside a C# code block. The hub outputs a user profile icon labeled "DataLayer.Entities.User" which is then injected into a "LoginService" block. High-tech, minimalist aesthetic with blue and purple accents.
+A professional, clean technical diagram showing a Blazor Web App architecture. On the left, a list of 12 distinct identity provider logos (Google, GitHub, Apple, etc.) connecting via encrypted lines to a central "Auth Hub" inside a C# code block. The hub outputs a user profile icon labeled "User" which is then injected into a "LoginService" block. High-tech, minimalist aesthetic with blue and purple accents.
 
 Would you like me to generate a UI Component (like a login drawer or modal) that loops through your AuthConstants.Providers to display all 12 buttons automatically?
 
@@ -461,7 +461,7 @@ public static class IdentityExtensions
     }
 }
 3. Arizona Regulatory Compliance: A.R.S. § 44-7601
-Since you are mapping these to a DataLayer.Entities.User, please note that in Arizona, you are legally required to dispose of personal information (like OAuth tokens or emails) in a secure manner once it's no longer needed for business purposes (A.R.S. § 44-7601). By using the LoginService to manage the "session" state without storing the raw OAuth secrets in your own database, you significantly reduce your liability.
+Since you are mapping these to a User, please note that in Arizona, you are legally required to dispose of personal information (like OAuth tokens or emails) in a secure manner once it's no longer needed for business purposes (A.R.S. § 44-7601). By using the LoginService to manage the "session" state without storing the raw OAuth secrets in your own database, you significantly reduce your liability.
 
 Rule 32
 As requested, here is a visual summary of how the metadata maps to the implementation:

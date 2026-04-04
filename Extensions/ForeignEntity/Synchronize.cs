@@ -1,11 +1,22 @@
 ﻿
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+
 namespace Extensions.ForeignEntity
 {
     public interface ITranslationContext
     {
 
         IQueryManager Query { get; set; }
-
+        DbSet<TEntity> Set<TEntity>() where TEntity : class;
+        Task InitializeIfNeeded();
+        DatabaseFacade Database { get; }
+        Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+        EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
+        IModel Model { get; }
+        ChangeTracker ChangeTracker { get; }
+        static abstract List<Type> EntityTypes { get; }
     }
 
 

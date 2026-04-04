@@ -32,7 +32,7 @@
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.File, object?>>(this, OnAnkiSelected))" TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
+    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, File, object?>>(this, OnAnkiSelected))" TModel="File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
 
     <div class="link-list">
         @if (!OperatingSystem.IsWindows())
@@ -58,7 +58,7 @@
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.File" Model="@FilesLayout" Data="@Inside?.Take(Take).ToList()"></MetadataControl>
+    <MetadataControl TModel="File" Model="@FilesLayout" Data="@Inside?.Take(Take).ToList()"></MetadataControl>
 
 
     <h4>Converted Cards</h4>
@@ -79,9 +79,9 @@
 {
     // TODO: decide when to synchronize the file storage with memory storage
     [Category("Display")]
-    public List<DataLayer.Entities.File>? Uploads { get; set; }
-    public List<DataLayer.Entities.File>? AnkiSearch { get; set; }
-    public IEnumerable<DataLayer.Entities.File>? Inside { get; set; }
+    public List<File>? Uploads { get; set; }
+    public List<File>? AnkiSearch { get; set; }
+    public IEnumerable<File>? Inside { get; set; }
     [Category("Content")]
     public List<Controls.EditCardControl.EditControl>? CurrentCards { get; set; }
     public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
@@ -124,9 +124,9 @@
         _ = PopulateUploads();
     }
 
-    protected void OnAnkiSelected(Tuple<PropertyMetadata, DataLayer.Entities.File, object?> callback)
+    protected void OnAnkiSelected(Tuple<PropertyMetadata, File, object?> callback)
     {
-        var ankiResults = callback.Item3 as Tuple<IEnumerable<DataLayer.Entities.File>, IEnumerable<DataLayer.Entities.Card>>;
+        var ankiResults = callback.Item3 as Tuple<IEnumerable<File>, IEnumerable<Card>>;
         if (ankiResults == null) return;
 
         Inside = ankiResults.Item1;
@@ -136,7 +136,7 @@
 
     protected async Task PopulateUploads()
     {
-        Uploads = await QueryManager.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
+        Uploads = await QueryManager.Synchronize<File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
     }
 
 

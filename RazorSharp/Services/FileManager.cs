@@ -1,8 +1,8 @@
-﻿using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities;
+using DataLayer.Utilities.Extensions;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 using Stream = System.IO.Stream;
-using DataLayer.Utilities;
 
 <<<<<<< TODO: Unmerged change from project 'RazorSharp (net10.0-android)', Before:
 =======
@@ -25,7 +25,7 @@ namespace RazorSharp.Services
 {
     internal class FileManager(IQueryManager Query) : IFileManager
     {
-        public event Action<DataLayer.Entities.File?>? OnFileUploaded;
+        public event Action<File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
 
         public static string UploadDirectory = Path.Combine(AppContext.BaseDirectory, "Uploads");
@@ -40,7 +40,7 @@ namespace RazorSharp.Services
         }
 
 
-        public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
+        public async Task<File?> UploadFile(string localPath)
         {
             using var localStream = System.IO.File.OpenRead(localPath);
             return await UploadFile(localStream, localPath);
@@ -50,7 +50,7 @@ namespace RazorSharp.Services
         // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
         //   so any implementer can designate themselves as the source of the data
 
-        public async Task<DataLayer.Entities.File?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
+        public async Task<File?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
         {
             var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
             using var fileStream = System.IO.File.Create(savePath);
@@ -59,7 +59,7 @@ namespace RazorSharp.Services
             fileStream.Close();
             localStream.Close();
 
-            var task = Query.Save(new DataLayer.Entities.File()
+            var task = Query.Save(new File()
             {
                 Filename = savePath,
                 Source = source // TODO: fill in from nav or parameter or something
@@ -100,7 +100,7 @@ namespace RazorSharp.Services
                     first = false;
 
                     context.Response.ContentType = "application/json";
-                    var json = JsonSerializer.Serialize(databaseFile, JsonHelper.Default);
+                    var json = JsonSerializer.Serialize(databaseFile, JsonExtensions.Default);
                     await context.Response.WriteAsync(json);
                     await context.Response.Body.FlushAsync();
                     await context.Response.CompleteAsync();
@@ -111,7 +111,7 @@ namespace RazorSharp.Services
             {
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = 500;
-                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
         }

@@ -17,13 +17,13 @@
     <div>
         <fieldset>
             <legend>Login Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
+            <MetadataControl TModel="User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
         </fieldset>
     </div>
     <div>
         <fieldset>
             <legend>General Info</legend>
-            <MetadataControl TModel="DataLayer.Entities.User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
+            <MetadataControl TModel="User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
         </fieldset>
     </div>
     <div class="highlighted-link">
@@ -46,7 +46,7 @@
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
-    public DataLayer.Entities.User? CurrentUser { get; set; }
+    public User? CurrentUser { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.Edit;
     public DataLayer.ControlMode? PreviousMode { get; set; }
 

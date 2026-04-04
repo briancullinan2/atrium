@@ -1,17 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Net.Http.Json;
-using DataLayer.Utilities;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Reflection;
+﻿
 
-
-
-
-
-#if WINDOWS
-using System.ServiceProcess;
-#endif
-using System.Text.Json;
 
 namespace Hosting.Services
 {
@@ -43,7 +31,12 @@ namespace Hosting.Services
 
         public async Task<bool?> CheckInstalled()
         {
+            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return recentResult.Installed;
+            }
             return CheckServiceInstalled();
+            return recentResult?.Installed;
         }
 
         public static bool CheckServiceInstalled()
@@ -59,7 +52,6 @@ namespace Hosting.Services
         }
 
 
-#if WINDOWS
         private static readonly long _appStartTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         // Cached after the first check
@@ -92,7 +84,7 @@ namespace Hosting.Services
 
             // Return the array: [ProcessStartTime, NewestFileTime]
             var versionData = new long[] { _appStartTime, _latestAssemblyTime.Value };
-            var json = JsonSerializer.Serialize(versionData, JsonHelper.Default);
+            var json = JsonSerializer.Serialize(versionData, JsonExtensions.Default);
 
             await context.Response.WriteAsync(json);
         }
@@ -132,34 +124,63 @@ namespace Hosting.Services
                 Tunnel = tunnel,
                 Installed = CheckServiceInstalled(),
                 Error = error?.Message
-            }, JsonHelper.Default);
+            }, JsonExtensions.Default);
 
             await context.Response.WriteAsync(json);
 
         }
 
-#endif
 
         public async Task<string?> GetToken()
         {
             return StatusResponse.ItWorks?[0];
         }
 
+
+
         public async Task<string?> GetHost()
         {
-            return Settings?.Domain;
+            if(Settings != null)
+            {
+                return Settings?.Domain;
+            }
+            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return recentResult.Host;
+            }
+            _ = await GetToken();
+            return recentResult?.Host;
         }
+        
+        
+        private StatusResponse? recentResult;
+        private DateTime? recentChecked;
+        private StatusResponse? statusResult;
+        private DateTime? statusChecked;
+
+        public event Action<bool?>? OnHttpWorking;
+
 
         public async Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null)
         {
+            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return recentResult.Tunnel;
+            }
+
             // TODO: save from desktop app if tunnel is working
             return await CheckTunnelStatus(_account, _tunnel, _api);
+
+            _ = await GetToken(_account, _tunnel, _api);
+
+            return recentResult?.Tunnel;
         }
+
+
 
         private static DateTime? lastChecked;
         private static string? lastStatus;
 
-        public event Action<bool?>? OnHttpWorking;
 
         public static async Task<string?> CheckTunnelStatus(string? _account = null, string? _tunnel = null, string? _api = null)
         {
@@ -206,8 +227,7 @@ namespace Hosting.Services
             }
         }
 
-        private StatusResponse? statusResult;
-        private DateTime? statusChecked;
+
 
         public async Task<bool?> IsWorking()
         {
@@ -238,6 +258,39 @@ namespace Hosting.Services
             statusChecked = DateTime.Now;
             return statusResult;
         }
+
+
+
+
+
+        public async Task<string?> GetToken(string? Account = null, string? Tunnel = null, string? Api = null)
+        {
+            if (_httpClient == null)
+            {
+                throw new InvalidOperationException("Http client unavailable.");
+            }
+
+            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            {
+                return StatusResponse.ItWorks?[0];
+            }
+            var response = await _httpClient.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
+            new HostingSettings()
+            {
+                AccountId = Account,
+                TunnelName = Tunnel,
+                ApiToken = Api
+            }), System.Text.Encoding.UTF8, "application/json"));
+            if (response == null) return null;
+            var result = await response.Content.ReadFromJsonAsync<StatusResponse>();
+            if (result == null) return null;
+            recentResult = result;
+            recentChecked = DateTime.Now;
+            return StatusResponse.ItWorks?[0];
+        }
+
+
+
     }
 
     public class CloudflareResponse { public List<TunnelInfo>? Result { get; set; } }

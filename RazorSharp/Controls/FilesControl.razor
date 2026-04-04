@@ -8,7 +8,7 @@
 @code
 {
 
-    [Parameter] public IEnumerable<DataLayer.Entities.File>? Data { get; set; }
+    [Parameter] public IEnumerable<File>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
 
@@ -18,18 +18,18 @@
 
     }
 
-    public async Task Delete(DataLayer.Entities.File file)
+    public async Task Delete(File file)
     {
 
     }
 
-    public async Task Download(DataLayer.Entities.File file)
+    public async Task Download(File file)
     {
         var ankiResults = await AnkiService.Download(file.Url);
         await ValueChanged.InvokeAsync(ankiResults);
     }
 
-    public async Task Import(DataLayer.Entities.File file)
+    public async Task Import(File file)
     {
         var ankiResults = await AnkiService.InspectFile(file.Filename);
         await ValueChanged.InvokeAsync(ankiResults);

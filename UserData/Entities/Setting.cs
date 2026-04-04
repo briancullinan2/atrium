@@ -1,7 +1,4 @@
-﻿using DataLayer.Utilities.Extensions;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations.Schema;
-
+﻿
 namespace UserData.Entities
 {
     [PrimaryKey(nameof(Name), nameof(Guid), nameof(RoleId))]
@@ -17,8 +14,8 @@ namespace UserData.Entities
         [ForeignKey(nameof(Guid))]
         public User? User { get; set; }
         public string? SetterId { get; set; }
-        //[ForeignKey(nameof(SetterId))]
-        //public User? Setter { get; set; }
+        //[NotMapped]
+        //public User? Setter { get; }
         //[ForeignKey(nameof(Name))]
         //public Permission? Permission { get; set; }
         //[ForeignKey(nameof(Name))]

@@ -7,7 +7,7 @@ namespace RazorSharp.Services
     {
         private static HttpClient? _httpClient;
         internal int currentProgress = 0;
-        public event Action<DataLayer.Entities.File?>? OnFileUploaded;
+        public event Action<File?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
 
         public FileManager(HttpClient client)
@@ -15,13 +15,13 @@ namespace RazorSharp.Services
             _httpClient ??= client;
         }
 
-        public async Task<DataLayer.Entities.File?> UploadFile(string localPath)
+        public async Task<File?> UploadFile(string localPath)
         {
             using var fileStream = File.OpenRead(localPath);
             return await UploadFile(fileStream, localPath);
         }
 
-        public async Task<DataLayer.Entities.File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
+        public async Task<File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
         {
             if (_httpClient == null)
             {
@@ -40,7 +40,7 @@ namespace RazorSharp.Services
             content.Add(streamContent, "file", Path.GetFileName(localPath));
 
             var response = await _httpClient.PostAsync("/api/upload", content);
-            var result = await response.Content.ReadFromJsonAsync<DataLayer.Entities.File>();
+            var result = await response.Content.ReadFromJsonAsync<File>();
             OnFileUploaded?.Invoke(result);
             return result;
             // TODO: update file list wasn't implemented until after saving

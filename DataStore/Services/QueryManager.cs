@@ -1,17 +1,5 @@
-﻿using DataLayer.Utilities.Extensions;
-using DataStore.Entities;
-using DataStore.Providers;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Data;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text.Json;
+﻿
+
 using System.Xml;
 using System.Xml.Linq;
 
@@ -187,7 +175,7 @@ namespace DataStore.Services
         }
 
 
-        public TranslationContext GetContext(StorageType type)
+        public ITranslationContext GetContext(StorageType type)
             => GetContext<TranslationContext>(type);
 
 
@@ -227,8 +215,8 @@ namespace DataStore.Services
 
         public virtual async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier, int priority = 10)
             where TSet : Entity<TSet>
-            where TFrom : TranslationContext
-            where TTo : TranslationContext
+            where TFrom : ITranslationContext
+            where TTo : ITranslationContext
         {
             await Enqueue(async () =>
             {
@@ -249,8 +237,8 @@ namespace DataStore.Services
 
         protected virtual async Task<List<TSet>> SynchronizeNow<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
             where TSet : Entity<TSet>
-            where TFrom : TranslationContext
-            where TTo : TranslationContext
+            where TFrom : ITranslationContext
+            where TTo : ITranslationContext
         {
             using var transactionFrom = contextFrom.Database.BeginTransaction();
             using var transactionTo = contextTo.Database.BeginTransaction();
@@ -294,7 +282,7 @@ namespace DataStore.Services
             return await Save(EphemeralStorage, entity, priority);
         }
 
-        protected async Task ShallowSaveRecursive<T>(DbContext persistentContext, T updatedEntity, bool recurse = true) where T : Entity<T>
+        protected async Task ShallowSaveRecursive<T>(ITranslationContext persistentContext, T updatedEntity, bool recurse = true) where T : Entity<T>
         {
             var compiled = updatedEntity.Predicate().Compile();
             var trackedEntry = persistentContext.ChangeTracker.Entries<T>()
@@ -501,8 +489,8 @@ namespace DataStore.Services
         public virtual Task<List<object>> Query(object query, string type, int priority = 10)
         {
             var realType = type.ToType() ?? throw new InvalidOperationException("Entity type not known: " + type);
-            var ToPredicate = typeof(DataLayer.Utilities.Extensions.ExpressionExtensions)
-                .GetMethods("ToPredicate", 1, [typeof(object)])
+            var ToPredicate = typeof(Extensions.PrometheusTypes.ExpressionExtensions)
+                .GetMethods(nameof(Extensions.PrometheusTypes.ExpressionExtensions.ToPredicate), 1, [typeof(object)])
                 .FirstOrDefault()
                 ?.MakeGenericMethod(realType)
                 ?? throw new InvalidOperationException("Cant find ToPredicate");
@@ -516,14 +504,14 @@ namespace DataStore.Services
         }
 
 
-        public virtual AsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) where TEntity : Entity<TEntity>
+        public virtual IAsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) where TEntity : Entity<TEntity>
         {
             return Query<TEntity>(query.ToPredicate<TEntity>(), priority);
         }
 
 
 
-        public AsyncQueryable<TEntity> Query<TEntity>(
+        public IAsyncQueryable<TEntity> Query<TEntity>(
             Expression<Func<TEntity, bool>>? query = null,
             int priority = 10) where TEntity : Entity<TEntity>
         {
@@ -740,7 +728,7 @@ namespace DataStore.Services
         }
 
 
-        protected async Task LoadAllNavigations<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 5)
+        protected async Task LoadAllNavigations<TEntity>(ITranslationContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 5)
             where TEntity : Entity<TEntity>
 
         {
@@ -957,7 +945,7 @@ namespace DataStore.Services
             return await UpdateNow(context, entity, predicate, 3);
         }
 
-        protected virtual async Task<TEntity> UpdateNow<TEntity>(DbContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
+        protected virtual async Task<TEntity> UpdateNow<TEntity>(ITranslationContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
             where TEntity : Entity<TEntity>
 
         {
@@ -1047,7 +1035,7 @@ namespace DataStore.Services
             return ToExpression(query, context, out set);
         }
 
-        protected static Expression? ToExpression(string query, TranslationContext context, out IQueryable? set)
+        protected static Expression? ToExpression(string query, ITranslationContext context, out IQueryable? set)
         {
             LinqExtensions._parameters.Clear();
             using XmlReader reader = XmlReader.Create(new StringReader(query));

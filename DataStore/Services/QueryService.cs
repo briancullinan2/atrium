@@ -1,26 +1,10 @@
-﻿using DataLayer.Utilities.Extensions;
-using System.Linq.Expressions;
-using System.Reflection;
-using DataStore.Entities;
-
-
-
-
-
-#if WINDOWS
-using Microsoft.AspNetCore.Http;
-#endif
-using System.Text.Json;
-
+﻿
 namespace DataStore.Services
 {
     internal static class QueryService //: QueryManager
     {
 
 
-
-
-#if WINDOWS
 
         public async static Task ResponseSave(HttpContext context, IQueryManager Query)
         {
@@ -43,7 +27,7 @@ namespace DataStore.Services
 
                 context.Response.ContentType = "application/json";
                 var xml = Expression.Constant(result).ToXDocument().ToString();
-                var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(xml, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)
@@ -52,7 +36,7 @@ namespace DataStore.Services
                 {
                     context.Response.ContentType = "application/json";
                     context.Response.StatusCode = 500;
-                    var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
+                    var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
                     await context.Response.WriteAsync(json);
                 }
                 catch (Exception ex2)
@@ -98,7 +82,7 @@ namespace DataStore.Services
 
                 context.Response.ContentType = "application/json";
                 var xml = Expression.Constant(results).ToXDocument().ToString();
-                var json = JsonSerializer.Serialize(xml, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(xml, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)
@@ -107,7 +91,7 @@ namespace DataStore.Services
                 {
                     context.Response.ContentType = "application/json";
                     context.Response.StatusCode = 500;
-                    var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
+                    var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
                     await context.Response.WriteAsync(json);
                 }
                 catch (Exception ex2)
@@ -123,7 +107,6 @@ namespace DataStore.Services
                 }
             }
         }
-#endif
 
 
 

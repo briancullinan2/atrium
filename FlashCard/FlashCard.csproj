@@ -9,32 +9,23 @@
 	<PropertyGroup>
 		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
 	</PropertyGroup>
+	
 	<PropertyGroup>
 		<NoWarn>$(NoWarn);BL0005</NoWarn>
 	</PropertyGroup>
-	<ItemGroup>
-	  <Content Remove="Pages\Shared\ReconnectModal.razor" />
-	</ItemGroup>
-	<ItemGroup>
-	  <None Remove="Pages\Shared\ReconnectModal.razor.css" />
-	  <None Remove="Pages\Shared\ReconnectModal.razor.js" />
-	</ItemGroup>
 	
-  <ItemGroup>
-	<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
-	<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
-  </ItemGroup>
-
 
   <ItemGroup>
-    <ProjectReference Include="..\DataLayer\DataLayer.csproj">
-      <Private>False</Private>
-    </ProjectReference>
+    <ProjectReference Include="..\Extensions\Extensions.csproj" />
+    <ProjectReference Include="..\StudyModel\StudyModel.csproj" />
     <ProjectReference Include="..\Retheme\Retheme.csproj" />
   </ItemGroup>
 
-
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	</ItemGroup>
+	
   <ItemGroup>
     <Content Update="wwwroot\teardrop.svg">
       <Color>transparent</Color>

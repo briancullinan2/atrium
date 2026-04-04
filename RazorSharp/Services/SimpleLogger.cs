@@ -62,7 +62,7 @@ namespace FlashCard.Services
         public object? WrappedLogger { get; set; }
 
 
-        internal static ConcurrentStack<DataLayer.Entities.Message> PreLog { get; set; } = [];
+        internal static ConcurrentStack<Message> PreLog { get; set; } = [];
 
 
         public static SimpleLogger GetLogger(string filePath)
@@ -171,14 +171,14 @@ namespace FlashCard.Services
 
             try
             {
-                DataLayer.Entities.Message newMessage;
+                Message newMessage;
                 if (exception != null)
                 {
-                    newMessage = new DataLayer.Entities.Message
+                    newMessage = new Message
                     {
                         Source = Source,
-                        Title = (Title ?? exception.Message).Limit(DataLayer.Entities.Message.Metadata.MaxLength[x => x.Title] ?? 1024),
-                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled).Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Title = (Title ?? exception.Message).Limit(Message.Metadata.MaxLength[x => x.Title] ?? 1024),
+                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled).Limit(Message.Metadata.MaxLength[nameof(Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4
@@ -186,11 +186,11 @@ namespace FlashCard.Services
                 }
                 else
                 {
-                    newMessage = new DataLayer.Entities.Message
+                    newMessage = new Message
                     {
                         Source = Source,
-                        Title = Title.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Title)] ?? 1024),
-                        Body = stackWhenCalled.Limit(DataLayer.Entities.Message.Metadata.MaxLength[nameof(DataLayer.Entities.Message.Body)] ?? 4096),
+                        Title = Title.Limit(Message.Metadata.MaxLength[nameof(Message.Title)] ?? 1024),
+                        Body = stackWhenCalled.Limit(Message.Metadata.MaxLength[nameof(Message.Body)] ?? 4096),
                         Created = DateTime.UtcNow,
                         IsActive = true,
                         MessageType = 4

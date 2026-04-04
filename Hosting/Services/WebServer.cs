@@ -1,22 +1,4 @@
-﻿#if WINDOWS
-using Antlr4.Runtime.Misc;
-using Atrium.Logging;
-using DataLayer;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using FlashCard.Services;
-using Hosting.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-
-namespace Atrium.Services
+﻿namespace Hosting.Services
 {
     internal static class WebServer
     {
@@ -212,4 +194,4 @@ namespace Atrium.Services
         }
     }
 }
-#endif
+

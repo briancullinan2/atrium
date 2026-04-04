@@ -29,7 +29,7 @@
         <label>Last Studied</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.Course" Model="@RecentLayout" Data="Recent"></MetadataControl>
+    <MetadataControl TModel="Course" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
 </div>
 
@@ -42,13 +42,13 @@
         <div>
             <fieldset>
                 <legend>Course Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.Course" Model="@InfoLayout" Data="[CurrentCourse]"></MetadataControl>
+                <MetadataControl TModel="Course" Model="@InfoLayout" Data="[CurrentCourse]"></MetadataControl>
             </fieldset>
         </div>
         <div>
             <fieldset>
                 <legend>Extended Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.Course" Model="@ExtendedLayout" Data="[CurrentCourse]"></MetadataControl>
+                <MetadataControl TModel="Course" Model="@ExtendedLayout" Data="[CurrentCourse]"></MetadataControl>
             </fieldset>
         </div>
         <div class="highlighted-link">
@@ -76,14 +76,14 @@
 @code {
 
     [Category("Recent")]
-    public List<DataLayer.Entities.Course> Recent { get; set; } = new();
+    public List<Course> Recent { get; set; } = new();
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; }
     public DataLayer.ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
-    public DataLayer.Entities.Course? CurrentCourse { get; set; }
+    public Course? CurrentCourse { get; set; }
     
     protected void UpdateCourse()
     {
@@ -149,7 +149,7 @@
         {
             if (CurrentCourse == null || CurrentCourse.CanonicalFingerprint != null)
             {
-                CurrentCourse = new DataLayer.Entities.Course();
+                CurrentCourse = new Course();
             }
             TitleService?.UpdateTitle("New Course");
         }
@@ -198,10 +198,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<DataLayer.Entities.Course>? GetCourses(Type? lesson)
+    protected static IEnumerable<Course>? GetCourses(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Course>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Course>;
+        IEnumerable<Course>? packs = generator?.Invoke(null, []) as IEnumerable<Course>;
         return packs;
     }
 

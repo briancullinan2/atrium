@@ -1,14 +1,14 @@
-﻿@implements DataLayer.Generators.IGenerator<DataLayer.Entities.Pack>
+﻿@implements DataLayer.Generators.IGenerator<Pack>
 
 @code {
     [Parameter] public Type? Lesson { get; set; }
 
-    public static IEnumerable<DataLayer.Entities.Pack> Generate()
+    public static IEnumerable<Pack> Generate()
     {
         var newItem = CourseMenu.GetCourse(typeof(Course2));
         var cards = newItem?.Children.SelectMany(ci => Course1.GetCourseCards(ci.Lesson) ?? []).ToList();
 
-        return [new DataLayer.Entities.Pack() {
+        return [new Pack() {
             LogoHosted = "/_content/FlashCard/studysauce-icon-76x76.png",
             Title = newItem?.Title ?? "Course 2",
             Category = "Studying",

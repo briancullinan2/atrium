@@ -1,4 +1,6 @@
 ﻿
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Extensions.ForeignEntity
 {
     public static partial class IEntityExtensions
@@ -40,7 +42,7 @@ namespace Extensions.ForeignEntity
             {
                 return default!;
             }
-            var Query = Service?.GetService<IQueryManager>() ?? ent.QueryManager
+            var Query = Service?.GetRequiredService<IQueryManager>() ?? ent.QueryManager
                 ?? throw new InvalidOperationException("No query manager.");
             return await Query.Save(Query.EphemeralStorage, ent);
         }

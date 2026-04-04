@@ -37,7 +37,7 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
+        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, OnQuizAnswered))" TModel="Card" Model="@CardLayout" Data="[card]"></MetadataControl>
         <div class="highlighted-link">
             @if (QuizStep > 0)
             {
@@ -97,7 +97,7 @@
     [Parameter] public int? Id { get; set; }
     [JsonPropertyName("quiz")]
     [Category("Display")]
-    public IEnumerable<DataLayer.Entities.Card>? CurrentQuiz { get; set; }
+    public IEnumerable<Card>? CurrentQuiz { get; set; }
     [JsonIgnore]
     [Category("Results")]
     public IEnumerable<Controls.ResultsCardControl.ResultCard>? Results { get; set; }
@@ -123,7 +123,7 @@
 
 
     public PackMode? Mode { get; set; }
-    private List<DataLayer.Entities.Response> Responses = new();
+    private List<Response> Responses = new();
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;
     public int? PreviousStep { get; set; }
@@ -249,7 +249,7 @@
         {
             // TODO: if user hasn't logged in, shuffle 5 built in study sauce and then ask for sign up like demo sequence
 
-            List<DataLayer.Entities.Card> results = [];
+            List<Card> results = [];
             foreach (var up in LoginService.User?.UserPacks ?? [])
             {
                 var due = (await up.Update())?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key);
@@ -286,22 +286,22 @@
 
 
     /*
-    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs?.ToList();
         }
     */
 
-    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> valueChanged)
+    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, Card, object?> valueChanged)
     {
-        var answer = valueChanged.Item3 as DataLayer.Entities.Answer;
+        var answer = valueChanged.Item3 as Answer;
         if (answer == null)
         {
             return;
         }
-        var response = new DataLayer.Entities.Response()
+        var response = new Response()
         {
             Answer = answer,
             Value = answer.Content ?? answer.Value ?? "",

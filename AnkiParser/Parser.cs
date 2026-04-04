@@ -1,9 +1,4 @@
-﻿using DataLayer;
-using DataLayer.Utilities;
-using DataLayer.Utilities.Extensions;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -13,24 +8,24 @@ namespace AnkiParser
     public static partial class Parser
     {
 
-        public static async Task<List<DataLayer.Entities.File>> ListFiles(string? ankiPackage, IQueryManager Query)
+        public static async Task<List<File>> ListFiles(string? ankiPackage, IQueryManager Query)
         {
-            if (!File.Exists(ankiPackage))
+            if (!System.IO.File.Exists(ankiPackage))
             {
                 throw new InvalidOperationException("Anki file doesn't exist");
             }
 
-            var results = new List<DataLayer.Entities.File>();
+            var results = new List<File>();
 
-            var fileTime = File.GetLastWriteTime(ankiPackage);
+            var fileTime = System.IO.File.GetLastWriteTime(ankiPackage);
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var alreadyLoaded = await Query.Query<DataLayer.Entities.File>(f => f.Created == fileTime && f.Filename == ankiPackage)
+            var alreadyLoaded = await Query.Query<File>(f => f.Created == fileTime && f.Filename == ankiPackage)
                 .ToListAsync();
             if (alreadyLoaded.Count != 0)
             {
-                results = [.. await Query.Query<DataLayer.Entities.File>(f => f.Source == simpleName).ToListAsync()];
+                results = [.. await Query.Query<File>(f => f.Source == simpleName).ToListAsync()];
                 if (results.Count != 0)
                 {
                     return results;
@@ -38,14 +33,14 @@ namespace AnkiParser
             }
 
             // Wrapping in using ensures the file is unlocked even on error
-            using var zipStream = File.OpenRead(ankiPackage);
+            using var zipStream = System.IO.File.OpenRead(ankiPackage);
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
 
             //var firstTime = archive.Entries.FirstOrDefault()?.LastWriteTime.DateTime;
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                var newFile = await Query.Save(new DataLayer.Entities.File()
+                var newFile = await Query.Save(new File()
                 {
                     Filename = entry.FullName,
                     Source = simpleName,
@@ -58,18 +53,18 @@ namespace AnkiParser
             return results;
         }
 
-        public static async Task<List<DataLayer.Entities.Card>> ParseCards(string? ankiPackage, IQueryManager Query)
+        public static async Task<List<Card>> ParseCards(string? ankiPackage, IQueryManager Query)
         {
-            if (!File.Exists(ankiPackage))
+            if (!System.IO.File.Exists(ankiPackage))
             {
                 throw new InvalidOperationException("Anki file doesn't exist");
             }
 
-            var fileTime = File.GetLastWriteTime(ankiPackage);
+            var fileTime = System.IO.File.GetLastWriteTime(ankiPackage);
             var simpleName = Path.GetFileName(ankiPackage).ToSafe();
 
             // idempotence
-            var alreadyLoaded = await Query.Query<DataLayer.Entities.Card>(c => c.Source == simpleName).ToListAsync();
+            var alreadyLoaded = await Query.Query<Card>(c => c.Source == simpleName).ToListAsync();
             if (alreadyLoaded.Count != 0)
             {
                 return [.. alreadyLoaded];
@@ -78,7 +73,7 @@ namespace AnkiParser
 
 
 
-            var zipStream = File.OpenRead(ankiPackage);
+            var zipStream = System.IO.File.OpenRead(ankiPackage);
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
@@ -97,10 +92,10 @@ namespace AnkiParser
             return [];
         }
 
-        private static async Task<List<DataLayer.Entities.Card>> ParseCards(Stream anki2Database, string source, IQueryManager Query)
+        private static async Task<List<Card>> ParseCards(Stream anki2Database, string source, IQueryManager Query)
         {
             var tempPath = Path.GetTempFileName();
-            using (var fs = File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
+            using (var fs = System.IO.File.OpenWrite(tempPath)) { anki2Database.CopyTo(fs); fs.Close(); }
             anki2Database.Close();
 
 
@@ -110,9 +105,9 @@ namespace AnkiParser
             // 1. Get the Note Models (Col.models JSON) 
             // Anki stores deck configs and note models in the 'col' table 'models' column
             var collection = context.Set<Entities.Collection>().First();
-            var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonHelper.Default);
+            var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonExtensions.Default);
 
-            var results = new List<DataLayer.Entities.Card>();
+            var results = new List<Card>();
             var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<Entities.Card>().Where(c => c.Note != null));
 
             foreach (var card in cards)
@@ -129,7 +124,7 @@ namespace AnkiParser
                 var template = model.Tmpls?.FirstOrDefault(t => t.Ord == card.Ordinal);
                 if (template == null) continue;
 
-                var newCard = await Query.Save(new DataLayer.Entities.Card()
+                var newCard = await Query.Save(new Card()
                 {
                     // Inject the field values into the Mustache brackets
                     Content = ReplaceAnkiTags(template.QFmt ?? "", model.Flds ?? [], fieldValues),
@@ -150,7 +145,7 @@ namespace AnkiParser
             connection.Close();
             if (connection is SqliteConnection sqlite)
                 SqliteConnection.ClearPool(sqlite);
-            File.Delete(tempPath);
+            System.IO.File.Delete(tempPath);
 
             return results;
         }

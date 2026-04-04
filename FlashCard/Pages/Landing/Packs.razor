@@ -30,7 +30,7 @@
         <label>Last Studied</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
+    <MetadataControl TModel="Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
     <h2>Packs Needing Study</h2>
 
@@ -43,9 +43,9 @@
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
-    public List<DataLayer.Entities.Pack> Recent { get; set; } = new();
-    public List<DataLayer.Entities.Pack> Study { get; set; } = new();
-    public List<DataLayer.Entities.Pack> Store { get; set; } = new();
+    public List<Pack> Recent { get; set; } = new();
+    public List<Pack> Study { get; set; } = new();
+    public List<Pack> Store { get; set; } = new();
 
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     [Parameter] public string? Filter { get; set; } = null;
@@ -90,12 +90,12 @@
         if (IsStaticRender) return;
 
 
-        DataLayer.Entities.Pack? currentPack = null;
+        Pack? currentPack = null;
         if (Id < 0 && Id >= -3)
         {
             Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
             currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
-            if (currentPack?.Save() is Task<DataLayer.Entities.Pack> task)
+            if (currentPack?.Save() is Task<Pack> task)
                 currentPack = await task;
             Id = currentPack?.Id;
         }
@@ -126,10 +126,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs;
     }
 

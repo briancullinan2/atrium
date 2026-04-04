@@ -1,40 +1,35 @@
-﻿using AnkiParser;
-using DataLayer.Entities;
-using DataLayer.Utilities;
-using Microsoft.AspNetCore.Http;
-using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+
 
 namespace Atrium.Services
 {
     public partial class AnkiService(HttpClient _httpClient, IFileManager FileManager, IQueryManager Query) : IAnkiService
     {
 
-        public async Task<Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>> InspectFile(string ankiPackage)
+        public async Task<Tuple<IEnumerable<File>?, IEnumerable<Card>?>> InspectFile(string ankiPackage)
         {
 
             try
             {
                 var files = await AnkiParser.Parser.ListFiles(ankiPackage, Query);
                 var cards = await AnkiParser.Parser.ParseCards(ankiPackage, Query);
-                return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>(files, cards);
+                return new Tuple<IEnumerable<File>?, IEnumerable<Card>?>(files, cards);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new Tuple<IEnumerable<DataLayer.Entities.File>?, IEnumerable<Card>?>([], []);
+                return new Tuple<IEnumerable<File>?, IEnumerable<Card>?>([], []);
             }
         }
 
 
-        protected static async Task<IEnumerable<DataLayer.Entities.File>?> SearchAnki(string clientId, string? searchTerm, HttpClient HttpClient, [CallerFilePath] string path = "")
+        protected static async Task<IEnumerable<File>?> SearchAnki(string clientId, string? searchTerm, HttpClient HttpClient, [CallerFilePath] string path = "")
         {
-            return await DataLayer.Utilities.Extensions.TaskExtensions.Debounce(DoActualSearch, 3000, searchTerm, HttpClient, new StackFrame(true).GetFileName() ?? path, nameof(SearchAnki) + ":" + clientId);
+            return await TaskExtensions.Debounce(DoActualSearch, 3000, searchTerm, HttpClient, new StackFrame(true).GetFileName() ?? path, nameof(SearchAnki) + ":" + clientId);
         }
 
-        protected static async Task<IEnumerable<DataLayer.Entities.File>?> DoActualSearch(string? searchTerm, HttpClient? HttpClient)
+        protected static async Task<IEnumerable<File>?> DoActualSearch(string? searchTerm, HttpClient? HttpClient)
         {
             if (HttpClient == null)
             {
@@ -68,7 +63,7 @@ namespace Atrium.Services
                 var response = await HttpClient.SendAsync(request);
                 _ = response.EnsureSuccessStatusCode();
                 var bytes = await response.Content.ReadAsByteArrayAsync();
-                var files = new List<DataLayer.Entities.File>();
+                var files = new List<File>();
 
                 // Converting to string using UTF8 to find markers
                 // Protobuf strings are encoded in UTF8
@@ -94,7 +89,7 @@ namespace Atrium.Services
 
                         if (!string.IsNullOrEmpty(id))
                         {
-                            files.Add(new DataLayer.Entities.File
+                            files.Add(new File
                             {
                                 Source = title,
                                 Url = $"https://ankiweb.net/shared/info/{id}"
@@ -132,13 +127,12 @@ namespace Atrium.Services
             return title.Length > 5 && !title.Contains("http") && !title.Contains('{');
         }
 
-#if WINDOWS
         public static async Task OnDownloadAnki(HttpContext context, AnkiService AnkiService)
         {
             var ankiPackage = context.Request.Query["anki"].ToString() ?? "";
             var results = await AnkiService.Download(ankiPackage);
             context.Response.ContentType = "application/json";
-            var json = JsonSerializer.Serialize(results, JsonHelper.Default);
+            var json = JsonSerializer.Serialize(results, JsonExtensions.Default);
             await context.Response.WriteAsync(json);
         }
 
@@ -153,14 +147,14 @@ namespace Atrium.Services
 
                 var results = await SearchAnki(clientId, searchTerm, _httpClient);
                 context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(results, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(results, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)
             {
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = 500;
-                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
         }
@@ -177,7 +171,7 @@ namespace Atrium.Services
                 {
                     Files = files,
                     Cards = cards
-                }, JsonHelper.Default);
+                }, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
 
             }
@@ -185,14 +179,13 @@ namespace Atrium.Services
             {
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = 500;
-                var json = JsonSerializer.Serialize(ex.Message, JsonHelper.Default);
+                var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
                 await context.Response.WriteAsync(json);
             }
         }
 
-#endif
 
-        public async Task<IEnumerable<DataLayer.Entities.File>?> Search(string? term)
+        public async Task<IEnumerable<File>?> Search(string? term)
         {
             if (_httpClient == null)
             {
@@ -201,7 +194,7 @@ namespace Atrium.Services
             return await SearchAnki("127.0.0.1", term, _httpClient);
         }
 
-        public async Task<IEnumerable<DataLayer.Entities.File>?> Download(string? ankiPackageUrl)
+        public async Task<IEnumerable<File>?> Download(string? ankiPackageUrl)
         {
             if (string.IsNullOrWhiteSpace(ankiPackageUrl))
             {
@@ -222,7 +215,7 @@ namespace Atrium.Services
             if (task is Task wait) await wait;
 
             // Return the entity (you'll likely want to fetch the record created in UploadFile)
-            Task<List<DataLayer.Entities.File>>? syncTask = Query.Synchronize<DataLayer.Entities.File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
+            Task<List<File>>? syncTask = Query.Synchronize<File>(f => f.Source == "Upload" || f.Source == "AnkiDownloads");
             if (syncTask is Task wait2) await wait2;
             return syncTask?.Result;
         }
@@ -230,7 +223,7 @@ namespace Atrium.Services
 
         public class Inspection
         {
-            public List<DataLayer.Entities.File>? Files { get; set; }
+            public List<File>? Files { get; set; }
             public List<Card>? Cards { get; set; }
 
         }

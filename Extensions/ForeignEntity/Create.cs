@@ -43,7 +43,7 @@ namespace Extensions.ForeignEntity
 
 
 
-        public static T Create<T>(this TranslationContext context) where T : Entity<T>, IEntity<T>, IEntity
+        public static T Create<T>(this ITranslationContext context) where T : Entity<T>, IEntity<T>, IEntity
         {
             // Use reflection to hit the protected/private constructor
             var entity = Activator.CreateInstance(typeof(T), nonPublic: true) as T

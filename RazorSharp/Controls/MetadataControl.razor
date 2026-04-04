@@ -40,15 +40,15 @@
     public static readonly Dictionary<Type, Type> TypeToControl = new()
         {
             // order matters, put more specific types first, then general system types last
-            { typeof(DataLayer.Entities.Card), typeof(CardControl) },
-            { typeof(IEnumerable<DataLayer.Entities.Card>), typeof(CardControl) },
+            { typeof(Card), typeof(CardControl) },
+            { typeof(IEnumerable<Card>), typeof(CardControl) },
             { typeof(IEnumerable<ResultsCardControl.ResultCard>), typeof(ResultsCardControl) },
-            { typeof(IEnumerable<DataLayer.Entities.Answer>), typeof(AnswersControl) },
-            { typeof(IEnumerable<DataLayer.Entities.Pack>), typeof(PacksControl) },
-            { typeof(IEnumerable<DataLayer.Entities.Course>), typeof(CoursesControl) },
-            { typeof(IEnumerable<DataLayer.Entities.User>), typeof(UsersControl) },
-            { typeof(IEnumerable<DataLayer.Entities.Group>), typeof(GroupsControl) },
-            { typeof(IEnumerable<DataLayer.Entities.File>), typeof(FilesControl) },
+            { typeof(IEnumerable<Answer>), typeof(AnswersControl) },
+            { typeof(IEnumerable<Pack>), typeof(PacksControl) },
+            { typeof(IEnumerable<Course>), typeof(CoursesControl) },
+            { typeof(IEnumerable<User>), typeof(UsersControl) },
+            { typeof(IEnumerable<Group>), typeof(GroupsControl) },
+            { typeof(IEnumerable<File>), typeof(FilesControl) },
             { typeof(IEnumerable<RolesControl.ControlRole>), typeof(RolesControl) },
             { typeof(IEnumerable<EditCardControl.EditControl>), typeof(EditCardControl) },
             //{ typeof(DateTime), typeof(DateControl) },

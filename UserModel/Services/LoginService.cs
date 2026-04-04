@@ -17,11 +17,11 @@ namespace UserModel.Services
     public interface ILoginService
     {
         Task SetLoginMode(bool study);
-        Task SetUser(DataLayer.Entities.User? user);
+        Task SetUser(User? user);
         bool Login { get; set; }
-        DataLayer.Entities.User? User { get; set; }
+        User? User { get; set; }
         event Action<bool>? OnLoginChanged;
-        event Action<DataLayer.Entities.User?>? OnUserChanged;
+        event Action<User?>? OnUserChanged;
         bool IsReady { get; }
     }
 
@@ -30,14 +30,14 @@ namespace UserModel.Services
     {
         public static bool FirstTime { get; set; } = true;
         public bool Login { get; set; } = false;
-        public DataLayer.Entities.User? User { get; set; } = null;
+        public User? User { get; set; } = null;
         public IRenderStateProvider Rendered { get; }
         public IAuthService Auth { get; private set; }
         public IQueryManager Query { get; private set; }
 
         public event Action<bool>? InternalLoginChanged;
-        private event Action<DataLayer.Entities.User?>? InternalUserChanged;
-        public event Action<DataLayer.Entities.User?>? OnUserChanged
+        private event Action<User?>? InternalUserChanged;
+        public event Action<User?>? OnUserChanged
         {
             add
             {
@@ -181,13 +181,13 @@ namespace UserModel.Services
         public virtual async Task AuthLoginUser()
         {
 
-            var autoLoginSetting = await Query.Query<DataLayer.Entities.Setting>(s =>
+            var autoLoginSetting = await Query.Query<Setting>(s =>
                 s.Name == nameof(DefaultPermissions.ApplicationAutoLogin))
                 .FirstOrDefaultAsync();
 
             if (autoLoginSetting?.Value != null)
             {
-                var automaticUser = await Query.Update<DataLayer.Entities.User>(u => new() { Guid = autoLoginSetting.Value });
+                var automaticUser = await Query.Update<User>(u => new() { Guid = autoLoginSetting.Value });
                 await SetUser(automaticUser);
             }
         }
@@ -213,7 +213,7 @@ namespace UserModel.Services
 
             // TODO: make a formal copy here?
 
-            var defaultUser = await Query.Update<DataLayer.Entities.User>(u => new() { Guid = defaultUserSetting.Value });
+            var defaultUser = await Query.Update<User>(u => new() { Guid = defaultUserSetting.Value });
             await SetUser(defaultUser);
         }
 

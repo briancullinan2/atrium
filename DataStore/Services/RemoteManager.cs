@@ -1,16 +1,4 @@
-﻿using DataLayer.Utilities.Extensions;
-using DataStore.Entities;
-using DataStore.Providers;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.JSInterop;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Net.Http.Json;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
+﻿using System.Net.Http.Json;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -41,7 +29,7 @@ namespace DataStore.Services
         protected async Task<TEntity> SaveRemote<TEntity>(RemoteStorage context, TEntity entity)
             where TEntity : class
         {
-            var serialized = new XDocument(LinqExtensions.VisitToXml(Expression.Constant(entity), 0, 0));
+            var serialized = new XDocument(XNodeExtensions.VisitToXml(Expression.Constant(entity), 0, 0));
             Console.WriteLine("Save Object: " + serialized);
 
             var baseAddress = (context as RemoteStorage)?.BaseAddress?.TrimEnd('/');

@@ -3,7 +3,7 @@
 @using System.Text.Json.Serialization
 @code
 {
-    [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
+    [Parameter] public IEnumerable<Card>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
@@ -45,11 +45,11 @@
             }
             else if (card.ResponseType == DataLayer.CardType.TrueFalse) // True/False
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, HandleAnswer))" TModel="DataLayer.Entities.Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, HandleAnswer))" TModel="Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
             }
             else if (card.ResponseType == DataLayer.CardType.Multiple) // Multiple Choice
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, HandleAnswer))" TModel="DataLayer.Entities.Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, HandleAnswer))" TModel="Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
             }
         </div>
     </div>
@@ -58,7 +58,7 @@
 
 @code {
 
-    private async Task HandleAnswer(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> selectedValue)
+    private async Task HandleAnswer(Tuple<PropertyMetadata, Card, object?> selectedValue)
     {
         ValueChanged?.InvokeAsync(selectedValue.Item3);
     }

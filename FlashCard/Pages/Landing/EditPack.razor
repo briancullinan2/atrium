@@ -19,13 +19,13 @@
 
     <div class="pack-edit flash-card @GetDisplayClass(DataLayer.ControlMode.Edit)">
         <h2>
-            <MetadataControl TModel="DataLayer.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
+            <MetadataControl TModel="Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
         </h2>
 
         <div>
             <fieldset>
                 <legend>Pack Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
+                <MetadataControl TModel="Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
             </fieldset>
         </div>
 
@@ -33,7 +33,7 @@
         <div>
             <fieldset>
                 <legend>Pack Status</legend>
-                <MetadataControl TModel="DataLayer.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
+                <MetadataControl TModel="Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
             </fieldset>
         </div>
 
@@ -103,9 +103,9 @@
 
 
     [Category("Pack")]
-    public DataLayer.Entities.Pack? CurrentPack { get; set; }
+    public Pack? CurrentPack { get; set; }
     [Category("Cards")]
-    public IEnumerable<DataLayer.Entities.Card>? CurrentCards { get => CurrentPack?.Cards; }
+    public IEnumerable<Card>? CurrentCards { get => CurrentPack?.Cards; }
     [Category("Edit")]
     public IEnumerable<Controls.EditCardControl.EditControl>? EditCards { get => CurrentCards?.Select((c, i) => new EditCardControl.EditControl() { Card = c, Index = i + 1 }); }
 
@@ -138,9 +138,9 @@
 
     protected override void OnInitialized()
     {
-        TitleLayout = DataLayer.Entities.Pack.Metadata.Groups["Title"]?.FirstOrDefault();
-        GeneralLayout = DataLayer.Entities.Pack.Metadata.Groups["Pack Info"];
-        StatusLayout = DataLayer.Entities.Pack.Metadata.Groups["Pack Status"];
+        TitleLayout = Pack.Metadata.Groups["Title"]?.FirstOrDefault();
+        GeneralLayout = Pack.Metadata.Groups["Pack Info"];
+        StatusLayout = Pack.Metadata.Groups["Pack Status"];
         CardsLayout = typeof(Pages.Landing.EditPack).Metadata().Categories["Edit"];
         Nav.LocationChanged += OnLocationChanged;
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
@@ -208,10 +208,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs?.ToList();
     }
 

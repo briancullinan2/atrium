@@ -130,11 +130,11 @@ namespace Extensions.ForeignEntity
         {
             EntityType = entityType;
 
-            var props = entityType.GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                                             .Select(p => new { p, attr = p.GetCustomAttribute<DisplayAttribute>() })
-                                             .OrderBy(x => x.attr?.GetOrder() ?? 1000)
-                                             .Select(x => x.p)
-                                             .ToList();
+            var props = entityType.GetProperties(null)
+                .Select(p => new { p, attr = p.GetCustomAttribute<DisplayAttribute>() })
+                .OrderBy(x => x.attr?.GetOrder() ?? 1000)
+                .Select(x => x.p)
+                .ToList();
 
             AllProperties = new ObservableCollection<PropertyMetadata>(props.Select(p => new PropertyMetadata(p)));
             Uncategorized = new ObservableCollection<PropertyMetadata>(AllProperties.Where(p => string.IsNullOrWhiteSpace(p.Category) && string.IsNullOrWhiteSpace(p.GroupName)));

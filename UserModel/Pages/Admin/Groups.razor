@@ -31,7 +31,7 @@
         <label># of Users</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.Group" Model="@GroupLayout" Data="@CurrentGroups"></MetadataControl>
+    <MetadataControl TModel="Group" Model="@GroupLayout" Data="@CurrentGroups"></MetadataControl>
 
     <h2>Group Controls</h2>
     <div class="link-list">
@@ -50,13 +50,13 @@
         <div>
             <fieldset>
                 <legend>Group Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.Group" Model="@InfoLayout" Data="[CurrentGroup]"></MetadataControl>
+                <MetadataControl TModel="Group" Model="@InfoLayout" Data="[CurrentGroup]"></MetadataControl>
             </fieldset>
         </div>
         <div>
             <fieldset>
                 <legend>Extended Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.Group" Model="@ExtendedLayout" Data="[CurrentGroup]"></MetadataControl>
+                <MetadataControl TModel="Group" Model="@ExtendedLayout" Data="[CurrentGroup]"></MetadataControl>
             </fieldset>
         </div>
         <div class="highlighted-link">
@@ -83,14 +83,14 @@
 @code {
 
     [Category("Display")]
-    public IEnumerable<DataLayer.Entities.Group>? CurrentGroups { get; set; }
+    public IEnumerable<Group>? CurrentGroups { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; }
     public DataLayer.ControlMode? PreviousMode { get; set; }
     public IEnumerable<PropertyMetadata>? GroupLayout { get; set; }
     public IEnumerable<PropertyMetadata>? InfoLayout { get; set; }
     public IEnumerable<PropertyMetadata>? ExtendedLayout { get; set; }
     [Parameter] public int? Id { get; set; }
-    public DataLayer.Entities.Group? CurrentGroup { get; set; }
+    public Group? CurrentGroup { get; set; }
 
     protected void CreateGroup()
     {
@@ -144,7 +144,7 @@
         {
             if (CurrentGroup == null || CurrentGroup.CanonicalFingerprint != null)
             {
-                CurrentGroup = new DataLayer.Entities.Group();
+                CurrentGroup = new Group();
             }
             TitleService?.UpdateTitle("New Group");
         }

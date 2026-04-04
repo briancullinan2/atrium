@@ -7,7 +7,7 @@ namespace Extensions.QueryableChaos
     {
 
         // Keep a cache of parameters during a single Reconstruction pass
-        internal static readonly Dictionary<string, ParameterExpression> _parameters = [];
+        public static readonly Dictionary<string, ParameterExpression> _parameters = [];
         private static ParameterExpression BuildParameter(XElement el, Func<XElement, Expression?> ToExpression)
         {
             // 1. Extract Name and Type accurately from the XML
@@ -32,7 +32,7 @@ namespace Extensions.QueryableChaos
 
 
 
-        private static Expression? BuildExtension(XElement el, DbContext context, out IQueryable? set)
+        private static Expression? BuildExtension(XElement el, ITranslationContext context, out IQueryable? set)
         {
             var typeName = (el.Element(nameof(IQueryable.ElementType))?.Attribute(nameof(Type.AssemblyQualifiedName))?.Value)
                 ?? throw new InvalidOperationException("Could not resolve extension type on: " + el);

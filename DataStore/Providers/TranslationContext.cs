@@ -1,21 +1,6 @@
-﻿using DataLayer.Utilities.Extensions;
-using DataStore.Entities;
-using DataStore.Services;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Configuration;
-using Microsoft.JSInterop;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 
 namespace DataStore.Providers
 {
@@ -26,13 +11,15 @@ namespace DataStore.Providers
         static TranslationContext()
         {
             var assemblies = typeof(TEntity).Assembly.GetAssemblies(Assembly.GetCallingAssembly());
-            _cachedTypes = assemblies.Distinct().SelectMany(a => a.GetTypes()).Distinct().ToList();
+            _cachedTypes = [..assemblies.Distinct().SelectMany(a => a.GetTypes()).Distinct()];
         }
         private static readonly List<Type> _cachedTypes;
 
         private static List<Type>? CachedEntities { get; set; }
         public static List<Type> EntityTypes => CachedEntities
             ??= [.. _cachedTypes.Where(t => t.IsClass && !t.IsAbstract && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))];
+
+        public abstract IQueryManager Query { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -64,6 +51,8 @@ namespace DataStore.Providers
                 }
             }
         }
+
+        public abstract Task InitializeIfNeeded();
     }
 
 
@@ -72,7 +61,7 @@ namespace DataStore.Providers
     // This context never connects to a DB; it just holds your Entity mappings
     public class TranslationContext(IQueryManager query, DbContextOptions ctx) : TranslationContext<IEntity>(ctx)
     {
-        public IQueryManager Query { get; set; } = query;
+        public override IQueryManager Query { get; set; } = query;
 
 
         public string ConnectString
@@ -103,7 +92,7 @@ namespace DataStore.Providers
         private Task? _initializeTask;
         private readonly SemaphoreSlim _initLock = new(1, 1);
 
-        public virtual Task InitializeIfNeeded()
+        public override Task InitializeIfNeeded()
         {
             // 1. Fast path: if already done, return completed task
             if (!NeedsInitialize && _initializeTask?.IsCompletedSuccessfully == true)
@@ -374,7 +363,7 @@ namespace DataStore.Providers
         }
     }
 
-    public class KeepAlive(string conn) : SqliteConnection(conn)
+    public class KeepAlive(string conn) : Microsoft.Data.Sqlite.SqliteConnection(conn)
     {
         public override void Close()
         {

@@ -4,11 +4,11 @@
 @code
 {
 
-    [Parameter] public List<DataLayer.Entities.User>? Data { get; set; }
+    [Parameter] public List<User>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
 
-    public string GetBackgroundColor(DataLayer.Entities.User user)
+    public string GetBackgroundColor(User user)
     {
         if (Data == null) return "blue";
         var index = Data.ToList().IndexOf(user);

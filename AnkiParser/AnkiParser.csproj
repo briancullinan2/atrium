@@ -21,7 +21,7 @@
 	</ItemGroup>
 	
   <ItemGroup>
-    <ProjectReference Include="..\DataLayer\StudyModel.csproj" />
+    <ProjectReference Include="..\StudyModel\StudyModel.csproj" />
   </ItemGroup>
 
 </Project>

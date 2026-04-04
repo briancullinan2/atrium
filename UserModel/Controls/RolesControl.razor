@@ -22,7 +22,7 @@
 
     public class ControlRole
     {
-        public DataLayer.Entities.Role? Role { get; set; }
+        public Role? Role { get; set; }
         public DataLayer.ControlMode? Mode { get; set; }
         public int? Index { get; set; }
     }
@@ -39,7 +39,7 @@
         </span>
         @if (role.Mode == DataLayer.ControlMode.Edit)
         {
-            <MetadataControl TModel="DataLayer.Entities.Role" Model="@RoleLayout" Data="@([role.Role])"></MetadataControl>
+            <MetadataControl TModel="Role" Model="@RoleLayout" Data="@([role.Role])"></MetadataControl>
         } else
         {
             <span>@role.Role?.Name</span>

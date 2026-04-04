@@ -4,12 +4,12 @@
 @code
 {
 
-    [Parameter] public IEnumerable<DataLayer.Entities.Group>? Data { get; set; }
+    [Parameter] public IEnumerable<Group>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
 
 
-    public string GetBackgroundColor(DataLayer.Entities.Group group)
+    public string GetBackgroundColor(Group group)
     {
         if (Data == null) return "blue";
         var index = Data.ToList().IndexOf(group);

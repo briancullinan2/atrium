@@ -1,13 +1,13 @@
-﻿@implements DataLayer.Generators.IGenerator<DataLayer.Entities.Pack>
+﻿@implements DataLayer.Generators.IGenerator<Pack>
 @code {
     [Parameter] public Type? Lesson { get; set; }
 
-    public static IEnumerable<DataLayer.Entities.Pack> Generate()
+    public static IEnumerable<Pack> Generate()
     {
         var newItem = CourseMenu.GetCourse(typeof(Course1));
         var cards = newItem?.Children.SelectMany(ci => GetCourseCards(ci.Lesson) ?? []).ToList();
         // TODO: return 1 per course not 15
-        return [new DataLayer.Entities.Pack() { 
+        return [new Pack() { 
             LogoHosted = "/_content/FlashCard/studysauce-icon-76x76.png",
             Title = newItem?.Title ?? "Course 1", 
             Category = "Studying",
@@ -18,10 +18,10 @@
     }
 
 
-    public static IEnumerable<DataLayer.Entities.Card>? GetCourseCards(Type? lesson)
+    public static IEnumerable<Card>? GetCourseCards(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Card>? cards = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Card>;
+        IEnumerable<Card>? cards = generator?.Invoke(null, []) as IEnumerable<Card>;
         return cards?.Where(c => c.QuizOnly != true).ToList();
     }
 }

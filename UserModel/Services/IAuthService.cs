@@ -97,7 +97,7 @@ namespace UserModel.Services
         {
             var newSession = new Session();
             claims.Add(new Claim(nameof(CookieName), newSession.Id)); // Add the "Bridge"
-            var sessionValue = JsonSerializer.Serialize(claims.Select(c => new UserClaim(c.Type, c.Value)), JsonHelper.Default);
+            var sessionValue = JsonSerializer.Serialize(claims.Select(c => new UserClaim(c.Type, c.Value)), JsonExtensions.Default);
             newSession.Value = sessionValue;
             await Query.Save(newSession);
 
@@ -197,7 +197,7 @@ namespace UserModel.Services
             if (string.IsNullOrEmpty(sessionId))
                 return LoginService.Guest();
 
-            // 2. Fetch the session from your DataLayer.Entities.Session table
+            // 2. Fetch the session from your Session table
             var session = await Query.Query<Session>(s => s.Id == sessionId).FirstOrDefaultAsync();
 
             if (session == null || session.Time.AddSeconds(session.Lifetime) <= DateTime.UtcNow)

@@ -1,7 +1,4 @@
-﻿using DataLayer.Generators;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
+﻿
 namespace UserData.Entities
 {
     [Table("session")]

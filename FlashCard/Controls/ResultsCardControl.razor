@@ -9,7 +9,7 @@
     {
         [Category("Content")]
         [Display(Name = "Cards", GroupName = "Display", Description = "Card currently being viewed by the user")]
-        public DataLayer.Entities.Card? Card { get; set; }
+        public Card? Card { get; set; }
         [Category("Answers")]
         [JsonIgnore]
         public ICollection<Answer>? Answers { get => Card?.Answers; }

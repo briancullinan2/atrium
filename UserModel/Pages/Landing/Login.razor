@@ -51,12 +51,12 @@
 
 @code {
     [Parameter] public string? ServiceId { get; set; }
-    public IEnumerable<DataLayer.Entities.User>? Users { get; set; }
+    public IEnumerable<User>? Users { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")]
     [Parameter] public string? ReturnUrl { get; set; }
     private User? ClickedUser { get; set; } = null;
 
-    public string GetBackgroundColor(DataLayer.Entities.User user)
+    public string GetBackgroundColor(User user)
     {
         if (Users == null) return "blue";
         var index = Users.ToList().IndexOf(user);
@@ -64,7 +64,7 @@
         return $"background-color:#{(int)r:X2}{(int)g:X2}{(int)b:X2};";
     }
 
-    protected async Task HandleLogin(DataLayer.Entities.User user)
+    protected async Task HandleLogin(User user)
     {
         ClickedUser = user;
         // save the built ins on first login
@@ -140,7 +140,7 @@
     }
 
 
-    public void SetUser(DataLayer.Entities.User? user)
+    public void SetUser(User? user)
     {
         // this is cool because if they login with QR code it will automatically reroute
         if (user != null

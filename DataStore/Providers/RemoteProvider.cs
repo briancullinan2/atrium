@@ -1,10 +1,4 @@
-﻿using DataLayer.Utilities.Extensions;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using System.Linq.Expressions;
-using System.Net.Http.Json;
-using System.Reflection;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 using System.Xml.Linq;
 
@@ -51,7 +45,7 @@ namespace DataStore.Providers
             }
 
             // Handle IAsyncEnumerable (The 'BS' converter)
-            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            if (typeT.IsGenericType && typeT.Extends(typeof(IAsyncEnumerable<>)))
             {
                 var itemType = typeT.GetGenericArguments()[0];
                 var listType = typeof(List<>).MakeGenericType(itemType);
@@ -109,7 +103,7 @@ namespace DataStore.Providers
                 + "api/query";
 
             // 2. Post to Remote Endpoint
-            var response = await Context.Client.PostAsJsonAsync(queryAddress, serialized, JsonHelper.Default, ct ?? default);
+            var response = await Context.Client.PostAsJsonAsync(queryAddress, serialized, JsonExtensions.Default, ct ?? default);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -123,7 +117,7 @@ namespace DataStore.Providers
 
 
             // 3. Deserialize Result (Simplified version of your RemoteQuery logic)
-            var content = await response.Content.ReadFromJsonAsync<string>(JsonHelper.Default, ct ?? default);
+            var content = await response.Content.ReadFromJsonAsync<string>(JsonExtensions.Default, ct ?? default);
             using var reader = new StringReader(content ?? string.Empty);
             var root = XElement.Load(reader);
 

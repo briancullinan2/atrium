@@ -1,20 +1,4 @@
-﻿#if WINDOWS
-#if DEBUG
-using Microsoft.Extensions.Logging;
-#endif
-#endif
-using Atrium.Services;
-using DataLayer.Entities;
-using FlashCard.Services;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using DataLayer.Utilities;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using DataLayer;
-using Microsoft.AspNetCore.Builder;
-using Antlr4.Runtime.Misc;
-
+﻿
 namespace Atrium
 {
 

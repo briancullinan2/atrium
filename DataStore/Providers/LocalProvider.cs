@@ -1,21 +1,5 @@
-﻿using DataLayer.Entities;
-using DataLayer.Utilities.Extensions;
-using DataStore.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Query;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Numerics;
-using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Text.Json;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿
+using Extensions.ExpressYourself;
 
 namespace DataStore.Providers
 {
@@ -60,7 +44,7 @@ namespace DataStore.Providers
             }
 
             // Handle IAsyncEnumerable (The 'BS' converter)
-            if (typeT.IsGenericType && typeT.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            if (typeT.IsGenericType && typeT.Extends(typeof(IAsyncEnumerable<>)))
             {
                 var itemType = typeT.GetGenericArguments()[0];
                 var listType = typeof(List<>).MakeGenericType(itemType);
@@ -295,7 +279,7 @@ namespace DataStore.Providers
                         {
                             finalResult = CollectionConverter.ConvertAsync(finalResult, typeof(T));
                         }
-                        return (T)finalResult; //ToForced.Invoke(null, [finalResult])!;
+                        return (T)finalResult!; //ToForced.Invoke(null, [finalResult])!;
                     }
                     //else
                     //{

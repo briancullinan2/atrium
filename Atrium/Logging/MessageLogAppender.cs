@@ -1,6 +1,6 @@
-﻿using FlashCard.Utilities.Extensions;
-using DataLayer.Utilities.Extensions;
+﻿using DataLayer.Utilities.Extensions;
 using FlashCard.Services;
+using FlashCard.Utilities.Extensions;
 
 #if WINDOWS
 using log4net.Appender;

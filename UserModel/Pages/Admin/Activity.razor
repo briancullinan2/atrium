@@ -123,7 +123,7 @@
 
 
 
-    private Dictionary<DateTime, List<DataLayer.Entities.Visit>> DayBuckets = new();
+    private Dictionary<DateTime, List<Visit>> DayBuckets = new();
 
     protected async Task HandleMove(MouseEventArgs e)
     {
@@ -164,7 +164,7 @@
         var wideStart = day.AddDays(-1).ToUniversalTime();
         var wideEnd = day.AddDays(2).ToUniversalTime();
 
-        var results = await QueryManager.Query<DataLayer.Entities.Visit>(
+        var results = await QueryManager.Query<Visit>(
             v => v.Created >= wideStart && v.Created < wideEnd).ToListAsync();
 
         // BUCKETIZE: Only keep events that land on THIS local day after offset
@@ -177,7 +177,7 @@
 
 
     
-    private void NavigateToEvent(DataLayer.Entities.Visit visit)
+    private void NavigateToEvent(Visit visit)
     {
         
     }
@@ -201,7 +201,7 @@
         }
     }
 
-    private Dictionary<DateTime, IEnumerable<DataLayer.Entities.Visit>> Events = new();
+    private Dictionary<DateTime, IEnumerable<Visit>> Events = new();
     
     private HashSet<DateTime> PendingDays = new();
     private bool IsLoading = false;
@@ -216,7 +216,7 @@
         var utcStart = start.ToUniversalTime().Date;
         var utcEnd = end.ToUniversalTime().Date;
     
-        var allEvents = await QueryManager.Query<DataLayer.Entities.Visit>(
+        var allEvents = await QueryManager.Query<Visit>(
             v => v.Created >= utcStart && v.Created < utcEnd).ToListAsync();
 
         // 2. Localize and Bucketize immediately

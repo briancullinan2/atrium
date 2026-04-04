@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Linq.Expressions;
-using System.Reflection;
-using DataLayer.Utilities.Extensions;
-using System.Net;
+﻿using DataLayer.Utilities.Extensions;
+using Microsoft.AspNetCore.Components;
 using RazorSharp.Extensions;
+using System.Linq.Expressions;
+using System.Net;
+using System.Reflection;
 
 namespace RazorSharp.Extensions
 {

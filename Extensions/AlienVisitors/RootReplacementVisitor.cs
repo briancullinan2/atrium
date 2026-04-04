@@ -10,7 +10,7 @@ namespace Extensions.AlienVisitors
             if (realRoot != null
                 && node.Value is IQueryable queryable
                 && (queryable.Provider.GetType().Extends(typeof(IAsyncQueryProvider))
-                || node.Type.Extends(typeof(AsyncQueryable<>))))
+                || node.Type.Extends(typeof(IAsyncQueryable<>))))
             {
                 return realRoot.Expression;
             }
@@ -135,7 +135,7 @@ namespace Extensions.AlienVisitors
         protected static bool IsQueryableMethod(MethodCallExpression node) =>
             node.Method.DeclaringType == typeof(Queryable)
             || node.Method.DeclaringType == typeof(EntityFrameworkQueryableExtensions)
-            || node.Method.DeclaringType == typeof(IAsyncQueryable<>);
+            || node.Method.DeclaringType.Extends(typeof(IAsyncQueryable<>));
 
 
         // UNRELIABLE this is why we need two passes?
@@ -272,11 +272,11 @@ namespace Extensions.AlienVisitors
                 if (arg is UnaryExpression quote && quote.NodeType == ExpressionType.Quote)
                 {
                     // Visit the Lambda to swap parameters/members, then strip the Quote
-                    arguments.Add(Visit(quote.Operand));
+                    arguments.Add(Visit(quote.Operand)!);
                 }
                 else
                 {
-                    arguments.Add(Visit(arg));
+                    arguments.Add(Visit(arg)!);
                 }
             }
 
@@ -316,11 +316,11 @@ namespace Extensions.AlienVisitors
                 {
                     // Visit the inner Lambda to swap parameters, then return the Lambda itself
                     // Enumerable.Where(source, func) needs the Lambda, not the Quote
-                    arguments.Add(Visit(quote.Operand));
+                    arguments.Add(Visit(quote.Operand)!);
                 }
                 else
                 {
-                    arguments.Add(Visit(arg));
+                    arguments.Add(Visit(arg)!);
                 }
             }
 

@@ -41,7 +41,7 @@
         get
         {
             if (Data?.ElementAt(0) == null) return _value;
-            if (Data.ElementAt(0) is DataLayer.Entities.Setting setting)
+            if (Data.ElementAt(0) is Setting setting)
             {
                 return setting.Value;
             }
@@ -55,7 +55,7 @@
             _value = value;
             if (Data?.ElementAt(0) != null)
             {
-                if (Data.ElementAt(0) is DataLayer.Entities.Setting setting)
+                if (Data.ElementAt(0) is Setting setting)
                 {
                     setting.Value = value;
                 }

@@ -7,7 +7,7 @@
     public class EditControl
     {
         [Category("Display")]
-        public DataLayer.Entities.Card? Card { get; set; }
+        public Card? Card { get; set; }
 
         public DataLayer.ControlMode? Mode { get; set; } = DataLayer.ControlMode.View;
         public bool IsCollapsed { get; set; } = true;
@@ -117,7 +117,7 @@
             <span class="preview">
                 @if (!card.IsCollapsed)
                 {
-                    <MetadataControl TModel="DataLayer.Entities.Card" Model="@PreviewLayout" Data="[card.Card]"></MetadataControl>
+                    <MetadataControl TModel="Card" Model="@PreviewLayout" Data="[card.Card]"></MetadataControl>
                     <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card.Card }]"></MetadataControl>
                 }
             </span>

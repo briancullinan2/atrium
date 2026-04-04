@@ -1,17 +1,3 @@
-using DataLayer;
-using DataLayer.Utilities;
-using FlashCard.Services;
-using FlashCard.Services.Logging;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.JSInterop;
-using WebClient.Services;
 
 
 

@@ -1,9 +1,4 @@
-﻿using DataLayer.Utilities.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
-using UserData.Entities;
+﻿using UserData.Entities;
 
 namespace UserData
 {
@@ -14,9 +9,6 @@ namespace UserData
             => query.FirstOrDefault(s => s.Name == setting.ToString());
 
 
-        public static int OrderDatabaseQueries(this MethodInfo method)
-            => method.IsFilter() ? -2 : method.IsTerminal() ? 2 : 0;
-        
 
     }
 }

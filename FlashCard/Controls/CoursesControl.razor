@@ -6,7 +6,7 @@
 @code
 {
 
-    [Parameter] public IEnumerable<DataLayer.Entities.Course>? Data { get; set; }
+    [Parameter] public IEnumerable<Course>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object> ValueChanged { get; set; }
     [Inject] public ILoginService? LoginService { get; set; }

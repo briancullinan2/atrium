@@ -1,13 +1,7 @@
-﻿using DataLayer.Utilities.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq.Expressions;
-using System.Reflection;
+﻿using System.Globalization;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
-using System.Text.Json;
 
 namespace Extensions.ForeignEntity
 {
@@ -222,7 +216,7 @@ namespace Extensions.ForeignEntity
                 return string.Empty;
 
             var output = DefaultSorts.Select(x => new List<object> { x.iSortCol, x.sSortDir });
-            return JsonSerializer.Serialize(output, JsonHelper.Default);
+            return JsonSerializer.Serialize(output, JsonExtensions.Default);
         }
         public string GetLanguageJson()
         {
@@ -253,7 +247,7 @@ namespace Extensions.ForeignEntity
                 }
             };
 
-            return JsonSerializer.Serialize(output, JsonHelper.Default);
+            return JsonSerializer.Serialize(output, JsonExtensions.Default);
         }
 
 

@@ -31,7 +31,7 @@
         <label>Actions</label>
     </heading>
     
-    <MetadataControl TModel="DataLayer.Entities.User" Model="@UserLayout" Data="@CurrentUsers"></MetadataControl>
+    <MetadataControl TModel="User" Model="@UserLayout" Data="@CurrentUsers"></MetadataControl>
 
     <h2>User Controls</h2>
     <div class="link-list">
@@ -48,13 +48,13 @@
         <div>
             <fieldset>
                 <legend>Login Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
+                <MetadataControl TModel="User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
             </fieldset>
         </div>
         <div>
             <fieldset>
                 <legend>General Info</legend>
-                <MetadataControl TModel="DataLayer.Entities.User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
+                <MetadataControl TModel="User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
             </fieldset>
         </div>
 
@@ -81,15 +81,15 @@
 @code {
 
     public bool FilterChanged { get; set; }
-    [Category("Display")] public static IEnumerable<DataLayer.Entities.User>? CurrentUsers { get; set; }
+    [Category("Display")] public static IEnumerable<User>? CurrentUsers { get; set; }
     public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
     public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
     public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
     public DataLayer.ControlMode? ControlMode { get; set; }
     public DataLayer.ControlMode? PreviousMode { get; set; }
     [Parameter] public string? Id { get; set; }
-    public DataLayer.Entities.User? CurrentUser { get; set; }
-    public DataLayer.Entities.User? ParentUser { get; set; }
+    public User? CurrentUser { get; set; }
+    public User? ParentUser { get; set; }
 
     protected string? GetDisplayClass(DataLayer.ControlMode mode)
     {
@@ -161,7 +161,7 @@
         {
             if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
             {
-                CurrentUser = new DataLayer.Entities.User();
+                CurrentUser = new User();
             }
             TitleService?.UpdateTitle("New User");
         }
@@ -189,7 +189,7 @@
 
     protected async Task GetCurrentUsers()
     {
-        var users = await QueryManager.Query<DataLayer.Entities.User>().ToListAsync();
+        var users = await QueryManager.Query<User>().ToListAsync();
 
         if(LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true
             || LoginService.User?.Settings.Any(s => string.Equals(s.Name, nameof(DefaultPermissions.CanModifyDefaultUsers))) == true)
@@ -211,7 +211,7 @@
 
     protected async Task SetCurrentUser()
     {
-        CurrentUser = await QueryManager.Query<DataLayer.Entities.User>(u => u.Guid == Id).FirstOrDefaultAsync();
+        CurrentUser = await QueryManager.Query<User>(u => u.Guid == Id).FirstOrDefaultAsync();
         TitleService?.UpdateTitle("Edit User - " + CurrentUser?.Username);
         await InvokeAsync(StateHasChanged);
     }
