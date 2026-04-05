@@ -3,11 +3,13 @@
 using Microsoft.AspNetCore.SignalR.Client;
 #else
 using Extensions.SlenderServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Routing;
 
 #endif
 using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace Hosting.Services
 {
@@ -187,8 +189,23 @@ namespace Hosting.Services
             foreach (var circuit in circuits)
             {
                 // 2. Automagically create an API endpoint: /api/{name}
-                endpoints.MapHub<FullCircuit>($"/api/${circuit.Name}");
-                endpoints.MapPost($"/api/${circuit.Name}", circuit.ExecuteAsync);
+                //;
+                //endpoints.MapPost($"/api/${circuit.Name}", circuit.ExecuteAsync);
+                //endpoints.MapHub<FullCircuit>(circuit.Path);
+                var routeBuilder = endpoints.MapPost(circuit.Path, circuit.ExecuteAsync);
+
+                // Security Check
+                bool hasAnonymous = circuit.ProviderMethod.GetCustomAttribute<AllowAnonymousAttribute>() != null
+                                    || circuit.ProviderType?.GetCustomAttribute<AllowAnonymousAttribute>() != null;
+                bool hasAuthorize = circuit.ProviderMethod.GetCustomAttribute<AuthorizeAttribute>() != null
+                                    || circuit.ProviderType?.GetCustomAttribute<AuthorizeAttribute>() != null;
+
+                if (hasAuthorize)
+                {
+                    routeBuilder.RequireAuthorization();
+                }
+
+                routeBuilder.WithTags(circuit.Name);
             }
         }
     }

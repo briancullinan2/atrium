@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using System.Diagnostics.CodeAnalysis;
 using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 
@@ -154,15 +155,7 @@ namespace Clippy.Services
 
 
 #if WINDOWS
-        public static async Task OnPresets(HttpContext context)
-        {
-            context.Response.ContentType = "application/json";
-
-            var json = JsonSerializer.Serialize(GetPresets(), JsonExtensions.Default);
-
-            await context.Response.WriteAsync(json);
-        }
-
+       
 
         public static async Task OnPing(HttpContext context, IChatService _chat)
         {
@@ -238,6 +231,8 @@ namespace Clippy.Services
             return GetPresets();
         }
 
+
+        [AllowAnonymous]
         public static List<ServicePreset> GetPresets()
         {
             if (Settings == null) return [.. ServicePresets.Predefined];
@@ -269,16 +264,6 @@ namespace Clippy.Services
         }
 
 
-        public async Task<List<ServicePreset>> GetPresets()
-        {
-            var response = await Http.PostAsJsonAsync("/api/chat/presets", new StringContent("", System.Text.Encoding.UTF8, "application/json"));
-            if (response == null) return [];
-            var result = await response.Content.ReadFromJsonAsync<List<ServicePreset>>();
-            if (result == null) return [];
-            recentResult = result;
-            recentChecked = DateTime.Now;
-            return recentResult;
-        }
 
         public async Task<string?> SendRemote(string message)
         {

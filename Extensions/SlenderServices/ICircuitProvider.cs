@@ -22,6 +22,8 @@ namespace RazorSharp.Services
         bool IsSignalCircuit { get; }
         bool IsHubConnected { get; }
 
+        Dictionary<string, string> RequestParameters { get; }
+
         // Standardized reporting methods
         Task OnConnectionUpAsync(ConnectionMetadata metadata);
         Task OnConnectionDownAsync(ConnectionMetadata metadata);
