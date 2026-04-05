@@ -31,8 +31,7 @@ namespace Extensions.PrometheusTypes
 
         public static string? Route<T>(this T _) where T : class
         {
-            var type = typeof(T);
-            return Route(type);
+            return Route(typeof(T));
         }
 
 
@@ -40,6 +39,11 @@ namespace Extensions.PrometheusTypes
         {
             if(type == null) return null;
             if (_cachedRouteTypes.TryGetValue(type, out var route)) return route;
+            if(type.GetCustomAttribute<RouteAttribute>() is RouteAttribute attr)
+            {
+                _cachedRouteTypes.TryAdd(type, attr.Template);
+            }
+
             if (!type.HasAuthorization()) return null;
             var ns = (type.Namespace ?? "Global").Split('.').ToList();
             if (!string.IsNullOrWhiteSpace(type.Name))
@@ -77,7 +81,7 @@ namespace Extensions.PrometheusTypes
 
         public static bool IsRoutable(this Type type)
         {
-            return type.Route() != null;
+            return type.Route() != null || type.Routes().Count > 0;
         }
 
 

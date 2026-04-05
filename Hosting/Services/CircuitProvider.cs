@@ -2,6 +2,7 @@
 
 #if BROWSER
 using Microsoft.AspNetCore.SignalR.Client;
+using System.Net.Http.Json;
 #else
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
@@ -13,17 +14,15 @@ namespace Hosting.Services
 
     public partial class CircuitProvider : ICircuitProvider
     {
-        private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
-
         public event Action<bool, ConnectionMetadata>? OnConnectionDown;
         public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
-        public bool IsConnected => OperatingSystem.IsBrowser() || IsSignalCircuit
-            ? IsHubConnected
-            : !_activeCircuits.IsEmpty;
-        public int ClientCount => OperatingSystem.IsBrowser() ? 1 : _activeCircuits.Count + (IsAppConnected ? 1 : 0);
-
         public int DefaultTTL { get; set; } = 100;
+        private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
+
+        public IServiceProvider Service { get; }
+        public HttpClient? Http { get; }
+
 
         public async Task OnConnectionUpAsync(ConnectionMetadata metadata)
         {
@@ -41,6 +40,10 @@ namespace Hosting.Services
             OnConnectionDown?.Invoke(false, metadata);
         }
 
+        public async Task<TResult?> InvokeAsync<TResult>(string method, CancellationToken? token = null)
+        {
+            return await TaskExtensions.Debounce(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, token);
+        }
         public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
         {
             return await TaskExtensions.Debounce(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
@@ -117,10 +120,6 @@ namespace Hosting.Services
                 throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
         }
 
-        public static async Task<TResult?> OnExecuteAsync<TResult>(ICircuitProvider service, string method, params object?[]? parameters)
-        {
-            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<TResult>, service.DefaultTTL, method, parameters);
-        }
     }
 
 #if BROWSER
@@ -131,12 +130,12 @@ namespace Hosting.Services
         public bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
         public bool IsSignalCircuit => IsHubConnected;
         public bool IsAppConnected => true;
+        public int ClientCount => 1;
+
 
         public IRenderState Rendered { get; }
         public IPageManager PageManager { get; }
         public NavigationManager Nav { get; }
-        public HttpClient Http { get; }
-        public IServiceProvider Service { get; }
 
         private HubConnection? _connection;
         private HubConnection Connection
@@ -149,6 +148,7 @@ namespace Hosting.Services
             set => _connection = value;
         }
 
+        public bool IsConnected => IsHubConnected;
 
         public Dictionary<string, string> RequestParameters => Nav.Uri.Query();
 
@@ -217,8 +217,8 @@ namespace Hosting.Services
         }
 
 
-        public async Task<T?> InvokeAsync<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
-        public async Task<T?> InvokeAsync<T>(string method, object?[]? parameters) => parameters?.Length switch {
+        public async Task<T?> RepondHub<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
+        public async Task<T?> RepondHub<T>(string method, object?[]? parameters) => parameters?.Length switch {
             1 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
             2 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
             3 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2)),
@@ -239,27 +239,61 @@ namespace Hosting.Services
     }
 
 #else
-    public partial class CircuitProvider(IServiceProvider Service, Lazy<MauiApp?>? App = null, HttpClient? Http = null) 
-        : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, ICircuitProvider
+
+    public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncDisposable
     {
+
         public bool IsSignalCircuit => true;
+
+        public bool IsConnected => !_activeCircuits.IsEmpty;
 
         public bool IsHubConnected => !_activeCircuits.IsEmpty;
 
         public bool IsAppConnected => App?.Value.HasValue == true;
 
-        public Dictionary<string, string> RequestParameters => throw new NotImplementedException();
+        public int ClientCount => _activeCircuits.Count;
 
-        
+        public CircuitHandler Circuit { get; }
+
+        public CircuitProvider(IServiceProvider service, CircuitHandler circuit, Lazy<?>? App = null, HttpClient? http = null)
+        {
+            Service = service;
+            Http = http;
+            Circuit = circuit;
+            Circuit.OnConnectionDown += OnConnectionDown;
+            Circuit.OnConnectionUp += OnConnectionUp;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            Circuit.OnConnectionDown -= OnConnectionDown;
+            Circuit.OnConnectionUp -= OnConnectionUp;
+            base.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        public static async Task<TResult?> OnExecuteAsync<TResult>(ICircuitProvider service, string method, params object?[]? parameters)
+        {
+            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<,TResult>, service.DefaultTTL, method, parameters);
+        }
+    }
+
+
+    public class CircuitHandler() 
+        : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler
+    {
+        public event Action<bool, ConnectionMetadata>? OnConnectionDown;
+        public event Action<bool, ConnectionMetadata>? OnConnectionUp;
+
         public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
         {
-            await OnConnectionUpAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow));
+            OnConnectionUp?.Invoke(true, new ConnectionMetadata(circuit.Id, DateTime.UtcNow));
             await base.OnConnectionUpAsync(circuit, ct);
         }
 
         public override async Task OnConnectionDownAsync(Circuit circuit, CancellationToken ct)
         {
-            await OnConnectionDownAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"));
+            OnConnectionDown?.Invoke(true, new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"));
             await base.OnConnectionDownAsync(circuit, ct);
         }
 
@@ -288,13 +322,12 @@ namespace Hosting.Services
 
         public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
         {
-
+            endpoints.MapHub<CircuitProvider>("/api/hub");
 
             foreach (var circuit in circuits)
             {
                 if (circuit.Path == null) continue;
 
-                endpoints.MapHub<FullCircuit<HostingService>>(circuit.Path);
                 var routeBuilder = endpoints.MapPost(circuit.Path, circuit.OnExecuteAsync);
 
                 routeBuilder.RequireAuthorization();

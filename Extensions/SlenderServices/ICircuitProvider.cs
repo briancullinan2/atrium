@@ -24,8 +24,6 @@ namespace Extensions.SlenderServices
 
         int DefaultTTL { get; set; }
 
-        Dictionary<string, string> RequestParameters { get; }
-
         // Standardized reporting methods
         Task OnConnectionUpAsync(ConnectionMetadata metadata);
         Task OnConnectionDownAsync(ConnectionMetadata metadata);

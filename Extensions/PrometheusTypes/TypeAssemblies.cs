@@ -15,6 +15,9 @@ namespace Extensions.PrometheusTypes
         static TypeExtensions()
         {
             RegisterAssembly(Assembly.GetExecutingAssembly());
+
+            // TODO: need a list of servicable types, anything in the namespace Services that has any routes
+
             var routeableTypes = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
                 .SelectMany(ass => ass.GetTypes())
                 .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());

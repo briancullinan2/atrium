@@ -11,6 +11,7 @@ namespace Extensions.PrometheusTypes
         public static async Task<T?> Debounce<T>(
             this Func<CancellationToken, Task<T>> action,
             int delay = 200,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "", [CallerMemberName] string key = "")
         {
             // Fix for the "System.Private.CoreLib" issue: 
@@ -20,6 +21,8 @@ namespace Extensions.PrometheusTypes
 
             var tcs = new TaskCompletionSource<T?>();
             var cts = new CancellationTokenSource();
+            if(token != null)
+                token?.Register(cts.Cancel);
             var entry = (tcs, cts);
 
             // Update the registry: Cancel the old one, but DO NOT Dispose it here.
@@ -68,25 +71,28 @@ namespace Extensions.PrometheusTypes
         public static Task Debounce(
             this Func<Task> action,
             int delay = 200,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce<bool>(action: async ct => { await action(); return true; }, delay, file, key);
+            => Debounce<bool>(action: async ct => { await action(); return true; }, delay, token, file, key);
 
 
-        public static Task<TR> Debounce<TR>(
+        public static Task<TR?> Debounce<TR>(
             this Func<Task<TR>> action,
             int delay = 200,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(), delay, file, key);
+            => Debounce(action: ct => action(), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, TR>(
             this Func<T1?, Task<TR>> action,
             int delay = 200,
             T1? t1 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1), delay, file, key);
+            => Debounce(action: ct => action(t1), delay, token, file, key);
 
         // T1, T2 Overload
         public static Task<TR?> Debounce<T1, T2, TR>(
@@ -94,9 +100,10 @@ namespace Extensions.PrometheusTypes
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2), delay, file, key);
+            => Debounce(action: ct => action(t1, t2), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, TR>(
             this Func<T1?, T2?, T3?, Task<TR>> action,
@@ -104,9 +111,10 @@ namespace Extensions.PrometheusTypes
             T1? t1 = default,
             T2? t2 = default,
             T3? t3 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3), delay, file, key);
+            => Debounce(action: ct => action(t1, t2, t3), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, T4, TR>(
             this Func<T1?, T2?, T3?, T4?, Task<TR>> action,
@@ -115,9 +123,10 @@ namespace Extensions.PrometheusTypes
             T2? t2 = default,
             T3? t3 = default,
             T4? t4 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3, t4), delay, file, key);
+            => Debounce(action: ct => action(t1, t2, t3, t4), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, T4, T5, TR>(
             this Func<T1?, T2?, T3?, T4?, T5?, Task<TR>> action,
@@ -127,9 +136,10 @@ namespace Extensions.PrometheusTypes
             T3? t3 = default,
             T4? t4 = default,
             T5? t5 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3, t4, t5), delay, file, key);
+            => Debounce(action: ct => action(t1, t2, t3, t4, t5), delay, token, file, key);
 
 
         // actions
@@ -139,9 +149,10 @@ namespace Extensions.PrometheusTypes
             this Func<T1?, Task> action,
             int delay = 200,
             T1? t1 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce<bool>(action: async ct => { await action(t1); return true; }, delay, file, key);
+            => Debounce<bool>(action: async ct => { await action(t1); return true; }, delay, token, file, key);
 
 
         public static Task Debounce<T1, T2>(
@@ -149,9 +160,10 @@ namespace Extensions.PrometheusTypes
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2), delay, file, key);
+            => Debounce(action: () => action(t1, t2), delay, token, file, key);
 
 
         public static Task Debounce<T1, T2, T3>(
@@ -160,9 +172,10 @@ namespace Extensions.PrometheusTypes
             T1? t1 = default,
             T2? t2 = default,
             T3? t3 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3), delay, file, key);
+            => Debounce(action: () => action(t1, t2, t3), delay, token, file, key);
 
 
 
@@ -173,9 +186,10 @@ namespace Extensions.PrometheusTypes
             T2? t2 = default,
             T3? t3 = default,
             T4? t4 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3, t4), delay, file, key);
+            => Debounce(action: () => action(t1, t2, t3, t4), delay, token, file, key);
 
 
         public static Task Debounce<T1, T2, T3, T4, T5>(
@@ -186,9 +200,10 @@ namespace Extensions.PrometheusTypes
             T3? t3 = default,
             T4? t4 = default,
             T5? t5 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: ct => action(t1, t2, t3, t4, t5), delay, file, key);
+            => Debounce(action: () => action(t1, t2, t3, t4, t5), delay, token, file, key);
 
 
 
@@ -197,9 +212,10 @@ namespace Extensions.PrometheusTypes
             this Action<T1?> action,
             int delay = 200,
             T1? t1 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce<bool>(action: async ct => { action(t1); return true; }, delay, file, key);
+            => Debounce<bool>(action: async ct => { action(t1); return true; }, delay, token, file, key);
 
 
         public static Task Debounce<T1, T2>(
@@ -207,9 +223,10 @@ namespace Extensions.PrometheusTypes
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: async ct => { action(t1, t2); return true; }, delay, file, key);
+            => Debounce(action: async ct => { action(t1, t2); return true; }, delay, token, file, key);
 
 
         public static Task Debounce<T1, T2, T3>(
@@ -218,9 +235,10 @@ namespace Extensions.PrometheusTypes
             T1? t1 = default,
             T2? t2 = default,
             T3? t3 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: async ct => { action(t1, t2, t3); return true; }, delay, file, key);
+            => Debounce(action: async ct => { action(t1, t2, t3); return true; }, delay, token, file, key);
 
 
 
@@ -231,9 +249,10 @@ namespace Extensions.PrometheusTypes
             T2? t2 = default,
             T3? t3 = default,
             T4? t4 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: async ct => { action(t1, t2, t3, t4); return true; }, delay, file, key);
+            => Debounce(action: async ct => { action(t1, t2, t3, t4); return true; }, delay, token, file, key);
 
 
         public static Task Debounce<T1, T2, T3, T4, T5>(
@@ -244,9 +263,10 @@ namespace Extensions.PrometheusTypes
             T3? t3 = default,
             T4? t4 = default,
             T5? t5 = default,
+            CancellationToken? token = null,
             [CallerFilePath] string file = "",
             [CallerMemberName] string key = "")
-            => Debounce(action: async ct => { action(t1, t2, t3, t4, t5); return true; }, delay, file, key);
+            => Debounce(action: async ct => { action(t1, t2, t3, t4, t5); return true; }, delay, token, file, key);
 
 
 
