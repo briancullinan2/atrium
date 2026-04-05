@@ -1,15 +1,11 @@
 ﻿
+
 #if BROWSER
 using Microsoft.AspNetCore.SignalR.Client;
 #else
-using Extensions.SlenderServices;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.AspNetCore.Routing;
-
 #endif
-using System.Collections.Concurrent;
-using System.Reflection;
 
 namespace Hosting.Services
 {
@@ -27,6 +23,7 @@ namespace Hosting.Services
             : !_activeCircuits.IsEmpty;
         public int ClientCount => OperatingSystem.IsBrowser() ? 1 : _activeCircuits.Count + (IsAppConnected ? 1 : 0);
 
+        public int DefaultTTL { get; set; } = 100;
 
         public async Task OnConnectionUpAsync(ConnectionMetadata metadata)
         {
@@ -44,10 +41,90 @@ namespace Hosting.Services
             OnConnectionDown?.Invoke(false, metadata);
         }
 
+        public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
+        {
+            return await TaskExtensions.Debounce(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
+        }
 
+
+        public async Task<TResult?> RespondCircuit<TResult>(MemberInfo? methodInfo, params object?[]? parameters)
+        {
+            if(methodInfo == null || methodInfo.DeclaringType == null)
+                throw new InvalidOperationException("Couldn't find service provider: " + methodInfo);
+            if (!IsSignalCircuit)
+                throw new InvalidOperationException("Not a signal circuit: " + methodInfo);
+
+            var Implementation = Service.GetRequiredService(methodInfo.DeclaringType);
+            object? result;
+            if (methodInfo is FieldInfo field)
+            {
+                result = field.GetValue(Implementation) is TResult;
+            }
+            if (methodInfo is PropertyInfo property)
+            {
+                result = parameters?.Length > 0 ? property.GetValue(Implementation, parameters) : property.GetValue(Implementation);
+            }
+            if (methodInfo is MethodInfo runable)
+            {
+                // TODO: put together a list of parameters and services
+                result = runable.Invoke(Implementation, parameters);
+            }
+            else throw new InvalidOperationException("Nothing to do in: " + methodInfo);
+
+            if (result == null || result.GetType().Extends(typeof(TResult)))
+                return (TResult?)result;
+            else throw new InvalidOperationException("Result did not type cast from: "
+                + result.GetType().AssemblyQualifiedName
+                + " to " + typeof(TResult).AssemblyQualifiedName);
+
+        }
+
+
+        public async Task<TResult?> RespondRemote<TResult>(MemberInfo methodInfo)
+        {
+            if (Http == null)
+                throw new InvalidOperationException("Http client not available");
+
+            if (methodInfo is MethodInfo runable)
+            {
+                var serviceTypes = runable.GetParameters().ToServices(Service);
+                // TODO: dont serialize services, they will get rebuilt on the ends
+            }
+            // TODO: add fun serialization
+            result = await Http.GetFromJsonAsync<TResult>(Path);
+        }
+
+
+        public async Task<TResult?> ExecuteAsyncDebounced<TImplementation, TResult>(
+            string? method,
+            object?[]? parameters
+            // TODO: get force out of somewhere
+            /* bool force = false */)
+        {
+            // TODO: the same Debounce and QueryNow does with parameters
+
+            //if (_cachedValue != null && DateTime.Now < _lastFetched + TimeSpan.FromMilliseconds(DefaultTTL))
+            //{
+            //    return _cachedValue;
+            //}
+
+            var type = typeof(TImplementation);
+            MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
+                ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
+                ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
+
+            if (methodInfo == null || !methodInfo.IsRoutable())
+                throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
+        }
+
+        public static async Task<TResult?> OnExecuteAsync<TResult>(ICircuitProvider service, string method, params object?[]? parameters)
+        {
+            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<TResult>, service.DefaultTTL, method, parameters);
+        }
     }
 
 #if BROWSER
+    // TODO: make webassembly the page serving server
     public partial  class CircuitProvider : IAsyncDisposable
     {
     
@@ -57,7 +134,9 @@ namespace Hosting.Services
 
         public IRenderState Rendered { get; }
         public IPageManager PageManager { get; }
-
+        public NavigationManager Nav { get; }
+        public HttpClient Http { get; }
+        public IServiceProvider Service { get; }
 
         private HubConnection? _connection;
         private HubConnection Connection
@@ -70,11 +149,17 @@ namespace Hosting.Services
             set => _connection = value;
         }
 
-        public CircuitProvider(IPageManager page, IRenderState rendered, HubConnection? connection = null)
+
+        public Dictionary<string, string> RequestParameters => Nav.Uri.Query();
+
+
+        public CircuitProvider(IServiceProvider service, NavigationManager nav, IPageManager page, HttpClient http, IRenderState rendered, HubConnection? connection = null)
         {
+            Service = service;
+            Http = http;
             Rendered = rendered;
             PageManager = page;
-
+            Nav = nav;
             _connection = connection;
             // become the connection
             /*
@@ -131,25 +216,41 @@ namespace Hosting.Services
             }
         }
 
-        public async Task<T> InvokeAsync<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
+
+        public async Task<T?> InvokeAsync<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
+        public async Task<T?> InvokeAsync<T>(string method, object?[]? parameters) => parameters?.Length switch {
+            1 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
+            2 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
+            3 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2)),
+            4 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3)),
+            5 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3), parameters.ElementAt(4)),
+            _ => await Connection.InvokeAsync<T>(method, new CancellationTokenSource().Token)
+            };
+            
+
 
         public async ValueTask DisposeAsync()
         {
             PageManager.OnReconnect -= ReportFromPage;
             GC.SuppressFinalize(this);
         }
+
+        
     }
 
 #else
-    public partial class CircuitProvider(Lazy<MauiApp?>? App = null, HttpContext? Context = null) 
+    public partial class CircuitProvider(IServiceProvider Service, Lazy<MauiApp?>? App = null, HttpClient? Http = null) 
         : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, ICircuitProvider
     {
-        public bool IsSignalCircuit => Context.IsSignalCircuit();
+        public bool IsSignalCircuit => true;
 
-        public bool IsHubConnected => Context != null && !_activeCircuits.IsEmpty;
+        public bool IsHubConnected => !_activeCircuits.IsEmpty;
 
         public bool IsAppConnected => App?.Value.HasValue == true;
 
+        public Dictionary<string, string> RequestParameters => throw new NotImplementedException();
+
+        
         public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
         {
             await OnConnectionUpAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow));
@@ -161,11 +262,15 @@ namespace Hosting.Services
             await OnConnectionDownAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"));
             await base.OnConnectionDownAsync(circuit, ct);
         }
+
+
     }
 
 
     public static class HttpContextExtensions
     {
+       
+
         public static bool IsSignalCircuit(this HttpContext? context)
         {
             if (context == null) return false;
@@ -183,27 +288,16 @@ namespace Hosting.Services
 
         public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
         {
-            // 1. Get all registered circuits from the DI container
-            var circuits = endpoints.ServiceProvider.GetServices<IFullCircuit>();
+
 
             foreach (var circuit in circuits)
             {
-                // 2. Automagically create an API endpoint: /api/{name}
-                //;
-                //endpoints.MapPost($"/api/${circuit.Name}", circuit.ExecuteAsync);
-                //endpoints.MapHub<FullCircuit>(circuit.Path);
-                var routeBuilder = endpoints.MapPost(circuit.Path, circuit.ExecuteAsync);
+                if (circuit.Path == null) continue;
 
-                // Security Check
-                bool hasAnonymous = circuit.ProviderMethod.GetCustomAttribute<AllowAnonymousAttribute>() != null
-                                    || circuit.ProviderType?.GetCustomAttribute<AllowAnonymousAttribute>() != null;
-                bool hasAuthorize = circuit.ProviderMethod.GetCustomAttribute<AuthorizeAttribute>() != null
-                                    || circuit.ProviderType?.GetCustomAttribute<AuthorizeAttribute>() != null;
+                endpoints.MapHub<FullCircuit<HostingService>>(circuit.Path);
+                var routeBuilder = endpoints.MapPost(circuit.Path, circuit.OnExecuteAsync);
 
-                if (hasAuthorize)
-                {
-                    routeBuilder.RequireAuthorization();
-                }
+                routeBuilder.RequireAuthorization();
 
                 routeBuilder.WithTags(circuit.Name);
             }

@@ -20,9 +20,5 @@
 		<TrimmerRootAssembly Include="Microsoft.EntityFrameworkCore.Sqlite" />
 		<TrimmerRootAssembly Include="Microsoft.Data.Sqlite" />
 	</ItemGroup>
-	
-  <ItemGroup>
-    <ProjectReference Include="..\FlashData\FlashData.csproj" />
-  </ItemGroup>
 
 </Project>

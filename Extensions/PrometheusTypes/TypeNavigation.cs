@@ -1,14 +1,12 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Diagnostics.CodeAnalysis;
-using System.Net;
+﻿
 
 [assembly: SuppressMessage("This call site is reachable on all platforms.", "IL2026", Justification = "I hope it does, save me some damn time")]
 
-namespace RazorSharp.Extensions
+namespace Extensions.PrometheusTypes
 {
-    public static class NavigationExtensions
+    public static partial class TypeExtensions
     {
-        
+
 
 
         // TODO: i thought there was some fancy c# pattern that has the object expression as the coalescing parameters that makes an object of type <T>?
@@ -23,18 +21,6 @@ namespace RazorSharp.Extensions
         }
         */
 
-        static NavigationExtensions()
-        {
-            var routeableTypes = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
-                .SelectMany(ass => ass.GetTypes())
-                .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());
-
-            foreach (var type in routeableTypes)
-            {
-                // This triggers your existing GetRoutes logic to fill the _routeCache
-                _ = GetRoutes(type);
-            }
-        }
 
 
         // TODO: generic implicit ?

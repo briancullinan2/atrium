@@ -17,6 +17,7 @@
 	
 	<PropertyGroup>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+		<StartupObject>Program</StartupObject>
 	</PropertyGroup>
 
 	<ItemGroup>

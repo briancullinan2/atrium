@@ -21,9 +21,4 @@
 	</ItemGroup>
 
 
-	<ItemGroup>
-	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
-	</ItemGroup>
-
-
 </Project>

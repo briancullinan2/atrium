@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace RazorSharp.Services
+namespace Extensions.SlenderServices
 {
 
 
@@ -22,13 +22,16 @@ namespace RazorSharp.Services
         bool IsSignalCircuit { get; }
         bool IsHubConnected { get; }
 
+        int DefaultTTL { get; set; }
+
         Dictionary<string, string> RequestParameters { get; }
 
         // Standardized reporting methods
         Task OnConnectionUpAsync(ConnectionMetadata metadata);
         Task OnConnectionDownAsync(ConnectionMetadata metadata);
 
-        Task<T> InvokeAsync<T>(string method, CancellationToken? ct = null); // TODO: params object?[]? args);
+        Task<T?> InvokeAsync<T>(string method, CancellationToken? ct = null); // TODO: params object?[]? args);
+        Task<T?> InvokeAsync<T>(string method, object?[]? parameters); // TODO: params object?[]? args);
     }
 
 }

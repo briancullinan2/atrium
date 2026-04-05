@@ -92,15 +92,9 @@
 
 
 	<ItemGroup>
-		<PackageReference Include="log4net" Version="3.3.*-*" />
+		<!--<PackageReference Include="log4net" Version="3.3.*-*" />-->
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
-	</ItemGroup>
-
-
-	<ItemGroup>
-	  <ProjectReference Include="..\FlashData\FlashData.csproj" />
-	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 	
 	<!--<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">

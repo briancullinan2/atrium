@@ -31,13 +31,19 @@
 		<PackageReference Include="OpenCvSharp4.runtime.wasm" Version="4.13.*-*" />
 	</ItemGroup>
 
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
+	</ItemGroup>
+
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
 		<PackageReference Include="OpenCvSharp4.runtime.osx.10.15-universal" Version="4.7.*-*" />
 		<!--<PackageReference Include="OpenCvSharp4.runtime.osx-x64" Condition="$(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />-->
 	</ItemGroup>
 	
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.9" />
+		<PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
 		<PackageReference Include="OpenCvSharp4" Version="4.13.*-*" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />

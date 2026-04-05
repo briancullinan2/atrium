@@ -1,11 +1,8 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
-using RazorSharp.Extensions;
-using System.Reflection;
-using System.Text.Json;
+﻿
 
-namespace RazorSharp.Extensions
+namespace Extensions.PrometheusTypes
 {
-    public static class TypeExtensions
+    public static partial class TypeExtensions
     {
 
 #pragma warning disable BL0006 // Do not use RenderTree types
@@ -55,9 +52,10 @@ namespace RazorSharp.Extensions
             // In 2026, many Renderers have an internal '_lastBatchTask' or similar.
             // A more reliable way is to hook the Dispatcher's work queue.
 
-            if (renderer.GetType()
-                .GetProperty("Dispatcher", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                ?.GetValue(renderer) is not Dispatcher dispatcher) return Task.CompletedTask;
+            var dispatcher = renderer.GetType()
+                .GetProperties("Dispatcher").FirstOrDefault()
+                ?.GetValue(renderer) as Dispatcher
+                ?? throw new InvalidOperationException("Could not render renderer dispatcher.");
 
             // 2. The Trick: We can't override the method, but we can schedule a 
             // "Shadow Task" on the dispatcher that runs after the current render batch.
@@ -139,7 +137,8 @@ namespace RazorSharp.Extensions
 
 
 
-        public static List<IComponent> GetChildComponents(this IComponent parent, bool includeSiblings = true)
+        public static List<IComponent> GetChildComponents(
+            this IComponent parent, bool includeSiblings = true)
         {
             try
             {
@@ -178,8 +177,9 @@ namespace RazorSharp.Extensions
                             continue;
 
                         // 4. Recursive Digging for Container Types
-                        var typeName = comp.GetType().Name;
-                        if (comp is LayoutView or AuthorizeView or AuthorizeRouteView or MainLayout or AuthorizeViewCore or ErrorBoundary)
+                        var type = comp.GetType();
+                        if (comp is LayoutView or AuthorizeView or AuthorizeRouteView or AuthorizeViewCore or ErrorBoundary
+                            || type.Extends(typeof(LayoutComponentBase)))
                         {
                             // Dig deeper but DON'T look for siblings of the internal wrappers
                             var children = comp.GetChildComponents(includeSiblings: false);
@@ -220,7 +220,7 @@ namespace RazorSharp.Extensions
 
             var type = component.GetType();
 
-            return Invokable(type, JS = null, Service = null);
+            return Invokable(type, JS, Service);
         }
 
 

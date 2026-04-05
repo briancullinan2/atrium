@@ -1,12 +1,15 @@
 ﻿
-using System.Diagnostics.CodeAnalysis;
+
+using Microsoft.AspNetCore.Authorization;
+using System.Collections.Concurrent;
 
 namespace Extensions.PrometheusTypes
 {
     // Token: 0x0200005E RID: 94
     public static partial class TypeExtensions
     {
-        
+
+
         // Token: 0x060002F7 RID: 759 RVA: 0x00019228 File Offset: 0x00017428
         public static IEnumerable<Type> GetBaseTypes(this Type type)
         {
@@ -25,10 +28,11 @@ namespace Extensions.PrometheusTypes
             return result;
         }
 
+
         public static bool Extends(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
             this Type? type,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
             Type? genericDefinition)
         {
             if (type == null || genericDefinition == null) return false;

@@ -16,7 +16,6 @@ namespace Extensions.ForeignEntity
         EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
         IModel Model { get; }
         ChangeTracker ChangeTracker { get; }
-        static abstract List<Type> EntityTypes { get; }
     }
 
 

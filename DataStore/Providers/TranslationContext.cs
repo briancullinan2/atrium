@@ -6,7 +6,6 @@ namespace DataStore.Providers
 
     public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext
     {
-
         static TranslationContext()
         {
             var assemblies = typeof(TEntity).Assembly.GetAssemblies(Assembly.GetCallingAssembly());

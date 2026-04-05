@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.AspNetCore.Components;
+using System.Collections.Concurrent;
 
 namespace Extensions.PrometheusTypes
 {
@@ -14,6 +15,16 @@ namespace Extensions.PrometheusTypes
         static TypeExtensions()
         {
             RegisterAssembly(Assembly.GetExecutingAssembly());
+            var routeableTypes = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
+                .SelectMany(ass => ass.GetTypes())
+                .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());
+
+            foreach (var type in routeableTypes)
+            {
+                // This triggers your existing GetRoutes logic to fill the _routeCache
+                _ = GetRoutes(type);
+            }
+
         }
 
 
@@ -79,7 +90,9 @@ namespace Extensions.PrometheusTypes
 
 
 
-        public static Type? ToType(this string filePath, Assembly? targetAssembly = null)
+        public static Type? ToType(
+            []
+            this string filePath, Assembly? targetAssembly = null)
         {
             // 0. Register new assemblies if provided on the fly
             if (targetAssembly != null) RegisterAssembly(targetAssembly ?? Assembly.GetCallingAssembly());
