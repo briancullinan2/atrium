@@ -153,7 +153,7 @@ namespace RazorSharp.Services
 
         public ConcurrentDictionary<string, string> ClassNames { get; } = [];
 
-        public string ContextKey { get => Context?.IServerState?.Connection.RemoteIpAddress.ToString() ?? "Internal"; }
+        public string ContextKey => Context?.IServerState?.Connection.RemoteIpAddress.ToString() ?? "Internal";
 
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
@@ -172,7 +172,7 @@ namespace RazorSharp.Services
         readonly IServerState? Context;
 
 
-        public IJSRuntime Runtime { get => Rendered.Runtime; }
+        public IJSRuntime Runtime => Rendered.Runtime;
 
         public PageManager(
             IFormFactor _formFactor,
@@ -210,7 +210,7 @@ namespace RazorSharp.Services
         }
 
 
-        public Task ModuleInitialize { get => _restartRequired.Task; }
+        public Task ModuleInitialize => _restartRequired.Task;
 
 
         private IJSObjectReference? _module = null;

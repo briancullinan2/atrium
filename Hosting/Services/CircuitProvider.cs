@@ -23,7 +23,7 @@ namespace Hosting.Services
         public int ClientCount => OperatingSystem.IsBrowser() ? 1 : _activeCircuits.Count + (IsAppConnected ? 1 : 0);
 
 
-        public async Task OnConnectionUpAsync(ConnectionMetadata metadata, CancellationToken ct)
+        public async Task OnConnectionUpAsync(ConnectionMetadata metadata)
         {
             // Add or update the circuit in the static dictionary
             _activeCircuits.TryAdd(metadata.Id, metadata);
@@ -31,13 +31,14 @@ namespace Hosting.Services
             OnConnectionUp?.Invoke(true, metadata);
         }
 
-        public async Task OnConnectionDownAsync(ConnectionMetadata metadata, CancellationToken ct)
+        public async Task OnConnectionDownAsync(ConnectionMetadata metadata)
         {
             // Remove the circuit from the static dictionary
             _activeCircuits.TryRemove(metadata.Id, out _);
 
             OnConnectionDown?.Invoke(false, metadata);
         }
+
 
     }
 
@@ -54,11 +55,9 @@ namespace Hosting.Services
 
         private readonly HubConnection? _connection;
 
-        public CircuitHandler(IPageManager page, IRenderState rendered, HubConnection? _connection = null)
+        public CircuitProvider(IPageManager page, IRenderState rendered, HubConnection? connection = null)
         {
             Rendered = rendered;
-            Rendered.OnEmptied += NotifyEmptied;
-            Rendered.OnRendered += NotifyRendered;
             PageManager = page;
 
             _connection = connection;
@@ -105,16 +104,15 @@ namespace Hosting.Services
                 OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
         }
 
-        
         protected void ReportFromPage(string? state)
         {
             if (state == "hide")
             {
-                base.OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
+                _ = OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
             }
             else
             {
-                OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
+                _ = OnConnectionDownAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
             }
         }
 
@@ -122,8 +120,6 @@ namespace Hosting.Services
         public async ValueTask DisposeAsync()
         {
             PageManager.OnReconnect -= ReportFromPage;
-            Rendered.OnRendered -= NotifyEmptied;
-            Rendered.OnEmptied -= NotifyEmptied;
             GC.SuppressFinalize(this);
         }
     }
@@ -134,19 +130,19 @@ namespace Hosting.Services
     {
         public bool IsSignalCircuit => Context.IsSignalCircuit();
 
-        public bool IsHubConnected => Context != null && _activeCircuits.ContainsKey(Context.Connection.Id);
+        public bool IsHubConnected => Context != null && !_activeCircuits.IsEmpty;
 
         public bool IsAppConnected => App?.Value.HasValue == true;
 
         public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
         {
-            await OnConnectionUpAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow), ct);
+            await OnConnectionUpAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow));
             await base.OnConnectionUpAsync(circuit, ct);
         }
 
         public override async Task OnConnectionDownAsync(Circuit circuit, CancellationToken ct)
         {
-            await OnConnectionDownAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"), ct);
+            await OnConnectionDownAsync(new ConnectionMetadata(circuit.Id, DateTime.UtcNow, "Circuit Disconnected"));
             await base.OnConnectionDownAsync(circuit, ct);
         }
     }

@@ -69,8 +69,8 @@ namespace DataStore.Services
         }
 
 
-        private Task ModuleInitialize { get => _renderTcs.Task; }
-        
+        private Task ModuleInitialize => _renderTcs.Task;
+
 
         private IJSObjectReference? _module = null;
         public IJSObjectReference Module

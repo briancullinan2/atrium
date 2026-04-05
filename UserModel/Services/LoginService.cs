@@ -68,7 +68,7 @@ namespace UserModel.Services
         private void OnAuthStateChanged(Task<AuthenticationState> task) => _ = SynchronizeUserAsync();
 
 
-        public Task ModuleInitialize { get => _restartRequired.Task; }
+        public Task ModuleInitialize => _restartRequired.Task;
 
 
         private async Task SynchronizeUserAsync()

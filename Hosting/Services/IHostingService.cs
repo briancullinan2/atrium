@@ -13,7 +13,6 @@ namespace Hosting.Services
         event Action<bool?>? OnHttpWorking;
     }
 
-
     public class HostingSettings
     {
         public string? AccountId { get; set; }
@@ -25,30 +24,24 @@ namespace Hosting.Services
 
     public class StatusResponse
     {
-        [JsonIgnore]
-        private static string _guid;
-        [JsonIgnore]
-        private static DateTime _now;
-        static StatusResponse()
-        {
-            _guid = Guid.NewGuid().ToString();
-            _now = DateTime.Now;
-        }
-        public DateTime? Now { get; set; }
-        public static List<string>? ItWorks { get => [_guid]; set => _guid = value?.Count > 0 ? value?.ElementAt(0) ?? _guid : _guid; }
-        public string? Host { get; set; }
-        public string? Tunnel { get; set; }
-        public bool? Installed { get; set; }
-        public string? Error { get; set; }
+
         public StatusResponse()
-        {
-            Now = DateTime.Now;
-            if (_now + TimeSpan.FromMinutes(2) < Now)
+        { 
+            if (Now < DateTime.Now.AddMinutes(2))
             {
-                _guid = Guid.NewGuid().ToString();
-                _now = DateTime.Now;
+                StableGuid = Guid.NewGuid().ToString();
+                Now = DateTime.Now;
             }
         }
+
+        [JsonIgnore]
+        private static string StableGuid { get; set; } = Guid.NewGuid().ToString();
+        public static DateTime? Now { get; set; } = DateTime.Now;
+
+        public static List<string>? ItWorks { get => [StableGuid]; set => StableGuid = value?.Count > 0 ? value?.ElementAt(0) ?? StableGuid : StableGuid; }
+        public string? Host { get; internal set; }
+        public string? Tunnel { get; internal set; }
+        public object? Error { get; internal set; }
     }
 
 }

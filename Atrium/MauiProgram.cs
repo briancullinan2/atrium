@@ -6,10 +6,7 @@ namespace Atrium
     {
 
         private static readonly MauiApp _myApp = CreateMauiApp();
-        public static MauiApp Current
-        {
-            get => _myApp;
-        }
+        public static MauiApp Current => _myApp;
 
 
 
@@ -67,6 +64,13 @@ namespace Atrium
         private static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
+            
+            var args = Environment.GetCommandLineArgs();
+            if (args.Any(a => a.StartsWith("app://")))
+            {
+                string protocolData = args.First(a => a.StartsWith("app://"));
+                // Handle deep link / configuration inject here
+            }
 
             builder
                 .UseMauiApp<App>()

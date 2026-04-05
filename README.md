@@ -30,6 +30,7 @@ I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 2. Game server with background demo web assembly and discord integration
 3. Media server revival like ampache, had an idea to connect devices and controls for dad
 4. Home security, personal status tracker, maybe some people over work and they need reminders not to check email?
+5. Medical device and cloud data combo app like EpicCentral and ClearView combined
 
 
 

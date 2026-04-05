@@ -1,301 +1,151 @@
-﻿
+﻿using System.IO;
+using System.Net.Http.Json;
 #if WINDOWS
 using System.ServiceProcess;
 #endif
 
 namespace Hosting.Services
 {
-    internal class HostingService : IHostingService
+    internal class HostingService(HttpClient Http) : IHostingService
     {
-        private static readonly string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        private static HostingSettings? Settings { get; set; }
-        public static Task<bool?>? Working { get; set; }
+        private static readonly string CredentialsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".credentials");
+        private static readonly string SettingsPath = Path.Combine(CredentialsDir, "atrium-hosting.json");
+        private static readonly long[] _versionCache;
+        private static HostingSettings? _settings;
+
+        private StatusResponse? _recentResult;
+        private DateTime _lastChecked = DateTime.MinValue;
+
+        public event Action<bool?>? OnHttpWorking;
 
         static HostingService()
         {
-            var savedSettings = Path.Combine(homeDirectory, ".credentials", "atrium-hosting.json");
-            if (System.IO.File.Exists(savedSettings))
+            if (File.Exists(SettingsPath))
             {
-                try
-                {
-                    Settings = JsonSerializer.Deserialize<HostingSettings>(System.IO.File.ReadAllText(savedSettings));
-                }
-                catch (Exception) { }
+                try { _settings = JsonSerializer.Deserialize<HostingSettings>(File.ReadAllText(SettingsPath)); }
+                catch { /* Silent fail for corrupted JSON */ }
             }
+
+
+            long appStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long latestFile = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+                .Max(a => { try { return new FileInfo(a.Location).LastWriteTimeUtc; } catch { return DateTime.MinValue; } })
+                .Ticks / 10000;
+
+            _versionCache = [appStart, latestFile];
+
         }
 
-        private static HttpClient? _httpClient;
-        public HostingService(HttpClient client)
+
+        // --- IHostingService Implementation ---
+
+        public async Task<string?> GetToken() => StatusResponse.ItWorks?[0];
+
+        public async Task<string?> GetHost() => _settings?.Domain ?? _recentResult?.Host;
+
+        /// <summary>
+        /// One-way save: Updates local settings and persists them to the user profile.
+        /// Useful for setting Cloudflare IDs from the client UI.
+        /// </summary>
+        public static async Task SaveSettings(HostingSettings newSettings)
         {
-            _httpClient ??= client;
-            Working ??= IsWorking();
+            _settings = newSettings;
+            if (!Directory.Exists(CredentialsDir)) Directory.CreateDirectory(CredentialsDir);
+            await File.WriteAllTextAsync(SettingsPath, JsonSerializer.Serialize(_settings));
         }
 
         public async Task<bool?> CheckInstalled()
         {
-            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
-            {
-                return recentResult.Installed;
-            }
-            return CheckServiceInstalled();
-            return recentResult?.Installed;
-        }
-
-        public static bool CheckServiceInstalled()
-        {
 #if WINDOWS
-            const string serviceName = "Cloudflared";
-            // Get all installed services and check for a match
-            return ServiceController.GetServices()
-                .Any(s => s.ServiceName.Equals(serviceName, StringComparison.OrdinalIgnoreCase));
+            try
+            {
+                return ServiceController.GetServices().Any(s => s.ServiceName.Equals("Cloudflared", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { return false; }
 #else
             return false;
 #endif
         }
 
-
-        private static readonly long _appStartTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        // Cached after the first check
-        private static long? _latestAssemblyTime;
-
-        public static async Task OnVersionCheck(HttpContext context)
-        {
-            if (!_latestAssemblyTime.HasValue)
-            {
-
-                // Find the newest 'Last Write Time' across all loaded assemblies.
-                // This captures the main app + any referenced DLLs that were updated.
-                _latestAssemblyTime = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-                    .Select(a => {
-                        try { return new System.IO.FileInfo(a.Location).LastWriteTimeUtc; }
-                        catch { return DateTime.MinValue; }
-                    })
-                    .ToList()
-                    .Max()
-                    .ToUniversalTime()
-                    .Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
-                    .Ticks / 10000; // Convert Ticks to Milliseconds
-
-                // Alternatively, in modern .NET:
-                // _latestAssemblyTime = new DateTimeOffset(maxTime).ToUnixTimeMilliseconds();
-            }
-
-            context.Response.ContentType = "application/json";
-
-            // Return the array: [ProcessStartTime, NewestFileTime]
-            var versionData = new long[] { _appStartTime, _latestAssemblyTime.Value };
-            var json = JsonSerializer.Serialize(versionData, JsonExtensions.Default);
-
-            await context.Response.WriteAsync(json);
-        }
-
-
-        public static async Task OnStatusCheck(HttpContext context)
-        {
-            string? tunnel = null;
-            Exception? error = null;
-            try
-            {
-
-                using var reader = new System.IO.StreamReader(context.Request.Body);
-                var jsonQuery = await reader.ReadToEndAsync();
-                var cloudflaredSettings = JsonSerializer.Deserialize<HostingSettings>(jsonQuery);
-                if (cloudflaredSettings?.ApiToken != null
-                    && cloudflaredSettings?.TunnelName != null
-                    && cloudflaredSettings?.AccountId != null)
-                {
-                    tunnel = await CheckTunnelStatus(cloudflaredSettings?.AccountId, cloudflaredSettings?.TunnelName, cloudflaredSettings?.ApiToken);
-                }
-                else
-                {
-                    tunnel = await CheckTunnelStatus();
-                }
-            }
-            catch (Exception ex)
-            {
-                context.Response.StatusCode = 500;
-                error = ex;
-            }
-
-            context.Response.ContentType = "application/json";
-            var json = JsonSerializer.Serialize(new StatusResponse()
-            {
-                Host = Settings?.Domain,
-                Tunnel = tunnel,
-                Installed = CheckServiceInstalled(),
-                Error = error?.Message
-            }, JsonExtensions.Default);
-
-            await context.Response.WriteAsync(json);
-
-        }
-
-
-        public async Task<string?> GetToken()
-        {
-            return StatusResponse.ItWorks?[0];
-        }
-
-
-
-        public async Task<string?> GetHost()
-        {
-            if(Settings != null)
-            {
-                return Settings?.Domain;
-            }
-            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
-            {
-                return recentResult.Host;
-            }
-            _ = await GetToken();
-            return recentResult?.Host;
-        }
-        
-        
-        private StatusResponse? recentResult;
-        private DateTime? recentChecked;
-        private StatusResponse? statusResult;
-        private DateTime? statusChecked;
-
-        public event Action<bool?>? OnHttpWorking;
-
-
-        public async Task<string?> CheckTunnel(string? _account = null, string? _tunnel = null, string? _api = null)
-        {
-            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
-            {
-                return recentResult.Tunnel;
-            }
-
-            // TODO: save from desktop app if tunnel is working
-            return await CheckTunnelStatus(_account, _tunnel, _api);
-
-            _ = await GetToken(_account, _tunnel, _api);
-
-            return recentResult?.Tunnel;
-        }
-
-
-
-        private static DateTime? lastChecked;
-        private static string? lastStatus;
-
-
-        public static async Task<string?> CheckTunnelStatus(string? _account = null, string? _tunnel = null, string? _api = null)
-        {
-            var AccountId = string.IsNullOrWhiteSpace(_account) ? Settings?.AccountId : _account;
-            var TunnelName = string.IsNullOrWhiteSpace(_tunnel) ? Settings?.TunnelName : _tunnel;
-            var ApiToken = string.IsNullOrWhiteSpace(_api) ? Settings?.ApiToken : _api;
-
-
-            if (string.IsNullOrWhiteSpace(AccountId)
-             || string.IsNullOrWhiteSpace(TunnelName)
-             || string.IsNullOrWhiteSpace(ApiToken)
-             || (lastStatus != null && lastChecked + TimeSpan.FromMinutes(2) > DateTime.Now))
-            {
-                return lastStatus;
-            }
-
-            try
-            {
-                _ = (_httpClient?.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ApiToken));
-
-                var request = _httpClient?.GetAsync(
-                    $"https://api.cloudflare.com/client/v4/accounts/{AccountId}/cfd_tunnel?name={TunnelName}&is_deleted=false");
-                if (request == null) return null;
-                var response = await request;
-                if (response == null) return null;
-                CloudflareResponse? result = await response.Content.ReadFromJsonAsync<CloudflareResponse>();
-                if (result == null) return null;
-                lastChecked = DateTime.Now;
-                lastStatus = result.Result?.FirstOrDefault()?.Status ?? "Unknown";
-
-                if (string.Equals(lastStatus, "healthy", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    // TODO: notice don't edit domain in this save
-
-                    // TODO: save connection info if it came from parameters in json file
-                }
-
-                return lastStatus;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Status check error: " + ex.Message, ex);
-            }
-        }
-
-
-
         public async Task<bool?> IsWorking()
         {
-            var token = await GetToken();
-            if (statusResult != null)
-            {
-                return token == StatusResponse.ItWorks?[0];
-            }
             var host = await GetHost();
+            if (string.IsNullOrEmpty(host)) return false;
+
             var result = await CheckStatus(host);
-            OnHttpWorking?.Invoke(token == StatusResponse.ItWorks?[0]);
-            return token == StatusResponse.ItWorks?[0];
+            bool isWorking = result?.Error == null && result?.Tunnel == "healthy";
+
+            OnHttpWorking?.Invoke(isWorking);
+            return isWorking;
         }
 
+        /// <summary>
+        /// Probes a remote domain for its status.
+        /// </summary>
         public async Task<StatusResponse?> CheckStatus(string? domain)
         {
-            if (statusResult != null && statusChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
-            {
-                return statusResult;
-            }
+            if (string.IsNullOrEmpty(domain)) return null;
 
-            var cancellation = new CancellationToken();
-            var request = _httpClient?.PostAsJsonAsync($"https://{domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
-            if (request == null) return null;
-            var response = await request;
-            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
-            statusResult = result;
-            statusChecked = DateTime.Now;
-            return statusResult;
+            // 2-minute cache rule
+            if (_recentResult != null && _lastChecked.AddMinutes(2) > DateTime.Now && _recentResult.Host == domain)
+                return _recentResult;
+
+            try
+            {
+                var url = $"https://{domain.Replace("https://", "")}/api/status";
+                var response = await Http.PostAsJsonAsync(url, _settings);
+                _recentResult = await response.Content.ReadFromJsonAsync<StatusResponse>();
+                _lastChecked = DateTime.Now;
+                return _recentResult;
+            }
+            catch (Exception ex)
+            {
+                return new StatusResponse { Error = ex.Message, Host = domain };
+            }
         }
 
-
-
-
-
-        public async Task<string?> GetToken(string? Account = null, string? Tunnel = null, string? Api = null)
+        /// <summary>
+        /// Checks Cloudflare API for tunnel health.
+        /// </summary>
+        public async Task<string?> CheckTunnel(string? account = null, string? tunnel = null, string? api = null)
         {
-            if (_httpClient == null)
-            {
-                throw new InvalidOperationException("Http client unavailable.");
-            }
+            var acc = account ?? _settings?.AccountId;
+            var tun = tunnel ?? _settings?.TunnelName;
+            var tok = api ?? _settings?.ApiToken;
 
-            if (recentResult != null && recentChecked + TimeSpan.FromMinutes(2) > DateTime.Now)
+            if (string.IsNullOrWhiteSpace(acc) || string.IsNullOrWhiteSpace(tun) || string.IsNullOrWhiteSpace(tok))
+                return "Missing Credentials";
+
+            try
             {
-                return StatusResponse.ItWorks?[0];
+                Http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tok);
+                var url = $"https://api.cloudflare.com/client/v4/accounts/{acc}/cfd_tunnel?name={tun}&is_deleted=false";
+
+                var cfResponse = await Http.GetFromJsonAsync<CloudflareResponse>(url);
+                return cfResponse?.Result?.FirstOrDefault()?.Status ?? "Unknown";
             }
-            var response = await _httpClient.PostAsJsonAsync("/api/status", new StringContent(JsonSerializer.Serialize(
-            new HostingSettings()
-            {
-                AccountId = Account,
-                TunnelName = Tunnel,
-                ApiToken = Api
-            }), System.Text.Encoding.UTF8, "application/json"));
-            if (response == null) return null;
-            var result = await response.Content.ReadFromJsonAsync<StatusResponse>();
-            if (result == null) return null;
-            recentResult = result;
-            recentChecked = DateTime.Now;
-            return StatusResponse.ItWorks?[0];
+            catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
+        
+        public static async Task OnVersionCheck(HttpContext context)
+        {
+            await context.Response.WriteAsJsonAsync(_versionCache);
+        }
 
+        public static async Task OnStatusCheck(HttpContext context, IHostingService service)
+        {
+            var inputSettings = await context.Request.ReadFromJsonAsync<HostingSettings>();
+            var result = await service.CheckTunnel(inputSettings?.AccountId, inputSettings?.TunnelName, inputSettings?.ApiToken);
+            await context.Response.WriteAsJsonAsync(result);
+        }
 
     }
 
+
     public class CloudflareResponse { public List<TunnelInfo>? Result { get; set; } }
     public class TunnelInfo { public string? Status { get; set; } }
+
 
 }

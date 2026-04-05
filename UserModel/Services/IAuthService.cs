@@ -76,7 +76,7 @@ namespace UserModel.Services
 
 
         public static readonly string CookieName = TitleService.AppName ?? "AtriumSession";
-        protected HttpContext? Context { get => _httpContextAccessor?.HttpContext; }
+        protected HttpContext? Context => _httpContextAccessor?.HttpContext;
 
         public async Task<Session> GenerateSession(List<Claim> claims)
         {

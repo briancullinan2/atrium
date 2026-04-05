@@ -24,7 +24,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
-	  <ProjectReference Include="..\Hosting\Hosting.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 

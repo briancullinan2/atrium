@@ -7,7 +7,7 @@
         {
             [JsonIgnore]
             public MethodCallExpression? MethodCall { get; set; }
-            public string? MethodName { get => MethodCall?.Method.Name; }
+            public string? MethodName => MethodCall?.Method.Name;
             [JsonIgnore]
             public Type? MemberAccess { get; set; }
             public string? MemberAccessName => MemberAccess?.AssemblyQualifiedName;

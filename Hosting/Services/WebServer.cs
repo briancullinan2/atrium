@@ -1,13 +1,15 @@
 ﻿
+#if !BROWSER
+using Microsoft.AspNetCore.Components.WebAssembly.Server;
+#endif
+
 namespace Hosting.Services
 {
     internal static class WebServer
     {
 
         private static readonly WebApplication _private = StartWebServer([]);
-        public static WebApplication Current {
-            get => _private;
-        }
+        public static WebApplication Current => _private;
 
         public static WebApplication StartWebServer(string[] args)
         {

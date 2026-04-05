@@ -23,8 +23,8 @@ namespace RazorSharp.Services
         bool IsHubConnected { get; }
 
         // Standardized reporting methods
-        Task OnConnectionUpAsync(ConnectionMetadata metadata, CancellationToken ct = default);
-        Task OnConnectionDownAsync(ConnectionMetadata metadata, CancellationToken ct = default);
+        Task OnConnectionUpAsync(ConnectionMetadata metadata);
+        Task OnConnectionDownAsync(ConnectionMetadata metadata);
     }
 
 }
