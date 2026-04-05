@@ -37,4 +37,10 @@
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Content Update="wwwroot\offline.js">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
 </Project>

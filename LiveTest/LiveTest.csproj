@@ -10,4 +10,8 @@
 
 	</PropertyGroup>
 
+	<ItemGroup>
+	  <Folder Include="Platforms\Android\" />
+	</ItemGroup>
+
 </Project>
