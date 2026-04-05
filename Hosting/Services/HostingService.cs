@@ -128,7 +128,7 @@ namespace Hosting.Services
             catch (Exception ex) { return $"Error: {ex.Message}"; }
         }
 
-        
+#if !BROWSER
         public static async Task OnVersionCheck(HttpContext context)
         {
             await context.Response.WriteAsJsonAsync(_versionCache);
@@ -140,7 +140,7 @@ namespace Hosting.Services
             var result = await service.CheckTunnel(inputSettings?.AccountId, inputSettings?.TunnelName, inputSettings?.ApiToken);
             await context.Response.WriteAsJsonAsync(result);
         }
-
+#endif
     }
 
 

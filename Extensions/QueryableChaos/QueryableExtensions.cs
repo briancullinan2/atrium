@@ -1,5 +1,7 @@
 ﻿
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Extensions.QueryableChaos
 {
     public static partial class QueryableExtensions
@@ -75,7 +77,9 @@ namespace Extensions.QueryableChaos
         public static TResult Map<TSource, TResult>(this TSource source, Func<TSource, TResult> func) => func(source);
 
 
-        public static ConstantExpression ToConstant(this Type left, string Term)
+        public static ConstantExpression ToConstant(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            this Type left, string Term)
             => (Nullable.GetUnderlyingType(left) ?? left) switch
             {
                 var t when typeof(Enum).IsAssignableFrom(t) => Expression.Constant(Term.TryParse(t.GetType())),

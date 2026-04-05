@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Extensions
+namespace Extensions.SlenderServices
 {
     internal class Log : Log.ILog
     {

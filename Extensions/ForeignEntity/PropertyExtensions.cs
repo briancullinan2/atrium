@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics.CodeAnalysis;
+
 namespace Extensions.ForeignEntity
 {
     public static partial class IEntityExtensions
@@ -63,7 +65,7 @@ namespace Extensions.ForeignEntity
             return properties;
         }
 
-        public static List<PropertyInfo> Display(this Type type)
+        public static List<PropertyInfo> Display([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] this Type type)
         {
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p =>
@@ -89,7 +91,7 @@ namespace Extensions.ForeignEntity
         }
 
 
-        public static List<(string Name, Type EntityType)> Schemas(this Type contextType)
+        public static List<(string Name, Type EntityType)> Schemas([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] this Type contextType)
         {
             if (contextType.Extends(typeof(ITranslationContext)))
                 return [.. (contextType.GetProperties(nameof(ITranslationContext.EntityTypes))

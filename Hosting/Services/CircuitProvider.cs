@@ -2,7 +2,10 @@
 #if BROWSER
 using Microsoft.AspNetCore.SignalR.Client;
 #else
+using Extensions.SlenderServices;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Routing;
+
 #endif
 using System.Collections.Concurrent;
 
@@ -53,7 +56,17 @@ namespace Hosting.Services
         public IRenderState Rendered { get; }
         public IPageManager PageManager { get; }
 
-        private readonly HubConnection? _connection;
+
+        private HubConnection? _connection;
+        private HubConnection Connection
+        {
+            get
+            {
+                if (_connection == null) throw new InvalidOperationException("Check if hub is available first.");
+                return _connection;
+            }
+            set => _connection = value;
+        }
 
         public CircuitProvider(IPageManager page, IRenderState rendered, HubConnection? connection = null)
         {
@@ -108,14 +121,15 @@ namespace Hosting.Services
         {
             if (state == "hide")
             {
-                _ = OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
+                _ = OnConnectionUpAsync(new ConnectionMetadata(Connection.ConnectionId ?? "unknown", DateTime.UtcNow));
             }
             else
             {
-                _ = OnConnectionDownAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
+                _ = OnConnectionDownAsync(new ConnectionMetadata(Connection.ConnectionId ?? "unknown", DateTime.UtcNow, state));
             }
         }
 
+        public async Task<T> InvokeAsync<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
 
         public async ValueTask DisposeAsync()
         {
@@ -147,8 +161,6 @@ namespace Hosting.Services
         }
     }
 
-#endif
-
 
     public static class HttpContextExtensions
     {
@@ -167,7 +179,19 @@ namespace Hosting.Services
             return accessor.HttpContext?.IsSignalCircuit() == true;
         }
 
-    }
+        public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
+        {
+            // 1. Get all registered circuits from the DI container
+            var circuits = endpoints.ServiceProvider.GetServices<IFullCircuit>();
 
+            foreach (var circuit in circuits)
+            {
+                // 2. Automagically create an API endpoint: /api/{name}
+                endpoints.MapHub<FullCircuit>($"/api/${circuit.Name}");
+                endpoints.MapPost($"/api/${circuit.Name}", circuit.ExecuteAsync);
+            }
+        }
+    }
+#endif
 
 }

@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics.CodeAnalysis;
+
 namespace Extensions.PrometheusTypes
 {
     // Token: 0x0200005E RID: 94
@@ -23,7 +25,11 @@ namespace Extensions.PrometheusTypes
             return result;
         }
 
-        public static bool Extends(this Type? type, Type? genericDefinition)
+        public static bool Extends(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            this Type? type,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            Type? genericDefinition)
         {
             if (type == null || genericDefinition == null) return false;
 
@@ -65,7 +71,9 @@ namespace Extensions.PrometheusTypes
 
 
         // Token: 0x060002F9 RID: 761 RVA: 0x000192F8 File Offset: 0x000174F8
-        public static Type? GenericImplementsType(this Type type, Type ofType)
+        public static Type? GenericImplementsType(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            this Type type, Type ofType)
         {
             foreach (Type type2 in type.GetInterfaces())
             {

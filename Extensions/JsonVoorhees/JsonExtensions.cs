@@ -47,8 +47,10 @@ namespace Extensions.JsonVoorhees
                     include: p.GetCustomAttribute<JsonPropertyNameAttribute>()
                 ))
                 .Where(p => p.include != null);
+            
             var method = typeof(JsonSerializer)
                 .GetMethod(nameof(JsonSerializer.Deserialize), 1, [typeof(string), typeof(JsonSerializerOptions)]);
+
             foreach (var (prop, include) in props)
             {
                 var storageName = component.GetType().Name + "." + include!.Name;

@@ -9,7 +9,7 @@ namespace Extensions.PrometheusTypes
         private static readonly ConcurrentDictionary<string, object> registry = new();
 
         public static async Task<T?> Debounce<T>(
-            Func<CancellationToken, Task<T>> action,
+            this Func<CancellationToken, Task<T>> action,
             int delay = 200,
             [CallerFilePath] string file = "", [CallerMemberName] string key = "")
         {
@@ -73,7 +73,7 @@ namespace Extensions.PrometheusTypes
             => Debounce<bool>(action: async ct => { await action(); return true; }, delay, file, key);
 
 
-        public static Task<TR?> Debounce<TR>(
+        public static Task<TR> Debounce<TR>(
             this Func<Task<TR>> action,
             int delay = 200,
             [CallerFilePath] string file = "",

@@ -29,7 +29,6 @@
         //Task<T> Save(IQueryManager? query = null);
     }
 
-
     public partial class Entity<T> : IEntity<T> where T : Entity<T>, IEntity<T>, IEntity, IDisposable
     {
         [JsonIgnore]

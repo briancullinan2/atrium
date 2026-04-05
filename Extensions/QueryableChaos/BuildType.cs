@@ -1,5 +1,6 @@
 ﻿
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Diagnostics.CodeAnalysis;
 using System.Xml.Linq;
 
 namespace Extensions.QueryableChaos
@@ -8,7 +9,9 @@ namespace Extensions.QueryableChaos
     {
 
 
-        private static object? ResolveMetadata(Type targetType, string? value, XElement el)
+        private static object? ResolveMetadata(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            Type targetType, string? value, XElement el)
         {
             if (targetType == typeof(Type) && value != null)
                 return Type.GetType(value);
