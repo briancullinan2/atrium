@@ -144,7 +144,7 @@
     // This is your Iterator/List
     public static IEnumerable<INavMenuItem> MenuStructure = new List<INavMenuItem>
         {
-            new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "bi-house-door-fill" }
+            new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "" }
         }.Concat(MenuService.GetMenuItems("Main"));
         //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
     /*
@@ -173,7 +173,7 @@
         // going to add management stuff here
         new NavMenuItem<Pages.Content.Landing>() { Title = "Content", Icon = "bi-database-gear", Children = [
             new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
-            new NavMenuItem<Pages.Content.Upload>() { Title = "Pack Import", Icon = "bi-cloud-arrow-up" },
+            new NavMenuItem<Pages.Content.Upload>() { Title = "Pack Import", Icon = "" },
             new NavMenuItem<Pages.Content.Analysis>() { Title = "Content Analysis", Icon = "bi-search-heart" },
             new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
             new NavMenuItem<Pages.Content.Billing>() { Title = "Billing", Icon = "bi-receipt" },

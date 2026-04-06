@@ -4,6 +4,18 @@ using System.Text;
 
 namespace Extensions.SlenderServices
 {
+    public interface IMenuService
+    {
+        //Task SetMenu(RenderFragment? menu);
+        //event Action<RenderFragment?>? OnMenuChanged;
+
+        //Task SetHeader(bool? show);
+        //event Action<bool?>? OnHeaderChanged;
+
+        List<Type> EnabledMenus { get; }
+        List<Type> EnabledContexts { get; }
+    }
+
     public interface IHasMenu : IComponent
     {
         static abstract Delegate ShowMenu { get; }
@@ -15,14 +27,14 @@ namespace Extensions.SlenderServices
     public interface IHasLayout : IComponent
     {
         static abstract Delegate ShowLayout { get; }
-        RenderFragment MainLayoutInsert();
+        static abstract Delegate LayoutInsert { get; }
     }
 
 
     public interface IHasContext : IComponent
     {
         static abstract Delegate ShowContext { get; }
-        RenderFragment ContextInsert();
+        static abstract Delegate ContextInsert { get; }
     }
 
 

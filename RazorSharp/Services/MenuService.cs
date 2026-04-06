@@ -5,18 +5,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RazorSharp.Services
 {
-    public interface IMenuService
-    {
-        Task SetMenu(RenderFragment? menu);
-        event Action<RenderFragment?>? OnMenuChanged;
+   
 
-        Task SetHeader(bool? show);
-        event Action<bool?>? OnHeaderChanged;
-
-        List<Type> EnabledMenus { get; }
-    }
-
-    public class MenuService : IMenuService
+    public class MenuService(IServiceProvider Service) : IMenuService
     {
 
         // TODO: make this a static interface on IHasMenu to make it ask for types up front
@@ -24,12 +15,8 @@ namespace RazorSharp.Services
             .Concat((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToMenus())
             .Distinct()];
 
-        public static List<MethodInfo> AllRoutes { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-            .GetAssemblies().Routes()
-            .Distinct()];
 
-
-        public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = AllRoutes
+        public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = TypeExtensions.AllRoutes
             .Select(r => r.DeclaringType)
             .Distinct()
             .Where(r => r?.GetCustomAttribute<DisplayAttribute>() is DisplayAttribute attr
@@ -55,17 +42,14 @@ namespace RazorSharp.Services
             })
             .OfType<INavMenuItem>()];
 
-        public List<Type> EnabledMenus { get; private set; } = [];
-
-        public MenuService(IServiceProvider Service)
-        {
-            EnabledMenus = GetEnabledMenus(Service);
-        }
-
+        public List<Type> EnabledMenus { get; private set; } = GetEnabledMenus(Service);
 
         public static List<Type> GetEnabledMenus(IServiceProvider service) => [.. Menus.Where(m =>
         {
             var myDelegate = m.GetProperties(nameof(IHasMenu.ShowMenu)).First().GetValue(null) as Delegate;
+            if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType) 
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+                throw new InvalidOperationException("Menu delegate must return a RenderFragment" + myDelegate?.Method);
             return myDelegate.InvokeService(service);
         })];
 
@@ -83,5 +67,26 @@ namespace RazorSharp.Services
         {
             OnHeaderChanged?.Invoke(show);
         }
+
+
+        // TODO: make this a static interface on IHasContext to make it ask for types up front
+        public static List<Type> Contexts { get; } = [.. new List<Type> { typeof(Layout.NavMenu) } // make our menu first
+        .Concat((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToContexts())
+        .Distinct()];
+
+        public List<Type> EnabledContexts { get; private set; } = GetEnabledContexts(Service);
+
+
+
+        public static List<Type> GetEnabledContexts(IServiceProvider service) => [.. Contexts.Where(m =>
+        {
+            var myDelegate = m.GetProperties(nameof(IHasContext.ShowContext)).First().GetValue(null) as Delegate;
+            if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+                throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
+            return myDelegate.InvokeService(service);
+        })];
+
+
     }
 }

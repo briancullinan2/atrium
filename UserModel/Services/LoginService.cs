@@ -10,6 +10,8 @@ namespace UserModel.Services
         public static bool FirstTime { get; set; } = true;
         public bool Login { get; set; } = false;
         public object? User { get; set; } = null;
+        public string? UserId { get => (User as User)?.Guid; }
+
         public IRenderState Rendered { get; }
         public IAuthService Auth { get; private set; }
         public IQueryManager Query { get; private set; }

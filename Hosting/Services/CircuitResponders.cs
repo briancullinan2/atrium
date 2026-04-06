@@ -63,6 +63,10 @@ namespace Hosting.Services
             }
             // TODO: add fun serialization
             result = await Http.GetFromJsonAsync<TResult>(Path);
+
+
+            // TODO: put special file upload handlers, and expression serializer in here automatically
+
         }
 
 

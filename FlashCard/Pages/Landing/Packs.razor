@@ -10,7 +10,7 @@
 @inject IMenuService MenuService
 @inject NavigationManager Nav
 @inject IServiceProvider Services
-
+@inject ILoginService LoginService
 
 <div class="flash-card animate-in">
 
@@ -24,7 +24,7 @@
         <label>Last Studied</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
+    <MetadataControl TModel="FlashData.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
     <h2>Packs Needing Study</h2>
 
@@ -37,9 +37,9 @@
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
-    public List<Pack> Recent { get; set; } = new();
-    public List<Pack> Study { get; set; } = new();
-    public List<Pack> Store { get; set; } = new();
+    public List<FlashData.Entities.Pack> Recent { get; set; } = new();
+    public List<FlashData.Entities.Pack> Study { get; set; } = new();
+    public List<FlashData.Entities.Pack> Store { get; set; } = new();
 
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     [Parameter] public string? Filter { get; set; } = null;
@@ -84,19 +84,19 @@
         if (IsStaticRender) return;
 
 
-        Pack? currentPack = null;
+        FlashData.Entities.Pack? currentPack = null;
         if (Id < 0 && Id >= -3)
         {
             Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
             currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
-            if (currentPack?.Save() is Task<Pack> task)
-                currentPack = await task;
+            if (currentPack?.Save() is Task<IEntity> task)
+                currentPack = await task as FlashData.Entities.Pack;
             Id = currentPack?.Id;
         }
 
         if (LoginService.User != null && !LoginService.User.UserPacks.Any(up => up.Pack?.Id == Id))
         {
-            var up = new UserPack() { User = LoginService.User, Pack = currentPack };
+            var up = new UserPack() { UserId = LoginService.UserId, Pack = currentPack };
             LoginService.User.UserPacks.Add(up);
             up = await up.Save();
         }
@@ -120,10 +120,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<FlashData.Entities.Pack>? GetCoursePack(Type? lesson)
     {
         var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
+        IEnumerable<FlashData.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<FlashData.Entities.Pack>;
         return packs;
     }
 

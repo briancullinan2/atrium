@@ -1,6 +1,7 @@
 ﻿global using Extensions.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
+global using Extensions.SlenderServices;
 global using FlashData.Entities;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Authorization;
@@ -12,6 +13,7 @@ global using RazorSharp.Extensions;
 global using RazorSharp.Layout;
 global using RazorSharp.Services;
 global using System;
+global using System.Collections.Concurrent;
 global using System.Collections.Generic;
 global using System.IO;
 global using System.Linq;

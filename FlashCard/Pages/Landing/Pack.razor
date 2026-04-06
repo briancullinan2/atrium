@@ -4,20 +4,14 @@
 @page "/card/{Id:int}"
 @page "/demo/{Id:int}"
 @inject NavigationManager Nav
+@inject IFormFactor Form
 @inject ILoginService LoginService
 @inject ITitleService TitleService
 @inject IMenuService MenuService
 @inject IStudyService StudyService
 @inject IQueryManager Query
-@using Utilities
-@using Utilities.Extensions
-@using FlashCard.Services
-@using FlashCard.Controls
-@using System.ComponentModel
-@using System.Reflection
-@using FlashCard.Utilities.Extensions
-@using DataLayer
-@using System.Text.Json.Serialization
+@implements IHasContext
+
 
 @if (Mode == null)
 {
@@ -37,7 +31,8 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, OnQuizAnswered))" TModel="Card" Model="@CardLayout" Data="[card]"></MetadataControl>
+        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, OnQuizAnswered))"
+            TModel="Card" Model="@CardLayout" Data="[card]"></MetadataControl>
         <div class="highlighted-link">
             @if (QuizStep > 0)
             {
@@ -225,6 +220,10 @@
         MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-pinpoint"></span>Study Mode</a>);
     }
 
+
+    public static Delegate ShowContext { get => (Type routeControl) => ; }
+
+
     protected string? GetDisplayClass(int? step)
     {
         if (QuizStep == step) return "animate-in";
@@ -280,7 +279,7 @@
             //Console.WriteLine(answers);
         }
 
-        _ = TitleService.UpdateTitle(CurrentQuiz?.ElementAtOrDefault(QuizStep)?.Pack?.Title);
+        _ = Form.UpdateTitle(CurrentQuiz?.ElementAtOrDefault(QuizStep)?.Pack?.Title);
 
     }
 

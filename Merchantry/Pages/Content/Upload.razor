@@ -1,12 +1,11 @@
 @page "/upload"
+@attribute [Display(Name = "Import Packs", GroupName = "Content", Prompt = "bi-cloud-arrow-up")]
 @implements IDisposable
 @inject IFileManager File
 @inject IMenuService MenuService
 @inject IServiceProvider Services
 @inject IAnkiService AnkiService
 @inject IQueryManager QueryManager
-
-<SyncedTitle Title="Import Packs"></SyncedTitle>
 
 <div class="flash-card animate-in @(isDragOver ? "dropping" : "")"
      @ondragover:preventdefault="true"

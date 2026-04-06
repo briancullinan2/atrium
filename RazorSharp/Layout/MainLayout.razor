@@ -201,8 +201,8 @@
         }
         PageHasChanged = true;
 
-        var (targetType, targetParams) = this.IdentifyNavigation(targetUri);
-        var (currentType, currentParams) = this.IdentifyNavigation(currentUri);
+        var (targetType, targetParams) = TypeExtensions.IdentifyNavigation(targetUri);
+        var (currentType, currentParams) = TypeExtensions.IdentifyNavigation(currentUri);
 
         if (targetType == currentType)
         {

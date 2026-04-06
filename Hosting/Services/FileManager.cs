@@ -1,4 +1,5 @@
 ﻿
+using File = FlashData.Entities.File;
 
 namespace Hosting.Services
 {
@@ -9,7 +10,7 @@ namespace Hosting.Services
         public event Action<object?>? OnFileUploaded;
         public event Action<bool>? OnFileDragging;
 
-        public static string UploadDirectory = Path.Combine(AppContext.BaseDirectory, "Uploads");
+        public static string UploadDirectory { get; } = Path.Combine(AppContext.BaseDirectory, "Uploads");
 
         static FileManager()
         {
@@ -134,7 +135,7 @@ namespace Hosting.Services
             });
 
             content.Add(streamContent, "file", Path.GetFileName(localPath));
-
+            var route = 
             var response = await Http.PostAsync("/api/upload", content);
             var result = await response.Content.ReadFromJsonAsync<File>();
             OnFileUploaded?.Invoke(result);
@@ -152,7 +153,7 @@ namespace Hosting.Services
     }
 
 
-    public class ProgressableStreamContent(Stream stream, int bufferSize, Action<long> onProgress) : HttpContent
+    public partial class ProgressableStreamContent(Stream stream, int bufferSize, Action<long> onProgress) : HttpContent
     {
         private readonly Stream _fileStream = stream;
         private readonly int _bufferSize = bufferSize;

@@ -1,10 +1,9 @@
 ﻿@page "/home"
+@attribute [Display(Name = "Home", GroupName = "Main", Prompt = "bi-house-door-fill")]
 @attribute [AllowAnonymous]
 @inject IFormFactor FormFactor
 @inject IMenuService MenuService
 @inject ILoginService LoginService
-
-<SyncedTitle Title="Home"></SyncedTitle>
 
 <a class="big-button" href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = PackMode.Shuffle}))">
     <span>

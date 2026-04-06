@@ -122,6 +122,22 @@ namespace Extensions.PrometheusTypes
         }
 
 
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _contextCache = [];
+        public static List<Type> ToContexts(this Assembly ass)
+        {
+            if (_contextCache.TryGetValue(ass, out var services)) return services;
+            List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasContext).Extends)];
+            _contextCache.TryAdd(ass, menus);
+            return menus;
+        }
+
+
+        public static List<Type> ToContexts(this IEnumerable<Assembly?>? ass)
+        {
+            if (ass == null) return [];
+            return [.. ass.SelectMany(a => a?.ToContexts() ?? []).Where(t => t != null)];
+        }
+
 
 
         static readonly ConcurrentDictionary<Assembly, List<Type>> _menuCache = [];

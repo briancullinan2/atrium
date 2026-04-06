@@ -1,0 +1,20 @@
+@inject IServiceProvider Service
+@inject IMenuService MenuService
+
+
+@foreach (var item in MenuService.EnabledContexts)
+{
+    var myDelegate = item.GetProperties(nameof(IHasContext.ContextInsert)).First().GetValue(null) as Delegate;
+    if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+    ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+        throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
+    var fragment = myDelegate.InvokeService(Service) as RenderFragment;
+    @fragment
+}
+
+@code {
+    // TODO: ask controls if their context menu is visible
+
+    
+}
+

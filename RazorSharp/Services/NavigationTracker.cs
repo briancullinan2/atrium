@@ -1,4 +1,6 @@
-﻿namespace RazorSharp.Services
+﻿using Microsoft.AspNetCore.Components.Routing;
+
+namespace RazorSharp.Services
 {
     public class NavigationTracker(IQueryManager query, AuthenticationStateProvider auth) : IDisposable
     {
