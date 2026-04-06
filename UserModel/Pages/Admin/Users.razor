@@ -30,10 +30,10 @@
 
     <h2>User Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus"></i>Add User</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i>User Activity</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i>Manage Roles</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i>Manage Permissions</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus"></i>Add User</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i>User Activity</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i>Manage Roles</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i>Manage Permissions</a>
     </div>
 </div>
 
@@ -54,7 +54,7 @@
         </div>
 
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
+            <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
                 <span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentUser.CanonicalFingerprint != null)
             {

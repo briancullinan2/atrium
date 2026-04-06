@@ -29,9 +29,9 @@
 
     <h2>Roles Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Role</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i>Role Activity</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i>Manage Permissions</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Roles>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Role</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i>Role Activity</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i>Manage Permissions</a>
     </div>
 </div>
 

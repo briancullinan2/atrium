@@ -41,11 +41,11 @@ namespace FlashCard.Layout
                 // If this item is a top-level course, just return the Level link
                 if (Lesson == courseType)
                 {
-                    return NavigationExtensions.GetUri<Pages.Course.Course>(c => new() { Level = Level });
+                    return TypeExtensions.GetUri<Pages.Course.Course>(c => new() { Level = Level });
                 }
 
                 // Otherwise, return the Level + Lesson link
-                return NavigationExtensions.GetUri<Pages.Course.Course>(c => new()
+                return TypeExtensions.GetUri<Pages.Course.Course>(c => new()
                 {
                     Level = Level,
                     Lesson = Lesson.Name.ToSafe()

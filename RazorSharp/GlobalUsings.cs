@@ -27,5 +27,6 @@ global using UserData.Entities;
 global using File = FlashData.Entities.File;
 global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
+global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 
 

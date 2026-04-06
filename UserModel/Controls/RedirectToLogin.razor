@@ -17,7 +17,7 @@
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         string? existing;
         PageManager.InFlight.TryGetValue(PageManager.ContextKey, out existing);
-        var newPage = PageManager.InFlight[PageManager.ContextKey] = NavigationExtensions.GetUri<Pages.Landing.Login>(l => new()
+        var newPage = PageManager.InFlight[PageManager.ContextKey] = TypeExtensions.GetUri<Pages.Landing.Login>(l => new()
         {
             ReturnUrl = uri.PathAndQuery
         });

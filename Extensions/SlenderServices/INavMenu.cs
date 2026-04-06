@@ -4,24 +4,24 @@ using System.Text;
 
 namespace Extensions.SlenderServices
 {
-    public interface IHasMenu
+    public interface IHasMenu : IComponent
     {
-        bool Show(NavigationManager nav);
+        static abstract Delegate ShowMenu { get; }
         Task SetMenuActivated(bool menu);
         static abstract string Icon { get; }
     }
 
 
-    public interface IHasLayout
+    public interface IHasLayout : IComponent
     {
-        bool Show(NavigationManager nav);
+        static abstract Delegate ShowLayout { get; }
         RenderFragment MainLayoutInsert();
     }
 
 
-    public interface IHasContext
+    public interface IHasContext : IComponent
     {
-        bool Show(NavigationManager nav);
+        static abstract Delegate ShowContext { get; }
         RenderFragment ContextInsert();
     }
 

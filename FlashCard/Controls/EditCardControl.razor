@@ -21,6 +21,8 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
+    public IEnumerable<EditControl> Cards { get => Data?.OfType<EditControl>() ?? []; }
+
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? PreviewLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;
@@ -43,7 +45,7 @@
     }
 }
 
-@foreach (var card in Data ?? [])
+@foreach (var card in Cards)
 {
     <div @onclick="() => ToggleCard(card)" class="flex-row Card-form-container auto-form-container @(card.Mode.ToString())">
         @if (card.Mode == ControlMode.Edit)

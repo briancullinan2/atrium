@@ -25,9 +25,9 @@
         </fieldset>
     </div>
     <div class="highlighted-link">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Users>(acc => new() { Mode = ControlMode.Add, ParentUser = LoginService.User }))"><span class="bi bi-link-45deg"></span>Create User</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(acc => new() { Mode = ControlMode.Add, ParentUser = LoginService.User }))"><span class="bi bi-link-45deg"></span>Create User</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
         <button class="cta" @onclick="() => UpdateUser()">Save</button>
     </div>
 
@@ -86,7 +86,7 @@
             || LoginService.User.Roles.Any(r => r.Name == nameof(DefaultRoles.Guest)))
         {
             if (IsStaticRender) return;
-            Nav.NavigateTo(NavigationExtensions.GetUri<Pages.Landing.Login>());
+            Nav.NavigateTo(TypeExtensions.GetUri<Pages.Landing.Login>());
         }
     }
     */

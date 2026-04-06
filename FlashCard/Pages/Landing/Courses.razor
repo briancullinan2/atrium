@@ -50,11 +50,11 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<UserModel.Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<UserModel.Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentCourse.CanonicalFingerprint != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new () { Mode = ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Courses>(c => new() { Mode = ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Courses>(c => new () { Mode = ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Courses>(c => new() { Mode = ControlMode.Owner, Id = CurrentCourse.Id }))">Course Packs</a>
             }
             <button class="cta" @onclick="() => UpdateCourse()">Save</button>
         </div>

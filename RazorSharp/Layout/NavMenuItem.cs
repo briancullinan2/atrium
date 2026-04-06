@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
+﻿
 namespace RazorSharp.Layout
 {
     public interface INavMenuItem
@@ -21,7 +20,7 @@ namespace RazorSharp.Layout
     {
         public NavMenuItem() { }
         public string Title { get; set; } = string.Empty;
-        virtual public string Href => NavigationExtensions.GetUri(Uri);
+        virtual public string Href => TypeExtensions.GetUri(Uri);
         public Expression<Func<TComponent, TComponent>>? Uri { get; set; } = c => new TComponent();
         public string Icon { get; set; } = "bi-circle";
         public string? RoleRequired { get; set; }

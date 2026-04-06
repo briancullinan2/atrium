@@ -7,23 +7,16 @@
     {
         @foreach (var entry in _parameterCache)
         {
+            var controlType = GetControl(entry.Metadata.PropertyType);
             <div class="form-field @entry.Metadata.Name.ToSafe()-form-field">
-                @*<label>@entry.Metadata.PropertyType</label>
-                <label>@GetControl(entry.Metadata.PropertyType).Name</label>*@
                 @{
-                    var controlType = GetControl(entry.Metadata.PropertyType);
-                    RenderFragment renderControl = builder =>
-                    {
-                        builder.OpenComponent(0, controlType);
-                        builder.AddAttribute(1, "Model", entry.Metadata);
-                        builder.AddAttribute(2, "ValueChanged", entry.Params["ValueChanged"]);
-                        builder.AddAttribute(3, "Data", Data);
-                        builder.CloseComponent();
-                    };
+                    __builder.OpenComponent(0, controlType);
+                    __builder.AddAttribute(1, "Model", entry.Metadata);
+                    __builder.AddAttribute(2, "ValueChanged", entry.Params["ValueChanged"]);
+                    __builder.AddAttribute(3, "Data", Data);
+                    __builder.AddComponentReferenceCapture(4, inst => _componentInstances[entry.Metadata.Name] = inst);
+                    __builder.CloseComponent();
                 }
-                @renderControl
-                @*<DynamicComponent Type="@ControlMapper.GetControl(entry.Metadata.PropertyType)"
-                                  Parameters="@entry.Params" />*@
             </div>
         }
     }
@@ -32,30 +25,25 @@
 @code {
     [Parameter] public IEnumerable<PropertyMetadata>? Model { get; set; }
     [Parameter] public IEnumerable<TModel>? Data { get; set; }
-    string? containerClass;
     [Parameter] public EventCallback<Tuple<PropertyMetadata, TModel?, object?>>? ValueChanged { get; set; }
+
+    string? containerClass;
+    private Dictionary<string, object> _componentInstances = new();
 
     public static List<Type> Metas = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToMetas();
     private List<(PropertyMetadata Metadata, Dictionary<string, object?> Params)>? _parameterCache;
 
     // TODO: combine this list with Metas above
-    public static readonly Dictionary<Type, Type> TypeToControl = new()
-        {
+    public static readonly Dictionary<Type, List<Type>> SupportedTypes = Metas
+        .ToDictionary(m => m, m => m.GetCustomAttributes<SupportsTypeAttribute>().Select(a => a.TargetType).ToList());
 
-            { typeof(object), typeof(TypeControl) },
-        };
 
     public static Type GetControl(Type modelPropertyType)
     {
-        foreach(var kvp in TypeToControl)
-        {
-            if(kvp.Key.IsAssignableFrom(modelPropertyType)
-                || kvp.Key.IsAssignableFrom(Nullable.GetUnderlyingType(modelPropertyType)))
-            {
-                return kvp.Value;
-            }
-        }
-        return typeof(TypeControl);
+        var matches = SupportedTypes.Where(t => t.Value.Any(v => v == modelPropertyType || v.Extends(modelPropertyType))).ToList();
+        var ordered = matches.OrderBy(t => t.Value.Any(v => v == modelPropertyType) ? -1 : 0);
+
+        return ordered.FirstOrDefault().Key ?? typeof(TypeControl);
     }
 
 

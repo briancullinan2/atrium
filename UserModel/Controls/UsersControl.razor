@@ -9,6 +9,8 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
+    public IEnumerable<User> Users { get => Data?.OfType<User>() ?? []; }
+
     public string GetBackgroundColor(User user)
     {
         if (Data == null) return "blue";
@@ -20,11 +22,11 @@
 
 
 
-@foreach (var user in Data ?? [])
+@foreach (var user in Users)
 {
     <div class="flex-row">
         <span>
-            @if (user.PhotoHosted != null || user.Photo?.Url != null) 
+            @if (user.PhotoHosted != null || user.LogoId != null) 
             {
                 <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
             }

@@ -10,6 +10,8 @@
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public IEnumerable<PropertyMetadata>? RoleLayout { get; set; }
 
+    public IEnumerable<ControlRole> Roles { get => Data?.OfType<ControlRole>() ?? []; }
+
     protected override void OnInitialized()
     {
         RoleLayout = Role.Metadata.Categories["Editable"]?.ToList();
@@ -32,7 +34,7 @@
 
 
 
-@foreach (var role in Data ?? [])
+@foreach (var role in Roles)
 {
     <div class="flex-row @(role.Mode == ControlMode.Edit ? "edit" : "view")">
         <span>
@@ -51,7 +53,7 @@
         <span>
             @if (role.Mode != ControlMode.Edit)
             {
-                @* href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>(r => new() { Id = Data!.ToList().IndexOf(role), Mode = ControlMode.Edit }))"*@
+                @* href="@(TypeExtensions.GetUri<Pages.Admin.Roles>(r => new() { Id = Data!.ToList().IndexOf(role), Mode = ControlMode.Edit }))"*@
                 <a @onclick="() => { role.Mode = ControlMode.Edit; InvokeAsync(StateHasChanged); }"><span class="bi bi-pencil"></span></a>
             } else
             {

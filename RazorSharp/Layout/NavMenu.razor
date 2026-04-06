@@ -1,95 +1,70 @@
-﻿@implements IAsyncDisposable
+﻿@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
+
 @implements IHasMenu
 @inject NavigationManager Nav
 @inject IPageManager PageManager
+@inject IServiceProvider Service
+@inject IMenuService Menu
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-logo" @onclick="() => ToggleStudy()">
         <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
         <a class="navbar-brand">Atrium</a>
     </div>
-    @if (ShouldShowChat == true)
+    @if (Menu.EnabledMenus.Count > 1)
     {
-        <a @onclick="() => ToggleChat()"><span class="bi @(ShowCourse == true ? "bi-list" : Chat ? "bi-journal-bookmark" : "bi-chat")"></span></a>
-    } else
-    {
-        <a @onclick="() => ToggleChat()"><span class="bi @(ShowCourse == true ? "" : "bi-journal-bookmark")"></span></a>
+        var nextMenu = Menu.EnabledMenus.ElementAt((CurrentMenu + 1) % Menu.EnabledMenus.Count);
+        var nextIcon = nextMenu.GetProperties(nameof(IHasMenu.Icon)).First().GetValue(null) as string;
+        <a @onclick="() => ToggleMenus()"><span class="bi @(nextIcon)"></span></a>
     }
 </div>
 
 <input type="checkbox" @bind="menuMode" title="Navigation menu" class="navbar-toggler" />
 
+@{
+    var currentMenu = Menu.EnabledMenus.ElementAt(CurrentMenu % Menu.EnabledMenus.Count);
+    if(currentMenu == typeof(Layout.NavMenu))
+    {
+        <div id="Navlist" class="nav-scrollable menu">
+            @foreach (var item in GetVisibleItems())
+            {
+                @RenderNavItem(item)
+            }
+        </div>
+    }
+    else
+    {
+        __builder.OpenComponent(0, currentMenu);
+        __builder.AddComponentReferenceCapture(4, inst => {
+            _componentInstances[currentMenu.Name] = inst;
+            var menu = inst as IHasMenu;
+            if (menu == null) return;
+            menu.SetMenuActivated(true);
+        });
+        __builder.CloseComponent();
+    }
+}
 
-@if (ShowCourse == true)
-{
-    
-}
-else if (!Chat)
-{
-    <div id="Navlist" class="nav-scrollable menu">
-        @foreach (var item in GetVisibleItems())
-        {
-            @RenderNavItem(item)
-        }
-    </div>
-}
-else
-{
-    <ChatMenu />
-}
+
 
 @code {
 
     public async Task SetMenuActivated(bool show) => await InvokeAsync(StateHasChanged);
-    public bool Show(NavigationManager _) => true;
+    public static Delegate ShowMenu { get => () => true; }
     public static string Icon { get => "bi-list"; }
+    public bool menuMode { get; set; }
+    public int CurrentMenu = 0;
+    private Dictionary<string, object> _componentInstances = new();
 
-    // TODO: make this a static interface on IHasMenu to make it ask for types up front
-    public static List<Type> Menus = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToMenus();
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        ChatService.OnChatWorking += SetChat;
-        ChatService.OnChatChanged += SetChatMode;
-        _ = ChatService.IsWorking();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        
-    }
-
-    private void SetChat(bool? chat)
-    {
-        if (chat != ShouldShowChat)
-        {
-            ShouldShowChat = chat;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    public void SetChatMode(bool chat)
-    {
-        if (Chat != chat)
-        {
-            Chat = chat;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        ChatService.OnChatWorking -= SetChat;
-        ChatService.OnChatChanged -= SetChatMode;
-    }
 
     private void HandleClick(INavMenuItem item)
     {
         var currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
         bool isOnTargetPage = string.Equals(currentUrl, item.Href.Trim('/'), StringComparison.InvariantCultureIgnoreCase);
 
-        if(item.Children.Count() == 0 || _studyMode)
+        if(item.Children.Count() == 0 || PageManager.ClassNames.Keys.Contains("study-mode"))
         {
             Nav.NavigateTo(item.Href);
             menuMode = false;
@@ -115,9 +90,6 @@ else
         }
     }
 
-    public void SetStudyMode(bool study)
-    {
-    }
 
     protected void ToggleStudy()
     {
@@ -125,31 +97,13 @@ else
         StudyService?.SetStudyMode(_studyMode);
     }
 
-    protected void ToggleChat()
+    protected void ToggleMenus()
     {
-        if (ShowCourse == true) {
-            ShowCourse = false;
-            InvokeAsync(StateHasChanged);
-            return;
-        }
+        var currentMenu = Menu.EnabledMenus.ElementAt(CurrentMenu % Menu.EnabledMenus.Count);
+        if (_componentInstances.TryGetValue(currentMenu.Name, out var current) && current is IHasMenu menu) menu.SetMenuActivated(false);
+        CurrentMenu = (CurrentMenu + 1) % Menu.EnabledMenus.Count;
+        InvokeAsync(StateHasChanged);
 
-        if(ShouldShowChat != true)
-        {
-            ShowCourse = true;
-            InvokeAsync(StateHasChanged);
-            return;
-        }
-
-        if(ChatService.Chat)
-        {
-            ShowCourse = true;
-            ChatService.SetChatMode(_chatMode = false);
-            // calls StateHasChanged automatically through SetChatMode
-        } 
-        else
-        {
-            ChatService.SetChatMode(_chatMode = true);
-        }
     }
 
     RenderFragment RenderNavItem(INavMenuItem item) => __builder =>
@@ -188,10 +142,13 @@ else
     };
 
     // This is your Iterator/List
-    public static IEnumerable<INavMenuItem> MenuStructure = 
-    [
-        new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "bi-house-door-fill" },
-        new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "bi-card-list" },
+    public static IEnumerable<INavMenuItem> MenuStructure = new List<INavMenuItem>
+        {
+            new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "bi-house-door-fill" }
+        }.Concat(MenuService.GetMenuItems("Main"));
+        //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
+    /*
+    new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "" },
         new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
         new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "bi-cart" },
         new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
@@ -237,6 +194,7 @@ else
         new NavMenuItem<Pages.Landing.Terms>() { Title = "Terms of Service", Icon = "bi-file-earmark-text" },
 
     ];
+    */
 
     private IEnumerable<INavMenuItem> GetVisibleItems()
     {

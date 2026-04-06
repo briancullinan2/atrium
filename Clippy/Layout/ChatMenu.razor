@@ -21,7 +21,7 @@
 
 @code
 {
-    public bool Show(NavigationManager _) => ChatService.Chat;
+    public static Delegate ShowMenu { get => (IChatService Chat) => Chat.Chat; }
     public bool AutoScroll = true;
     public static string Icon => "bi-chat";
 

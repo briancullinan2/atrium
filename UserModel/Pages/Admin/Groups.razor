@@ -31,10 +31,10 @@
 
     <h2>Group Controls</h2>
     <div class="link-list">
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Groups>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Group</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i>Group Activity</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge" aria-hidden="true"></i>Manage Roles</a>
-        <a href="@(NavigationExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i>Manage Permissions</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Groups>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus" aria-hidden="true"></i>Add Group</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity" aria-hidden="true"></i>Group Activity</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge" aria-hidden="true"></i>Manage Roles</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock" aria-hidden="true"></i>Manage Permissions</a>
     </div>
 </div>
 
@@ -56,7 +56,7 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => NavigationExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentGroup.CanonicalFingerprint != null)
             {
                 <a href="">Group Membership</a>

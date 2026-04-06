@@ -1,22 +1,16 @@
 @implements IDisposable
 
+@attribute [Display(Name = "Study Packs", GroupName = "Main", ShortName = "bi-card-list")]
 @page "/packs"
 @page "/packs/list"
 @page "/packs/owner"
 @page "/packs/{Id:int}/add"
 @page "/packs/{Filter}"
 
-@using Utilities.Extensions
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
 @inject IMenuService MenuService
-@inject ILoginService LoginService
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 
-<SyncedTitle Title="Study Packs"></SyncedTitle>
 
 <div class="flash-card animate-in">
 
@@ -128,7 +122,7 @@
 
     protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs;
     }

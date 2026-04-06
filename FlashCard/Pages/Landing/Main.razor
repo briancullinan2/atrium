@@ -20,7 +20,7 @@
     return;
 }
 
-<a class="big-button" href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = PackMode.Shuffle}))">
+<a class="big-button" href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = PackMode.Shuffle}))">
     <span>
         <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
         <span>Shuffle</span>
@@ -28,14 +28,14 @@
 </a>
 
 <div class="study-now">
-    <h2><a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = PackMode.Shuffle }))">Start studying now</a></h2>
+    <h2><a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = PackMode.Shuffle }))">Start studying now</a></h2>
     @if (LoginService.User == null)
     {
-        <h3><a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">Login to track progress</a></h3>
+        <h3><a href="@(TypeExtensions.GetUri<Pages.Landing.Login>())">Login to track progress</a></h3>
     }
     @if (LoginService.User == null || LoginService.User.UserPacks.Count(up => up.GetRetention().Any(r => r.Value.IsDue)) == 0)
     {
-        <h4><a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>())">Subscribe to packs to memorize content quickly.</a></h4>
+        <h4><a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>())">Subscribe to packs to memorize content quickly.</a></h4>
     }
     else
     {
@@ -46,7 +46,7 @@
         foreach (var up in LoginService.User.UserPacks.Where(up => up.GetRetention().Any(r => r.Value.IsDue)))
         {
             <div class="study-row">
-                <span><a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.PackId, Mode = PackMode.Card }))">@up.Pack?.Title</a></span>
+                <span><a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.PackId, Mode = PackMode.Card }))">@up.Pack?.Title</a></span>
                 <span>@up.GetRetention().Count(r => r.Value.IsDue)</span>
             </div>
         }

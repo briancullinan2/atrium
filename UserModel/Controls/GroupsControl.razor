@@ -10,6 +10,7 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
+    public IEnumerable<Group> Groups { get => Data?.OfType<Group>() ?? []; }
 
     public string GetBackgroundColor(Group group)
     {
@@ -21,11 +22,11 @@
 }
 
 
-@foreach (var group in Data ?? [])
+@foreach (var group in Groups)
 {
     <div class="flex-row">
         <span>
-            @if (group.LogoHosted != null || group.Logo?.Url != null)
+            @if (group.LogoHosted != null || group.LogoId != null)
             {
                 <img src="@(group.LogoHosted ?? group.Logo?.Url)" />
             }

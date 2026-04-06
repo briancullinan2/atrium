@@ -5,6 +5,26 @@ namespace Extensions.PrometheusTypes
     public static partial class TypeExtensions
     {
 
+        public static bool InvokeService(this Delegate? myDelegate, IServiceProvider service)
+        {
+
+            if (myDelegate == null) return true; // Default to show if no method found
+
+            // 2. Look at the parameters the method wants
+            var parameters = myDelegate.Method.GetParameters();
+            var parameterValues = new object?[parameters.Length];
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                // 3. Resolve each parameter from DI
+                parameterValues[i] = service.GetService(Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType);
+            }
+
+            // 4. Execute the method with the resolved services
+            return (bool)myDelegate.DynamicInvoke(null, parameterValues)!;
+        }
+
+
 #pragma warning disable BL0006 // Do not use RenderTree types
         public static Renderer? Renderer(this IComponent component)
         {
