@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-
-using System.Runtime.InteropServices.JavaScript;
 
 public partial class QuakeEngine
 {

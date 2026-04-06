@@ -5,7 +5,7 @@
 @implements IDisposable
 @inject IPageManager PageManager
 @inject IFormFactor Form
-@inject IConnectionStateProvider Connection
+@inject ICircuitProvider Connection
 
 <div class="flash-card dev-console @(Embedded == true ? "embedded" : "") animate-in @(_isExpanded ? "expanded" : "collapsed")">
     <div class="console-header" @onclick="Toggle">
@@ -52,6 +52,13 @@
     {
         // Logger.Errors.Clear();
     }
+
+
+    public static RenderFragment? MainLayoutInsert(NavigationManager Nav) => Nav.Uri != "/error" && Nav.Uri != "/console"
+        && TypeExtensions.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console)
+        ? @<RazorSharp.Pages.Shared.Console Embedded="true" /> : null;
+
+
 
     public void SetError(Exception? error)
     {

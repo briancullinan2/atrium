@@ -91,18 +91,8 @@
 
     </main>
 
-    @if (Nav.Uri != "/error" && Nav.Uri != "/console"
-        && this.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console))
-    {
-        <RazorSharp.Pages.Shared.Console Embedded="true" />
-    }
+    @*TODO: insert services through page manager*@
 
-    @if (ShowChat == true)
-    {
-        <div class="chat-box">
-            <input @onkeydown="HandleKeyDown" @bind:event="oninput" @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="() => SendMessage()">Send</button>
-        </div>
-    }
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -122,7 +112,6 @@
     public User? CurrentUser { get; set; }
     public bool? ShowHeader { get; set; }
     public bool? ShowChat { get; set; }
-    public string? ChatMessage { get; set; }
     [CascadingParameter] private ErrorBoundary? _errorBoundary { get; set; }
     private Exception? _lastException;
 
@@ -153,26 +142,7 @@
     private bool _isTransitioning;
 
     private IDisposable? _registration;
-    private async Task HandleKeyDown(KeyboardEventArgs e)
-    {
-        // If Enter is pressed without Shift
-        if (e.Key == "Enter" && !e.ShiftKey)
-        {
-            SendMessage();
-        }
-    }
-
-    protected void SendMessage()
-    {
-        if(string.IsNullOrWhiteSpace(ChatMessage))
-        {
-            ChatMessage = "";
-            return;
-        }
-        _ = ChatService.SendMessage(ChatMessage ?? ""); 
-        ChatMessage = "";
-        // No need to InvokeAsync(StateHasChanged) because the SendMessage event handler will invoke it
-    }
+    
 
     private bool PageHasChanged = true;
 

@@ -23,11 +23,35 @@
     public bool Chat = false;
     public bool _chatMode = false;
     public bool? ShowChat = null;
-
+    public string? ChatMessage { get; set; }
     public bool AutoScroll = true;
 
 
+    public static RenderFragment? MainLayoutInsert => ShowChat == true ? @<div class="chat-box">
+        <input @onkeydown="HandleKeyDown" @bind:event="oninput" @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="SendMessage">Send</button>
+    </div> :  null;
+    
 
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // If Enter is pressed without Shift
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            SendMessage(null);
+        }
+    }
+
+    protected void SendMessage(MouseEventArgs? args)
+    {
+        if (string.IsNullOrWhiteSpace(ChatMessage))
+        {
+            ChatMessage = "";
+            return;
+        }
+        _ = ChatService.SendMessage(ChatMessage ?? "");
+        ChatMessage = "";
+        // No need to InvokeAsync(StateHasChanged) because the SendMessage event handler will invoke it
+    }
 
     protected override void OnInitialized()
     {

@@ -15,10 +15,9 @@ namespace Hosting.Services
 {
     // TODO: designed to shut down both services at the same time
    
-    public abstract class BaseFormFactor : IFormFactor, IDisposable
+    public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     {
-        private Dictionary<string, string>? SetQueryParameters { get; set; }
-        public Dictionary<string, string>? QueryParameters { get => SetQueryParameters; }
+        public Dictionary<string, string>? QueryParameters { get; private set; }
         public NavigationManager Navigation { get; }
 
         public abstract bool IsBrowser { get; }
@@ -34,17 +33,20 @@ namespace Hosting.Services
         {
             Navigation = nav;
             Navigation.LocationChanged += Nav_LocationChanged;
-            SetQueryParameters = Navigation.Uri.Query();
+            QueryParameters = Navigation.Uri.Query();
         }
 
         private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
         {
-            SetQueryParameters = Navigation.Uri.Query();
+            QueryParameters = Navigation.Uri.Query();
         }
 
-        public static readonly string? AppName = Assembly.GetEntryAssembly()?
+        public static string? AppName
+        {
+            get => Assembly.GetEntryAssembly()?
                          .GetCustomAttribute<AssemblyProductAttribute>()?
                          .Product;
+        }
 
         internal static string? _title;
 

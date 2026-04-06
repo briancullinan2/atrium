@@ -16,7 +16,12 @@ namespace Extensions.SlenderServices
         string ConnectionId { get; }
         Task<string?> UpdateTitle(string? title);
         event Action<string?>? OnTitleChanged;
+        Dictionary<string, string>? QueryParameters { get; }
     }
 
 
+    public interface ITitleService
+    {
+        static abstract string? AppName { get; }
+    }
 }

@@ -1,24 +1,8 @@
-﻿#if WINDOWS || ANDROID
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.Authentication.OAuth.Claims;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-#endif
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using System.Text.Json;
-using UserModel.Services;
-
+﻿
 namespace UserModel.Services
 {
-    internal class AuthService(
-        NavigationManager Navigation,
-        IQueryManager Query,
-        IPageManager Page,
-        IServerState? _httpContextAccessor = null
-    ) : AuthService(Navigation, Query, Page, _httpContextAccessor) {
+    public static class ServerAuthService
+    {
 
 
         public static void BuildAuthentication(IServiceCollection Services)
@@ -34,8 +18,7 @@ namespace UserModel.Services
                     options.AccessDeniedPath = "/access-denied";
 
                     // Use a distinct name for the Auth Cookie vs your internal Session ID
-                    var product = TitleService.AppName ?? "Atrium";
-                    options.Cookie.Name = $"{product}_Auth";
+                    options.Cookie.Name = AuthService.CookieName;
 
                     options.Events = new CookieAuthenticationEvents
                     {
@@ -167,7 +150,7 @@ namespace UserModel.Services
 
         public static AuthenticationBuilder AddExternalLogins(AuthenticationBuilder builder)
         {
-            foreach (var p in Providers)
+            foreach (var p in AuthenticationExtensions.Providers)
             {
                 if (p.ClientId == null || p.Secret == null)
                 {
@@ -176,10 +159,10 @@ namespace UserModel.Services
                 switch (p.Type)
                 {
                     case AuthType.BuiltIn:
-                        AuthService.RegisterBuiltIn(builder, p);
+                        RegisterBuiltIn(builder, p);
                         break;
                     case AuthType.OpenIdConnect:
-                        AuthService.RegisterOpenId(builder, p);
+                        RegisterOpenId(builder, p);
                         break;
                     case AuthType.GenericOAuth:
                         RegisterOauth(builder, p);
@@ -192,29 +175,5 @@ namespace UserModel.Services
 
     }
 
-
-
-    public static class AtriumAuthenticationExtensions
-    {
-
-        public static void ConfigureClaimActions(
-            this ClaimActionCollection target,
-            AuthID id
-        ) {
-
-            ICollection<Tuple<string, Func<JsonElement, string?>>> source = [];
-            source.ConfigureClaimActions(id);
-            foreach (var rule in source)
-            {
-                var claimType = rule.Item1;
-                var mappingFunc = rule.Item2;
-
-                // We use MapCustomJson as the "Universal Receiver" because 
-                // your Func<JsonElement, string?> matches its signature perfectly.
-                target.MapCustomJson(claimType, user => mappingFunc(user));
-            }
-        }
-
-    }
 
 }
