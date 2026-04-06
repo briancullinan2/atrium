@@ -2,7 +2,7 @@
 namespace UserData.Entities
 {
     [Table("group")]
-    public class Group : Entity<Group>
+    public class Group : Entity<Group>, IHasLogo
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -26,11 +26,9 @@ namespace UserData.Entities
         public string RolesJson { get; set; } = "[]";
 
         // Logo Relationship
-        public int? FileId { get; set; }
-
-        [ForeignKey(nameof(FileId))]
         [Display(GroupName = "Group Info")]
-        public virtual File? Logo { get; set; }
+        public int? LogoId { get; set; }
+
         [Display(GroupName = "Group Info")]
         public virtual string? LogoHosted { get; set; }
 
@@ -48,8 +46,8 @@ namespace UserData.Entities
         //public virtual ICollection<Invite> Invites { get; set; } = new List<Invite>();
 
         // One-To-Many: Packs owned by this group
-        [InverseProperty(nameof(Pack.Group))]
-        public virtual ICollection<Pack> Packs { get; set; } = [];
+        //[InverseProperty(nameof(Pack.Group))]
+        //public virtual ICollection<Pack> Packs { get; set; } = [];
 
         // Many-To-Many: Packs associated with groups
         //public virtual ICollection<Pack> GroupPacks { get; set; } = new List<Pack>();
@@ -59,8 +57,9 @@ namespace UserData.Entities
         public virtual ICollection<User> Users { get; set; } = [];
         [InverseProperty(nameof(Role.Groups))]
         public virtual ICollection<Role> Roles { get; set; } = [];
-        [InverseProperty(nameof(Course.Groups))]
-        public virtual ICollection<Course> Courses { get; set; } = [];
+
+        //[InverseProperty(nameof(Course.Groups))]
+        //public virtual ICollection<Course> Courses { get; set; } = [];
 
         public Group()
         {

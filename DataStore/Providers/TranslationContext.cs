@@ -4,7 +4,7 @@ using System.Net.Http;
 namespace DataStore.Providers
 {
 
-    public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext
+    public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext, IHasEntityTypes
     {
         static TranslationContext()
         {
@@ -14,8 +14,11 @@ namespace DataStore.Providers
         private static readonly List<Type> _cachedTypes;
 
         private static List<Type>? CachedEntities { get; set; }
+
         public static List<Type> EntityTypes => CachedEntities
             ??= [.. _cachedTypes.Where(t => t.IsClass && !t.IsAbstract && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))];
+
+        //public List<Type> EntityTypes => TranslationContext<TEntity>.EntityTypes;
 
         public abstract IQueryManager Query { get; set; }
 

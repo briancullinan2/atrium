@@ -5,16 +5,13 @@ namespace FlashData.Entities
     [Table("goal")]
     // Composite Unique Constraint: One type of goal per user (e.g., only one 'GPA' goal)
     [Index(nameof(UserId), nameof(Type), IsUnique = true, Name = "type_idx")]
-    public class Goal : Entity<Goal>
+    public class Goal : Entity<Goal>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         public string? UserId { get; set; }
-
-        [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; } = null!;
 
         [Required]
         [MaxLength(10)]

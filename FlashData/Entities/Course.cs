@@ -2,7 +2,7 @@
 namespace FlashData.Entities
 {
     [Table("course")]
-    public class Course : Entity<Course>
+    public class Course : Entity<Course>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -49,11 +49,8 @@ namespace FlashData.Entities
 
         // Optional: Track who created the course (similar to your Pack entity)
         [Category("Ownership")]
-        public string? CreatorId { get; set; }
+        public string? UserId { get; set; }
 
-        [ForeignKey(nameof(CreatorId))]
-        [NotMapped]
-        public virtual User? Creator { get; set; }
 
         [Category("Structure")]
         [Display(Name = "Parent Course", Description = "The bigger course this course belongs to")]
@@ -65,10 +62,11 @@ namespace FlashData.Entities
         public virtual ICollection<Course> Courses { get; set; } = new HashSet<Course>();
         [InverseProperty(nameof(Lesson.Course))]
         public virtual ICollection<Lesson> Lessons { get; set; } = new HashSet<Lesson>();
-        [InverseProperty(nameof(User.Courses))]
-        public virtual ICollection<User> Users { get; set; } = new HashSet<User>();
-        [InverseProperty(nameof(Group.Courses))]
-        public virtual ICollection<Group> Groups { get; set; } = new HashSet<Group>();
+
+        //[InverseProperty(nameof(User.Courses))]
+        //public virtual ICollection<User> Users { get; set; } = new HashSet<User>();
+        //[InverseProperty(nameof(Group.Courses))]
+        //public virtual ICollection<Group> Groups { get; set; } = new HashSet<Group>();
 
 
     }

@@ -1,4 +1,4 @@
-﻿#if WINDOWS
+﻿#if !BROWSER
 using log4net.Appender;
 using log4net.Core;
 using log4net.Util;
@@ -8,7 +8,7 @@ using log4net.Util;
 namespace Atrium.Logging
 {
 
-#if WINDOWS
+#if !BROWSER
     public sealed class AsyncAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
     {
         // Token: 0x1700008F RID: 143

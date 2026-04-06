@@ -93,9 +93,10 @@ namespace Extensions.ForeignEntity
 
         public static List<(string Name, Type EntityType)> Schemas([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] this Type contextType)
         {
-            if (contextType.Extends(typeof(ITranslationContext)))
-                return [.. (contextType.GetProperties(nameof(ITranslationContext.EntityTypes))
-                    .FirstOrDefault()?.GetValue(null) as List<Type>)
+            if (contextType.Extends(typeof(IHasEntityTypes)))
+                return [.. (contextType.GetProperties(nameof(IHasEntityTypes.EntityTypes))
+                    .FirstOrDefault()
+                    ?.GetValue(null) as List<Type>)
                     ?.Select(p => (
                         Name: p.Table() ?? p.Name,
                         EntityType: p

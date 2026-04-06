@@ -14,6 +14,8 @@ namespace Extensions.SlenderServices
         bool IsWebContext { get; }
         bool IsMauiContext { get; }
         string ConnectionId { get; }
+        Task<string?> UpdateTitle(string? title);
+        event Action<string?>? OnTitleChanged;
     }
 
 

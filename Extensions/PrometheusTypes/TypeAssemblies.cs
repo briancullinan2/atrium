@@ -94,7 +94,6 @@ namespace Extensions.PrometheusTypes
 
 
         public static Type? ToType(
-            []
             this string filePath, Assembly? targetAssembly = null)
         {
             // 0. Register new assemblies if provided on the fly

@@ -2,7 +2,7 @@
 namespace FlashData.Entities
 {
     [Table("response")]
-    public class Response : Entity<Response>
+    public class Response : Entity<Response>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -26,9 +26,6 @@ namespace FlashData.Entities
         // Foreign Key for User
         [Required]
         public string? UserId { get; set; }
-
-        [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; }
 
         // One-to-One relationship with File
         //        //public int? FileId { get; set; }

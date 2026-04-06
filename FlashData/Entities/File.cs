@@ -3,7 +3,7 @@ namespace FlashData.Entities
 {
     [Table("file")]
     [Index(nameof(Source), Name = "IX_File_Source")]
-    public class File : Entity<File>
+    public class File : Entity<File>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -25,22 +25,12 @@ namespace FlashData.Entities
 
         // Relationship: Many Files to One User
         public string? UserId { get; set; }
-        [JsonIgnore]
-        [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; }
 
         public virtual string? Source { get; set; }
 
         // Relationship: One File to One Response (Mapped by 'file' in Response entity)
         // don't know wtf this was for?
         //public virtual Entities.Response? Response { get; set; }
-
-        // Helper property to mimic PHP basename logic
-        [NotMapped]
-        public string ComputedFilename =>
-            string.IsNullOrEmpty(Filename) && !string.IsNullOrEmpty(Url)
-                ? Path.GetFileName(Url)
-                : Filename;
 
         public File()
         {

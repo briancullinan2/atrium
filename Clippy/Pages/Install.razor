@@ -180,9 +180,16 @@
     private void AddParameter() => Parameters.Add(new DynamicParam());
 
     private async Task ExecutePost() {
-        var result = await ChatService.PingService(ServiceUrl, ModelName, ApiKey, ResponsePath, Parameters);
-        IsWorking = result.Item1;
-        ResponseJson = result.Item2 ?? "No response...";
+        var result = await ChatService.TryChat(new ServicePreset
+        {
+            Url = ServiceUrl, 
+            DefaultModel = ModelName, 
+            ApiKey = ApiKey,
+            ResponsePath = ResponsePath,
+            Parameters = Parameters
+        });
+        IsWorking = result?.Item1;
+        ResponseJson = result?.Item2 ?? "No response...";
         await InvokeAsync(StateHasChanged);
     }
 }

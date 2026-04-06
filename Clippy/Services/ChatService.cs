@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using System.Diagnostics.CodeAnalysis;
-using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 
 namespace Clippy.Services
 {

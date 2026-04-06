@@ -154,7 +154,6 @@ namespace Extensions.PrometheusTypes
 
                 var renderer = parent.Renderer();
                 var stateMap = renderer.State() ?? [];
-                var sharedNamespace = typeof(Pages.Shared.Console).Namespace;
 
                 List<IComponent> result = [];
 
@@ -170,7 +169,7 @@ namespace Extensions.PrometheusTypes
                     if (entryParentId == myId || (siblingRootId != -1 && entryParentId == siblingRootId))
                     {
                         // Skip ourselves, framework noise, and the "Shared" furniture
-                        if (comp == parent || comp is NavMenu)
+                        if (comp == parent)
                             continue;
 
                         if (comp.GetType().Namespace?.Contains("Shared", StringComparison.InvariantCultureIgnoreCase) == true)

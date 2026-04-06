@@ -2,16 +2,13 @@
 namespace FlashData.Entities
 {
     [Table("payment")]
-    public class Payment
+    public class Payment : Entity<Payment>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        public int UserId { get; set; }
-
-        [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; } = null!;
+        public string? UserId { get; set; }
 
         public int? PackId { get; set; }
 

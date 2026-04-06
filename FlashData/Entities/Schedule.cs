@@ -1,17 +1,16 @@
 ﻿
+
+
 namespace FlashData.Entities
 {
     [Table("schedule")]
-    public class Schedule : Entity<Schedule>
+    public class Schedule : Entity<Schedule>, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         public string? UserId { get; set; }
-
-        [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; } = null!;
 
         [MaxLength(256)]
         public string? University { get; set; }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
@@ -41,6 +42,27 @@ namespace Hosting.Services
             SetQueryParameters = Navigation.Uri.Query();
         }
 
+        public static readonly string? AppName = Assembly.GetEntryAssembly()?
+                         .GetCustomAttribute<AssemblyProductAttribute>()?
+                         .Product;
+
+        internal static string? _title;
+
+        public event Action<string?>? OnTitleChanged;
+        public virtual async Task<string?> UpdateTitle(string? title)
+        {
+            if (title == null)
+            {
+                _title = AppName;
+            }
+            else
+            {
+                _title = title + " - " + AppName;
+            }
+            OnTitleChanged?.Invoke(title);
+            return _title;
+        }
+
         public void Dispose()
         {
             Navigation.LocationChanged -= Nav_LocationChanged;
@@ -53,6 +75,7 @@ namespace Hosting.Services
 
     public partial class FormFactor(
         NavigationManager nav
+        , IPageManager PageManager
         , IJSRuntime? JS = null
         , Lazy<WebAssemblyHost?>? App = null
     ) : BaseFormFactor(nav)
@@ -64,6 +87,14 @@ namespace Hosting.Services
         public override string BaseUrl => "http://localhost:8080";
         public override string GetFormFactor() => "WebAssembly";
         public override string ConnectionId => "Browser";
+
+        public override async Task<string?> UpdateTitle(string? title)
+        {
+            var _title = await base.UpdateTitle(title);
+            await PageManager.ModuleInitialize;
+            await PageManager.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
+            return _title;
+        }
 
         public override async Task StopAsync()
         {
@@ -94,6 +125,19 @@ namespace Hosting.Services
         public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
         public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
         public override string ConnectionId => Context?.Connection.Id ?? "Internal";
+
+        public override async Task<string?> UpdateTitle(string? title)
+        {
+            var _title = await base.UpdateTitle(title);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                foreach (var window in Desktop?.Value?.Windows ?? [])
+                {
+                    window.Title = _title; // This is now safe
+                }
+            });
+            return _title;
+        }
 
         public override async Task StopAsync()
         {

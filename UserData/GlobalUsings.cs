@@ -1,6 +1,9 @@
 ﻿global using Extensions.ForeignEntity;
 global using Extensions.PrometheusTypes;
 global using Microsoft.EntityFrameworkCore;
+global using System;
+global using System.Linq;
+global using System.Linq.Expressions;
 global using System.Collections.Generic;
 global using System.ComponentModel;
 global using System.ComponentModel.DataAnnotations;

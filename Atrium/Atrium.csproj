@@ -92,17 +92,13 @@
 
 
 	<ItemGroup>
-		<!--<PackageReference Include="log4net" Version="3.3.*-*" />-->
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
 	</ItemGroup>
 	
-	<!--<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
-		<ProjectReference Include="..\WebClient\WebClient.csproj">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</ProjectReference>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>-->
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
+		<PackageReference Include="log4net" Version="3.3.*-*" />
+	</ItemGroup>
 
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">

@@ -1,7 +1,7 @@
 ﻿namespace UserData.Entities
 {
     [Table("user")]
-    public class User : Entity<User>
+    public class User : Entity<User>, IHasLogo
     {
         [Key]
         [MaxLength(256)]
@@ -83,9 +83,8 @@
         public string? EvernoteAccessToken { get; set; }
 
         // photo field (One-to-One with File)
-        public int? PhotoFileId { get; set; }
-        [ForeignKey(nameof(PhotoFileId))]
-        public virtual File? Photo { get; set; }
+        public int? LogoId { get; set; }
+
         // like out of google profile if they logged in that way
         public virtual string? PhotoHosted { get; set; }
         public virtual string? AvatarColor { get; set; }
@@ -98,13 +97,13 @@
         //public virtual ICollection<Visit> Visits { get; set; } = new HashSet<Visit>();
         //public virtual ICollection<Invite> InvitesSent { get; set; } = new HashSet<Invite>();
         //public virtual ICollection<Invite> InvitesReceived { get; set; } = new HashSet<Invite>();
-        public virtual ICollection<Pack> AuthoredPacks { get; set; } = new HashSet<Pack>();
-        public virtual ICollection<UserPack> UserPacks { get; set; } = new HashSet<UserPack>();
+        //public virtual ICollection<Pack> AuthoredPacks { get; set; } = new HashSet<Pack>();
+        //public virtual ICollection<UserPack> UserPacks { get; set; } = new HashSet<UserPack>();
 
-        [InverseProperty(nameof(File.User))]
-        public virtual ICollection<File> Files { get; set; } = new HashSet<File>();
-        [InverseProperty(nameof(Response.User))]
-        public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
+        //[InverseProperty(nameof(File.User))]
+        //public virtual ICollection<File> Files { get; set; } = new HashSet<File>();
+        //[InverseProperty(nameof(Response.User))]
+        //public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
 
         [InverseProperty(nameof(Group.Users))]
         public virtual ICollection<Group> Groups { get; set; } = [];
@@ -137,8 +136,8 @@
         [InverseProperty(nameof(Parent))]
         public virtual ICollection<User> Children { get; set; } = [];
 
-        [InverseProperty(nameof(Course.Users))]
-        public virtual ICollection<Course> Courses { get; set; } = [];
+        //[InverseProperty(nameof(Course.Users))]
+        //public virtual ICollection<Course> Courses { get; set; } = [];
 
         [InverseProperty(nameof(Setting.User))]
         public virtual ICollection<Setting> Settings { get; set; } = [];

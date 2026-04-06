@@ -2,7 +2,7 @@
 namespace FlashData.Entities
 {
     [Table("pack")]
-    public class Pack : Entity<Pack>
+    public class Pack : Entity<Pack>, IHasGroup, IHasUser
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -11,10 +11,6 @@ namespace FlashData.Entities
         [Category("Ownership")]
         [Display(Name = "Owner Group", Description = "The primary group owning this pack")]
         public int? GroupId { get; set; }
-
-        [ForeignKey(nameof(GroupId))]
-        public virtual Group? Group { get; set; }
-        // Add these to your existing Pack class:
 
         [Category("Structure")]
         [Display(Name = "Parent Course", Description = "The course this pack belongs to")]
@@ -27,8 +23,6 @@ namespace FlashData.Entities
         [Display(Name = "Created By", Description = "The user who created this pack")]
         public string? UserId { get; set; }
 
-        [ForeignKey(nameof(UserId))]
-        public virtual User? User { get; set; }
         // Logo Relationship
         public int? FileId { get; set; }
 
@@ -102,7 +96,7 @@ namespace FlashData.Entities
 
 
         // Navigation Collections (Doctrine ManyToMany/OneToMany)
-        public virtual ICollection<Group> Groups { get; set; } = new HashSet<Group>();
+        //public virtual ICollection<Group> Groups { get; set; } = new HashSet<Group>();
         //public virtual ICollection<Coupon> Coupons { get; set; } = new HashSet<Coupon>();
         public virtual ICollection<UserPack> UserPacks { get; set; } = new HashSet<UserPack>();
         [Category("Content")]
