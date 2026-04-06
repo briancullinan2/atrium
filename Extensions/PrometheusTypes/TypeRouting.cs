@@ -128,7 +128,7 @@ namespace Extensions.PrometheusTypes
         public static List<Type> ToMenus(this Assembly ass)
         {
             if (_menuCache.TryGetValue(ass, out var services)) return services;
-            List<Type> menus = [..ass.GetTypes().Where(typeof(INavMenu).Extends)];
+            List<Type> menus = [..ass.GetTypes().Where(typeof(IHasMenu).Extends)];
             _menuCache.TryAdd(ass, menus);
             return menus;
         }
@@ -139,6 +139,24 @@ namespace Extensions.PrometheusTypes
             if (ass == null) return [];
             return [.. ass.SelectMany(a => a?.ToMenus() ?? []).Where(t => t != null)];
         }
+
+
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _metaCache = [];
+        public static List<Type> ToMetas(this Assembly ass)
+        {
+            if (_metaCache.TryGetValue(ass, out var services)) return services;
+            List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasMeta).Extends)];
+            _metaCache.TryAdd(ass, menus);
+            return menus;
+        }
+
+
+        public static List<Type> ToMetas(this IEnumerable<Assembly?>? ass)
+        {
+            if (ass == null) return [];
+            return [.. ass.SelectMany(a => a?.ToMenus() ?? []).Where(t => t != null)];
+        }
+
 
 
         public static bool AnyExtendsAny(

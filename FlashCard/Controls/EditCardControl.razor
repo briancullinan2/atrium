@@ -1,7 +1,7 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using System.Text.Json.Serialization
-@using Utilities.Extensions
+@attribute [SupportsType(typeof(EditControl))]
+@attribute [SupportsType(typeof(IEnumerable<EditControl>))]
+@implements IHasMeta
+
 @code
 {
     public class EditControl
@@ -17,9 +17,10 @@
     [Category("Results")]
     public IEnumerable<Controls.ResultsCardControl.ResultCard>? Results { get; set; }
 
-    [Parameter] public List<EditControl>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? PreviewLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;

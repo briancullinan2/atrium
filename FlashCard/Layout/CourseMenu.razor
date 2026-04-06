@@ -1,6 +1,24 @@
 
+
+<div id="Navlist" class="nav-scrollable course">
+    @foreach (var item in GetVisibleCourse())
+    {
+        @RenderNavItem(item)
+    }
+</div>
+
+
 @code 
 {
+    private bool UserHasPaid => true; // Logic to check user role
+
+    private IEnumerable<INavMenuItem> GetVisibleCourse()
+    {
+        // Filter out items the user shouldn't see
+        // For example: hide Premium link if they already paid
+        return CourseMenu.MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
+    }
+
     public static ICourseMenuItem? GetCourse(Type type)
     {
         return CourseMenu.MenuStructure.OfType<ICourseMenuItem>().FirstOrDefault(c => c.Course == type);

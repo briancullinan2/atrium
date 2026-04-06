@@ -1,7 +1,7 @@
-@using System.Timers
-@using System.ComponentModel
-@using System.ComponentModel.DataAnnotations
-@using System.Text.Json.Serialization
+@attribute [SupportsType(typeof(ResultCard))]
+@attribute [SupportsType(typeof(IEnumerable<ResultCard>))]
+@implements IHasMeta
+
 @code
 {
 
@@ -18,7 +18,7 @@
         public Response? Response { get; set; }
     }
 
-    [Parameter] public IEnumerable<ResultCard>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 

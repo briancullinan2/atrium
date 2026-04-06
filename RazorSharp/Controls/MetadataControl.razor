@@ -1,5 +1,5 @@
 @using System.Reflection
-@using 
+
 @typeparam TModel
 
 <div class="@containerClass auto-form-container">
@@ -35,35 +35,13 @@
     string? containerClass;
     [Parameter] public EventCallback<Tuple<PropertyMetadata, TModel?, object?>>? ValueChanged { get; set; }
 
+    public static List<Type> Metas = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToMetas();
     private List<(PropertyMetadata Metadata, Dictionary<string, object?> Params)>? _parameterCache;
 
+    // TODO: combine this list with Metas above
     public static readonly Dictionary<Type, Type> TypeToControl = new()
         {
-            // order matters, put more specific types first, then general system types last
-            { typeof(Card), typeof(CardControl) },
-            { typeof(IEnumerable<Card>), typeof(CardControl) },
-            { typeof(IEnumerable<ResultsCardControl.ResultCard>), typeof(ResultsCardControl) },
-            { typeof(IEnumerable<Answer>), typeof(AnswersControl) },
-            { typeof(IEnumerable<Pack>), typeof(PacksControl) },
-            { typeof(IEnumerable<Course>), typeof(CoursesControl) },
-            { typeof(IEnumerable<User>), typeof(UsersControl) },
-            { typeof(IEnumerable<Group>), typeof(GroupsControl) },
-            { typeof(IEnumerable<File>), typeof(FilesControl) },
-            { typeof(IEnumerable<RolesControl.ControlRole>), typeof(RolesControl) },
-            { typeof(IEnumerable<EditCardControl.EditControl>), typeof(EditCardControl) },
-            //{ typeof(DateTime), typeof(DateControl) },
-            //{ typeof(int), typeof(NumberControl) }
-            { typeof(DataLayer.PackStatus), typeof(EnumSelect) },
-            { typeof(Services.ApplicationTheme), typeof(EnumSelect) },
-            { typeof(Services.SidebarTheme), typeof(EnumSelect) },
-            { typeof(Services.AnimationMode), typeof(EnumSelect) },
 
-            { typeof(int), typeof(StringControl) },
-            { typeof(double), typeof(StringControl) },
-            { typeof(decimal), typeof(StringControl) },
-            { typeof(float), typeof(StringControl) },
-            { typeof(DateTime), typeof(StringControl) },
-            { typeof(string), typeof(StringControl) },
             { typeof(object), typeof(TypeControl) },
         };
 

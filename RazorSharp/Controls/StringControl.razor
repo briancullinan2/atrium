@@ -1,4 +1,11 @@
 @* StringControl.razor *@
+@attribute [SupportsType(typeof(int))]
+@attribute [SupportsType(typeof(double))]
+@attribute [SupportsType(typeof(decimal))]
+@attribute [SupportsType(typeof(float))]
+@attribute [SupportsType(typeof(DateTime))]
+@attribute [SupportsType(typeof(string))]
+@implements IHasMeta
 
 <label>@Model?.DisplayName</label>
 @if (Model?.DataType == System.ComponentModel.DataAnnotations.DataType.MultilineText)
@@ -20,7 +27,7 @@ else
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
     private string MaxLength => (Model?.MaxLength > 0 ? Model.MaxLength.ToString() : "4096") ?? "4096";
 

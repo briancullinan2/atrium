@@ -1,19 +1,18 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using System.Text.Json.Serialization
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Services
+@attribute [SupportsType(typeof(Pack))]
+@attribute [SupportsType(typeof(IEnumerable<Pack>))]
+@implements IHasMeta
+
 @code
 {
 
-    [Parameter] public IEnumerable<Course>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     [Inject] public ILoginService? LoginService { get; set; }
 }
 
 
-@foreach (var course in Data ?? [])
+@foreach (FlashData.Entities.Course course in Data ?? [])
 {
     <div class="flex-row">
         <span><img src="@(course.LogoHosted ?? course.Logo?.Url)" /></span>

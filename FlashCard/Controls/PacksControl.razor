@@ -1,14 +1,13 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using System.Text.Json.Serialization
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Services
+@attribute [SupportsType(typeof(Pack))]
+@attribute [SupportsType(typeof(IEnumerable<Pack>))]
+@implements IHasMeta
+
 @code
 {
 
-    [Parameter] public IEnumerable<Pack>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     [Inject] public ILoginService? LoginService { get; set; }
 }
 

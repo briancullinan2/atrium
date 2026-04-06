@@ -1,6 +1,10 @@
+@attribute [SupportsType(typeof(Answer))]
+@attribute [SupportsType(typeof(IEnumerable<Answer>))]
+@implements IHasMeta
+
 @code
 {
-    [Parameter] public IEnumerable<Card>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public List<Answer> Answers { get; set; } = new List<Answer>();

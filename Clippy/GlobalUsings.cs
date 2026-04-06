@@ -10,3 +10,6 @@ global using System.Text.Json;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
+global using Extensions.PrometheusTypes;
+global using Extensions.SlenderServices;
+global using Microsoft.AspNetCore.Authorization;

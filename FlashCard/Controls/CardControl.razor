@@ -1,7 +1,10 @@
+@attribute [SupportsType(typeof(Card))]
+@attribute [SupportsType(typeof(IEnumerable<Card>))]
+@implements IHasMeta
 
 @code
 {
-    [Parameter] public IEnumerable<Card>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;

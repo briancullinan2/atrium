@@ -1,9 +1,13 @@
+@attribute [SupportsType(typeof(Role))]
+@attribute [SupportsType(typeof(IEnumerable<Role>))]
+@implements IHasMeta
+
 @code
 {
 
-    [Parameter] public IEnumerable<ControlRole>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public IEnumerable<PropertyMetadata>? RoleLayout { get; set; }
 
     protected override void OnInitialized()

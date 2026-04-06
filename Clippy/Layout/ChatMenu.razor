@@ -1,7 +1,7 @@
 
 @inject IChatService ChatService
 @inject IPageManager PageManager
-@implements INavMenu
+@implements IHasMenu
 
 <div id="Navlist" class="nav-scrollable chat">
 
@@ -21,9 +21,9 @@
 
 @code
 {
-    public bool Show = true;
+    public bool Show(NavigationManager _) => ChatService.Chat;
     public bool AutoScroll = true;
-    public string Icon => "bi-chat";
+    public static string Icon => "bi-chat";
 
     public async Task SetMenuActivated(bool menu)
     {

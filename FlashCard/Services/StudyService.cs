@@ -1,4 +1,7 @@
-﻿namespace FlashCard.Services
+﻿using Extensions.SlenderServices;
+using RazorSharp.Services;
+
+namespace FlashCard.Services
 {
     public interface IStudyService
     {
@@ -7,7 +10,7 @@
         event Action<bool>? OnStudyChanged;
     }
 
-    public class StudyService : IStudyService
+    public class StudyService(IPageManager PageManager) : IStudyService
     {
         public bool Study { get; set; } = false;
 
@@ -16,6 +19,8 @@
         public async Task SetStudyMode(bool study)
         {
             Study = study;
+            if (study == true) PageManager.ClassNames.TryAdd("study-mode", "study-mode");
+            else PageManager.ClassNames.TryRemove("study-mode", out _);
             OnStudyChanged?.Invoke(study);
         }
     }

@@ -1,9 +1,4 @@
-﻿using Extensions.PrometheusTypes;
-using Extensions.SlenderServices;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Clippy.Services
 {
@@ -152,9 +147,7 @@ namespace Clippy.Services
         }
 
 
-        public string? ChatMessage { get; set; }
-
-
+        /*
         public RenderFragment? MainLayoutInsert(IChatService service)
         {
             // If chat isn't enabled, return null so nothing renders
@@ -205,17 +198,7 @@ namespace Clippy.Services
                 __builder.CloseElement(); // Close div
             };
         }
-
-
-        private async Task HandleKeyDown(KeyboardEventArgs e)
-        {
-            // If Enter is pressed without Shift
-            if (e.Key == "Enter" && !e.ShiftKey)
-            {
-                _ = SendMessage(ChatMessage ?? "");
-                ChatMessage = "";
-            }
-        }
+        */
 
 
     }

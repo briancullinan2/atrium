@@ -1,4 +1,5 @@
-﻿@implements IDisposable
+﻿@implements IAsyncDisposable
+@implements IHasMenu
 @inject NavigationManager Nav
 @inject IPageManager PageManager
 
@@ -12,7 +13,7 @@
         <a @onclick="() => ToggleChat()"><span class="bi @(ShowCourse == true ? "bi-list" : Chat ? "bi-journal-bookmark" : "bi-chat")"></span></a>
     } else
     {
-        <a @onclick="() => ToggleChat()"><span class="bi @(ShowCourse == true ? "bi-list" : "bi-journal-bookmark")"></span></a>
+        <a @onclick="() => ToggleChat()"><span class="bi @(ShowCourse == true ? "" : "bi-journal-bookmark")"></span></a>
     }
 </div>
 
@@ -21,12 +22,7 @@
 
 @if (ShowCourse == true)
 {
-    <div id="Navlist" class="nav-scrollable course">
-        @foreach (var item in GetVisibleCourse())
-        {
-            @RenderNavItem(item)
-        }
-    </div>
+    
 }
 else if (!Chat)
 {
@@ -43,13 +39,13 @@ else
 }
 
 @code {
-    public bool Chat = false;
-    public bool _chatMode = false;
-    public bool _studyMode = false;
-    public bool menuMode = false;
-    public bool? ShowCourse = null;
-    public bool? ShouldShowChat = null;
 
+    public async Task SetMenuActivated(bool show) => await InvokeAsync(StateHasChanged);
+    public bool Show(NavigationManager _) => true;
+    public static string Icon { get => "bi-list"; }
+
+    // TODO: make this a static interface on IHasMenu to make it ask for types up front
+    public static List<Type> Menus = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToMenus();
 
     protected override void OnInitialized()
     {
@@ -59,6 +55,10 @@ else
         _ = ChatService.IsWorking();
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        
+    }
 
     private void SetChat(bool? chat)
     {
@@ -78,7 +78,7 @@ else
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         ChatService.OnChatWorking -= SetChat;
         ChatService.OnChatChanged -= SetChatMode;
@@ -122,8 +122,6 @@ else
     protected void ToggleStudy()
     {
         _studyMode = !StudyService.Study;
-        if (_studyMode == true) PageManager.ClassNames.TryAdd("study-mode", "study-mode");
-        else PageManager.ClassNames.TryRemove("study-mode", out _);
         StudyService?.SetStudyMode(_studyMode);
     }
 
@@ -247,12 +245,6 @@ else
         return MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
     }
     
-    private IEnumerable<INavMenuItem> GetVisibleCourse()
-    {
-        // Filter out items the user shouldn't see
-        // For example: hide Premium link if they already paid
-        return CourseMenu.MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
-    }
 
     private bool UserHasPaid => true; // Logic to check user role
 }

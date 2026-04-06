@@ -1,5 +1,7 @@
 @using System.ComponentModel
 @using System.Reflection
+@implements IHasMeta
+@attribute [SupportsType(typeof(Enum))]
 
 <label>@Model?.DisplayName</label>
 
@@ -19,7 +21,7 @@
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object>? ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public object[] EnumValues
     {
         get

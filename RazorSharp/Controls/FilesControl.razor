@@ -2,13 +2,17 @@
 @using System.ComponentModel
 @using System.Text.Json.Serialization
 @inject IFileManager FileManager
+@attribute [SupportsType(typeof(File))]
+@attribute [SupportsType(typeof(IEnumerable<File>))]
+@implements IHasMeta
+
 
 @code
 {
 
-    [Parameter] public IEnumerable<File>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
+    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
 
     protected override void OnInitialized()
@@ -39,7 +43,7 @@
 
 @for (var i = 0; i < Data?.Count(); i++)
 {
-    var file = Data.ElementAt(i);
+    var file = Data.ElementAt(i) as File;
     if (file == null) continue;
     <div class="flex-row ">
         <span>@(i + 1)</span>
