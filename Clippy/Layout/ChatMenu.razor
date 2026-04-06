@@ -1,6 +1,7 @@
 
 @inject IChatService ChatService
 @inject IPageManager PageManager
+@implements INavMenu
 
 <div id="Navlist" class="nav-scrollable chat">
 
@@ -20,74 +21,31 @@
 
 @code
 {
-    public bool Chat = false;
-    public bool _chatMode = false;
-    public bool? ShowChat = null;
-    public string? ChatMessage { get; set; }
+    public bool Show = true;
     public bool AutoScroll = true;
+    public string Icon => "bi-chat";
 
-
-    public RenderFragment? MainLayoutInsert => ShowChat == true ? @<div class="chat-box">
-        <input @onkeydown="HandleKeyDown" @bind:event="oninput" @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="SendMessage">Send</button>
-    </div> :  null;
-    
-
-    private async Task HandleKeyDown(KeyboardEventArgs e)
+    public async Task SetMenuActivated(bool menu)
     {
-        // If Enter is pressed without Shift
-        if (e.Key == "Enter" && !e.ShiftKey)
+        await ChatService.SetChatMode(menu);
+        if (ChatService.Chat)
         {
-            SendMessage(null);
+            _ = PageManager.ScrollToBottom("Navlist");
         }
+        await InvokeAsync(StateHasChanged);
     }
 
-    protected void SendMessage(MouseEventArgs? args)
-    {
-        if (string.IsNullOrWhiteSpace(ChatMessage))
-        {
-            ChatMessage = "";
-            return;
-        }
-        _ = ChatService.SendMessage(ChatMessage ?? "");
-        ChatMessage = "";
-        // No need to InvokeAsync(StateHasChanged) because the SendMessage event handler will invoke it
-    }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        ChatService.OnChatWorking += SetChat;
-        ChatService.OnChatChanged += SetChatMode;
         ChatService.OnChatMessage += RefreshChat;
         _ = ChatService.IsWorking();
     }
 
-    private void SetChat(bool? chat)
-    {
-        if (chat != ShowChat)
-        {
-            ShowChat = chat;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    public void SetChatMode(bool chat)
-    {
-        if (Chat != chat)
-        {
-            Chat = chat;
-            InvokeAsync(StateHasChanged);
-            if (Chat == true)
-            {
-                _ = PageManager.ScrollToBottom("Navlist");
-            }
-        }
-    }
 
     public void Dispose()
     {
-        ChatService.OnChatWorking -= SetChat;
-        ChatService.OnChatChanged -= SetChatMode;
         ChatService.OnChatMessage -= RefreshChat;
         PageManager.OnScroll["Navlist"] -= ToggleAutoScroll;
     }
@@ -121,7 +79,7 @@
 
     public void RefreshChat()
     {
-        if (Chat)
+        if (ChatService.Chat)
         {
             InvokeAsync(StateHasChanged);
             _ = LaunchAutoScrollLoop();

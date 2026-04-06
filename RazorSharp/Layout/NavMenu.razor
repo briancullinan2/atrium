@@ -159,7 +159,6 @@ else
         var hasChildren = item.Children != null && item.Children.Any();
 
         <div class="nav-item">
-            @* Use @onclick:stopPropagation if you don't want the side-panel click logic to fire *@
             <div @onclick="() => HandleClick(item)"
                  @onclick:stopPropagation="true"
                  data-href="@item.Href">

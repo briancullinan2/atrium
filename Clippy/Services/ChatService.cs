@@ -1,6 +1,8 @@
 ﻿using Extensions.PrometheusTypes;
 using Extensions.SlenderServices;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Clippy.Services
@@ -149,6 +151,71 @@ namespace Clippy.Services
             return [.. userPresets, .. remaining];
         }
 
+
+        public string? ChatMessage { get; set; }
+
+
+        public RenderFragment? MainLayoutInsert(IChatService service)
+        {
+            // If chat isn't enabled, return null so nothing renders
+            if (service.Chat != true) return null;
+
+            return __builder =>
+            {
+
+                // <div class="chat-box">
+                __builder.OpenElement(1, "div");
+                __builder.AddAttribute(2, "class", "chat-box");
+
+                // <input type="text" placeholder="..." />
+                __builder.OpenElement(3, "input");
+                __builder.AddAttribute(4, "type", "text");
+                __builder.AddAttribute(5, "placeholder", "Type your message here...");
+
+                // Manual @bind:value
+                __builder.AddAttribute(6, "value", ChatMessage);
+
+                // Manual @bind:event="oninput"
+                __builder.AddAttribute(7, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(
+                    this,
+                    args => ChatMessage = args.Value?.ToString())
+                );
+
+                // @onkeydown="HandleKeyDown"
+                __builder.AddAttribute(8, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(
+                    this,
+                    HandleKeyDown)
+                );
+
+                __builder.CloseElement(); // Close input
+
+                // <button class="cta" @onclick="...">Send</button>
+                __builder.OpenElement(9, "button");
+                __builder.AddAttribute(10, "class", "cta");
+                __builder.AddAttribute(11, "onclick", EventCallback.Factory.Create<MouseEventArgs>(
+                    this,
+                    () => {
+                        _ = SendMessage(ChatMessage ?? "");
+                        ChatMessage = "";
+                    })
+                );
+                __builder.AddContent(12, "Send");
+                __builder.CloseElement(); // Close button
+
+                __builder.CloseElement(); // Close div
+            };
+        }
+
+
+        private async Task HandleKeyDown(KeyboardEventArgs e)
+        {
+            // If Enter is pressed without Shift
+            if (e.Key == "Enter" && !e.ShiftKey)
+            {
+                _ = SendMessage(ChatMessage ?? "");
+                ChatMessage = "";
+            }
+        }
 
 
     }

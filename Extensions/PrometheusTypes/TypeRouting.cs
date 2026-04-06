@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Extensions.SlenderServices;
+using Microsoft.AspNetCore.Authorization;
 #if !BROWSER
 using Microsoft.AspNetCore.Http;
 #endif
@@ -106,8 +107,10 @@ namespace Extensions.PrometheusTypes
             return [..ass.SelectMany(a => a?.ToServices() ?? []).Where(t => t!=null)];
         }
 
-        static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
 
+
+
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
         public static List<Type> ToServices(this Assembly ass)
         {
             if (_serviceCache.TryGetValue(ass, out var services)) return services;
@@ -116,6 +119,25 @@ namespace Extensions.PrometheusTypes
             List<Type> servicesToCache = [.. interfaces.Concat(ass.GetTypes().Where(interfaces.AnyExtendsAny))];
             _serviceCache.TryAdd(ass, servicesToCache);
             return servicesToCache;
+        }
+
+
+
+
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _menuCache = [];
+        public static List<Type> ToMenus(this Assembly ass)
+        {
+            if (_menuCache.TryGetValue(ass, out var services)) return services;
+            List<Type> menus = [..ass.GetTypes().Where(typeof(INavMenu).Extends)];
+            _menuCache.TryAdd(ass, menus);
+            return menus;
+        }
+
+
+        public static List<Type> ToMenus(this IEnumerable<Assembly?>? ass)
+        {
+            if (ass == null) return [];
+            return [.. ass.SelectMany(a => a?.ToMenus() ?? []).Where(t => t != null)];
         }
 
 

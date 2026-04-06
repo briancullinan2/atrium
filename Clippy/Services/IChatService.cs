@@ -36,11 +36,10 @@
         Task<List<ServicePreset>> ListPresets();
         Task<string?> SendMessage(string message);
         Task<bool?> IsWorking();
-        event Action<bool?>? OnChatWorking;
         Task SetChatMode(bool chat);
         bool Chat { get; set; }
-        event Action<bool>? OnChatChanged;
         Dictionary<DateTime, Tuple<bool, string>>? Recents { get; }
+        event Action<bool?>? OnChatWorking;
         event Action? OnChatMessage;
     }
 
