@@ -6,6 +6,8 @@ using System.Net.Http.Json;
 #else
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Maui.Controls;
 #endif
 
 namespace Hosting.Services
@@ -22,6 +24,17 @@ namespace Hosting.Services
 
         public IServiceProvider Service { get; }
         public HttpClient? Http { get; }
+
+        private HubConnection? _connection;
+        private HubConnection Connection
+        {
+            get
+            {
+                if (_connection == null) throw new InvalidOperationException("Check if hub is available first.");
+                return _connection;
+            }
+            set => _connection = value;
+        }
 
 
         public async Task OnConnectionUpAsync(ConnectionMetadata metadata)
@@ -42,63 +55,16 @@ namespace Hosting.Services
 
         public async Task<TResult?> InvokeAsync<TResult>(string method, CancellationToken? token = null)
         {
-            return await TaskExtensions.Debounce(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, token);
+            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
         }
         public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
         {
-            return await TaskExtensions.Debounce(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
+            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
         }
 
 
-        public async Task<TResult?> RespondCircuit<TResult>(MemberInfo? methodInfo, params object?[]? parameters)
-        {
-            if(methodInfo == null || methodInfo.DeclaringType == null)
-                throw new InvalidOperationException("Couldn't find service provider: " + methodInfo);
-            if (!IsSignalCircuit)
-                throw new InvalidOperationException("Not a signal circuit: " + methodInfo);
-
-            var Implementation = Service.GetRequiredService(methodInfo.DeclaringType);
-            object? result;
-            if (methodInfo is FieldInfo field)
-            {
-                result = field.GetValue(Implementation) is TResult;
-            }
-            if (methodInfo is PropertyInfo property)
-            {
-                result = parameters?.Length > 0 ? property.GetValue(Implementation, parameters) : property.GetValue(Implementation);
-            }
-            if (methodInfo is MethodInfo runable)
-            {
-                // TODO: put together a list of parameters and services
-                result = runable.Invoke(Implementation, parameters);
-            }
-            else throw new InvalidOperationException("Nothing to do in: " + methodInfo);
-
-            if (result == null || result.GetType().Extends(typeof(TResult)))
-                return (TResult?)result;
-            else throw new InvalidOperationException("Result did not type cast from: "
-                + result.GetType().AssemblyQualifiedName
-                + " to " + typeof(TResult).AssemblyQualifiedName);
-
-        }
-
-
-        public async Task<TResult?> RespondRemote<TResult>(MemberInfo methodInfo)
-        {
-            if (Http == null)
-                throw new InvalidOperationException("Http client not available");
-
-            if (methodInfo is MethodInfo runable)
-            {
-                var serviceTypes = runable.GetParameters().ToServices(Service);
-                // TODO: dont serialize services, they will get rebuilt on the ends
-            }
-            // TODO: add fun serialization
-            result = await Http.GetFromJsonAsync<TResult>(Path);
-        }
-
-
-        public async Task<TResult?> ExecuteAsyncDebounced<TImplementation, TResult>(
+        public async Task<TResult?> ExecuteAsyncDebounced<TResult>(
+            Type type,
             string? method,
             object?[]? parameters
             // TODO: get force out of somewhere
@@ -111,7 +77,6 @@ namespace Hosting.Services
             //    return _cachedValue;
             //}
 
-            var type = typeof(TImplementation);
             MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
                 ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
                 ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
@@ -130,6 +95,7 @@ namespace Hosting.Services
         public bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
         public bool IsSignalCircuit => IsHubConnected;
         public bool IsAppConnected => true;
+        public bool IsServerConnected => IsConnected;
         public int ClientCount => 1;
 
 
@@ -137,23 +103,18 @@ namespace Hosting.Services
         public IPageManager PageManager { get; }
         public NavigationManager Nav { get; }
 
-        private HubConnection? _connection;
-        private HubConnection Connection
-        {
-            get
-            {
-                if (_connection == null) throw new InvalidOperationException("Check if hub is available first.");
-                return _connection;
-            }
-            set => _connection = value;
-        }
-
         public bool IsConnected => IsHubConnected;
 
         public Dictionary<string, string> RequestParameters => Nav.Uri.Query();
 
 
-        public CircuitProvider(IServiceProvider service, NavigationManager nav, IPageManager page, HttpClient http, IRenderState rendered, HubConnection? connection = null)
+        public CircuitProvider(
+            IServiceProvider service, 
+            NavigationManager nav, 
+            IPageManager page, 
+            HttpClient http, 
+            IRenderState rendered, 
+            HubConnection? connection = null)
         {
             Service = service;
             Http = http;
@@ -217,17 +178,6 @@ namespace Hosting.Services
         }
 
 
-        public async Task<T?> RepondHub<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
-        public async Task<T?> RepondHub<T>(string method, object?[]? parameters) => parameters?.Length switch {
-            1 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
-            2 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
-            3 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2)),
-            4 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3)),
-            5 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3), parameters.ElementAt(4)),
-            _ => await Connection.InvokeAsync<T>(method, new CancellationTokenSource().Token)
-            };
-            
-
 
         public async ValueTask DisposeAsync()
         {
@@ -249,14 +199,25 @@ namespace Hosting.Services
 
         public bool IsHubConnected => !_activeCircuits.IsEmpty;
 
-        public bool IsAppConnected => App?.Value.HasValue == true;
+        public bool IsAppConnected => App?.Value != null;
+
+        public bool IsServerConnected => App?.Value != null;
 
         public int ClientCount => _activeCircuits.Count;
 
         public CircuitHandler Circuit { get; }
 
-        public CircuitProvider(IServiceProvider service, CircuitHandler circuit, Lazy<?>? App = null, HttpClient? http = null)
+        public Lazy<Application?>? App { get; }
+
+        public CircuitProvider(
+            IServiceProvider service, 
+            CircuitHandler circuit, 
+            Lazy<Microsoft.Maui.Controls.Application?>? app = null, 
+            HttpClient? http = null,
+            HubConnection? connection = null)
         {
+            _connection = connection;
+            App = app;
             Service = service;
             Http = http;
             Circuit = circuit;
@@ -272,10 +233,6 @@ namespace Hosting.Services
             GC.SuppressFinalize(this);
         }
 
-        public static async Task<TResult?> OnExecuteAsync<TResult>(ICircuitProvider service, string method, params object?[]? parameters)
-        {
-            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<,TResult>, service.DefaultTTL, method, parameters);
-        }
     }
 
 
@@ -324,17 +281,29 @@ namespace Hosting.Services
         {
             endpoints.MapHub<CircuitProvider>("/api/hub");
 
-            foreach (var circuit in circuits)
+            var services = Assembly.GetCallingAssembly().GetAssemblies().ToServices();
+
+            foreach (var service in services)
             {
-                if (circuit.Path == null) continue;
+                var routes = service.Routes();
+                if (routes == null || routes.Count == 0) continue;
 
-                var routeBuilder = endpoints.MapPost(circuit.Path, circuit.OnExecuteAsync);
+                foreach(var method in routes)
+                {
+                    var route = method.Route();
+                    if (route == null) continue;
 
-                routeBuilder.RequireAuthorization();
+                    var routeBuilder = endpoints.MapPost(route, method.CreateDelegate<RequestDelegate>());
 
-                routeBuilder.WithTags(circuit.Name);
+                    routeBuilder.RequireAuthorization();
+
+                    routeBuilder.WithTags(method.Name);
+                }
+
             }
         }
+
+
     }
 #endif
 

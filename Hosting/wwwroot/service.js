@@ -11,6 +11,7 @@ export async function init(helper) {
     }
 }
 
+
 export async function getStatus() {
     if (!('serviceWorker' in navigator)) return { supported: false };
     const reg = await navigator.serviceWorker.getRegistration();

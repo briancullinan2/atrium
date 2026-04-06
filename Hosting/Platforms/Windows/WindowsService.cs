@@ -1,10 +1,11 @@
 ﻿#if WINDOWS
+using Hosting.Services;
+using Microsoft.Win32;
+using Retheme;
 using System.IO.Pipes;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
-using Hosting.Services;
-using Microsoft.Win32;
 
 namespace Hosting.Platforms.Windows
 {
@@ -33,15 +34,22 @@ namespace Hosting.Platforms.Windows
             );
         }
 
-        public async Task<SwRegistrationResult> RegisterAsync(string appPath)
+        public async Task<bool> RegisterAsync(string scheme, string appPath)
         {
             try 
             {
                 // On Windows, 'Register' implies setting up the protocol handler
-                await RegisterProtocolHandlerAsync("app", appPath);
-                return new SwRegistrationResult(true, "app://", null);
+                _currentScheme = scheme;
+                using var key = Registry.ClassesRoot.CreateSubKey(scheme);
+                key.SetValue("", $"URL:{scheme} Protocol");
+                key.SetValue("URL Protocol", "");
+
+                using var shell = key.CreateSubKey(@"shell\open\command");
+                // "%1" ensures the full app:// URL is passed as the first argument to Atrium
+                shell.SetValue("", $"\"{appPath}\" \"%1\"");
+                return true;
             }
-            catch (Exception ex) { return new SwRegistrationResult(false, null, ex.Message); }
+            catch (Exception) { return false; }
         }
 
         public async Task<bool> UnregisterAsync()
@@ -93,14 +101,7 @@ namespace Hosting.Platforms.Windows
 
         public async Task RegisterProtocolHandlerAsync(string scheme, string appPath)
         {
-            _currentScheme = scheme;
-            using var key = Registry.ClassesRoot.CreateSubKey(scheme);
-            key.SetValue("", $"URL:{scheme} Protocol");
-            key.SetValue("URL Protocol", "");
-
-            using var shell = key.CreateSubKey(@"shell\open\command");
-            // "%1" ensures the full app:// URL is passed as the first argument to Atrium
-            shell.SetValue("", $"\"{appPath}\" \"%1\"");
+            
         }
     }
 }

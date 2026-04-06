@@ -173,13 +173,14 @@ namespace Extensions.PrometheusTypes
                         if (comp == parent || comp is NavMenu)
                             continue;
 
-                        if (comp.GetType().Namespace == sharedNamespace)
+                        if (comp.GetType().Namespace?.Contains("Shared", StringComparison.InvariantCultureIgnoreCase) == true)
                             continue;
 
                         // 4. Recursive Digging for Container Types
                         var type = comp.GetType();
-                        if (comp is LayoutView or AuthorizeView or AuthorizeRouteView or AuthorizeViewCore or ErrorBoundary
-                            || type.Extends(typeof(LayoutComponentBase)))
+                        if (comp is LayoutView or AuthorizeView or AuthorizeRouteView or AuthorizeViewCore
+                            || type.Extends(typeof(LayoutComponentBase))
+                            || type.Extends(typeof(ErrorBoundaryBase)))
                         {
                             // Dig deeper but DON'T look for siblings of the internal wrappers
                             var children = comp.GetChildComponents(includeSiblings: false);

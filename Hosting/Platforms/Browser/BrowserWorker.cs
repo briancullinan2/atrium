@@ -8,44 +8,38 @@ namespace Hosting.Platforms.Browser
     using Microsoft.JSInterop;
     using System.Net.Http.Json;
 
-    public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
+    public class BrowserWorker(IJSRuntime JS, HttpClient Http) : IServiceWorkerService, IAsyncDisposable
     {
-        private readonly IJSRuntime _js;
-        private readonly HttpClient _http;
-        private IJSObjectReference? _module;
+        private DotNetObjectReference<BrowserWorker>? _selfReference;
+        private IJSObjectReference? Module;
         //private DotNetObjectReference<ServiceWorkerService>? _selfReference;
 
         public event Action<object>? OnMessageReceived;
 
-        public ServiceWorkerService(IJSRuntime js, HttpClient http)
-        {
-            _js = js;
-            _http = http;
-        }
 
         public async Task InitializeAsync()
         {
-            _module = await _js.InvokeAsync<IJSObjectReference>("import", "./service.js");
+            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./service.js");
             _selfReference = DotNetObjectReference.Create(this);
-            await _module.InvokeVoidAsync("init", _selfReference);
+            await Module.InvokeVoidAsync("init", _selfReference);
         }
 
         [JSInvokable]
         public void ReceiveInternal(object data) => OnMessageReceived?.Invoke(data);
 
         public async Task<ServiceWorkerStatus> GetStatusAsync() =>
-            await _module!.InvokeAsync<ServiceWorkerStatus>("getStatus");
+            await Module!.InvokeAsync<ServiceWorkerStatus>("getStatus");
 
-        public async Task<SwRegistrationResult> RegisterAsync(string scriptUrl) =>
-            await _module!.InvokeAsync<SwRegistrationResult>("register", scriptUrl);
+        public async Task<bool> RegisterAsync(string? _, string scriptUrl) =>
+            await Module!.InvokeAsync<bool>("register", scriptUrl);
 
         public async Task<bool> UnregisterAsync() =>
-            await _module!.InvokeAsync<bool>("unregister");
+            await Module!.InvokeAsync<bool>("unregister");
 
         public async Task<TResponse?> PostMessageAsync<TRequest, TResponse>(TRequest message, int timeoutMs = 10000) =>
-            await _module!.InvokeAsync<TResponse>("postMessageWithResponse", message, timeoutMs);
+            await Module!.InvokeAsync<TResponse>("postMessageWithResponse", message, timeoutMs);
 
-        public async Task<long?> GetSwVersionAsync()
+        public async Task<long?> GetVersionAsync()
         {
             try
             {
@@ -73,7 +67,7 @@ namespace Hosting.Platforms.Browser
             if (status.IsActive)
             {
                 // 2. Get SW Truth
-                long? swVersion = await GetSwVersionAsync();
+                long? swVersion = await GetVersionAsync();
 
                 // 3. Compare and Nuke if mismatched
                 if (swVersion.HasValue && swVersion != serverVersion)
@@ -87,14 +81,15 @@ namespace Hosting.Platforms.Browser
             status = await GetStatusAsync();
             if (!status.IsActive)
             {
-                await RegisterAsync("/service-worker.published.js");
+                await RegisterAsync(null, "/service-worker.published.js");
             }
         }
 
         public async ValueTask DisposeAsync()
         {
             _selfReference?.Dispose();
-            if (_module != null) await _module.DisposeAsync();
+            if (Module != null) await Module.DisposeAsync();
+            GC.SuppressFinalize(this);
         }
     }
 }

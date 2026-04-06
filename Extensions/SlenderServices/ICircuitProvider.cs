@@ -19,6 +19,7 @@ namespace Extensions.SlenderServices
         bool IsConnected { get; }
         int ClientCount { get; }
         bool IsAppConnected { get; }
+        bool IsServerConnected { get; }
         bool IsSignalCircuit { get; }
         bool IsHubConnected { get; }
 

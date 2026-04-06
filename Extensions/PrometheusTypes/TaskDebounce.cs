@@ -78,7 +78,7 @@ namespace Extensions.PrometheusTypes
 
 
         public static Task<TR?> Debounce<TR>(
-            this Func<Task<TR>> action,
+            this Func<Task<TR?>> action,
             int delay = 200,
             CancellationToken? token = null,
             [CallerFilePath] string file = "",
@@ -86,7 +86,7 @@ namespace Extensions.PrometheusTypes
             => Debounce(action: ct => action(), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, TR>(
-            this Func<T1?, Task<TR>> action,
+            this Func<T1?, Task<TR?>> action,
             int delay = 200,
             T1? t1 = default,
             CancellationToken? token = null,
@@ -96,7 +96,7 @@ namespace Extensions.PrometheusTypes
 
         // T1, T2 Overload
         public static Task<TR?> Debounce<T1, T2, TR>(
-            this Func<T1?, T2?, Task<TR>> action,
+            this Func<T1?, T2?, Task<TR?>> action,
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
@@ -106,7 +106,7 @@ namespace Extensions.PrometheusTypes
             => Debounce(action: ct => action(t1, t2), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, TR>(
-            this Func<T1?, T2?, T3?, Task<TR>> action,
+            this Func<T1?, T2?, T3?, Task<TR?>> action,
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
@@ -117,7 +117,7 @@ namespace Extensions.PrometheusTypes
             => Debounce(action: ct => action(t1, t2, t3), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, T4, TR>(
-            this Func<T1?, T2?, T3?, T4?, Task<TR>> action,
+            this Func<T1?, T2?, T3?, T4?, Task<TR?>> action,
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,
@@ -129,7 +129,7 @@ namespace Extensions.PrometheusTypes
             => Debounce(action: ct => action(t1, t2, t3, t4), delay, token, file, key);
 
         public static Task<TR?> Debounce<T1, T2, T3, T4, T5, TR>(
-            this Func<T1?, T2?, T3?, T4?, T5?, Task<TR>> action,
+            this Func<T1?, T2?, T3?, T4?, T5?, Task<TR?>> action,
             int delay = 200,
             T1? t1 = default,
             T2? t2 = default,

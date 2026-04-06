@@ -16,7 +16,7 @@ namespace Clippy.Services
         public string DefaultModel { get; set; } = "";
         public string ApiKey { get; set; } = "";
         public string ResponsePath { get; set; } = "";
-        public List<DynamicParam> Params { get; set; } = [];
+        public List<DynamicParam> Parameters { get; set; } = [];
     }
 
     public class DynamicParam
@@ -36,7 +36,7 @@ namespace Clippy.Services
             Url = "http://localhost:11434/api/generate",
             DefaultModel = "qwen3.5:cloud",
             ResponsePath = "response",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "prompt", Value = "{Message}", Type = "string" },
                     new DynamicParam { Key = "stream", BoolValue = false, Type = "boolean" }
@@ -50,7 +50,7 @@ namespace Clippy.Services
             DefaultModel = "gpt-4o",
             ApiKey = "sk-...",
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     // Note: OpenAI expects a 'messages' object, 
                     // but for a generic builder, we track the key/value
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
@@ -71,7 +71,7 @@ namespace Clippy.Services
             DefaultModel = "llama-3.3-70b-versatile",
             ApiKey = "gsk_...",
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "temperature", Value = "0.5", Type = "number" }
@@ -86,7 +86,7 @@ namespace Clippy.Services
             DefaultModel = "claude-3-5-sonnet-20240620",
             ApiKey = "sk-ant-api03-...",
             ResponsePath = "content[0].text",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "max_tokens", Value = "1024", Type = "number" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
@@ -101,7 +101,7 @@ namespace Clippy.Services
             DefaultModel = "deepseek-chat",
             ApiKey = "sk-...", // DeepSeek uses standard sk- format
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
                 ]
@@ -115,7 +115,7 @@ namespace Clippy.Services
             DefaultModel = "google/gemini-2.0-flash-001",
             ApiKey = "sk-or-v1-...", // OpenRouter keys start with sk-or-v1-
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" }
                 ]
@@ -127,7 +127,7 @@ namespace Clippy.Services
             Url = "https://api.mistral.ai/v1/chat/completions",
             DefaultModel = "mistral-tiny",
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "safe_prompt", BoolValue = true, Type = "boolean" }
@@ -142,7 +142,7 @@ namespace Clippy.Services
             Url = "http://localhost:1234/v1/chat/completions",
             DefaultModel = "local-model",
             ResponsePath = "choices[0].message.content",
-            Params = [
+            Parameters = [
                     new DynamicParam { Key = "model", Value = "{Model}", Type = "string" },
                     new DynamicParam { Key = "messages", Value = "[{\"role\": \"user\", \"content\": \"{Message}\"}]", Type = "string" },
                     new DynamicParam { Key = "temperature", Value = "0.8", Type = "number" }

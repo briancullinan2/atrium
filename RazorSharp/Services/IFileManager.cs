@@ -76,7 +76,7 @@ namespace RazorSharp.Services
 
 #if WINDOWS
         //[HttpPost("upload")]
-        public static async Task OnUploadFile(IServerState context, IFileManager FileManager)
+        public static async Task OnUploadFile(HttpContext context, IFileManager FileManager)
         {
             try
             {

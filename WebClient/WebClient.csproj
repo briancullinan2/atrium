@@ -30,10 +30,6 @@
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*-*" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\FlashCard\FlashCard.csproj" />
-  </ItemGroup>
-	
 	<ItemGroup>
 	  <Content Update="wwwroot\service-worker-static.js">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>

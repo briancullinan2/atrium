@@ -1,7 +1,6 @@
 ﻿@implements IDisposable
-@using FlashCard.Controls
-@using FlashCard.Services
 @inject NavigationManager Nav
+@inject IPageManager PageManager
 @inject IStudyService StudyService
 @inject IChatService ChatService
 @inject ILoginService LoginService
@@ -119,9 +118,16 @@ else
         }
     }
 
+    public void SetStudyMode(bool study)
+    {
+    }
+
     protected void ToggleStudy()
     {
-        StudyService?.SetStudyMode(_studyMode = !StudyService.Study);
+        _studyMode = !StudyService.Study;
+        if (_studyMode == true) PageManager.ClassNames.TryAdd("study-mode", "study-mode");
+        else PageManager.ClassNames.TryRemove("study-mode", out _);
+        StudyService?.SetStudyMode(_studyMode);
     }
 
     protected void ToggleChat()

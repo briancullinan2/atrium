@@ -184,6 +184,16 @@ namespace Extensions.PrometheusTypes
             return finalUri;
         }
 
+        public static (Type ComponentType, Dictionary<string, object?> Parameters) IdentifyNavigation(this IComponent _, Uri uri)
+        {
+            return IdentifyNavigation(uri.AbsolutePath);
+        }
+
+        public static (Type ComponentType, Dictionary<string, object?> Parameters) IdentifyNavigation(this IComponent _, string uri)
+        {
+            return IdentifyNavigation(uri);
+        }
+
         public static (Type ComponentType, Dictionary<string, object?> Parameters) IdentifyNavigation(this Uri uri)
         {
             return IdentifyNavigation(uri.AbsolutePath);

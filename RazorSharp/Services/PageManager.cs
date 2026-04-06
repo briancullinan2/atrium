@@ -1,148 +1,12 @@
 ﻿
 
 
+using Extensions.SlenderServices;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace RazorSharp.Services
 {
-
-    public interface IPageManager : IAsyncDisposable
-    {
-        Task SetState(IComponent? state);
-        Task<Dictionary<string, string?>?> RestoreState(IComponent component);
-        Task SetError(Exception? error);
-        Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
-        Task SetSessionCookie(string name, string value, int days);
-        Task<string?> GetSessionCookie(string name);
-
-        // page data handling instead of built in MS uninspectable crap
-        Dictionary<string, string?> State { get; set; }
-        event Action<IComponent?>? OnStateChanged;
-        event Action<Exception?>? OnErrorChanged;
-
-        // page events
-        Task RegisterAsync(string id);
-        bool IsLocked(string id);
-        Task ScrollToBottom(string id, bool smooth = true);
-        Task<Dictionary<string, bool>> GetAllStatesAsync(string[]? ids = null);
-        T? GetState<T>(PageAction action, string id);
-
-        // special subscribers
-        //Delegate? this[PageAction action, string id] { get; set; }
-
-
-        public BooleanProxy OnScroll { get; }
-        public event Action<int, int, bool> OnResize;
-        public event Func<int, int, bool, Task> OnResizeAsync;
-        public BooleanProxy OnFocus { get; }
-        public event Action<bool> OnVisible;
-        public event Action<string> OnReconnect;
-
-        Task<bool> IsAtBottomAsync(string id);
-        Task ScrollSlightlyAsync(string id, int amount = 10);
-        Task<string> GetLineHeightAsync(string? elementId = null);
-        Task<int> GetLineHeightIntAsync(string? elementId = null);
-        ValueTask InitializeBackground(string mode, string canvas);
-        ValueTask Clipboard(string text);
-
-        Task EnsureModuleLoaded();
-        Task ModuleInitialize { get; }
-
-        void OnFocused(bool focused);
-        void OnScrolled(string id, bool atBottom);
-        void OnResized(string id, int width, int height, bool isSmall);
-        void OnVisibility(string visible);
-        void OnReconnected(string state);
-        void OnStopped();
-
-        ValueTask TriggerEvent(string eventName, object? detail = null);
-        bool IsReady { get; }
-        int OffsetInMinutes { get; }
-        internal Dictionary<string, string?> InFlight { get; }
-        string ContextKey { get; }
-        ConcurrentDictionary<string, string> ClassNames { get; }
-        IJSRuntime Runtime { get; }
-    }
-
-    public enum PageAction
-    {
-        Scroll,
-        Resize,
-        Focus,
-        Visible,
-        Reconnect
-    }
-
-
-    public class DelegateAsyncProxy<T>(PageManager parent, PageAction action)
-
-    {
-        // Usage: Page.OnScroll["Navlist"] += ...
-        public virtual Func<string, T?, Task>? this[string id]
-        {
-            get
-            {
-                return parent[action, id] as Func<string, T?, Task>;
-            }
-            set
-            {
-                parent.Subscribe((action, id), value);
-            }
-        }
-    }
-
-    public class DelegateProxy<T>(PageManager parent, PageAction action)
-        
-    {
-        // Usage: Page.OnScroll["Navlist"] += ...
-        public virtual Action<string, T?>? this[string id]
-        {
-            get
-            {
-                return parent[action, id] as Action<string, T?>;
-            }
-            set
-            {
-                parent.Subscribe((action, id), value);
-            }
-        }
-    }
-
-    public class StringProxy(PageManager parent, PageAction action)
-        : DelegateProxy<string>(parent, action)
-    {
-
-    }
-
-    public class BooleanProxy(PageManager parent, PageAction action)
-        : DelegateProxy<bool>(parent, action)
-    {
-
-    }
-
-    public class ResizeProxy(PageManager parent)
-        : DelegateProxy<(int w, int h, bool s)>(parent, PageAction.Resize)
-    {
-    }
-
-
-    public class StringAsyncProxy(PageManager parent, PageAction action)
-        : DelegateAsyncProxy<string>(parent, action)
-    {
-
-    }
-
-    public class BooleanAsyncProxy(PageManager parent, PageAction action)
-        : DelegateAsyncProxy<bool>(parent, action)
-    {
-
-    }
-
-    public class ResizeAsyncProxy(PageManager parent)
-        : DelegateAsyncProxy<(int w, int h, bool s)>(parent, PageAction.Resize)
-    {
-    }
 
 
     public class PageManager : IPageManager
@@ -153,7 +17,7 @@ namespace RazorSharp.Services
 
         public ConcurrentDictionary<string, string> ClassNames { get; } = [];
 
-        public string ContextKey => Context?.IServerState?.Connection.RemoteIpAddress.ToString() ?? "Internal";
+        public string ContextKey => Form.ConnectionId;
 
         public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
@@ -169,7 +33,7 @@ namespace RazorSharp.Services
         readonly IFormFactor Form;
         readonly ILoggerFactory Logger;
         readonly IRenderState Rendered;
-        readonly IServerState? Context;
+        readonly ICircuitProvider? Context;
 
 
         public IJSRuntime Runtime => Rendered.Runtime;
@@ -178,7 +42,7 @@ namespace RazorSharp.Services
             IFormFactor _formFactor,
             ILoggerFactory _logger,
             IRenderState _rendered,
-            IServerState? _context = null
+            ICircuitProvider? _context = null
         ) : base() {
             Form = _formFactor;
             Logger = _logger;
@@ -245,7 +109,7 @@ namespace RazorSharp.Services
                 var dotNetHelper = DotNetObjectReference.Create(this);
                 _restartRequired.TrySetResult(true);
                 await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
-                valueFromPage = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+                OffsetInMinutes = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
 
             }
             finally
@@ -274,20 +138,7 @@ namespace RazorSharp.Services
         }
 
 
-        int valueFromPage = 0;
-        public int OffsetInMinutes
-        {
-            get
-            {
-                if (Context?.IServerState?.Request.Cookies.TryGetValue("timezoneOffset", out var offsetStr) == true
-                    && int.TryParse(offsetStr, out var offset))
-                {
-                    return offset;
-                }
-
-                return valueFromPage; // Default to UTC if not available
-            }
-        }
+        public int OffsetInMinutes { get; private set; }
 
 
         public virtual async Task SetState(IComponent? state)

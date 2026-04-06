@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using System;
+#if !BROWSER
+using Microsoft.AspNetCore.Http;
+#endif
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Extensions.PrometheusTypes
 {
@@ -12,9 +11,9 @@ namespace Extensions.PrometheusTypes
 
         static readonly ConcurrentDictionary<MemberInfo, List<Type>> parameterCache = [];
 
-        public static List<Type> ToServices(this ParameterInfo[]? parameters, IServiceProvider collection)
+        public static List<Type> ToServices(this IEnumerable<ParameterInfo>? parameters, IServiceProvider collection)
         {
-            if (parameters == null || parameters.Length == 0) return [];
+            if (parameters == null || !parameters.Any()) return [];
             if (parameterCache.TryGetValue(parameters.First().Member, out var cached)) return cached;
 
             List<Type> services = [];
@@ -44,7 +43,8 @@ namespace Extensions.PrometheusTypes
                 _cachedRouteTypes.TryAdd(type, attr.Template);
             }
 
-            if (!type.HasAuthorization()) return null;
+            if (!type.HasAuthorization() && type.Routes().Count == 0) return null;
+
             var ns = (type.Namespace ?? "Global").Split('.').ToList();
             if (!string.IsNullOrWhiteSpace(type.Name))
                 ns.Add(type.Name);
@@ -55,12 +55,21 @@ namespace Extensions.PrometheusTypes
         }
 
 
+        public static bool TypeExtendsAny(this Type any, ParameterInfo type) => type.ParameterType.Extends(any);
+
+
         public static string? Route(this MethodInfo? sharing)
         {
             if (sharing == null) return null;
             if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route;
             var type = sharing.DeclaringType;
-            if (!sharing.HasAuthorization()) return null;
+            if (!sharing.HasAuthorization()
+#if !BROWSER
+                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
+#endif
+            )
+                return null;
+            
             var ns = (type?.Namespace ?? "Global").Split('.').ToList();
             if (!string.IsNullOrWhiteSpace(type?.Name))
                 ns.Add(type.Name);
@@ -91,8 +100,37 @@ namespace Extensions.PrometheusTypes
         }
 
 
+        public static List<Type> ToServices(this IEnumerable<Assembly?>? ass)
+        {
+            if (ass == null) return [];
+            return [..ass.SelectMany(a => a?.ToServices() ?? []).Where(t => t!=null)];
+        }
+
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
+
+        public static List<Type> ToServices(this Assembly ass)
+        {
+            if (_serviceCache.TryGetValue(ass, out var services)) return services;
+            List<Type> interfaces = [..ass.GetTypes().Where(t => t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
+                || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true)];
+            List<Type> servicesToCache = [.. interfaces.Concat(ass.GetTypes().Where(interfaces.AnyExtendsAny))];
+            _serviceCache.TryAdd(ass, servicesToCache);
+            return servicesToCache;
+        }
+
+
+        public static bool AnyExtendsAny(
+            this List<Type> interfaces,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            Type any) => interfaces.Any(any.Extends);
+
+
         public static List<MethodInfo> Routes<T>(this T sharing) where T : class
-            => [.. typeof(T).GetMethods(null).Where(m => m.IsRoutable())];
+            => [.. typeof(T).Routes()];
+
+        public static List<MethodInfo> Routes(this Type sharing)
+            => [.. sharing.GetMethods(null).Where(m => m.IsRoutable())];
+
 
 
         private static readonly ConcurrentDictionary<Type, string?> _cachedRouteTypes = [];

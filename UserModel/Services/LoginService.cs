@@ -1,5 +1,7 @@
 ﻿
 
+using RazorSharp.Services;
+
 namespace UserModel.Services
 {
     public interface ILoginService

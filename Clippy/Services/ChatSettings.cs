@@ -40,7 +40,7 @@ namespace Clippy.Services
                 Url = ServiceUrl,
                 DefaultModel = ModelName,
                 ResponsePath = Response,
-                Params = Parameters,
+                Parameters = Parameters,
                 IsPrevious = true,
             };
 

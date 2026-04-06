@@ -32,7 +32,7 @@
 
     public interface IChatService
     {
-        Task<Tuple<bool?, string?>> PingService(string ServiceUrl, string ModelName, string ApiKey, string Response, List<DynamicParam> Parameters);
+        Task<Tuple<bool, string>?> TryChat(ServicePreset? service);
         Task<List<ServicePreset>> ListPresets();
         Task<string?> SendMessage(string message);
         Task<bool?> IsWorking();

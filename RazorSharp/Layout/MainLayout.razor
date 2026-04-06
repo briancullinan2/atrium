@@ -5,14 +5,11 @@
 @inject IJSRuntime JS
 @inject IMenuService MenuService
 @inject IThemeService ThemeService
-@inject IStudyService StudyService
-@inject ILoginService LoginService
 @inject ITitleService TitleService
 @inject IServiceProvider Services
 @inject IPageManager PageManager
 @inject IRenderState RenderState
 @inject ILoggerFactory LoggerFactory
-@inject IChatService ChatService
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationTracker Tracker
@@ -95,7 +92,7 @@
     </main>
 
     @if (Nav.Uri != "/error" && Nav.Uri != "/console"
-        && NavigationExtensions.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console))
+        && this.IdentifyNavigation(Nav.Uri).ComponentType != typeof(Pages.Shared.Console))
     {
         <RazorSharp.Pages.Shared.Console Embedded="true" />
     }
@@ -233,8 +230,8 @@
         }
         PageHasChanged = true;
 
-        var (targetType, targetParams) = NavigationExtensions.IdentifyNavigation(targetUri);
-        var (currentType, currentParams) = NavigationExtensions.IdentifyNavigation(currentUri);
+        var (targetType, targetParams) = this.IdentifyNavigation(targetUri);
+        var (currentType, currentParams) = this.IdentifyNavigation(currentUri);
 
         if (targetType == currentType)
         {
@@ -289,8 +286,6 @@
         MenuService.OnHeaderChanged += SetHeader;
         ThemeService.OnApplicationChanged += SetApplication;
         ThemeService.OnSidebarChanged += SetSidebar;
-        StudyService.OnStudyChanged += SetStudyMode;
-        LoginService.OnLoginChanged += SetLoginMode;
         LoginService.OnUserChanged += SetUser;
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
@@ -322,24 +317,6 @@
         InvokeAsync(StateHasChanged);
     }
 
-
-    public void SetStudyMode(bool study)
-    {
-        bool didSomething;
-        if (study == true) didSomething = PageManager.ClassNames.TryAdd("study-mode", "study-mode");
-        else didSomething = PageManager.ClassNames.TryRemove("study-mode", out _);
-        if (didSomething)
-            InvokeAsync(StateHasChanged);
-    }
-
-    public void SetLoginMode(bool login)
-    {
-        bool didSomething;
-        if (login == true) didSomething = PageManager.ClassNames.TryAdd("login-mode", "login-mode");
-        else didSomething = PageManager.ClassNames.TryRemove("login-mode", out _);
-        if(didSomething)
-            InvokeAsync(StateHasChanged);
-    }
 
 
     public void SetUser(User? user)
@@ -477,8 +454,6 @@
         ThemeService.OnApplicationChanged -= SetApplication;
         ThemeService.OnSidebarChanged -= SetSidebar;
         ThemeService.OnBackgroundChanged -= SetBackground;
-        StudyService.OnStudyChanged -= SetStudyMode;
-        LoginService.OnLoginChanged -= SetLoginMode;
         LoginService.OnUserChanged -= SetUser;
         MenuService.OnHeaderChanged -= SetHeader;
         PageManager.OnStateChanged -= SetState;

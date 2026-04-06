@@ -29,7 +29,7 @@ namespace Clippy.Services
             var ModelName = string.IsNullOrWhiteSpace(service?.DefaultModel) ? bestService?.DefaultModel : service.DefaultModel;
             var ApiKey = string.IsNullOrWhiteSpace(service?.ApiKey) ? bestService?.ApiKey : service.ApiKey;
             var Response = string.IsNullOrWhiteSpace(service?.ResponsePath) ? bestService?.ResponsePath : service.ResponsePath;
-            var Parameters = service?.Params?.Count == 0 ? bestService?.Params : service?.Params;
+            var Parameters = service?.Parameters?.Count == 0 ? bestService?.Parameters : service?.Parameters;
 
             var payload = new Dictionary<string, object>();
 

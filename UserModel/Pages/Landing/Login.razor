@@ -4,18 +4,13 @@
 @page "/logout"
 @page "/access-denied"
 @implements IDisposable
-@using DataLayer.Utilities
-@using 
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.Security.Claims
-@using FlashCard.Services.Logging
 @attribute [AllowAnonymous]
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject IAuthService AuthService
 @inject IQueryManager QueryManager
 @inject NavigationManager Nav
+@inject IPageManager PageManager
 
 <SyncedTitle Title="User Login"></SyncedTitle>
 
@@ -60,7 +55,7 @@
     {
         if (Users == null) return "blue";
         var index = Users.ToList().IndexOf(user);
-        var (r, g, b) = Utilities.RgbToHslTools.HslToRgb((360 / (Users.Count() + 1)) * index, 0.5, 0.5);
+        var (r, g, b) = RgbToHslTools.HslToRgb((360 / (Users.Count() + 1)) * index, 0.5, 0.5);
         return $"background-color:#{(int)r:X2}{(int)g:X2}{(int)b:X2};";
     }
 
@@ -71,7 +66,7 @@
         try
         {
             if (user.CanonicalFingerprint == null
-                && DataLayer.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
+                && UserData.Generators.Users.Generate().Any(u => string.Equals(u.Username, user.Username)))
             {
                 //await user.Roles.First().Update();
                 user.Roles.Add(await QueryManager.Update<Role>(r => r.Name == nameof(DefaultRoles.Admin)));
@@ -134,6 +129,7 @@
         //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
         MenuService.SetMenu(null);
         MenuService.SetHeader(false);
+        PageManager.ClassNames.TryAdd("login-mode", "login-mode");
         LoginService.SetLoginMode(true);
         LoginService.SetUser(null);
         LoginService.OnUserChanged += SetUser;
@@ -164,7 +160,7 @@
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        Users = DataLayer.Generators.Users.Generate();
+        Users = UserData.Generators.Users.Generate();
         InvokeAsync(StateHasChanged);
     }
 }

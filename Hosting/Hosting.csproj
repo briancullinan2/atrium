@@ -13,9 +13,12 @@
 	
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
 	</ItemGroup>
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<ProjectReference Include="..\WebClient\WebClient.csproj">
@@ -29,7 +32,6 @@
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'browser'">
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
 	</ItemGroup>
 
 	<ItemGroup>
