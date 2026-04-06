@@ -1,11 +1,10 @@
 @page "/hosting"
-@using global::Hosting.Services
 @implements IDisposable
 @inject IMenuService MenuService
 @inject HttpClient HttpClient
 @inject IServiceProvider ServiceProvider
 
-<SyncedTitle Title="Hosting"></SyncedTitle>
+@attribute [Display(Name = "Hosting", GroupName = "Administration", Prompt = "bi-hdd-network")]
 
 <div class="flash-card hosting">
 

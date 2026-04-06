@@ -172,6 +172,10 @@ namespace Extensions.PrometheusTypes
             => [.. sharing.GetMethods(null).Where(m => m.IsRoutable())];
 
 
+        public static List<MethodInfo> AllRoutes { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies().Routes()
+            .Distinct()];
+
 
         private static readonly ConcurrentDictionary<Type, string?> _cachedRouteTypes = [];
         private static readonly ConcurrentDictionary<MethodInfo, string?> _cachedRouteMethods = [];

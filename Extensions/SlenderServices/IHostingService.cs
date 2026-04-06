@@ -1,6 +1,8 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Hosting.Services
+namespace Extensions.SlenderServices
 {
     public interface IHostingService
     {
@@ -11,7 +13,9 @@ namespace Hosting.Services
         Task<bool?> IsWorking();
         Task<StatusResponse?> CheckStatus(string? domain);
         event Action<bool?>? OnHttpWorking;
+
     }
+
 
     public class HostingSettings
     {
@@ -26,7 +30,7 @@ namespace Hosting.Services
     {
 
         public StatusResponse()
-        { 
+        {
             if (Now < DateTime.Now.AddMinutes(2))
             {
                 StableGuid = Guid.NewGuid().ToString();
@@ -39,9 +43,9 @@ namespace Hosting.Services
         public static DateTime? Now { get; set; } = DateTime.Now;
 
         public static List<string>? ItWorks { get => [StableGuid]; set => StableGuid = value?.Count > 0 ? value?.ElementAt(0) ?? StableGuid : StableGuid; }
-        public string? Host { get; internal set; }
-        public string? Tunnel { get; internal set; }
-        public object? Error { get; internal set; }
+        public string? Host { get; set; }
+        public string? Tunnel { get; set; }
+        public object? Error { get; set; }
     }
 
 }

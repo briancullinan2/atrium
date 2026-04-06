@@ -2,7 +2,7 @@
 
 namespace Extensions.SlenderServices
 {
-    internal class Log : Log.ILog
+    public class Log : Log.ILog
     {
 
         // demonstration for implementors to inject themselves

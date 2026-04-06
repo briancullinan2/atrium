@@ -41,12 +41,13 @@ namespace RazorSharp.Services
             .Where(r => !string.IsNullOrWhiteSpace(r.Value.Prompt)) // get icons from Prompt field
             .Select(r => KeyValuePair.Create<string, string>(r.Value.GroupName ?? string.Empty, r.Value.Prompt ?? string.Empty))];
 
+
         public static List<INavMenuItem> GetMenuItems(string menu) => [.. PotentialRoutes
             .Where(r => string.Equals(r.Value.GroupName, menu, StringComparison.InvariantCultureIgnoreCase))
             .Select(r => {
                 var pageTyped = typeof(NavMenuItem<>).MakeGenericType(r.Key);
                 var navItem = Activator.CreateInstance(pageTyped) as INavMenuItem;
-                navItem?.Title = r.Value.Name ?? string.Empty;
+                navItem?.Title = r.Value.ShortName ?? r.Value.Name ?? string.Empty;
                 navItem?.Icon = r.Value.Prompt ?? string.Empty;
                 if (navItem?.Title != null)
                     navItem?.Children = GetMenuItems(navItem?.Title!);

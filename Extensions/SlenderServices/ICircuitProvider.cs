@@ -29,8 +29,8 @@ namespace Extensions.SlenderServices
         Task OnConnectionUpAsync(ConnectionMetadata metadata);
         Task OnConnectionDownAsync(ConnectionMetadata metadata);
 
-        Task<T?> InvokeAsync<T>(string method, CancellationToken? ct = null); // TODO: params object?[]? args);
-        Task<T?> InvokeAsync<T>(string method, object?[]? parameters); // TODO: params object?[]? args);
+        Task<T?> InvokeAsync<T>(string? method, CancellationToken? ct = null); // TODO: params object?[]? args);
+        Task<T?> InvokeAsync<T>(string? method, object?[]? parameters); // TODO: params object?[]? args);
     }
 
 }

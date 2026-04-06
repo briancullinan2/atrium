@@ -1,33 +1,22 @@
 ﻿
 
-using RazorSharp.Services;
 
 namespace UserModel.Services
 {
-    public interface ILoginService
-    {
-        Task SetLoginMode(bool study);
-        Task SetUser(User? user);
-        bool Login { get; set; }
-        User? User { get; set; }
-        event Action<bool>? OnLoginChanged;
-        event Action<User?>? OnUserChanged;
-        bool IsReady { get; }
-    }
-
+    
 
     public class LoginService : ILoginService, IDisposable
     {
         public static bool FirstTime { get; set; } = true;
         public bool Login { get; set; } = false;
-        public User? User { get; set; } = null;
+        public object? User { get; set; } = null;
         public IRenderState Rendered { get; }
         public IAuthService Auth { get; private set; }
         public IQueryManager Query { get; private set; }
 
         public event Action<bool>? InternalLoginChanged;
-        private event Action<User?>? InternalUserChanged;
-        public event Action<User?>? OnUserChanged
+        private event Action<object?>? InternalUserChanged;
+        public event Action<object?>? OnUserChanged
         {
             add
             {
@@ -111,7 +100,7 @@ namespace UserModel.Services
                 User = null; // Guest state
             }
 
-            Console.WriteLine("Logged in: " + User?.Username);
+            Console.WriteLine("Logged in: " + User?.ToString());
 
             _restartRequired.TrySetResult(true);
 
@@ -214,7 +203,7 @@ namespace UserModel.Services
             InternalLoginChanged?.Invoke(login);
         }
 
-        public async Task SetUser(User? user)
+        public async Task SetUser(object? user)
         {
             User = user;
             InternalUserChanged?.Invoke(user);

@@ -3,7 +3,7 @@
 namespace Atrium.Platforms.Windows
 {
 
-    internal static partial class User32
+    public static partial class User32
     {
         public const uint WM_COPYGLOBALDATA = 0x0049;
         public const uint WM_DROPFILES = 0x0233;

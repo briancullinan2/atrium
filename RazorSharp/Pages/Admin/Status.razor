@@ -1,9 +1,11 @@
 @page "/status"
-@using System.Net.Http
+
+@attribute [Display(Name = "System Status", ShortName = "Status", GroupName = "Administration", Prompt = "bi-exclamation-triangle")]
 
 @inject IMenuService MenuService
 @inject HttpClient HttpClient
 @inject IHostingService StatusService
+@inject ICircuitProvider Provider
 
 <SyncedTitle Title="System Status"></SyncedTitle>
 <div class="flash-card">
@@ -74,9 +76,9 @@
                 return;
             }
 
-            var cancellation = new CancellationToken();
-            var response = await HttpClient.PostAsJsonAsync($"https://{Domain}/api/status", new StringContent("", System.Text.Encoding.UTF8, "application/json"), cancellation);
-            var result = await response.Content.ReadFromJsonAsync<StatusResponse>(cancellationToken: cancellation);
+
+            var route = StatusService.GetType().GetMethods(nameof(IHostingService.CheckStatus)).Route();
+            var result = await Provider.InvokeAsync<StatusResponse>(route);
 
             if (StatusResponse.ItWorks?[0] == token)
             {

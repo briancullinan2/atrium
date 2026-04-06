@@ -1,5 +1,6 @@
-﻿using System.IO;
-using System.Net.Http.Json;
+﻿#if !BROWSER
+using Microsoft.AspNetCore.Http;
+#endif
 #if WINDOWS
 using System.ServiceProcess;
 #endif

@@ -1,0 +1,22 @@
+@page "/"
+@page "/index.html"
+@page "/app.html"
+@page "/{*notFound}"
+
+@if (!String.IsNullOrWhiteSpace(notFound))
+{
+    <NotFoundControl />
+    return;
+}
+
+<div class="flash-card animate-in">
+Find a home page.
+</div>
+
+@code
+{
+    // TODO: find the best home page based on the plugins loaded.
+
+    [Parameter] public string? notFound { get; set; }
+
+}

@@ -1,10 +1,22 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR.Client;
 using System.Net.Http.Json;
 
 namespace Hosting.Services
 {
     public partial class CircuitProvider : ICircuitProvider
     {
+
+        public async Task<TResult?> InvokeAsync<TResult>(string method, CancellationToken? token = null)
+        {
+            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
+        }
+
+        public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
+        {
+            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
+        }
+
 
         public async Task<TResult?> RespondCircuit<TResult>(MemberInfo? methodInfo, params object?[]? parameters)
         {
@@ -68,10 +80,32 @@ namespace Hosting.Services
         };
 
 
-        public static async Task<TResult?> OnExecuteAsync<TResult>(ICircuitProvider service, string method, params object?[]? parameters)
+        public static async Task OnExecuteAsync(ICircuitProvider service)
         {
             return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<, TResult>, service.DefaultTTL, method, parameters);
         }
 
+
+        public async Task<TResult?> ExecuteAsyncDebounced<TResult>(
+            Type type,
+            string? method,
+            object?[]? parameters
+            // TODO: get force out of somewhere
+            /* bool force = false */)
+        {
+            // TODO: the same Debounce and QueryNow does with parameters
+
+            //if (_cachedValue != null && DateTime.Now < _lastFetched + TimeSpan.FromMilliseconds(DefaultTTL))
+            //{
+            //    return _cachedValue;
+            //}
+
+            MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
+                ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
+                ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
+
+            if (methodInfo == null || !methodInfo.IsRoutable())
+                throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
+        }
     }
 }

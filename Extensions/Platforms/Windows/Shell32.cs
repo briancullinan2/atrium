@@ -3,7 +3,7 @@
 namespace Atrium.Platforms.Windows
 {
 
-    internal static partial class Shell32
+    public static partial class Shell32
     {
         public const int WM_DROPFILES = 0x0233; // wtf? AI slop? MSGFLT_ALLOW
         public const uint WM_SETCURSOR = 0x0020;

@@ -1,13 +1,10 @@
 ﻿
-
-#if BROWSER
-using Microsoft.AspNetCore.SignalR.Client;
-using System.Net.Http.Json;
-#else
+#if !BROWSER
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Maui.Controls;
+using Microsoft.AspNetCore.Routing;
 #endif
 
 namespace Hosting.Services
@@ -16,6 +13,9 @@ namespace Hosting.Services
 
     public partial class CircuitProvider : ICircuitProvider
     {
+
+        public static string HubAddress { get; } = "/api/hub";
+
         public event Action<bool, ConnectionMetadata>? OnConnectionDown;
         public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
@@ -53,37 +53,6 @@ namespace Hosting.Services
             OnConnectionDown?.Invoke(false, metadata);
         }
 
-        public async Task<TResult?> InvokeAsync<TResult>(string method, CancellationToken? token = null)
-        {
-            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
-        }
-        public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
-        {
-            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
-        }
-
-
-        public async Task<TResult?> ExecuteAsyncDebounced<TResult>(
-            Type type,
-            string? method,
-            object?[]? parameters
-            // TODO: get force out of somewhere
-            /* bool force = false */)
-        {
-            // TODO: the same Debounce and QueryNow does with parameters
-
-            //if (_cachedValue != null && DateTime.Now < _lastFetched + TimeSpan.FromMilliseconds(DefaultTTL))
-            //{
-            //    return _cachedValue;
-            //}
-
-            MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
-                ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
-                ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
-
-            if (methodInfo == null || !methodInfo.IsRoutable())
-                throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
-        }
 
     }
 
@@ -128,7 +97,7 @@ namespace Hosting.Services
             {
                 _connection = new HubConnectionBuilder()
                 .AddMessagePackProtocol()
-                .WithUrl(Navigation.ToAbsoluteUri("/_blazor"), options =>
+                .WithUrl(Navigation.ToAbsoluteUri(HubAddress), options =>
                 {
                     // Ensure this isn't returning null!
                     options.AccessTokenProvider = () =>
@@ -254,7 +223,6 @@ namespace Hosting.Services
             await base.OnConnectionDownAsync(circuit, ct);
         }
 
-
     }
 
 
@@ -267,7 +235,8 @@ namespace Hosting.Services
             if (context == null) return false;
             return context.Response.HasStarted
                 && context.WebSockets.IsWebSocketRequest
-                && context.Request.Path.StartsWithSegments("/_blazor");
+                && (context.Request.Path.StartsWithSegments("/_blazor")
+                || context.Request.Path.StartsWithSegments(CircuitProvider.HubAddress));
         }
 
 
@@ -279,7 +248,7 @@ namespace Hosting.Services
 
         public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
         {
-            endpoints.MapHub<CircuitProvider>("/api/hub");
+            endpoints.MapHub<CircuitProvider>(CircuitProvider.HubAddress);
 
             var services = Assembly.GetCallingAssembly().GetAssemblies().ToServices();
 
@@ -293,7 +262,7 @@ namespace Hosting.Services
                     var route = method.Route();
                     if (route == null) continue;
 
-                    var routeBuilder = endpoints.MapPost(route, method.CreateDelegate<RequestDelegate>());
+                    var routeBuilder = endpoints.MapPost(route, CircuitProvider.OnExecuteAsync);
 
                     routeBuilder.RequireAuthorization();
 

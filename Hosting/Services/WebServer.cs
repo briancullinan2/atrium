@@ -1,5 +1,5 @@
-﻿
-#if !BROWSER
+﻿#if !BROWSER
+using Hosting.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Server;
 #endif
 

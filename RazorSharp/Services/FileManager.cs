@@ -4,22 +4,14 @@ using Stream = System.IO.Stream;
 
 
 
+
 #if WINDOWS
 using Atrium.Platforms.Windows;
 #endif
 
 namespace RazorSharp.Services
 {
-    public interface IFileManager
-    {
-        Task<File?> UploadFile(string localPath);
-        Task<File?> UploadFile(Stream localFile, string localPath, string? source = "Uploads");
-        Task OpenFileDialog();
-        Task SetDragging(bool dragging);
-        event Action<File?>? OnFileUploaded;
-        event Action<bool>? OnFileDragging;
-        Task<string?> OpenFile(string file);
-    }
+   
 
     internal class FileManager(IQueryManager Query, HttpClient Http) : IFileManager
     {
@@ -38,41 +30,6 @@ namespace RazorSharp.Services
         }
 
 
-        public async Task<File?> UploadFile(string localPath)
-        {
-            using var localStream = System.IO.File.OpenRead(localPath);
-            return await UploadFile(localStream, localPath);
-        }
-
-
-        // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
-        //   so any implementer can designate themselves as the source of the data
-
-        public async Task<File?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
-        {
-            var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
-            using var fileStream = System.IO.File.Create(savePath);
-            await localStream.CopyToAsync(fileStream);
-            // TODO: store in database and return File entity?
-            fileStream.Close();
-            localStream.Close();
-
-            var task = Query.Save(new File()
-            {
-                Filename = savePath,
-                Source = source // TODO: fill in from nav or parameter or something
-            });
-
-
-            if (task != null)
-            {
-                await task;
-                var file = task.Result;
-                OnFileUploaded?.Invoke(file);
-                return file;
-            }
-            return null;
-        }
 
 #if WINDOWS
         //[HttpPost("upload")]
@@ -280,10 +237,41 @@ namespace RazorSharp.Services
         internal int currentProgress = 0;
 
 
+
         public async Task<File?> UploadFile(string localPath)
         {
-            using var fileStream = File.OpenRead(localPath);
-            return await UploadFile(fileStream, localPath);
+            using var localStream = System.IO.File.OpenRead(localPath);
+            return await UploadFile(localStream, localPath);
+        }
+
+
+        // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
+        //   so any implementer can designate themselves as the source of the data
+
+        public async Task<File?> ReceiveFile(Stream localStream, string localPath, string? source = "Uploads")
+        {
+            var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
+            using var fileStream = System.IO.File.Create(savePath);
+            await localStream.CopyToAsync(fileStream);
+            // TODO: store in database and return File entity?
+            fileStream.Close();
+            localStream.Close();
+
+            var task = Query.Save(new File()
+            {
+                Filename = savePath,
+                Source = source // TODO: fill in from nav or parameter or something
+            });
+
+
+            if (task != null)
+            {
+                await task;
+                var file = task.Result;
+                OnFileUploaded?.Invoke(file);
+                return file;
+            }
+            return null;
         }
 
         public async Task<File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
@@ -304,7 +292,7 @@ namespace RazorSharp.Services
 
             content.Add(streamContent, "file", Path.GetFileName(localPath));
 
-            var response = await _httpClient.PostAsync("/api/upload", content);
+            var response = await Http.PostAsync("/api/upload", content);
             var result = await response.Content.ReadFromJsonAsync<File>();
             OnFileUploaded?.Invoke(result);
             return result;
@@ -312,14 +300,9 @@ namespace RazorSharp.Services
 
         }
 
-        public async Task OpenFileDialog()
-        {
-
-        }
-
         public async Task<string?> OpenFile(string file)
         {
-            var result = _httpClient?.GetStringAsync(file);
+            var result = Http.GetStringAsync(file);
             if (result == null) return null;
             return await result;
         }
