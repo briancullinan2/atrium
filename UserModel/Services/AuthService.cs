@@ -83,13 +83,7 @@ namespace UserModel.Services
             }
             else
             {
-                Context?.Response.Cookies.Append(CookieName, newSession.Id, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true, // Arizona: Always use Secure in production
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddSeconds(newSession.Lifetime)
-                });
+                
             }
         }
 

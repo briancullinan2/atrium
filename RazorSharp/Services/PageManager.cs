@@ -124,20 +124,6 @@ namespace RazorSharp.Services
 
         #region "Page State"
 
-        public async Task SetSessionCookie(string name, string value, int days)
-        {
-            await ModuleInitialize;
-            await Module.InvokeVoidAsync("setSessionCookie", name, value, days);
-        }
-
-
-        public async Task<string?> GetSessionCookie(string name)
-        {
-            await ModuleInitialize;
-            return await Module.InvokeAsync<string>("getSessionCookie", name);
-        }
-
-
         public int OffsetInMinutes { get; private set; }
 
 

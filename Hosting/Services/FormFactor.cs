@@ -18,6 +18,7 @@ namespace Hosting.Services
     public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     {
         public Dictionary<string, string>? QueryParameters { get; private set; }
+        public IPageManager? Page { get; }
         public NavigationManager Navigation { get; }
 
         public abstract bool IsBrowser { get; }
@@ -29,8 +30,9 @@ namespace Hosting.Services
         public abstract string BaseUrl { get; }
         public abstract string ConnectionId { get; }
 
-        public BaseFormFactor(NavigationManager nav)
+        public BaseFormFactor(NavigationManager nav, IPageManager? page = null)
         {
+            Page = page;
             Navigation = nav;
             Navigation.LocationChanged += Nav_LocationChanged;
             QueryParameters = Navigation.Uri.Query();
@@ -70,6 +72,24 @@ namespace Hosting.Services
             Navigation.LocationChanged -= Nav_LocationChanged;
             GC.SuppressFinalize(this);
         }
+
+
+        public virtual async Task SetSessionCookie(string name, string value, int days)
+        {
+            if (Page == null) return;
+            await Page.ModuleInitialize;
+            await Page.Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+        }
+
+
+        public virtual async Task<string?> GetSessionCookie(string name)
+        {
+            if (Page == null) return null;
+            await Page.ModuleInitialize;
+            return await Page.Module.InvokeAsync<string>("getSessionCookie", name);
+        }
+
+
     }
 
 
@@ -77,10 +97,10 @@ namespace Hosting.Services
 
     public partial class FormFactor(
         NavigationManager nav
-        , IPageManager PageManager
+        , IPageManager page
         , IJSRuntime? JS = null
         , Lazy<WebAssemblyHost?>? App = null
-    ) : BaseFormFactor(nav)
+    ) : BaseFormFactor(nav, page)
     {
         public override bool IsBrowser => true;
         public override bool IsWebContext => true;
@@ -93,8 +113,9 @@ namespace Hosting.Services
         public override async Task<string?> UpdateTitle(string? title)
         {
             var _title = await base.UpdateTitle(title);
-            await PageManager.ModuleInitialize;
-            await PageManager.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
+            if (Page == null) return _title;
+            await Page.ModuleInitialize;
+            await Page.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
             return _title;
         }
 
@@ -127,6 +148,29 @@ namespace Hosting.Services
         public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
         public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
         public override string ConnectionId => Context?.Connection.Id ?? "Internal";
+
+
+        public override async Task SetSessionCookie(string name, string value, int days)
+        {
+            if(Context?.Response.HasStarted != true)
+                Context?.Response.Cookies.Append(name, value, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true, // Arizona: Always use Secure in production
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(days)
+                });
+            if (Page == null) return;
+            await base.SetSessionCookie(name, value, days);
+        }
+
+
+        public override async Task<string?> GetSessionCookie(string name)
+        {
+            if(Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
+            if (Page == null) return null;
+            return await base.GetSessionCookie(name);
+        }
 
         public override async Task<string?> UpdateTitle(string? title)
         {

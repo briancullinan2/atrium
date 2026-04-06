@@ -17,6 +17,8 @@ namespace Extensions.SlenderServices
         Task<string?> UpdateTitle(string? title);
         event Action<string?>? OnTitleChanged;
         Dictionary<string, string>? QueryParameters { get; }
+        Task SetSessionCookie(string name, string value, int days);
+        Task<string?> GetSessionCookie(string name);
     }
 
 

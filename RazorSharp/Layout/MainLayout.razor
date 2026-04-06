@@ -8,6 +8,7 @@
 @inject ITitleService TitleService
 @inject IServiceProvider Services
 @inject IPageManager PageManager
+@inject IFormFactor Form
 @inject IRenderState RenderState
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager Nav
@@ -159,8 +160,8 @@
         }
 
         await Task.Delay(400);
-        if (PageManager.InFlight.ContainsKey(PageManager.ContextKey))
-            PageManager.InFlight.Remove(PageManager.ContextKey);
+        if (PageManager.InFlight.ContainsKey(Form.ConnectionId))
+            PageManager.InFlight.Remove(Form.ConnectionId);
 
         _isTransitioning = false;
         _previousList.Clear();
@@ -251,7 +252,7 @@
         // Subscribe to the push event
         _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
         Nav.LocationChanged += OnLocationChanged;
-        TitleService.OnTitleChanged += SetTitle;
+        Form.OnTitleChanged += SetTitle;
         MenuService.OnMenuChanged += SetHeaderMenu;
         MenuService.OnHeaderChanged += SetHeader;
         ThemeService.OnApplicationChanged += SetApplication;
@@ -259,7 +260,6 @@
         LoginService.OnUserChanged += SetUser;
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
-        ChatService.OnChatWorking += SetChat;
         RenderState.NotifyEmptied();
 
         //AuthProvider.AuthenticationStateChanged += (task) =>
@@ -339,17 +339,6 @@
     }
 
 
-    private void SetChat(bool? chat)
-    {
-        if (chat != ShowChat)
-        {
-            ShowChat = chat;
-            if (ShowChat == true) PageManager.ClassNames.TryAdd("chatting", "chatting");
-            else PageManager.ClassNames.TryRemove("chatting", out _);
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
 
     private void SetHeader(bool? show)
     {
@@ -419,7 +408,7 @@
         // Unsubscribe to prevent memory leaks
         _registration?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;
-        TitleService.OnTitleChanged -= SetTitle;
+        Form.OnTitleChanged -= SetTitle;
         MenuService.OnMenuChanged -= SetHeaderMenu;
         ThemeService.OnApplicationChanged -= SetApplication;
         ThemeService.OnSidebarChanged -= SetSidebar;
@@ -428,7 +417,6 @@
         MenuService.OnHeaderChanged -= SetHeader;
         PageManager.OnStateChanged -= SetState;
         PageManager.OnErrorChanged -= SetError;
-        ChatService.OnChatWorking -= SetChat;
     }
 
 

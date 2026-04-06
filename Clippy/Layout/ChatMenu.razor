@@ -27,7 +27,7 @@
     public bool AutoScroll = true;
 
 
-    public static RenderFragment? MainLayoutInsert => ShowChat == true ? @<div class="chat-box">
+    public RenderFragment? MainLayoutInsert => ShowChat == true ? @<div class="chat-box">
         <input @onkeydown="HandleKeyDown" @bind:event="oninput" @bind="ChatMessage" type="text" placeholder="Type your message here..." /><button class="cta" @onclick="SendMessage">Send</button>
     </div> :  null;
     

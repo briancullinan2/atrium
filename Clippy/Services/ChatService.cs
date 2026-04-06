@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Extensions.PrometheusTypes;
+using Extensions.SlenderServices;
+using Microsoft.AspNetCore.Authorization;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Clippy.Services
 {
-    public partial class ChatService(HttpClient Http) : IChatService
+    public partial class ChatService(HttpClient Http, IPageManager Page) : IChatService
     {
         private List<ServicePreset>? recentResult;
         private DateTime? recentChecked;
@@ -13,15 +15,6 @@ namespace Clippy.Services
         private DateTime? recentPinged;
 
         public bool Chat { get; set; } = false;
-
-
-        public bool? Working {
-            get
-            {
-                _ = IsWorking();
-                return recentPing?.Item1;
-            }
-        }
 
 
         public async Task SetChatMode(bool chat)
@@ -61,6 +54,8 @@ namespace Clippy.Services
                 {
                     SaveWorkingSettings(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Parameters);
                 }
+                if (result) Page.ClassNames.TryAdd("chatting", "chatting");
+                else Page.ClassNames.TryRemove("chatting", out _);
                 OnChatWorking?.Invoke(result);
                 return Tuple.Create(result, json ?? string.Empty);
             }
@@ -104,8 +99,10 @@ namespace Clippy.Services
 
         public async Task<bool?> IsWorking()
         {
-            return (recentPing = await (_pingTask = 
-                TaskExtensions.Debounce<ServicePreset, Tuple<bool, string>>(TryChat, 1000)))?.Item1;
+            _pingTask = TaskExtensions.Debounce<ServicePreset, Tuple<bool, string>>(TryChat, 1000)
+                .Then(async r => (recentPing = r));
+
+            return recentPing?.Item1;
         }
         
 

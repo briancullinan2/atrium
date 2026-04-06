@@ -12,8 +12,6 @@ namespace Extensions.SlenderServices
         Task<Dictionary<string, string?>?> RestoreState(IComponent component);
         Task SetError(Exception? error);
         Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
-        Task SetSessionCookie(string name, string value, int days);
-        Task<string?> GetSessionCookie(string name);
 
         // page data handling instead of built in MS uninspectable crap
         Dictionary<string, string?> State { get; set; }
@@ -49,6 +47,7 @@ namespace Extensions.SlenderServices
 
         Task EnsureModuleLoaded();
         Task ModuleInitialize { get; }
+        IJSObjectReference Module { get; }
 
         void OnFocused(bool focused);
         void OnScrolled(string id, bool atBottom);
