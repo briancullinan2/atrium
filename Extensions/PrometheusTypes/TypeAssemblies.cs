@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Collections.Concurrent;
-
-namespace Extensions.PrometheusTypes;
+﻿namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
 {
@@ -10,6 +7,8 @@ public static partial class TypeExtensions
     private static readonly ConcurrentBag<Type> _allKnownTypes = [];
     private static readonly HashSet<string> _loadedAssemblies = [];
     private static readonly Lock _loaderLock = new();
+
+    public static List<Type> AllServices { get; }
 
     public static List<Type> AllRoutableInterfaces { get; }
 
@@ -24,6 +23,11 @@ public static partial class TypeExtensions
 
         // TODO: need a list of servicable types, anything in the namespace Services that has any routes
         var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+
+        AllServices = [..assemblies
+            .SelectMany(ass => ass.GetTypes())
+            .Where(t => t.Name.Contains("Service") || t.Namespace?.Contains("Service") == true)
+            ];
 
         AllRoutableInterfaces = [..assemblies
             .SelectMany(ass => ass.GetTypes())

@@ -100,7 +100,7 @@
 
     }
 
-    RenderFragment RenderNavItem(INavMenuItem item) => __builder =>
+    protected RenderFragment RenderNavItem(INavMenuItem item) => __builder =>
     {
         var hasChildren = item.Children != null && item.Children.Any();
 
@@ -136,7 +136,7 @@
     };
 
     // This is your Iterator/List
-    public static List<INavMenuItem> MenuStructure = MenuService.GetMenuItems("Main");
+    private static List<INavMenuItem> MenuStructure = MenuService.GetMenuItems("Main");
         //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
     /*
     new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "" },

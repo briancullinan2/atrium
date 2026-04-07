@@ -1,5 +1,4 @@
-﻿using UserData.Entities;
-
+﻿
 namespace UserData.Generators;
 
 public class Permissions : IGenerator<Permission>

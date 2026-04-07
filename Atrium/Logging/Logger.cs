@@ -1,8 +1,11 @@
 ﻿#if WINDOWS
 using log4net;
 #endif
-using RazorSharp.Services;
 
+<<<<<<< TODO: Unmerged change from project 'Atrium (net10.0-windows10.0.19041.0)', Before:
+using RazorSharp.Services;
+=======
+>>>>>>> After
 namespace Atrium.Logging;
 
 internal class Log : Log.ILog

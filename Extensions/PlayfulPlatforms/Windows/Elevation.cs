@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using System.Security.Principal;
-
-namespace Extensions.Platforms.Windows;
+﻿namespace Extensions.PlayfulPlatforms.Windows;
 
 internal class Elevation
 {

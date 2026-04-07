@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Hosting.Platforms.Browser;
+﻿namespace Hosting.Platforms.Browser;
 
 using Hosting.Services;
 using Microsoft.JSInterop;

@@ -1,4 +1,6 @@
 
+@inherits NavMenu
+@implements IHasMenu
 
 <div id="Navlist" class="nav-scrollable course">
     @foreach (var item in GetVisibleCourse())
@@ -10,18 +12,24 @@
 
 @code 
 {
+    public new static Delegate ShowMenu { get => () => true; }
+    public new static string Icon => "bi-journal-bookmark";
     private bool UserHasPaid => true; // Logic to check user role
+    
+    public new async Task SetMenuActivated(bool menu)
+    {
+    }
 
     private IEnumerable<INavMenuItem> GetVisibleCourse()
     {
         // Filter out items the user shouldn't see
         // For example: hide Premium link if they already paid
-        return CourseMenu.MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
+        return CourseMenu.CourseStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
     }
 
     public static ICourseMenuItem? GetCourse(Type type)
     {
-        return CourseMenu.MenuStructure.OfType<ICourseMenuItem>().FirstOrDefault(c => c.Course == type);
+        return CourseMenu.CourseStructure.OfType<ICourseMenuItem>().FirstOrDefault(c => c.Course == type);
     }
 
     public static ICourseMenuItem? GetActiveItem(int? level, string? lesson = null)
@@ -30,7 +38,7 @@
         if (level == null) return null;
 
         // Find the course matching the Level index
-        var course = CourseMenu.MenuStructure.OfType<ICourseMenuItem>().FirstOrDefault(c =>
+        var course = CourseMenu.CourseStructure.OfType<ICourseMenuItem>().FirstOrDefault(c =>
             CourseMap.TryGetValue(c.Lesson!, out var id) && id == level);
 
         if (string.IsNullOrEmpty(lesson))
@@ -44,7 +52,7 @@
             l.Lesson?.Name.ToSafe().Equals(lesson, StringComparison.OrdinalIgnoreCase) == true);
     }
 
-    public static IEnumerable<INavMenuItem> MenuStructure =
+    public static IEnumerable<INavMenuItem> CourseStructure =
     [
         
         // course tools
@@ -96,7 +104,7 @@
         }
     ];
 
-    public static readonly Dictionary<Type, int> CourseMap = CourseMenu.MenuStructure
+    public static readonly Dictionary<Type, int> CourseMap = CourseMenu.CourseStructure
         .OfType<ICourseMenuItem>()
         .SelectMany(c => (c.Children ?? []).Prepend(c)) // Include parents too
         .Where(item => item.Lesson != null)
@@ -110,7 +118,7 @@
 
     static CourseMenu()
     {
-        foreach (var course in CourseMenu.MenuStructure.OfType<ICourseMenuItem>().ToList())
+        foreach (var course in CourseMenu.CourseStructure.OfType<ICourseMenuItem>().ToList())
         {
             if (course.Lesson == null) continue;
             foreach (var lesson in course.Children ?? [])

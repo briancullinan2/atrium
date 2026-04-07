@@ -1,9 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
-using System.Collections.Concurrent;
-using System.Xml.Linq;
-
-namespace Extensions.PrometheusTypes;
+﻿namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
 {

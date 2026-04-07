@@ -1,4 +1,5 @@
 ﻿
+
 namespace Extensions.AlienVisitors;
 
 // run up the chain looking for types to replace because EF generates a bunch of plain ol objects for entities

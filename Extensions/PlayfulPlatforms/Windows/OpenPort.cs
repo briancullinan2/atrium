@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Extensions.Platforms.Windows;
+namespace Extensions.PlayfulPlatforms.Windows;
 
 
 [ComImport]

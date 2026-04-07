@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace UserModel.Extensions;
+﻿namespace UserModel.Extensions;
 
 public static partial class AuthenticationExtensions
 {

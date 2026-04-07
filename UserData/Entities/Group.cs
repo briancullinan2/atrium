@@ -1,4 +1,5 @@
 ﻿
+
 namespace UserData.Entities;
 
 [Table("group")]

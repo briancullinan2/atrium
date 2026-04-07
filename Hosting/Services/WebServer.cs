@@ -1,6 +1,12 @@
 ﻿#if !BROWSER
 using Hosting.Services;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.WebAssembly.Server;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Hosting;
 #endif
 
 namespace Hosting.Services;
@@ -10,6 +16,42 @@ internal static class WebServer
 
     private static readonly WebApplication _private = StartWebServer([]);
     public static WebApplication Current => _private;
+
+
+    public static void BuildSharedServiceList(IServiceCollection Services)
+    {
+
+        SharedRegistry.BuildSharedServiceList(Services);
+
+        // add ourselves
+        Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
+
+        Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
+
+        // TODO: make this optional for server only service mode
+        Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
+#if WINDOWS
+        Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(AtriumWebServer.Current));
+#endif
+
+
+        Services.AddSingleton(sp => new HttpClient
+        {
+            BaseAddress = new Uri("https://0.0.0.1")
+        });
+
+
+#if DEBUG
+        Services.AddBlazorWebViewDeveloperTools();
+#endif
+        // Inject the server instance into MAUI's DI
+#if WINDOWS
+        Atrium.Services.AuthService.BuildAuthentication(Services);
+#endif
+
+    }
+
+
 
     public static WebApplication StartWebServer(string[] args)
     {
@@ -41,7 +83,7 @@ internal static class WebServer
             });
 
 
-            MauiProgram.BuildSharedServiceList(webBuilder.Services);
+            BuildSharedServiceList(webBuilder.Services);
 
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
@@ -56,8 +98,6 @@ internal static class WebServer
             webBuilder.Services.AddKeyedScoped<SimpleLogger>("web");
             webBuilder.Services.AddSingleton<BaseCircuitProvider>();
             webBuilder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<BaseCircuitProvider>());
-
-            webBuilder.Services.AddSingleton<ITitleService, TitleTrackerService>();
 
             webBuilder.Services.AddSignalR()
                 .AddJsonProtocol()

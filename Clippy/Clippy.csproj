@@ -1,28 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net10.0-android;net10.0-browser</TargetFrameworks>
-		<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net10.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
-		
 		<Nullable>enable</Nullable>
-
 	</PropertyGroup>
 
-
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
-	
-	
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
 	</ItemGroup>
-	
-	
+
 	<ItemGroup>
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 
 

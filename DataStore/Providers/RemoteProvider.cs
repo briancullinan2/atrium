@@ -1,7 +1,4 @@
-﻿using System.Net.Http.Json;
-using System.Xml.Linq;
-
-namespace DataStore.Providers;
+﻿namespace DataStore.Providers;
 
 public class RemoteQueryProvider(ICurrentDbContext Current) : IAsyncQueryProvider
 {

@@ -1,9 +1,6 @@
-﻿using Extensions.SlenderServices;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 #if !BROWSER
-using Microsoft.AspNetCore.Http;
 #endif
-using System.Collections.Concurrent;
 
 namespace Extensions.PrometheusTypes;
 

@@ -1,7 +1,4 @@
-﻿using Extensions.SlenderServices;
-using RazorSharp.Services;
-
-namespace FlashCard.Services;
+﻿namespace FlashCard.Services;
 
 public interface IStudyService
 {

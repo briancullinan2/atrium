@@ -1,9 +1,10 @@
-﻿global using AnkiParser;
-global using Extensions.ForeignEntity;
+﻿global using Extensions.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
+global using Extensions.SlenderServices;
 global using FlashData;
 global using FlashData.Entities;
+global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.Data.Sqlite;
 global using Microsoft.EntityFrameworkCore;
 global using System;
@@ -15,5 +16,3 @@ global using System.Text.Json;
 global using System.Threading.Tasks;
 global using File = FlashData.Entities.File;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
-global using Extensions.SlenderServices;
-global using Microsoft.AspNetCore.Authorization;

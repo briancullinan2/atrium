@@ -5,17 +5,17 @@ namespace DataStore.Providers;
 public class DataTablesRequestModel : Extensions.ForeignEntity.DataTablesRequestModel
 {
 
-    public static async ValueTask<DataTablesRequestModel?> BindAsync(HttpContext context)
+    public static async ValueTask<DataTablesRequestModel?> BindAsync(IFormFactor context)
     {
         // For DataTables, this usually comes via Form or QueryString
-        var form = context.Request.HasFormContentType
-            ? await context.Request.ReadFormAsync()
-            : null;
+        //var form = context.Request.HasFormContentType
+        //    ? await context.Request.ReadFormAsync()
+        //    : null;
 
-        var query = context.Request.Query;
+        var query = context.QueryParameters;
 
         // Helper to get value from either Form or Query
-        string GetV(string key) => form?[key].FirstOrDefault() ?? query[key].FirstOrDefault() ?? string.Empty;
+        string GetV(string key) => /* form?[key].FirstOrDefault() ??*/ query?[key] ?? string.Empty;
 
         var model = new DataTablesRequestModel
         {

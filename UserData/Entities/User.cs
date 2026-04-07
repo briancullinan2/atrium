@@ -1,4 +1,5 @@
-﻿namespace UserData.Entities;
+﻿
+namespace UserData.Entities;
 
 [Table("user")]
 public class User : Entity<User>, IHasLogo

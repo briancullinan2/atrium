@@ -1,12 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+	
   <PropertyGroup>
-	  <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
+	  <TargetFrameworks>net10.0</TargetFrameworks>
 	  <ImplicitUsings>disable</ImplicitUsings>
       <Nullable>enable</Nullable>
   </PropertyGroup>
-	<PropertyGroup>
-		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
-	</PropertyGroup>
+
 	<PropertyGroup>
 		<Antlr4GenListener>true</Antlr4GenListener>
 		<Antlr4GenVisitor>true</Antlr4GenVisitor>

@@ -1,7 +1,7 @@
 ﻿
 global using Extensions.AlienVisitors;
 global using Extensions.ExpressYourself;
-global using Extensions.ForeignEntity;
+global using DataShared.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.MagicalMaths;
 global using Extensions.PrometheusTypes;
@@ -35,10 +35,9 @@ global using System.Text.RegularExpressions;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using CollectionConverter = Extensions.PrometheusTypes.CollectionConverter;
-global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
-global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using IComponent = Microsoft.AspNetCore.Components.IComponent;
-
+global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
+global using Interfacing.Services;
 
 
 

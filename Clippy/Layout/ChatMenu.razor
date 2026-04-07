@@ -21,8 +21,8 @@
 
 @code
 {
-    public static Delegate ShowMenu { get => (IChatService Chat) => Chat.Chat; }
     public bool AutoScroll = true;
+    public static Delegate ShowMenu { get => (IChatService Chat) => Chat.Chat; }
     public static string Icon => "bi-chat";
 
     public async Task SetMenuActivated(bool menu)
@@ -47,14 +47,14 @@
     public void Dispose()
     {
         ChatService.OnChatMessage -= RefreshChat;
-        PageManager.OnScroll["Navlist"] -= ToggleAutoScroll;
+        PageManager.OnScroll -= ToggleAutoScroll;
     }
 
 
     protected void ToggleAutoScroll(string id, bool isBottom)
     {
-        AutoScroll = isBottom;
-
+        if(id == "Navlist")
+            AutoScroll = isBottom;
     }
 
     private CancellationTokenSource? _autoScrollLoopCts;

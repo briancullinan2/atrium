@@ -1,4 +1,5 @@
 ﻿
+
 namespace Extensions.PrometheusTypes;
 
 public static partial class ExpressionExtensions

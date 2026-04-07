@@ -1,8 +1,9 @@
 ﻿
+
 namespace DataStore.Providers;
 
 public class EnqueuedQueryProvider<TEntity>(IQueryManager Query, StorageType storage, int priority)
-        : IAsyncQueryProvider where TEntity : Entity<TEntity>
+        : IAsyncQueryProvider where TEntity : class, IEntity<TEntity>
 {
     private readonly StorageType _storage = storage;
     private readonly int _priority = priority;

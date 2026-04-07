@@ -1,7 +1,5 @@
 ﻿using RazorSharp.Layout;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace FlashCard.Layout;
 

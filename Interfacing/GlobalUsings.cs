@@ -1,0 +1,14 @@
+﻿global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Text.Json.Serialization;
+global using System.Threading.Tasks;
+global using System.Threading;
+global using Microsoft.AspNetCore.Components.Authorization;
+global using Microsoft.AspNetCore.Components;
+global using System.Reflection;
+global using System.Security.Claims;
+global using System.Text.Json;
+global using System.IO;
+global using Microsoft.JSInterop;
+global using System.Linq.Expressions;

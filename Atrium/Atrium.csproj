@@ -15,7 +15,9 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Atrium</RootNamespace>
     <UseMaui>true</UseMaui>
-    <SingleProject>true</SingleProject>
+	  <UseMauiAssets>true</UseMauiAssets>
+	  <UseMauiEssentials>true</UseMauiEssentials>
+	  <SingleProject>true</SingleProject>
     
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
@@ -99,11 +101,10 @@
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
 		<PackageReference Include="log4net" Version="3.3.*-*" />
 	</ItemGroup>
-	
-	<ItemGroup>
-	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
-	</ItemGroup>
 
+	<ItemGroup>
+		<Compile Include="GlobalUsings.cs" />
+	</ItemGroup>
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
 		<ItemGroup>

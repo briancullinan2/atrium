@@ -119,7 +119,6 @@
     public RenderFragment? HeaderMenu { get; private set; }
     public string? HeaderTitle { get; private set; }
     //public object? Tag { get; set; } // for comparing states for implementers
-    public User? CurrentUser { get; set; }
     public bool? ShowHeader { get; set; }
     public bool? ShowChat { get; set; }
     [CascadingParameter] private ErrorBoundary? _errorBoundary { get; set; }
@@ -264,11 +263,8 @@
         _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
         Nav.LocationChanged += OnLocationChanged;
         Form.OnTitleChanged += SetTitle;
-        MenuService.OnMenuChanged += SetHeaderMenu;
-        MenuService.OnHeaderChanged += SetHeader;
         ThemeService.OnApplicationChanged += SetApplication;
         ThemeService.OnSidebarChanged += SetSidebar;
-        LoginService.OnUserChanged += SetUser;
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
         RenderState.NotifyEmptied();
@@ -280,7 +276,6 @@
         //Console.WriteLine("UI received Auth Change Notification!");
         //};
         SetPageClass();
-        _ = ChatService.IsWorking();
     }
 
     public void SetState(IComponent? state)
@@ -300,14 +295,6 @@
 
 
 
-    public void SetUser(User? user)
-    {
-        if (CurrentUser != user)
-        {
-            CurrentUser = user;
-            InvokeAsync(StateHasChanged);
-        }
-    }
 
     private void SetApplication(ApplicationTheme? theme)
     {
@@ -349,29 +336,6 @@
         }
     }
 
-
-
-    private void SetHeader(bool? show)
-    {
-        if (show != ShowHeader)
-        {
-            ShowHeader = show;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private void SetHeaderMenu(RenderFragment? menu)
-    {
-        if (menu != HeaderMenu)
-        {
-            if (menu != null)
-            {
-                MenuService.SetHeader(true);
-            }
-            HeaderMenu = menu;
-            InvokeAsync(StateHasChanged); 
-        }
-    }
 
     private void SetTitle(string? title)
     {
@@ -420,12 +384,9 @@
         _registration?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;
         Form.OnTitleChanged -= SetTitle;
-        MenuService.OnMenuChanged -= SetHeaderMenu;
         ThemeService.OnApplicationChanged -= SetApplication;
         ThemeService.OnSidebarChanged -= SetSidebar;
         ThemeService.OnBackgroundChanged -= SetBackground;
-        LoginService.OnUserChanged -= SetUser;
-        MenuService.OnHeaderChanged -= SetHeader;
         PageManager.OnStateChanged -= SetState;
         PageManager.OnErrorChanged -= SetError;
     }

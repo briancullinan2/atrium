@@ -1,25 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 	
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
-
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
-
+		<TargetFrameworks>net10.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-
 	</PropertyGroup>
 	
-	<PropertyGroup Condition="'$(TargetFramework)' != 'net10.0' AND '$(TargetFramework)' != ''">
-		<TargetPlatformIdentifier>$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</TargetPlatformIdentifier>
-
-		<SupportedOSPlatformVersion Condition="'$(TargetPlatformIdentifier)' == 'ios'">15.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="'$(TargetPlatformIdentifier)' == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="'$(TargetPlatformIdentifier)' == 'android'">21.0</SupportedOSPlatformVersion>
-		<SupportedOSPlatformVersion Condition="'$(TargetPlatformIdentifier)' == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
-	</PropertyGroup>
+	<ItemGroup>
+	  <Compile Remove="Providers\DataTablesRequestModel.cs" />
+	</ItemGroup>
 	
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
@@ -32,5 +21,5 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
 	</ItemGroup>
-
+	
 </Project>

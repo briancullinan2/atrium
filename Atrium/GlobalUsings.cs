@@ -1,10 +1,12 @@
 ﻿global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Maui;
+global using Microsoft.Maui.Controls;
+global using Microsoft.Maui.Controls.Hosting;
 global using Microsoft.Maui.Hosting;
-
 global using System;
 global using System.IO;
-global using System.Threading;
-global using System.Threading.Tasks;
+global using System.Linq;
 global using System.Reflection;
 global using System.Runtime.CompilerServices;
+global using System.Threading;
+global using System.Threading.Tasks;

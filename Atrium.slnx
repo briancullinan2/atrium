@@ -10,6 +10,7 @@
     <Deploy Solution="Debug|*" />
   </Project>
   <Project Path="Clippy/Clippy.csproj" Id="912347ed-cf63-4994-8cfa-6769b6e2c8b7" />
+  <Project Path="DataShared/DataShared.csproj" Id="c01091a8-18ae-4073-9857-738c94057c5c" />
   <Project Path="DataStore/DataStore.csproj" Id="7c536f07-2542-4e08-a867-7bb41b577fcb" />
   <Project Path="Extensions/Extensions.csproj" Id="329caace-ac34-43de-9559-db785a1dfa5d" />
   <Project Path="FlashCard/FlashCard.csproj">
@@ -18,6 +19,7 @@
   <Project Path="FlashData/FlashData.csproj" Id="d32e03e0-e36a-48aa-9778-9bb92d682ed4" />
   <Project Path="GameHub/GameHub.csproj" Id="532c3606-1056-4939-a83f-fb618014c8dd" />
   <Project Path="Hosting/Hosting.csproj" Id="a3a10407-7dde-4fdb-9d9a-8c129f348ce0" />
+  <Project Path="Interfacing/Interfacing.csproj" Id="e1826667-c3c4-4ba6-8c7e-c1e2e57e83e0" />
   <Project Path="LiveTest/LiveTest.csproj" Id="afea3970-153f-403f-a541-88eecd08351a" />
   <Project Path="Merchantry/Merchantry.csproj" Id="ab4c2786-e64b-441d-b67e-82738e86e028" />
   <Project Path="Orbb/Orbb.csproj" Id="3598b6b1-3f84-4358-b3d9-c6a2f4e04f7b" />

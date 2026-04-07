@@ -1,5 +1,7 @@
 ﻿
 
+using Interfacing.Entity;
+
 namespace RazorSharp.Services
 {
     public interface ILog

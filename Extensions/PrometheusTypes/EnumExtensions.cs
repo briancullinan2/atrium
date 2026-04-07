@@ -35,8 +35,8 @@ public static class EnumExtensions
 
     public static object? TryParse(this string val, Type enumType)
     {
-        return typeof(StringExtensions)
-            .GetMethod(nameof(TryParse), [typeof(object)])
+        return typeof(EnumExtensions)
+            .GetMethod(nameof(EnumExtensions.TryParse), [typeof(object)])
             ?.MakeGenericMethod(enumType)
             .Invoke(null, [val]);
     }

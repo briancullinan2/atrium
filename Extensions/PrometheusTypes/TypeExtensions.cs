@@ -1,9 +1,4 @@
-﻿
-
-using Microsoft.AspNetCore.Authorization;
-using System.Collections.Concurrent;
-
-namespace Extensions.PrometheusTypes;
+﻿namespace Extensions.PrometheusTypes;
 
 // Token: 0x0200005E RID: 94
 public static partial class TypeExtensions

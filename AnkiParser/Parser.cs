@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using Interfacing.Entity;
+using System.IO.Compression;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -103,11 +104,11 @@ public static partial class Parser
 
         // 1. Get the Note Models (Col.models JSON) 
         // Anki stores deck configs and note models in the 'col' table 'models' column
-        var collection = context.Set<Entities.Collection>().First();
+        var collection = context.Set<Anki.Entities.Collection>().First();
         var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonExtensions.Default);
 
         var results = new List<Card>();
-        var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<Entities.Card>().Where(c => c.Note != null));
+        var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<Anki.Entities.Card>().Where(c => c.Note != null));
 
         foreach (var card in cards)
         {

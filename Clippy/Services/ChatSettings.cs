@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 
 namespace Clippy.Services;
 
@@ -19,7 +17,7 @@ public partial class ChatService
         {
             try
             {
-                Settings = JsonSerializer.Deserialize<List<ServicePreset>>(System.IO.File.ReadAllText(savedSettings));
+                Settings = JsonSerializer.Deserialize<List<ServicePreset>>(System.IO.File.ReadAllText(savedSettings)) ?? [];
             }
             catch (Exception) { }
         }

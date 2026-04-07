@@ -1,33 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net10.0-browser;net10.0-android</TargetFrameworks>
-
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
-
-		<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-
+		<TargetFrameworks>net10.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<UseMonoRuntime>false</UseMonoRuntime>
 	</PropertyGroup>
-	
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'linux'">
+
+	<ItemGroup>
+	  <Compile Remove="MagicalMaths\ImageFingerPrint.cs" />
+	</ItemGroup>
+	<!--
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-linux'">
 		<PackageReference Include="OpenCvSharp4.runtime.linux-arm64" Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.Contains('arm64'))" Version="4.13.*-*" />
 		<PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Condition="$(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />
 	</ItemGroup>
 
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
 		<PackageReference Include="OpenCvSharp4.runtime.win" Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />
 		<PackageReference Include="OpenCvSharp4.runtime.win" Condition="$(RuntimeIdentifier.Contains('arm64'))" Version="4.13.*-*" />
 	</ItemGroup>
 
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-		<!--<PackageReference Include="OpenCvSharp4.runtime.android-arm64" Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.Contains('arm64'))" Version="4.13.*-*" />-->
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+		<PackageReference Include="OpenCvSharp4.runtime.android-arm64" Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.Contains('arm64'))" Version="4.13.*-*" />
 		<PackageReference Include="OpenCvSharp4.runtime.android-x64" Condition="$(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />
 	</ItemGroup>
 
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'browser'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
 		<PackageReference Include="OpenCvSharp4.runtime.wasm" Version="4.13.*-*" />
 	</ItemGroup>
 
@@ -35,25 +35,25 @@
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
 	</ItemGroup>
 
-	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-maccatalyst'">
 		<PackageReference Include="OpenCvSharp4.runtime.osx.10.15-universal" Version="4.7.*-*" />
-		<!--<PackageReference Include="OpenCvSharp4.runtime.osx-x64" Condition="$(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />-->
+		<PackageReference Include="OpenCvSharp4.runtime.osx-x64" Condition="$(RuntimeIdentifier.Contains('x64'))" Version="4.13.*-*" />
 	</ItemGroup>
-	
-	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
-		<PackageReference Include="OpenCvSharp4" Version="4.13.*-*" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.*-*" />
-	</ItemGroup>
-	
-	<ItemGroup>
-	  <Folder Include="PlayfulPlatforms\Android\" />
-	  <Folder Include="PlayfulPlatforms\MacCatalyst\" />
-	</ItemGroup>
+	<PackageReference Include="OpenCvSharp4" Version="4.13.*-*" />
+	-->
 
-</Project>
+		<ItemGroup>
+			<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
+			<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.*-*" />
+		</ItemGroup>
+
+		<ItemGroup>
+		  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+		  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
+		</ItemGroup>
+	</Project>

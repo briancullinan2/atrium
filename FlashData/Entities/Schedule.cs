@@ -1,6 +1,8 @@
 ﻿
 
 
+using Interfacing.Entity;
+
 namespace FlashData.Entities;
 
 [Table("schedule")]

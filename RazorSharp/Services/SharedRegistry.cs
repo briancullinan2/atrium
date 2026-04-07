@@ -1,44 +1,85 @@
-﻿namespace RazorSharp.Services;
+﻿using Interfacing.Entity;
+using Microsoft.EntityFrameworkCore;
+
+namespace RazorSharp.Services;
 
 public static class SharedRegistry
 {
+    public static List<Type> AllTranslations { get; }
+
+    static SharedRegistry()
+    {
+        var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+
+        AllTranslations = [..assemblies
+        .SelectMany(ass => ass.GetTypes())
+            .Where(t => t.Extends(typeof(ITranslationContext)))
+            ];
+
+    }
+
+
     public static void BuildSharedServiceList(IServiceCollection Services)
     {
         Services.AddCascadingValue(sp => new ErrorBoundary());
-        // FUCK DI
-        Services.AddScoped<IMenuService, MenuService>();
-        Services.AddScoped<IStudyService, StudyService>();
-        Services.AddScoped<ILoginService, LoginService>();
-        Services.AddScoped<ICourseService, CourseService>();
-        Services.AddScoped<IThemeService, ThemeService>();
-        //Services.AddScoped<IAuthService, AuthService>();
-        Services.AddScoped<NavigationTracker>();
 
+        // LOL i was going to look at all "service" names and namespaces, then try to find other constructors they
+        //   are used in, and if its at least one that should be a good list, automatically scoped unless it's routable?
+        // FUCK DI
+
+        foreach (var service in TypeExtensions.AllServices)
+        {
+            Services.AddScoped(service, service);
+            if(service.BaseType != null && service.BaseType != typeof(object))
+                Services.AddScoped(service.BaseType, service);
+            foreach (var inter in service.GetInterfaces())
+            {
+                Services.AddScoped(inter, sp => sp.GetRequiredService(service));
+            }
+        }
 
         Services.AddAuthorizationCore();
         Services.AddCascadingAuthenticationState();
 
-        Services.AddScoped(sp => (AuthenticationStateProvider)sp.GetRequiredService<IAuthService>());
-        Services.AddScoped(sp => (AuthService)sp.GetRequiredService<IAuthService>());
+        BuildSharedDatabases(Services);
+
 
         // TODO: this line is for testing
-        Services.AddSingleton<IQueryManager, RemoteManager>(sp => sp.GetRequiredService<RemoteManager>());
+        //Services.AddSingleton<IQueryManager, RemoteManager>(sp => sp.GetRequiredService<RemoteManager>());
         // TODO: should be
         //Services.AddSingleton<IQueryManager, QueryManager>();
-        Services.AddSingleton<RemoteManager>();
+        //Services.AddSingleton<RemoteManager>();
 
-        Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
-        Services.AddDbContextFactory<DataLayer.PersistentStorage>();
-        Services.AddDbContextFactory<DataLayer.RemoteStorage>();
-        Services.AddDbContextFactory<DataLayer.TestStorage>();
-
-
-        Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.TestStorage>>().CreateDbContext());
-        Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.RemoteStorage>>().CreateDbContext());
-        Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.EphemeralStorage>>().CreateDbContext());
-        Services.AddScoped(sc => sc.GetRequiredService<IDbContextFactory<DataLayer.PersistentStorage>>().CreateDbContext());
-
-        Services.AddScoped<IPageManager, PageManager>();
-        Services.AddSingleton<IRenderState, RenderStateProvider>();
     }
+
+
+    public static void BuildSharedDatabases(IServiceCollection Services)
+    {
+        foreach (var translationType in AllTranslations)
+        {
+            // 1. Find the AddDbContextFactory method via reflection
+            var method = typeof(EntityFrameworkServiceCollectionExtensions)
+                .GetMethods()
+                .First(m => m.Name == nameof(EntityFrameworkServiceCollectionExtensions.AddDbContextFactory)
+                       && m.GetParameters().Length == 2); // Looking for (IServiceCollection, Action<DbContextOptionsBuilder>)
+
+            // 2. Turn AddDbContextFactory<T> into AddDbContextFactory<YourDynamicType>
+            var genericMethod = method.MakeGenericMethod(translationType);
+
+            // 3. Invoke it: Services.AddDbContextFactory<translationType>(options => ...)
+            genericMethod.Invoke(null, new object?[] { Services, null });
+
+            // 4. Register the Scoped DbContext using the Factory
+            // We need to construct the IDbContextFactory<T> type dynamically
+            var factoryType = typeof(IDbContextFactory<>).MakeGenericType(translationType);
+
+            Services.AddScoped(translationType, sp =>
+            {
+                var factory = sp.GetRequiredService(factoryType);
+                // Invoke CreateDbContext() via dynamic or reflection
+                return ((dynamic)factory).CreateDbContext();
+            });
+        }
+    }
+
 }

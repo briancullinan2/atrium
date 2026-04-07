@@ -1,8 +1,5 @@
 ﻿
 
-using System.Xml;
-using System.Xml.Linq;
-
 namespace DataStore.Services;
 
 
@@ -180,13 +177,14 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
 
-    public async Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) where TSet : Entity<TSet>
+    public async Task<List<TSet>> Synchronize<TSet>(Expression<Func<TSet, bool>> qualifier, int priority = 10) 
+        where TSet : class, IEntity<TSet>
     {
         return await Synchronize(PersistentStorage, EphemeralStorage, qualifier, priority);
     }
 
     public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10)
-        where TSet : Entity<TSet>
+        where TSet :class, IEntity<TSet>
     {
         await Enqueue(async () =>
         {
@@ -214,7 +212,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     public virtual async Task<List<TSet>> Synchronize<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier, int priority = 10)
-        where TSet : Entity<TSet>
+        where TSet : class, IEntity<TSet>
         where TFrom : ITranslationContext
         where TTo : ITranslationContext
     {
@@ -236,7 +234,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     protected virtual async Task<List<TSet>> SynchronizeNow<TFrom, TTo, TSet>(TFrom contextFrom, TTo contextTo, Expression<Func<TSet, bool>> qualifier)
-        where TSet : Entity<TSet>
+        where TSet : class, IEntity<TSet>
         where TFrom : ITranslationContext
         where TTo : ITranslationContext
     {
@@ -272,14 +270,16 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
 
-    public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
+    public async Task<TEntity> Save<TEntity>(Expression<Func<TEntity, TEntity>> expression, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         return await Save(EphemeralStorage, expression, priority);
     }
 
-    public async Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+    public async Task<TEntity> Save<TEntity>(TEntity entity, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
-        return await Save(EphemeralStorage, entity, priority);
+        return (TEntity)(await Save(EphemeralStorage, entity, priority));
     }
 
     protected async Task ShallowSaveRecursive<T>(ITranslationContext persistentContext, T updatedEntity, bool recurse = true) where T : Entity<T>
@@ -372,7 +372,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) where TEntity : Entity<TEntity>
+    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
         {
@@ -381,14 +382,14 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
             await contextFrom.InitializeIfNeeded();
         }, 0);
 
-        return await Enqueue(async () =>
+        return (TEntity)await Enqueue(async () =>
         {
             var context = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
             await context.InitializeIfNeeded();
             using var transaction = context.Database.BeginTransaction();
 
-            var predicate = expression.Predicate();
+            var predicate = expression.Predicate<TEntity>();
             var entity = await context.Set<TEntity>().FirstOrDefaultAsync(predicate)
                             ?? Activator.CreateInstance<TEntity>();
 
@@ -409,7 +410,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) where TEntity : Entity<TEntity>
+    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
         {
@@ -418,7 +420,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
             await contextFrom.InitializeIfNeeded();
         }, 0);
 
-        return await Enqueue(async () =>
+        return (TEntity)await Enqueue(async () =>
         {
             return await SaveNow(storage, entity);
         }, priority);
@@ -504,7 +506,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
     }
 
 
-    public virtual IAsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) where TEntity : Entity<TEntity>
+    public virtual IAsyncQueryable<TEntity> Query<TEntity>(object query, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         return Query<TEntity>(query.ToPredicate<TEntity>(), priority);
     }
@@ -513,7 +516,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
     public IAsyncQueryable<TEntity> Query<TEntity>(
         Expression<Func<TEntity, bool>>? query = null,
-        int priority = 10) where TEntity : Entity<TEntity>
+        int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         if (query == null)
         {
@@ -542,7 +546,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
 
-    public TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) where TEntity : Entity<TEntity>
+    public TResult Query<TEntity, TResult>(Expression<Func<IQueryable<TEntity>, TResult>> query, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         return Query<TEntity, TResult>(EphemeralStorage, query, priority);
     }
@@ -555,7 +560,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         StorageType storage,
         Expression<Func<IQueryable<TEntity>, TResult>> query,
         int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         var provider = new EnqueuedQueryProvider<TEntity>(this, storage, priority);
 
@@ -729,7 +734,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     protected async Task LoadAllNavigations<TEntity>(ITranslationContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 5)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
 
     {
         if (depth <= 0) return;
@@ -824,20 +829,20 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     public async Task<TEntity> Update<TEntity>(Expression<Func<TEntity, TEntity>> key, int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         return await Update<TEntity, TEntity>(EphemeralStorage, key, priority);
     }
 
     public async Task<TEntity> Update<TEntity>(TEntity entity, int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         return await Update(EphemeralStorage, entity, priority);
     }
 
 
     public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         var entity = Activator.CreateInstance<TEntity>();
         var updates = key.ToMembers();
@@ -861,7 +866,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     public async Task<TEntity> Update<TEntity, TResult>(StorageType storage, Expression<Func<TEntity, TResult>> key, int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         var entity = Activator.CreateInstance<TEntity>();
         var updates = key.ToMembers();
@@ -915,7 +920,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
         {
@@ -928,7 +933,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
     }
 
     protected virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
 
     {
         return await UpdateNow(storage, entity, entity.Predicate());
@@ -936,7 +941,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
 
     protected virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
 
     {
         var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
@@ -946,7 +951,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
     }
 
     protected virtual async Task<TEntity> UpdateNow<TEntity>(ITranslationContext context, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null, int depth = 3)
-        where TEntity : Entity<TEntity>
+        where TEntity : class, IEntity<TEntity>
 
     {
         predicate ??= entity.Predicate();
@@ -1000,13 +1005,15 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         return entity;
     }
 
-    public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) where TEntity : Entity<TEntity>
+    public Task<TEntity> Update<TEntity>(Expression<Func<TEntity, bool>> key, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         return Update(EphemeralStorage, key, priority);
     }
 
 
-    public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) where TEntity : Entity<TEntity>
+    public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) 
+        where TEntity : class, IEntity<TEntity>
     {
         return Update<TEntity, TEntity>(storage, key, priority);
     }

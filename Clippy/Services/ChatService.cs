@@ -4,12 +4,6 @@ namespace Clippy.Services;
 
 public partial class ChatService(HttpClient Http, IPageManager Page) : IChatService
 {
-    private List<ServicePreset>? recentResult;
-    private DateTime? recentChecked;
-    private string? recentMessage;
-    private DateTime? recentMessaged;
-    private Tuple<bool, string>? recentPing;
-    private DateTime? recentPinged;
 
     public bool Chat { get; set; } = false;
 
@@ -23,7 +17,6 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
     }
 
 
-    private int recentHash;
     public static Dictionary<string, Dictionary<DateTime, Tuple<bool, string>>>? AllRecents { get; set; } = [];
     public Dictionary<DateTime, Tuple<bool, string>>? Recents
     {
@@ -37,11 +30,12 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
     }
 
     [AllowAnonymous]
-    public async Task<Tuple<bool, string>?> TryChat(ServicePreset? service = null)
+    public async Task<Tuple<bool, string>?> TryChat(object? settings = null)
     {
         try
         {
-            if (service == null) throw new InvalidOperationException("Failed to render service preset");
+            var service = settings as ServicePreset ?? throw new InvalidOperationException("Failed to render service preset");
+
             var json = await ExecutePost(Http, "", PingMessage, service);
 
             var parsed = JsonSerializer.Deserialize<Dictionary<string, object?>>(json ?? "");
@@ -95,6 +89,7 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
     public event Action? OnChatMessage;
 
     private Task<Tuple<bool, string>?>? _pingTask;
+    private Tuple<bool, string>? recentPing;
 
     public async Task<bool?> IsWorking()
     {
@@ -111,9 +106,9 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
 
 
     
-    public async Task<List<ServicePreset>> ListPresets()
+    public async Task<List<object>> ListPresets()
     {
-        return GetPresets();
+        return [..GetPresets().Cast<object>()];
     }
 
 

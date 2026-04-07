@@ -1,6 +1,4 @@
-﻿global using Extensions.ForeignEntity;
-global using Extensions.PrometheusTypes;
-global using Microsoft.EntityFrameworkCore;
+﻿global using Microsoft.EntityFrameworkCore;
 global using System;
 global using System.Collections.Generic;
 global using System.ComponentModel;
@@ -9,5 +7,9 @@ global using System.ComponentModel.DataAnnotations.Schema;
 global using System.Linq;
 global using System.Linq.Expressions;
 global using UserData;
+global using UserData.Entities;
 global using DateTime = System.DateTime;
 global using Type = System.Type;
+global using Interfacing.Services;
+global using DataShared.ForeignEntity;
+global using UserData.Extensions;

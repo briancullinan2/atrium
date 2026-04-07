@@ -28,13 +28,15 @@
     public async Task Download(File file)
     {
         var ankiResults = await AnkiService.Download(file.Url);
-        await ValueChanged.InvokeAsync(ankiResults);
+        if (ValueChanged == null) return;
+        await ValueChanged.Value.InvokeAsync(ankiResults as object);
     }
 
     public async Task Import(File file)
     {
         var ankiResults = await AnkiService.InspectFile(file.Filename);
-        await ValueChanged.InvokeAsync(ankiResults);
+        if (ValueChanged == null) return;
+        await ValueChanged.Value.InvokeAsync(ankiResults as object);
     }
 
 }

@@ -34,13 +34,11 @@ public class HasPermission : ComponentBase, IDisposable
             // 1. AllowAnonymous always wins
             if (IsAllowAnonymous) return true;
 
-            var user = LoginService.User;
-
-            if (AuthorizeAttributes.Any() && user == null) return false;
+            if (AuthorizeAttributes.Any() && LoginService.User == null) return false;
 
 
             // 3. Admin Bypass (The "God Mode" check)
-            if (user?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true) return true;
+            if (LoginService.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true) return true;
 
             foreach (var attr in AuthorizeAttributes)
             {
@@ -50,9 +48,9 @@ public class HasPermission : ComponentBase, IDisposable
                     var roles = attr.Roles.Split(',').Select(x => x.Trim());
                     foreach (var role in roles)
                     {
-                        bool isNegated = role.StartsWith("!");
-                        string actualRole = isNegated ? role.Substring(1) : role;
-                        bool hasRole = user?.Roles.Any(r => string.Equals(r.Name, actualRole, StringComparison.InvariantCultureIgnoreCase)) == true;
+                        bool isNegated = role.StartsWith('!');
+                        string actualRole = isNegated ? role[1..] : role;
+                        bool hasRole = LoginService.Roles?.Any(r => string.Equals(r, actualRole, StringComparison.InvariantCultureIgnoreCase)) == true;
 
                         // If it starts with ! and user HAS it, or no ! and user LACKS it... fail.
                         if ((isNegated && hasRole) || (!isNegated && !hasRole))
@@ -64,7 +62,7 @@ public class HasPermission : ComponentBase, IDisposable
                 if (!string.IsNullOrEmpty(attr.Policy))
                 {
                     // Check if the user has a setting that matches the Policy name
-                    if (user?.Settings.Any(s => s.Name == attr.Policy) != true)
+                    if (LoginService.Permissions?.Any(s => string.Equals(s.Key, attr.Policy, StringComparison.InvariantCultureIgnoreCase)) != true)
                         return false;
                 }
             }
@@ -89,9 +87,9 @@ public class HasPermission : ComponentBase, IDisposable
     private bool RequiredPermission =>
         Permission == null ||
         Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
-        LoginService.User?.Roles.Any(r => r.Name == nameof(DefaultRoles.Admin)) == true ||
-        LoginService.User?.Settings.Any(s => s.Name == nameof(DefaultPermissions.Unrestricted) ||
-            s.Name == Permission) == true;
+        LoginService.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true ||
+        LoginService.Permissions?.Any(s => string.Equals(s.Key, nameof(DefaultPermissions.Unrestricted), StringComparison.InvariantCultureIgnoreCase) ||
+            string.Equals(s.Key, Permission, StringComparison.InvariantCultureIgnoreCase)) == true;
 
 
     [Parameter] public string? Permission { get; set; }
@@ -104,7 +102,7 @@ public class HasPermission : ComponentBase, IDisposable
     [Parameter] public AuthenticationState? Context { get; set; }
 
 
-    private RenderFragment DefaultAuthorizing => __builder =>
+    private static RenderFragment DefaultAuthorizing => __builder =>
     {
         __builder.OpenElement(0, "div");
         __builder.AddAttribute(1, "class", "flash-card hip-error-trace animate-in");
@@ -128,7 +126,7 @@ public class HasPermission : ComponentBase, IDisposable
         __builder.CloseElement(); // Close div
     };
 
-    private RenderFragment DefaultNotAuthorized => __builder =>
+    private static RenderFragment DefaultNotAuthorized => __builder =>
     {
         __builder.OpenComponent<RedirectToLogin>(0);
         __builder.CloseComponent();
@@ -179,19 +177,19 @@ public class HasPermission : ComponentBase, IDisposable
     {
         if (IsAuthorized)
         {
-            RenderWithLayout(__builder, AuthorizedLayout ?? Layout ?? DefaultLayout, RenderPageWithUrlParameters);
+            HasPermission.RenderWithLayout(__builder, AuthorizedLayout ?? Layout ?? DefaultLayout, RenderPageWithUrlParameters);
         }
         else if (IsLoading)
         {
-            RenderWithLayout(__builder, LoadingLayout ?? Layout ?? DefaultLayout, Authorizing ?? DefaultAuthorizing);
+            HasPermission.RenderWithLayout(__builder, LoadingLayout ?? Layout ?? DefaultLayout, Authorizing ?? HasPermission.DefaultAuthorizing);
         }
         else
         {
-            RenderWithLayout(__builder, NotAuthorizedLayout ?? Layout ?? DefaultLayout, NotAuthorized ?? DefaultNotAuthorized);
+            HasPermission.RenderWithLayout(__builder, NotAuthorizedLayout ?? Layout ?? DefaultLayout, NotAuthorized ?? DefaultNotAuthorized);
         }
     }
 
-    private void RenderWithLayout(RenderTreeBuilder __builder, Type? layoutType, RenderFragment? content)
+    private static void RenderWithLayout(RenderTreeBuilder __builder, Type? layoutType, RenderFragment? content)
     {
         if (layoutType != null)
         {
@@ -223,6 +221,7 @@ public class HasPermission : ComponentBase, IDisposable
     public void Dispose()
     {
         LoginService.OnUserChanged -= NotifyUserChanged;
+        GC.SuppressFinalize(this);
     }
 
 }

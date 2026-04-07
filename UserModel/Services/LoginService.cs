@@ -1,6 +1,8 @@
 ﻿
 
 
+using Interfacing.Entity;
+
 namespace UserModel.Services;
 
 

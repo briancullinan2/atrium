@@ -15,7 +15,7 @@ namespace Hosting.Services;
 
 public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
 {
-    public Dictionary<string, string>? QueryParameters { get; private set; }
+    public virtual Dictionary<string, string>? QueryParameters { get; protected set; }
     public IPageManager Page { get; }
     public NavigationManager Navigation { get; }
 
@@ -37,7 +37,7 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
         QueryParameters = Navigation.Uri.Query();
     }
 
-    private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    protected virtual void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         QueryParameters = Navigation.Uri.Query();
     }
@@ -178,7 +178,18 @@ public partial class FormFactor(
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Context?.Connection.Id ?? "Internal";
 
-    public override List<IFile> Files => [..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? []];
+    public override List<IFile> Files => [
+        ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [], 
+        new BodyBag(Context?.Request) ];
+
+
+    protected override void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        QueryParameters = Navigation.Uri.Query().ToList()
+            .Concat(Context?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .Concat(Context?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .ToDictionary();
+    }
 
     public override async Task SetSessionCookie(string name, string value, int days)
     {
@@ -247,6 +258,20 @@ public class FormFile(IFormFile File) : IFile
     public Stream OpenReadStream()
        => File.OpenReadStream();
 }
+
+public class BodyBag(HttpRequest? Request) : IFile
+{
+    public string FileName => Request?.Path ?? "";
+
+    public string Name => Request != null ? "Form" : "";
+
+    public long Size => Request?.ContentLength ?? -1;
+
+    public string ContentType => ContentType;
+
+    public Stream OpenReadStream()
+       => Request?.Body!;
+}
 #else
 
 #endif
@@ -264,3 +289,4 @@ public class BrowserFile(IBrowserFile File) : IFile
     public Stream OpenReadStream()
        => File.OpenReadStream();
 }
+

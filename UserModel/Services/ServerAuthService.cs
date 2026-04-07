@@ -1,4 +1,6 @@
 ﻿
+using Interfacing.Entity;
+
 namespace UserModel.Services;
 
 public static class ServerAuthService

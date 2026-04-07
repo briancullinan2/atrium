@@ -20,8 +20,6 @@ internal class Program
             e.SetObserved(); // Prevents process crash if you want, but logs it
         };
 
-
-
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
         SharedRegistry.BuildSharedServiceList(builder.Services);

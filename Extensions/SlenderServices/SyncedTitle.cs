@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Extensions.SlenderServices;
+﻿namespace Extensions.SlenderServices;
 
 // TODO: delete this in favor on [Display] attributes for titles and menu items
 public class SyncedTitle : ComponentBase

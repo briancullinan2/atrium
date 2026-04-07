@@ -10,6 +10,19 @@ dotnet publish Atrium/Atrium.csproj -f net10.0-android -c Release -r android-arm
 
 dotnet build RazorSharp/RazorSharp.csproj -f net10.0-android -c Debug -r android-arm64 --self-contained
 
+dotnet build $project -f net10.0 -c Debug
+
+dotnet build Retheme/Retheme.csproj -f net10.0 -c Debug
+
+dotnet build Hosting/Hosting.csproj -f net10.0-browser -c Debug
+
+dotnet build Clippy/Clippy.csproj -f net10.0 -c Debug -r android-arm64 --self-contained
+
+dotnet build RazorSharp/RazorSharp.csproj -f net10.0-windows10.0.19041.0 -c Debug -r win-x64 --self-contained
+
+dotnet build DataStore/DataStore.csproj -f net10.0 -c Debug -r ios-arm64 --self-contained
+
+dotnet build $project -f net10.0-maccatalyst -c Debug -r maccatalyst-x64 --self-contained
 
 ## History
 

@@ -2,9 +2,7 @@
 
 @inject HttpClient Http
 @inject IChatService ChatService
-
-<SyncedTitle Title="Install AI"></SyncedTitle>
-
+@attribute [Display(Name = "Install AI", ShortName = "Install", GroupName = "Content", Prompt = "bi-robot")]
 
 <div class="flash-card animate-in">
     
@@ -171,7 +169,7 @@
 
     protected async Task InitializePresets()
     {
-        Services = await ChatService.ListPresets();
+        Services = [..(await ChatService.ListPresets()).Cast<ServicePreset>()];
         SelectedPreset = Services?.FirstOrDefault(s => s.IsDefault)?.Name
             ?? Services?.FirstOrDefault(s => s.IsPrevious)?.Name;
         await InvokeAsync(StateHasChanged);

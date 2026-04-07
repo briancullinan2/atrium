@@ -1,4 +1,6 @@
-﻿namespace DataStore.Providers;
+﻿
+
+namespace DataStore.Providers;
 
 public class AsyncQueryable<TSource>(IQueryProvider provider, Expression expression)
     : DynamicObject, IAsyncQueryable<TSource>

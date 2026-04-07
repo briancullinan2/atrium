@@ -1,7 +1,5 @@
 ﻿
 
-using System.Diagnostics.CodeAnalysis;
-
 namespace Extensions.QueryableChaos;
 
 public static partial class QueryableExtensions

@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-
+﻿
 namespace FlashData.Entities;
 
 [Table("userPack")]
