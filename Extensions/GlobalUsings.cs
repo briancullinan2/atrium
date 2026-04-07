@@ -35,6 +35,8 @@ global using System.Text.RegularExpressions;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using CollectionConverter = Extensions.PrometheusTypes.CollectionConverter;
+global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
+global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 
 

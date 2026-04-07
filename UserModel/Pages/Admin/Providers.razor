@@ -1,8 +1,8 @@
 @page "/settings/providers"
-@using FlashCard.Services
-@inject IAuthService AuthService
 
-<SyncedTitle Title="Identity Providers" />
+@inject IAuthService AuthService
+@attribute [Display(Name = "Identity Providers", ShortName = "Providers", GroupName = "Admin", Prompt = "bi-person-vcard")]
+
 
 <div class="flash-card animate-in">
     <h2>Auth Control Plane</h2>

@@ -1,14 +1,13 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace Atrium.Platforms.Android
+namespace Atrium.Platforms.Android;
+
+[Application]
+public class MainApplication(IntPtr handle, JniHandleOwnership ownership) : MauiApplication(handle, ownership)
 {
-    [Application]
-    public class MainApplication(IntPtr handle, JniHandleOwnership ownership) : MauiApplication(handle, ownership)
+    protected override MauiApp CreateMauiApp()
     {
-        protected override MauiApp CreateMauiApp()
-        {
-            return MauiProgram.CreateMauiApp();
-        }
+        return MauiProgram.CreateMauiApp();
     }
 }

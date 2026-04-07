@@ -8,6 +8,8 @@ A spaced repetition studying app. Prepopulated with study course content. Build 
 
 dotnet publish Atrium/Atrium.csproj -f net10.0-android -c Release -r android-arm64 --self-contained
 
+dotnet build RazorSharp/RazorSharp.csproj -f net10.0-android -c Debug -r android-arm64 --self-contained
+
 
 ## History
 

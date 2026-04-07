@@ -40,7 +40,7 @@
         || routeControl == typeof(Pages.Landing.Packs) || Nav.Uri.Contains("upload") || Nav.Uri.Contains("store");
     }
 
-    public static Delegate ContextInsert => TypeExtensions.GetNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add });
+    public static Delegate ContextInsert => TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add });
 
     [CascadingParameter] public bool IsStaticRender { get; set; }
 

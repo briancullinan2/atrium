@@ -12,7 +12,8 @@
 @inject NavigationManager Nav
 @inject HttpClient Http
 
-<SyncedTitle Title="Application Settings"></SyncedTitle>
+@attribute [Display(Name = "Application Settings", ShortName = "Settings", GroupName = "Admin", Prompt = "bi-collection")]
+
 
 <div class="flash-card app-settings @GetDisplayClass(ControlMode.Edit)">
     <h2>Login Setting</h2>
@@ -316,7 +317,6 @@
         // we don't have to reinitialize theme just to get it to show up now
         //   because it's stored in static property after the first load
 
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
         _ = InitializeTheme();
     }

@@ -1,16 +1,14 @@
-﻿namespace Atrium
-{
-    public partial class App : Application
-    {
-        public App()
-        {
-            InitializeComponent();
-        }
+﻿namespace Atrium;
 
-        protected override Window CreateWindow(IActivationState? activationState)
-        {
-            return new Window(new MainPage()) { Title = "Atrium" };
-        }
+public partial class App : Application
+{
+    public App()
+    {
+        InitializeComponent();
     }
 
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        return new Window(new MainPage()) { Title = "Atrium" };
+    }
 }

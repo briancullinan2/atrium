@@ -1,6 +1,6 @@
 @inject IServiceProvider Service
 @inject IMenuService MenuService
-
+@implements IHasContext
 
 @foreach (var item in MenuService.EnabledContexts)
 {
@@ -12,8 +12,27 @@
     @fragment
 }
 
+
 @code {
     // TODO: ask controls if their context menu is visible
+    public static Delegate ShowContext
+    {
+        get => (Type routeControl, NavigationManager Nav) => routeControl == typeof(Pages.Landing.Terms)
+            || routeControl == typeof(Pages.Landing.Contact) || routeControl == typeof(Pages.Landing.Privacy)
+            || routeControl == typeof(Pages.Landing.About);
+    }
+
+
+    // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
+    public static Delegate ContextInsert => (Func<RenderFragment>)(
+        () => (__builder) =>
+        {
+            TypeExtensions.ToNavLink<Pages.Landing.Terms>()(__builder);
+            TypeExtensions.ToNavLink<Pages.Landing.Privacy>()(__builder);
+            TypeExtensions.ToNavLink<Pages.Landing.Contact>()(__builder);
+            TypeExtensions.ToNavLink<Pages.Landing.About>()(__builder);
+        }
+    );
 
     
 }

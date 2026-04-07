@@ -14,7 +14,10 @@
 @inject ITitleService TitleService
 @inject IQueryManager QueryManager
 @inject ILoginService LoginService
+@inject IPageManager Page
 @inject NavigationManager Nav
+
+@attribute [Display(Name = "Users Management", ShortName = "Users", GroupName = "Admin", Prompt = "bi-person-circle")]
 
 <div class="flash-card @GetDisplayClass(ControlMode.List)">
     <heading class="flex-row">
@@ -61,7 +64,7 @@
                 <a href="">User Membership</a>
                 <a href="">User Packs</a>
             }
-            <button class="cta" @onclick="() => UpdateUser()">Save</button>
+            <button class="cta" @onclick="Page.TriggerSave">Save</button>
         </div>
     </div>
 
@@ -110,7 +113,6 @@
         
         if (IsStaticRender) return;
 
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         Nav.LocationChanged += OnLocationChanged;
         _ = GetCurrentUsers();
     }

@@ -1,7 +1,6 @@
-﻿namespace Recollect.Platforms.Android
+﻿namespace Recollect.Platforms.Android;
+
+// All the code in this file is only included on Android.
+public class PlatformClass1
 {
-    // All the code in this file is only included on Android.
-    public class PlatformClass1
-    {
-    }
 }

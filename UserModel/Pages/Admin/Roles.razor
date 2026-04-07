@@ -7,9 +7,8 @@
 
 @inject IMenuService MenuService
 @inject NavigationManager Nav
+@attribute [Display(Name = "Roles Management", ShortName = "Roles", GroupName = "Admin", Prompt = "bi-person-badge")]
 
-
-<SyncedTitle Title="Roles Management"></SyncedTitle>
 <div class="flash-card animate-in roles-container">
 
     <h2>Manage Roles</h2>
@@ -48,7 +47,6 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         RolesLayout = typeof(Pages.Admin.Roles).Metadata().Categories["Display"]?.ToList();
         Nav.LocationChanged += OnLocationChanged;
     }

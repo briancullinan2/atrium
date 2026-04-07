@@ -15,7 +15,7 @@ namespace RazorSharp.Services
     }
 
 
-    internal class SimpleLogger : ILog
+    public class SimpleLogger : ILog
     {
         public static IServiceProvider? Service { get; set; }
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();

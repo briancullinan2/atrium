@@ -9,261 +9,258 @@ using Microsoft.Maui.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 #endif
 
-namespace Hosting.Services
+namespace Hosting.Services;
+
+// TODO: designed to shut down both services at the same time
+
+public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
 {
-    // TODO: designed to shut down both services at the same time
-   
-    public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
+    public Dictionary<string, string>? QueryParameters { get; private set; }
+    public IPageManager Page { get; }
+    public NavigationManager Navigation { get; }
+
+    public abstract bool IsBrowser { get; }
+    public abstract bool IsWebContext { get; }
+    public abstract bool IsMauiContext { get; }
+    public abstract string GetFormFactor();
+    public abstract string GetPlatform();
+    public abstract Task StopAsync();
+    public abstract string BaseUrl { get; }
+    public abstract string ConnectionId { get; }
+    public abstract List<IFile> Files { get; }
+
+    public BaseFormFactor(NavigationManager nav, IPageManager page)
     {
-        public Dictionary<string, string>? QueryParameters { get; private set; }
-        public IPageManager Page { get; }
-        public NavigationManager Navigation { get; }
-
-        public abstract bool IsBrowser { get; }
-        public abstract bool IsWebContext { get; }
-        public abstract bool IsMauiContext { get; }
-        public abstract string GetFormFactor();
-        public abstract string GetPlatform();
-        public abstract Task StopAsync();
-        public abstract string BaseUrl { get; }
-        public abstract string ConnectionId { get; }
-        public abstract List<IFile> Files { get; }
-
-        public BaseFormFactor(NavigationManager nav, IPageManager page)
-        {
-            Page = page;
-            Navigation = nav;
-            Navigation.LocationChanged += Nav_LocationChanged;
-            QueryParameters = Navigation.Uri.Query();
-        }
-
-        private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-        {
-            QueryParameters = Navigation.Uri.Query();
-        }
-
-        public static string? AppName
-        {
-            get => Assembly.GetEntryAssembly()?
-                         .GetCustomAttribute<AssemblyProductAttribute>()?
-                         .Product;
-        }
-
-        internal static string? _title;
-
-        public event Action<string?>? OnTitleChanged;
-        public virtual async Task<string?> UpdateTitle(string? title)
-        {
-            if (title == null)
-            {
-                _title = AppName;
-            }
-            else
-            {
-                _title = title + " - " + AppName;
-            }
-            OnTitleChanged?.Invoke(title);
-            return _title;
-        }
-
-        public virtual void Dispose()
-        {
-            Navigation.LocationChanged -= Nav_LocationChanged;
-            GC.SuppressFinalize(this);
-        }
-
-
-        public virtual async Task SetSessionCookie(string name, string value, int days)
-        {
-            if (Page == null) return;
-            await Page.ModuleInitialize;
-            await Page.Module.InvokeVoidAsync("setSessionCookie", name, value, days);
-        }
-
-
-        public virtual async Task<string?> GetSessionCookie(string name)
-        {
-            if (Page == null) return null;
-            await Page.ModuleInitialize;
-            return await Page.Module.InvokeAsync<string>("getSessionCookie", name);
-        }
-
-
+        Page = page;
+        Navigation = nav;
+        Navigation.LocationChanged += Nav_LocationChanged;
+        QueryParameters = Navigation.Uri.Query();
     }
+
+    private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        QueryParameters = Navigation.Uri.Query();
+    }
+
+    public static string? AppName
+    {
+        get => Assembly.GetEntryAssembly()?
+                     .GetCustomAttribute<AssemblyProductAttribute>()?
+                     .Product;
+    }
+
+    internal static string? _title;
+
+    public event Action<string?>? OnTitleChanged;
+    public virtual async Task<string?> UpdateTitle(string? title)
+    {
+        if (title == null)
+        {
+            _title = AppName;
+        }
+        else
+        {
+            _title = title + " - " + AppName;
+        }
+        OnTitleChanged?.Invoke(title);
+        return _title;
+    }
+
+    public virtual void Dispose()
+    {
+        Navigation.LocationChanged -= Nav_LocationChanged;
+        GC.SuppressFinalize(this);
+    }
+
+
+    public virtual async Task SetSessionCookie(string name, string value, int days)
+    {
+        if (Page == null) return;
+        await Page.ModuleInitialize;
+        await Page.Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+    }
+
+
+    public virtual async Task<string?> GetSessionCookie(string name)
+    {
+        if (Page == null) return null;
+        await Page.ModuleInitialize;
+        return await Page.Module.InvokeAsync<string>("getSessionCookie", name);
+    }
+
+
+}
 
 
 #if BROWSER
 
-    public partial class FormFactor : BaseFormFactor
+public partial class FormFactor : BaseFormFactor
+{
+    public override bool IsBrowser => true;
+    public override bool IsWebContext => true;
+    public override bool IsMauiContext => false;
+    public override string GetPlatform() => Environment.OSVersion.ToString();
+    public override string BaseUrl => "http://localhost:8080";
+    public override string GetFormFactor() => "WebAssembly";
+    public override string ConnectionId => "Browser";
+
+    public List<IFile> CurrentFormFiles = [];
+    private readonly Lazy<WebAssemblyHost?>? App;
+    private readonly IJSRuntime JS;
+
+    public override List<IFile> Files { get => CurrentFormFiles; }
+
+    public FormFactor(
+    NavigationManager nav
+    , IPageManager page
+    , IJSRuntime js 
+    , Lazy<WebAssemblyHost?>? app = null
+    ) : base(nav, page)
     {
-        public override bool IsBrowser => true;
-        public override bool IsWebContext => true;
-        public override bool IsMauiContext => false;
-        public override string GetPlatform() => Environment.OSVersion.ToString();
-        public override string BaseUrl => "http://localhost:8080";
-        public override string GetFormFactor() => "WebAssembly";
-        public override string ConnectionId => "Browser";
+        App = app;
+        JS = js;
+        Page.Subscribe((PageAction.Upload, "window"), SwapFileListasync);
+    }
 
-        public List<IFile> CurrentFormFiles = [];
-        private readonly Lazy<WebAssemblyHost?>? App;
-        private readonly IJSRuntime JS;
 
-        public override List<IFile> Files { get => CurrentFormFiles; }
+    protected async Task SwapFileListasync(InputFileChangeEventArgs args)
+    {
+        CurrentFormFiles = [..CurrentFormFiles, ..args.GetMultipleFiles().Select(f => new BrowserFile(f) as IFile)];
+    }
 
-        public FormFactor(
-        NavigationManager nav
-        , IPageManager page
-        , IJSRuntime js 
-        , Lazy<WebAssemblyHost?>? app = null
-        ) : base(nav, page)
+
+    public override void Dispose()
+    {
+        Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListasync);
+        base.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+
+    public override async Task<string?> UpdateTitle(string? title)
+    {
+        var _title = await base.UpdateTitle(title);
+        if (Page == null) return _title;
+        await Page.ModuleInitialize;
+        await Page.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
+        return _title;
+    }
+
+    public override async Task StopAsync()
+    {
+        if (App != null && App.Value != null)
         {
-            App = app;
-            JS = js;
-            Page.Subscribe((PageAction.Upload, "window"), SwapFileListasync);
+            await App.Value.DisposeAsync();
         }
-
-
-        protected async Task SwapFileListasync(InputFileChangeEventArgs args)
+        if (JS != null)
         {
-            CurrentFormFiles = [..CurrentFormFiles, ..args.GetMultipleFiles().Select(f => new BrowserFile(f) as IFile)];
-        }
-
-
-        public override void Dispose()
-        {
-            Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListasync);
-            base.Dispose();
-            GC.SuppressFinalize(this);
-        }
-
-
-        public override async Task<string?> UpdateTitle(string? title)
-        {
-            var _title = await base.UpdateTitle(title);
-            if (Page == null) return _title;
-            await Page.ModuleInitialize;
-            await Page.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
-            return _title;
-        }
-
-        public override async Task StopAsync()
-        {
-            if (App != null && App.Value != null)
-            {
-                await App.Value.DisposeAsync();
-            }
-            if (JS != null)
-            {
-                await JS.InvokeVoidAsync("window.close", TimeSpan.FromSeconds(1));
-            }
+            await JS.InvokeVoidAsync("window.close", TimeSpan.FromSeconds(1));
         }
     }
+}
 #else
 
-    public partial class FormFactor(
-        NavigationManager nav
-        , IPageManager page
-        , HttpContext? Context = null
-        , Lazy<Application?>? Desktop = null
-        , Lazy<MauiApp?>? Maui = null
-        , Lazy<WebApplication?>? App = null
-        
-    ) : BaseFormFactor(nav, page)
+public partial class FormFactor(
+    NavigationManager nav
+    , IPageManager page
+    , HttpContext? Context = null
+    , Lazy<Application?>? Desktop = null
+    , Lazy<MauiApp?>? Maui = null
+    , Lazy<WebApplication?>? App = null
+    
+) : BaseFormFactor(nav, page)
+{
+    public override bool IsBrowser => OperatingSystem.IsBrowser();
+    public override bool IsWebContext => Context != null;
+    public override bool IsMauiContext => (Context == null || App == null) && (Maui != null || Desktop != null);
+    public override string GetPlatform() => DeviceInfo.Platform.ToString() + " - " + DeviceInfo.VersionString;
+    public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
+    public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
+    public override string ConnectionId => Context?.Connection.Id ?? "Internal";
+
+    public override List<IFile> Files => [..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? []];
+
+    public override async Task SetSessionCookie(string name, string value, int days)
     {
-        public override bool IsBrowser => OperatingSystem.IsBrowser();
-        public override bool IsWebContext => Context != null;
-        public override bool IsMauiContext => (Context == null || App == null) && (Maui != null || Desktop != null);
-        public override string GetPlatform() => DeviceInfo.Platform.ToString() + " - " + DeviceInfo.VersionString;
-        public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
-        public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
-        public override string ConnectionId => Context?.Connection.Id ?? "Internal";
-
-        public override List<IFile> Files => [..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? []];
-
-        public override async Task SetSessionCookie(string name, string value, int days)
-        {
-            if(Context?.Response.HasStarted != true)
-                Context?.Response.Cookies.Append(name, value, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true, // Arizona: Always use Secure in production
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddDays(days)
-                });
-            if (Page == null) return;
-            await base.SetSessionCookie(name, value, days);
-        }
-
-
-        public override async Task<string?> GetSessionCookie(string name)
-        {
-            if(Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
-            if (Page == null) return null;
-            return await base.GetSessionCookie(name);
-        }
-
-        public override async Task<string?> UpdateTitle(string? title)
-        {
-            var _title = await base.UpdateTitle(title);
-            MainThread.BeginInvokeOnMainThread(() =>
+        if(Context?.Response.HasStarted != true)
+            Context?.Response.Cookies.Append(name, value, new CookieOptions
             {
-                foreach (var window in Desktop?.Value?.Windows ?? [])
-                {
-                    window.Title = _title; // This is now safe
-                }
+                HttpOnly = true,
+                Secure = true, // Arizona: Always use Secure in production
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(days)
             });
-            return _title;
-        }
-
-        public override async Task StopAsync()
-        {
-
-            try
-            {
-                _ = App?.Value?.StopAsync();
-            }
-            catch { }
-            try
-            {
-                Desktop?.Value?.Quit();
-            }
-            catch { }
-        }
+        if (Page == null) return;
+        await base.SetSessionCookie(name, value, days);
     }
+
+
+    public override async Task<string?> GetSessionCookie(string name)
+    {
+        if(Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
+        if (Page == null) return null;
+        return await base.GetSessionCookie(name);
+    }
+
+    public override async Task<string?> UpdateTitle(string? title)
+    {
+        var _title = await base.UpdateTitle(title);
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            foreach (var window in Desktop?.Value?.Windows ?? [])
+            {
+                window.Title = _title; // This is now safe
+            }
+        });
+        return _title;
+    }
+
+    public override async Task StopAsync()
+    {
+
+        try
+        {
+            _ = App?.Value?.StopAsync();
+        }
+        catch { }
+        try
+        {
+            Desktop?.Value?.Quit();
+        }
+        catch { }
+    }
+}
 
 #endif
 
 #if !BROWSER
-    public class FormFile(IFormFile File) : IFile
-    {
-        public string FileName => File.FileName;
+public class FormFile(IFormFile File) : IFile
+{
+    public string FileName => File.FileName;
 
-        public string Name => File.Name;
+    public string Name => File.Name;
 
-        public long Size => File.Length;
+    public long Size => File.Length;
 
-        public string ContentType => ContentType;
+    public string ContentType => ContentType;
 
-        public Stream OpenReadStream()
-           => File.OpenReadStream();
-    }
+    public Stream OpenReadStream()
+       => File.OpenReadStream();
+}
 #else
-    
+
 #endif
 
-    public class BrowserFile(IBrowserFile File) : IFile
-    {
-        public string FileName => File.Name;
+public class BrowserFile(IBrowserFile File) : IFile
+{
+    public string FileName => File.Name;
 
-        public string Name => File.Name;
+    public string Name => File.Name;
 
-        public long Size => File.Size;
+    public long Size => File.Size;
 
-        public string ContentType => ContentType;
+    public string ContentType => ContentType;
 
-        public Stream OpenReadStream()
-           => File.OpenReadStream();
-    }
-
-
+    public Stream OpenReadStream()
+       => File.OpenReadStream();
 }

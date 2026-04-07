@@ -1,9 +1,12 @@
 ﻿@page "/home"
+@using static FlashData.Entities.UserPack
+@using FlashData.Extensions
 @implements INotHasWrapper
 @attribute [Display(Name = "Home", GroupName = "Main", Prompt = "bi-house-door-fill")]
 @attribute [AllowAnonymous]
 @inject IFormFactor FormFactor
 @inject IMenuService MenuService
+@inject IQueryManager Query
 @inject ILoginService LoginService
 
 <a class="big-button" href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = PackMode.Shuffle}))">
@@ -19,7 +22,7 @@
     {
         <h3><a href="@(TypeExtensions.GetUri<Pages.Landing.Login>())">Login to track progress</a></h3>
     }
-    @if (LoginService.User == null || LoginService.User.UserPacks.Count(up => up.GetRetention().Any(r => r.Value.IsDue)) == 0)
+    @if (LoginService.User == null || PacksDue?.Count == 0)
     {
         <h4><a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>())">Subscribe to packs to memorize content quickly.</a></h4>
     }
@@ -29,11 +32,11 @@
             <label>Pack Title</label>
             <label>Card Count</label>
         </heading>
-        foreach (var up in LoginService.User.UserPacks.Where(up => up.GetRetention().Any(r => r.Value.IsDue)))
+        foreach (var up in PacksDue ?? [])
         {
             <div class="study-row">
-                <span><a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.PackId, Mode = PackMode.Card }))">@up.Pack?.Title</a></span>
-                <span>@up.GetRetention().Count(r => r.Value.IsDue)</span>
+                <span><a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = up.Key.PackId, Mode = PackMode.Card }))">@up.Key.Pack?.Title</a></span>
+                <span>@(up.Value)</span>
             </div>
         }
     }
@@ -48,12 +51,26 @@
     private string platform => FormFactor.GetPlatform();
     [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
 
+    public List<UserPack>? UserPacks { get; set; }
+    public Dictionary<int, CardRetention>? Retention { get; set; }
+    public Dictionary<UserPack, int>? PacksDue { get; set; }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         if (IsStaticRender) return;
-
-        MenuService.SetMenu(null);
-        MenuService.SetHeader(false);
+        Task.WhenAll(
+            Query.Query<UserPack>(up => up.UserId == LoginService.UserId)
+                .ToListAsync()
+                .Then(async ups => UserPacks = await ups),
+            Query.Query<Response>(r => r.UserId == LoginService.UserId && r.Created > DateTime.Now.AddDays(-32))
+                .ToListAsync()
+                .Then(async ups => Retention = (await ups).GetRetention(LoginService.UserId))
+        ).Then(t => PacksDue = UserPacks?
+            .Select(up => KeyValuePair.Create(up, up.Pack?.Cards.Count(c => Retention?.ContainsKey(c.Id) == true) ?? 0))
+            .Where(up => up.Value > 0)
+            .ToDictionary());
+        //MenuService.SetMenu(null);
+        //MenuService.SetHeader(false);
     }
 }

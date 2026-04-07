@@ -4,12 +4,13 @@
 @page "/account/delete"
 @implements IDisposable
 @attribute [Authorize(Roles = "!Guest")]
+@attribute [Display(Name = "Account Settings", ShortName = "Account", GroupName = "Main", Prompt = "bi-person-gear")]
 
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject NavigationManager Nav
 
-<SyncedTitle Title="Account Settings"></SyncedTitle>
+
 
 <div class="user-account flash-card  @GetDisplayClass(ControlMode.Edit)">
     <div>
@@ -25,7 +26,7 @@
         </fieldset>
     </div>
     <div class="highlighted-link">
-        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(acc => new() { Mode = ControlMode.Add, ParentUser = LoginService.User }))"><span class="bi bi-link-45deg"></span>Create User</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(acc => new() { Mode = ControlMode.Add, ParentUser = LoginService.User as User }))"><span class="bi bi-link-45deg"></span>Create User</a>
         <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
         <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
         <button class="cta" @onclick="() => UpdateUser()">Save</button>
@@ -73,7 +74,6 @@
 
         if (IsStaticRender) return;
 
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
         Nav.LocationChanged += OnLocationChanged;
     }
    
@@ -131,7 +131,7 @@
         }
         if(CurrentUser == null)
         {
-            CurrentUser = LoginService.User;
+            CurrentUser = LoginService.User as User;
             InvokeAsync(StateHasChanged);
         }
     }

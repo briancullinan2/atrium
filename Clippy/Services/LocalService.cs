@@ -3,54 +3,53 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Clippy.Services
+namespace Clippy.Services;
+
+internal class LocalService(IJSRuntime js) : IAsyncDisposable
 {
-    internal class LocalService(IJSRuntime js) : IAsyncDisposable
+
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _engine;
+
+    public event Action<InitProgress>? OnLoadingProgress;
+
+    public async Task InitializeAsync(string modelId)
     {
+        _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./web-llm.js");
 
-        private IJSObjectReference? _module;
-        private IJSObjectReference? _engine;
+        // Wrap 'this' to receive progress callbacks
+        using var dotNetRef = DotNetObjectReference.Create(this);
 
-        public event Action<InitProgress>? OnLoadingProgress;
+        _engine = await _module.InvokeAsync<IJSObjectReference>("createEngine", modelId, dotNetRef);
+    }
 
-        public async Task InitializeAsync(string modelId)
-        {
-            _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./web-llm.js");
+    [JSInvokable]
+    public void OnProgress(double progress, string text)
+        => OnLoadingProgress?.Invoke(new InitProgress(progress, text));
 
-            // Wrap 'this' to receive progress callbacks
-            using var dotNetRef = DotNetObjectReference.Create(this);
+    public async Task<ChatCompletionResponse?> ChatAsync(ChatCompletionRequest request)
+    {
+        if (_module == null || _engine == null) return null;
+        return await _module.InvokeAsync<ChatCompletionResponse>("chatCompletion", _engine, request);
+    }
 
-            _engine = await _module.InvokeAsync<IJSObjectReference>("createEngine", modelId, dotNetRef);
-        }
+    public async Task<RuntimeStats?> GetStatsAsync()
+    {
+        if (_module == null || _engine == null) return null;
+        return await _module.InvokeAsync<RuntimeStats>("getStats", _engine);
+    }
 
-        [JSInvokable]
-        public void OnProgress(double progress, string text)
-            => OnLoadingProgress?.Invoke(new InitProgress(progress, text));
+    public async Task InterruptAsync() => await _module!.InvokeVoidAsync("interrupt", _engine);
 
-        public async Task<ChatCompletionResponse?> ChatAsync(ChatCompletionRequest request)
-        {
-            if (_module == null || _engine == null) return null;
-            return await _module.InvokeAsync<ChatCompletionResponse>("chatCompletion", _engine, request);
-        }
+    public async ValueTask DisposeAsync()
+    {
+        if (_module != null && _engine != null)
+            await _module.InvokeVoidAsync("unload", _engine);
 
-        public async Task<RuntimeStats?> GetStatsAsync()
-        {
-            if (_module == null || _engine == null) return null;
-            return await _module.InvokeAsync<RuntimeStats>("getStats", _engine);
-        }
-
-        public async Task InterruptAsync() => await _module!.InvokeVoidAsync("interrupt", _engine);
-
-        public async ValueTask DisposeAsync()
-        {
-            if (_module != null && _engine != null)
-                await _module.InvokeVoidAsync("unload", _engine);
-
-            if(_engine != null)
-                await _engine.DisposeAsync();
-            if(_module != null)
-                await _module.DisposeAsync();
-        }
+        if(_engine != null)
+            await _engine.DisposeAsync();
+        if(_module != null)
+            await _module.DisposeAsync();
     }
 }
 

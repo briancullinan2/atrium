@@ -5,7 +5,7 @@
 @attribute [SupportsType(typeof(File))]
 @attribute [SupportsType(typeof(IEnumerable<File>))]
 @implements IHasMeta
-
+@inject IAnkiService AnkiService
 
 @code
 {
@@ -51,17 +51,15 @@
         <span>@file.Url</span>
         <span>@file.Source</span>
         <span>
-            @if (Model?.DeclaringType == typeof(Pages.Content.Upload))
+            @*@if (Model?.DeclaringType == typeof(Pages.Content.Upload))*@
+            @if(file.Url != null && file.Filename == null)
             {
-                @if(file.Url != null && file.Filename == null)
-                {
-                    <a @onclick="() => { _ = Download(file!); }"><span class="bi bi-download"></span></a>
-                }
-                else
-                {
-                    <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
-                    <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
-                }
+                <a @onclick="() => { _ = Download(file!); }"><span class="bi bi-download"></span></a>
+            }
+            else
+            {
+                <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
+                <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
             }
         </span>
     </div>

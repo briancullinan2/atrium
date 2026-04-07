@@ -7,102 +7,101 @@ using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 
-namespace Hosting.Platforms.Windows
+namespace Hosting.Platforms.Windows;
+
+public class WindowsServiceWorkerService : IServiceWorkerService
 {
-    public class WindowsServiceWorkerService : IServiceWorkerService
+    private const string PipeName = "Atrium_ServiceWorker_Pipe";
+    private string? _currentScheme;
+    public event Action<object>? OnMessageReceived;
+
+    public async Task InitializeAsync()
     {
-        private const string PipeName = "Atrium_ServiceWorker_Pipe";
-        private string? _currentScheme;
-        public event Action<object>? OnMessageReceived;
+        // Windows-specific init logic (e.g., verifying background process is running)
+        await Task.CompletedTask;
+    }
 
-        public async Task InitializeAsync()
+    public async Task<ServiceWorkerStatus> GetStatusAsync()
+    {
+        bool pipeExists = System.IO.Directory.GetFiles(@"\\.\pipe\").Any(f => f.Contains(PipeName));
+        return new ServiceWorkerStatus(
+            Supported: true,
+            IsActive: pipeExists,
+            IsWaiting: false,
+            IsInstalling: false,
+            Scope: _currentScheme,
+            State: pipeExists ? "activated" : "redundant"
+        );
+    }
+
+    public async Task<bool> RegisterAsync(string scheme, string appPath)
+    {
+        try 
         {
-            // Windows-specific init logic (e.g., verifying background process is running)
-            await Task.CompletedTask;
+            // On Windows, 'Register' implies setting up the protocol handler
+            _currentScheme = scheme;
+            using var key = Registry.ClassesRoot.CreateSubKey(scheme);
+            key.SetValue("", $"URL:{scheme} Protocol");
+            key.SetValue("URL Protocol", "");
+
+            using var shell = key.CreateSubKey(@"shell\open\command");
+            // "%1" ensures the full app:// URL is passed as the first argument to Atrium
+            shell.SetValue("", $"\"{appPath}\" \"%1\"");
+            return true;
         }
+        catch (Exception) { return false; }
+    }
 
-        public async Task<ServiceWorkerStatus> GetStatusAsync()
+    public async Task<bool> UnregisterAsync()
+    {
+        // Logic to remove Registry keys or kill background process
+        return await Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Parity with browser postMessage using Named Pipes.
+    /// </summary>
+    public async Task<TResponse?> PostMessageAsync<TRequest, TResponse>(TRequest message, int timeoutMs = 10000)
+    {
+        using var pipeClient = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        
+        try
         {
-            bool pipeExists = System.IO.Directory.GetFiles(@"\\.\pipe\").Any(f => f.Contains(PipeName));
-            return new ServiceWorkerStatus(
-                Supported: true,
-                IsActive: pipeExists,
-                IsWaiting: false,
-                IsInstalling: false,
-                Scope: _currentScheme,
-                State: pipeExists ? "activated" : "redundant"
-            );
-        }
-
-        public async Task<bool> RegisterAsync(string scheme, string appPath)
-        {
-            try 
-            {
-                // On Windows, 'Register' implies setting up the protocol handler
-                _currentScheme = scheme;
-                using var key = Registry.ClassesRoot.CreateSubKey(scheme);
-                key.SetValue("", $"URL:{scheme} Protocol");
-                key.SetValue("URL Protocol", "");
-
-                using var shell = key.CreateSubKey(@"shell\open\command");
-                // "%1" ensures the full app:// URL is passed as the first argument to Atrium
-                shell.SetValue("", $"\"{appPath}\" \"%1\"");
-                return true;
-            }
-            catch (Exception) { return false; }
-        }
-
-        public async Task<bool> UnregisterAsync()
-        {
-            // Logic to remove Registry keys or kill background process
-            return await Task.FromResult(true);
-        }
-
-        /// <summary>
-        /// Parity with browser postMessage using Named Pipes.
-        /// </summary>
-        public async Task<TResponse?> PostMessageAsync<TRequest, TResponse>(TRequest message, int timeoutMs = 10000)
-        {
-            using var pipeClient = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await pipeClient.ConnectAsync(timeoutMs);
             
-            try
-            {
-                await pipeClient.ConnectAsync(timeoutMs);
-                
-                // 1. Serialize and Send
-                string jsonRequest = JsonSerializer.Serialize(message);
-                byte[] buffer = Encoding.UTF8.GetBytes(jsonRequest);
-                await pipeClient.WriteAsync(buffer, 0, buffer.Length);
+            // 1. Serialize and Send
+            string jsonRequest = JsonSerializer.Serialize(message);
+            byte[] buffer = Encoding.UTF8.GetBytes(jsonRequest);
+            await pipeClient.WriteAsync(buffer, 0, buffer.Length);
 
-                // 2. Await Response (The "MessageChannel" return)
-                byte[] responseBuffer = new byte[65536]; // 64KB limit
-                int bytesRead = await pipeClient.ReadAsync(responseBuffer, 0, responseBuffer.Length);
-                
-                if (bytesRead == 0) return default;
-                
-                string jsonResponse = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
-                return JsonSerializer.Deserialize<TResponse>(jsonResponse);
-            }
-            catch { return default; }
-        }
-
-        public async Task<long?> GetVersionAsync()
-        {
-            // Ping the worker for its version via the pipe
-            var response = await PostMessageAsync<object, long[]>(new { type = "GET_VERSION" });
-            return response?[1];
-        }
-
-        public async Task ForceSyncVersionAsync(string versionUrl)
-        {
-            // Implementation matches your logic: compare local assembly/process version vs server
-            await Task.CompletedTask; 
-        }
-
-        public async Task RegisterProtocolHandlerAsync(string scheme, string appPath)
-        {
+            // 2. Await Response (The "MessageChannel" return)
+            byte[] responseBuffer = new byte[65536]; // 64KB limit
+            int bytesRead = await pipeClient.ReadAsync(responseBuffer, 0, responseBuffer.Length);
             
+            if (bytesRead == 0) return default;
+            
+            string jsonResponse = Encoding.UTF8.GetString(responseBuffer, 0, bytesRead);
+            return JsonSerializer.Deserialize<TResponse>(jsonResponse);
         }
+        catch { return default; }
+    }
+
+    public async Task<long?> GetVersionAsync()
+    {
+        // Ping the worker for its version via the pipe
+        var response = await PostMessageAsync<object, long[]>(new { type = "GET_VERSION" });
+        return response?[1];
+    }
+
+    public async Task ForceSyncVersionAsync(string versionUrl)
+    {
+        // Implementation matches your logic: compare local assembly/process version vs server
+        await Task.CompletedTask; 
+    }
+
+    public async Task RegisterProtocolHandlerAsync(string scheme, string appPath)
+    {
+        
     }
 }
 #endif

@@ -1,8 +1,7 @@
-﻿namespace FlashData
+﻿namespace FlashData;
+
+public static class Selectors
 {
-    public static class Selectors
-    {
 
 
-    }
 }

@@ -1,5 +1,6 @@
 @page "/terms"
 @inject IMenuService MenuService
+@attribute [Display(Name = "About Us", ShortName = "About", GroupName = "Main", Prompt = "bi-file-earmark-text")]
 
 <div class="flash-card" id="terms">
     <h2><i class="bi bi-file-earmark-text me-2"></i>Terms and Conditions</h2>
@@ -125,52 +126,3 @@
         <a href="/" class="more">Return Home</a>
     </div>
 </div>
-
-@code {
-
-    public Dictionary<object, bool> _collapsed = new();
-    public ElementReference self;
-    // TODO: bool StartCollapsed based on CSS style
-
-    protected override void OnInitialized()
-    {
-        // Define the contextual menu for THIS page
-        MenuService.SetMenu(@<RazorSharp.Pages.Shared.Terms />);
-    }
-
-    private void Toggle(object? header)
-    {
-        bool collapsed;
-        if(header == null)
-        {
-            return;
-        }
-        if (_collapsed.TryGetValue(header, out collapsed))
-        {
-            _collapsed[header] = !collapsed;
-        } else
-        {
-            // assume section is collapsed
-            _collapsed[header] = false;
-        }
-    }
-
-    private string GetClass(object? header)
-    {
-        bool collapsed;
-        if (header == null)
-        {
-            return "";
-        }
-        if (!_collapsed.TryGetValue(header, out collapsed) || collapsed)
-        {
-            return "inactive";
-        }
-        else
-        {
-            // assume section is collapsed
-            return "header-active";
-        }
-    }
-
-}

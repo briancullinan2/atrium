@@ -99,6 +99,10 @@
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
 		<PackageReference Include="log4net" Version="3.3.*-*" />
 	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	</ItemGroup>
 
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">

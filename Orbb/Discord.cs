@@ -1,7 +1,6 @@
-﻿namespace Orbb
+﻿namespace Orbb;
+
+// discord game launcher
+public class Discord
 {
-    // discord game launcher
-    public class Discord
-    {
-    }
 }

@@ -13,8 +13,8 @@
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject NavigationManager Nav
+@attribute [Display(Name = "Manage Groups", ShortName = "Groups", GroupName = "Admin", Prompt = "bi-collection")]
 
-<SyncedTitle Title="Manage Groups"></SyncedTitle>
 <div class="flash-card  @GetDisplayClass(ControlMode.List)">
 
     <h2>Manage Groups</h2>
@@ -104,7 +104,6 @@
         
         if (IsStaticRender) return;
 
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         Nav.LocationChanged += OnLocationChanged;
     }
 

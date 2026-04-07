@@ -1,7 +1,6 @@
-﻿namespace Extensions.ForeignEntity
+﻿namespace Extensions.ForeignEntity;
+
+public interface IGenerator<T> where T : IEntity
 {
-    public interface IGenerator<T> where T : IEntity
-    {
-        static abstract IEnumerable<T> Generate();
-    }
+    static abstract IEnumerable<T> Generate();
 }

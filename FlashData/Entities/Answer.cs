@@ -1,34 +1,33 @@
 ﻿
-namespace FlashData.Entities
+namespace FlashData.Entities;
+
+[Table("answer")]
+public class Answer : Entity<Answer>
 {
-    [Table("answer")]
-    public class Answer : Entity<Answer>
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int Id { get; set; }
 
-        public int? CardId { get; set; }
+    public int? CardId { get; set; }
 
-        [ForeignKey(nameof(CardId))]
-        public virtual Card? Card { get; set; }
+    [ForeignKey(nameof(CardId))]
+    public virtual Card? Card { get; set; }
 
-        [Required]
-        public string? Content { get; set; }
+    [Required]
+    public string? Content { get; set; }
 
-        //        //public string? ResponseText { get; set; }
+    //        //public string? ResponseText { get; set; }
 
-        public string? Value { get; set; }
+    public string? Value { get; set; }
 
-        public bool IsCorrect { get; set; } = false;
+    public bool IsCorrect { get; set; } = false;
 
-        public DateTime Created { get; set; } = DateTime.UtcNow;
+    public DateTime Created { get; set; } = DateTime.UtcNow;
 
-        public DateTime? Modified { get; set; }
+    public DateTime? Modified { get; set; }
 
-        public bool IsDeleted { get; set; } = false;
+    public bool IsDeleted { get; set; } = false;
 
-        // Relationship: One Answer has many recorded Responses
-        //public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
-    }
+    // Relationship: One Answer has many recorded Responses
+    //public virtual ICollection<Response> Responses { get; set; } = new HashSet<Response>();
 }

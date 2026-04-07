@@ -1,16 +1,15 @@
 ﻿using UserData.Entities;
 
-namespace UserData.Generators
+namespace UserData.Generators;
+
+public class Groups : IGenerator<Group>
 {
-    public class Groups : IGenerator<Group>
+    public static IEnumerable<Group> Generate()
     {
-        public static IEnumerable<Group> Generate()
-        {
-            return [
-                new Group() { Name = "Real Estate" },
-                new Group() { Name = "Immigration" },
-                new Group() { Name = "Atrium" },
-            ];
-        }
+        return [
+            new Group() { Name = "Real Estate" },
+            new Group() { Name = "Immigration" },
+            new Group() { Name = "Atrium" },
+        ];
     }
 }

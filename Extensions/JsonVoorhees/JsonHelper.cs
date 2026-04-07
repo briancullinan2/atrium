@@ -1,13 +1,12 @@
 ﻿
-namespace Extensions.JsonVoorhees
+namespace Extensions.JsonVoorhees;
+
+public static partial class JsonExtensions
 {
-    public static partial class JsonExtensions
+    public static readonly JsonSerializerOptions Default = new()
     {
-        public static readonly JsonSerializerOptions Default = new()
-        {
-            WriteIndented = true,
-            ReferenceHandler = ReferenceHandler.IgnoreCycles,
-            PropertyNameCaseInsensitive = true
-        };
-    }
+        WriteIndented = true,
+        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+        PropertyNameCaseInsensitive = true
+    };
 }

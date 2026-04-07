@@ -1,13 +1,12 @@
 ﻿using Foundation;
 
-namespace Atrium.Platforms.MacCatalyst
+namespace Atrium.Platforms.MacCatalyst;
+
+[Register("AppDelegate")]
+public class AppDelegate : MauiUIApplicationDelegate
 {
-    [Register("AppDelegate")]
-    public class AppDelegate : MauiUIApplicationDelegate
+    protected override MauiApp CreateMauiApp()
     {
-        protected override MauiApp CreateMauiApp()
-        {
-            return MauiProgram.CreateMauiApp();
-        }
+        return MauiProgram.CreateMauiApp();
     }
 }

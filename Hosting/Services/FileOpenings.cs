@@ -3,35 +3,35 @@ using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
 #endif
 
-namespace Hosting.Services
+namespace Hosting.Services;
+
+public partial class FileManager
 {
-    public partial class FileManager
-    {
 
 #if !BROWSER
 
 
-        public async Task<string?> OpenFile(string file)
+    public async Task<string?> OpenFile(string file)
+    {
+        string path = Path.Combine("wwwroot", file);
+
+        if (await FileSystem.AppPackageFileExistsAsync(path))
         {
-            string path = Path.Combine("wwwroot", file);
-
-            if (await FileSystem.AppPackageFileExistsAsync(path))
-            {
-                using var stream = await FileSystem.OpenAppPackageFileAsync(path);
-                using var reader = new StreamReader(stream);
-                return await reader.ReadToEndAsync();
-            }
-
-            return null;
+            using var stream = await FileSystem.OpenAppPackageFileAsync(path);
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync();
         }
+
+        return null;
+    }
 #else
 
-        public async Task<string?> OpenFile(string file)
-        {
-            var result = Http.GetStringAsync(file);
-            if (result == null) return null;
-            return await result;
-        }
+    public async Task<string?> OpenFile(string file)
+    {
+        var result = Http.GetStringAsync(file);
+        if (result == null) return null;
+        return await result;
+    }
 
 
 #endif
@@ -40,41 +40,40 @@ namespace Hosting.Services
 #if BROWSER
 
 
-        public async Task OpenFileDialog()
-        {
-            throw new InvalidOperationException("File dialogs are not supported in browser environments. Please use the file input element instead.");
-        }
+    public async Task OpenFileDialog()
+    {
+        throw new InvalidOperationException("File dialogs are not supported in browser environments. Please use the file input element instead.");
+    }
 #else
 
-        public async Task OpenFileDialog()
+    public async Task OpenFileDialog()
+    {
+        try
         {
-            try
+            // This calls the native Windows picker, bypassing WebView2 bugs
+            var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                // This calls the native Windows picker, bypassing WebView2 bugs
-                var result = await FilePicker.Default.PickAsync(new PickOptions
-                {
-                    PickerTitle = "Select Anki Package",
-                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> {
-                        { DevicePlatform.WinUI, (string[])[".apkg", ".zip"] }
-                    }) // or custom types
-                });
+                PickerTitle = "Select Anki Package",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> {
+                    { DevicePlatform.WinUI, (string[])[".apkg", ".zip"] }
+                }) // or custom types
+            });
 
-                if (result != null)
-                {
-                    // You get the ABSOLUTE path immediately! 
-                    // No more "browser sandbox" stream restrictions.
-                    _ = UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
-                }
-            }
-            catch (Exception)
+            if (result != null)
             {
-                // Handle cancel or permission issues
+                // You get the ABSOLUTE path immediately! 
+                // No more "browser sandbox" stream restrictions.
+                _ = UploadFile(System.IO.File.OpenRead(result.FullPath), result.FullPath);
             }
         }
+        catch (Exception)
+        {
+            // Handle cancel or permission issues
+        }
+    }
 
 
 #endif
 
 
-    }
 }

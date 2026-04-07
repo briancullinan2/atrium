@@ -2,21 +2,19 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Extensions.ForeignEntity
+namespace Extensions.ForeignEntity;
+
+public interface IHasLogo
 {
-    public interface IHasLogo
-    {
-        int? LogoId { get; set; }
-    }
+    int? LogoId { get; set; }
+}
 
-    public interface IHasUser
-    {
-        string? UserId { get; set; }
-    }
+public interface IHasUser
+{
+    string? UserId { get; set; }
+}
 
-    public interface IHasGroup
-    {
-        int? GroupId { get; set; }
-    }
-
+public interface IHasGroup
+{
+    int? GroupId { get; set; }
 }

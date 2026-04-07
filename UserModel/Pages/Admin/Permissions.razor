@@ -3,8 +3,8 @@
 @inject IMenuService MenuService
 @inject ILoginService LoginService
 @inject IAuthService AuthService
+@attribute [Display(Name = "User Permissions", ShortName = "Permissions", GroupName = "Admin", Prompt = "bi-lock")]
 
-<SyncedTitle Title="User Permissions" />
 
 <div class="flash-card animate-in">
     <h2>Access Control Matrix</h2>
@@ -137,7 +137,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
+        // TODO: this is solved by the new context menus
+        //MenuService?.SetMenu(@<UserModel.Pages.Shared.Settings />);
         Roles = UserData.Generators.Roles.Generate().ToList();
         // Load your current flattened permissions from the DB here
     }

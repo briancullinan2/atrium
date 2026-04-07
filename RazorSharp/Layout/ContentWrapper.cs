@@ -1,12 +1,11 @@
-﻿namespace RazorSharp.Layout
-{
-    public class ContentWrapper : ComponentBase
-    {
-        [Parameter] public RenderFragment? ChildContent { get; set; }
+﻿namespace RazorSharp.Layout;
 
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
-            builder.AddContent(0, ChildContent);
-        }
+public class ContentWrapper : ComponentBase
+{
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        builder.AddContent(0, ChildContent);
     }
 }

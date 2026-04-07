@@ -2,8 +2,8 @@
 @inject IMenuService MenuService
 @inject IQueryManager QueryManager
 @inject IPageManager PageManager
+@attribute [Display(Name = "Usage Activity", ShortName = "Activity", GroupName = "Admin", Prompt = "bi-activity")]
 
-<SyncedTitle Title="Usage Activity"></SyncedTitle>
 
 <div class="flash-card timeline-viewport animate-in" 
      @onscroll="HandleScroll"
@@ -87,7 +87,6 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<UserModel.Pages.Shared.Users />);
         _ = PopulatorLoop();
         PageManager.OnResizeAsync += OnWindowResize;
     }
