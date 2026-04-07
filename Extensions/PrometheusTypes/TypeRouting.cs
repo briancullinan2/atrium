@@ -35,13 +35,14 @@ namespace Extensions.PrometheusTypes
         }
 
 
-        public static string? Route<T>(this Type? type) where T : class
+        public static string? Route(this Type? type)
         {
             if(type == null) return null;
             if (_cachedRouteTypes.TryGetValue(type, out var route)) return route;
             if(type.GetCustomAttribute<RouteAttribute>() is RouteAttribute attr)
             {
                 _cachedRouteTypes.TryAdd(type, attr.Template);
+                return attr.Template;
             }
 
             if (!type.HasAuthorization() && type.Routes().Count == 0) return null;
@@ -95,7 +96,7 @@ namespace Extensions.PrometheusTypes
         }
 
 
-        public static bool IsRoutable(this MethodInfo sharing)
+        public static bool IsRoutable(this MemberInfo sharing)
         {
             return sharing.Route() != null;
         }

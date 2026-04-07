@@ -1,22 +1,22 @@
-﻿using Extensions.JsonVoorhees;
+﻿
+#if !BROWSER
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Net.Http.Json;
+using Microsoft.Maui;
+#endif
 
 namespace Hosting.Services
 {
     public partial class CircuitProvider : ICircuitProvider
     {
 
-        public async Task<TResult?> InvokeAsync<TResult>(string method, CancellationToken? token = null)
+        public async Task<TResult?> InvokeAsync<TResult>(string? method, CancellationToken? token = null)
         {
-            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
+            return await TaskExtensions.Debounce<string, object?[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
         }
 
-        public async Task<TResult?> InvokeAsync<TResult>(string method, params object?[]? parameters)
+        public async Task<TResult?> InvokeAsync<TResult>(string? method, params object?[]? parameters)
         {
-            return await TaskExtensions.Debounce<Type, string, object[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
+            return await TaskExtensions.Debounce<string, object?[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
         }
 
 
@@ -64,14 +64,7 @@ namespace Hosting.Services
             var route = methodInfo.Route() ?? throw new InvalidOperationException("Member is not routable: " + methodInfo);
 
 
-            if (methodInfo is MethodInfo runable)
-            {
-                var serviceTypes = runable.GetParameters().ToServices(Service);
-                // TODO: dont serialize services, they will get rebuilt on the ends
-
-            }
-
-            if(parameters?.FirstOrDefault(o => o.GetType().Extends(typeof(Stream))) is Stream stream)
+            if(parameters?.FirstOrDefault(o => o?.GetType().Extends(typeof(Stream)) == true) is Stream stream)
             {
                 var content = new MultipartFormDataContent();
 
@@ -89,6 +82,9 @@ namespace Hosting.Services
             }
             else
             {
+
+
+
                 result = await Http.GetFromJsonAsync<TResult>(route);
             }
             // TODO: add fun serialization
@@ -101,8 +97,8 @@ namespace Hosting.Services
 
 
 
-        public async Task<T?> RepondHub<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
-        public async Task<T?> RepondHub<T>(string method, object?[]? parameters) => parameters?.Length switch
+        public async Task<T?> RespondHub<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
+        public async Task<T?> RespondHub<T>(string method, object?[]? parameters) => parameters?.Length switch
         {
             1 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
             2 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
@@ -158,7 +154,6 @@ namespace Hosting.Services
 #endif
 
         public async Task<TResult?> ExecuteAsyncDebounced<TResult>(
-            Type type,
             string? method,
             object?[]? parameters
             // TODO: get force out of somewhere
@@ -171,17 +166,62 @@ namespace Hosting.Services
             //    return _cachedValue;
             //}
 
+            if(method == null)
+                throw new InvalidOperationException("Method cannot be null");
+
             // TODO: look up type based on method string input
+            var potentialType = TypeExtensions.AllRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
 
+            var methodInfo = TypeExtensions.AllRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
+                ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
 
+            var type = methodInfo.DeclaringType ?? throw new InvalidOperationException("Method has no declaring type: " + method);
+
+            /*
+            // TODO: make these routable somehow
             MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
                 ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
                 ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
+            */
+
 
             if (methodInfo == null || !methodInfo.IsRoutable())
                 throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
 
-
+            if(IsSignalCircuit)
+            {
+                return await RespondCircuit<TResult>(methodInfo, parameters);
+            }
+            if (IsHubConnected)
+            {
+                return await RespondHub<TResult>(method, parameters);
+            }
+            else if (OperatingSystem.IsBrowser())
+            {
+                return await RespondRemote<TResult>(methodInfo, parameters);
+            }
+            else
+            {
+                var result = methodInfo.InvokeService(Service, parameters);
+                if (result is Task task)
+                {
+                    await task;
+                    return (task as dynamic).Result;
+                }
+                else if (result is ValueTask valueTask)
+                {
+                    await valueTask;
+                    return (valueTask as dynamic).Result;
+                }
+                else if (result is TResult typedResult)
+                    return typedResult;
+                else if (result == null)
+                    return default;
+                else throw new InvalidOperationException("Result did not type cast from: "
+                    + result.GetType().AssemblyQualifiedName
+                    + " to " + typeof(TResult).AssemblyQualifiedName);
+                    
+            }
         }
     }
 }

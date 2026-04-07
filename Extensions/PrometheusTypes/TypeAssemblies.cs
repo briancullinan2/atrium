@@ -12,17 +12,21 @@ namespace Extensions.PrometheusTypes
         private static readonly Lock _loaderLock = new();
 
 
+        public static List<Type> AllRoutable { get; }
+
+
         static TypeExtensions()
         {
             RegisterAssembly(Assembly.GetExecutingAssembly());
 
             // TODO: need a list of servicable types, anything in the namespace Services that has any routes
 
-            var routeableTypes = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
+            AllRoutable = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
                 .SelectMany(ass => ass.GetTypes())
-                .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any());
+                .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any())
+                .ToList();
 
-            foreach (var type in routeableTypes)
+            foreach (var type in AllRoutable)
             {
                 // This triggers your existing GetRoutes logic to fill the _routeCache
                 _ = GetRoutes(type);

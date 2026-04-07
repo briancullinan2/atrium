@@ -5,7 +5,7 @@ using System.Text;
 namespace Extensions.SlenderServices
 {
 
-
+#if false
     public class DelegateAsyncProxy<T>(IPageManager parent, PageAction action)
 
     {
@@ -75,5 +75,6 @@ namespace Extensions.SlenderServices
     {
     }
 
+#endif
 
 }

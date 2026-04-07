@@ -291,7 +291,7 @@ namespace RazorSharp.Services
             }
             remove
             {
-                _events.Remove((PageAction.Resize, "window"));
+                Unsubscribe((PageAction.Resize, "window"), value);
             }
         }
 
@@ -303,7 +303,29 @@ namespace RazorSharp.Services
             }
             remove
             {
-                _events.Remove((PageAction.Resize, "window"));
+                Unsubscribe((PageAction.Resize, "window"), value);
+            }
+        }
+        public event Action<string, bool> OnFocus
+        {
+            add
+            {
+                Subscribe((PageAction.Focus, "window"), value);
+            }
+            remove
+            {
+                Unsubscribe((PageAction.Visible, "window"), value);
+            }
+        }
+        public event Action<string, bool> OnScroll
+        {
+            add
+            {
+                Subscribe((PageAction.Scroll, "window"), value);
+            }
+            remove
+            {
+                Unsubscribe((PageAction.Visible, "window"), value);
             }
         }
         public event Action<bool> OnVisible
@@ -314,7 +336,7 @@ namespace RazorSharp.Services
             }
             remove
             {
-                _events.Remove((PageAction.Visible, "window"));
+                Unsubscribe((PageAction.Visible, "window"), value);
             }
         }
         public event Action<string> OnReconnect
@@ -325,14 +347,14 @@ namespace RazorSharp.Services
             }
             remove
             {
-                _events.Remove((PageAction.Reconnect, "window"));
+                Unsubscribe((PageAction.Reconnect, "window"), value);
             }
         }
-        public BooleanProxy OnScroll => new(this, PageAction.Scroll);
-        public BooleanAsyncProxy OnScrollAsync => new(this, PageAction.Scroll);
+        //public BooleanProxy OnScroll => new(this, PageAction.Scroll);
+        //public BooleanAsyncProxy OnScrollAsync => new(this, PageAction.Scroll);
         //private ResizeProxy OnResizePattern => new(this);
-        public BooleanProxy OnFocus => new(this, PageAction.Focus);
-        public BooleanAsyncProxy OnFocusAsync => new(this, PageAction.Focus);
+        //public BooleanProxy OnFocus => new(this, PageAction.Focus);
+        //public BooleanAsyncProxy OnFocusAsync => new(this, PageAction.Focus);
         //public StringProxy OnVisible => new(this, PageAction.Visible);
         //public StringProxy OnReconnect => new(this, PageAction.Reconnect);
 

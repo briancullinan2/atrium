@@ -1,8 +1,7 @@
-﻿using Microsoft.Maui.Devices;
+﻿#if !BROWSER
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
-using System;
-using System.Collections.Generic;
-using System.Text;
+#endif
 
 namespace Hosting.Services
 {
@@ -38,8 +37,14 @@ namespace Hosting.Services
 #endif
 
 
-#if WINDOWS
+#if BROWSER
 
+
+        public async Task OpenFileDialog()
+        {
+            throw new InvalidOperationException("File dialogs are not supported in browser environments. Please use the file input element instead.");
+        }
+#else
 
         public async Task OpenFileDialog()
         {

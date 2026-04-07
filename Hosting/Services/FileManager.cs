@@ -1,6 +1,6 @@
 ﻿
 using Microsoft.AspNetCore.Authorization;
-using File = FlashData.Entities.File;
+
 
 namespace Hosting.Services
 {
@@ -23,7 +23,7 @@ namespace Hosting.Services
         }
 
 
-        public async Task<File?> UploadFile(string localPath)
+        public async Task<object?> UploadFile(string localPath)
         {
             using var localStream = System.IO.File.OpenRead(localPath);
             return await UploadFile(localStream, localPath);
@@ -43,8 +43,8 @@ namespace Hosting.Services
 
         // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
         //   so any implementer can designate themselves as the source of the data
-
-        public async Task<File?> ReceiveFile(Stream? localStream, string localPath, string? source = "Uploads")
+        [AllowAnonymous]
+        public async Task<object?> ReceiveFile(Stream? localStream, string localPath, string? source = "Uploads")
         {
             if(localStream == null)
                 throw new InvalidOperationException("No files provided.");
@@ -56,7 +56,7 @@ namespace Hosting.Services
             fileStream.Close();
             localStream.Close();
 
-            var task = Query.Save(new File()
+            var task = Query.Save(new FlashData.Entities.File()
             {
                 Filename = savePath,
                 Source = source // TODO: fill in from nav or parameter or something

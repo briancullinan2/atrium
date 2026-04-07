@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
+// all controls that support metadatacontrol, i.e. matching form elements by type
 namespace Extensions.SlenderServices
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]

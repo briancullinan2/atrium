@@ -26,12 +26,13 @@ namespace Extensions.SlenderServices
         T? GetState<T>(PageAction action, string id);
 
 
-        BooleanProxy OnScroll { get; }
+        event Action<string, bool> OnScroll;
         event Action<int, int, bool> OnResize;
         event Func<int, int, bool, Task> OnResizeAsync;
-        BooleanProxy OnFocus { get; }
+        event Action<string, bool> OnFocus;
         event Action<bool> OnVisible;
         event Action<string> OnReconnect;
+
         //Delegate? this[PageAction action, string id] { get; set; }
         void Subscribe((PageAction Action, string Id) key, Delegate? value);
         void Unsubscribe((PageAction Action, string Id) key, Delegate? value);

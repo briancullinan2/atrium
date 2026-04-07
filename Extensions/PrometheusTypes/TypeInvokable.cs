@@ -7,11 +7,15 @@ namespace Extensions.PrometheusTypes
 
         public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
         {
+            if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
+            return myDelegate.Method.InvokeService(service, args);
+        }
 
-            if (myDelegate == null) return true; // Default to show if no method found
-
+        public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider service, params object?[]? args)
+        {
+            if(myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
             var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
-            var parameters = myDelegate.Method.GetParameters();
+            var parameters = myDelegate.GetParameters();
             var parameterValues = new object?[parameters.Length];
 
             for (int i = 0; i < parameters.Length; i++)
@@ -23,12 +27,12 @@ namespace Extensions.PrometheusTypes
                     var nav = service.GetRequiredService<NavigationManager>();
                     parameterValues[i] = IdentifyNavigation(nav.Uri);
                 }
-                else if(args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
+                else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
                 {
                     parameterValues[i] = null;
                 }
                 // TODO: find a way to match parameter names to a dictionary passed in or query params?
-                else if(args?.ElementAtOrDefault(i) is object obj
+                else if (args?.ElementAtOrDefault(i) is object obj
                     && obj.GetType().Extends(realType))
                 {
                     parameterValues[i] = Convert.ChangeType(args[i], realType);
@@ -44,9 +48,8 @@ namespace Extensions.PrometheusTypes
                 }
             }
 
-            return myDelegate.DynamicInvoke(null, parameterValues);
+            return myDelegate.Invoke(null, parameterValues);
         }
-
 
 #pragma warning disable BL0006 // Do not use RenderTree types
         public static Renderer? Renderer(this IComponent component)
