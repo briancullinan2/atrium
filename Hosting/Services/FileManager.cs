@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.AspNetCore.Authorization;
 using File = FlashData.Entities.File;
 
 namespace Hosting.Services
@@ -22,66 +23,6 @@ namespace Hosting.Services
         }
 
 
-
-#if WINDOWS
-        //[HttpPost("upload")]
-        public static async Task OnUploadFile(HttpContext context, IFileManager FileManager)
-        {
-            try
-            {
-                if (!context.Request.HasFormContentType || !context.Request.Form.Files.Any())
-                {
-                    throw new InvalidOperationException("No files provided.");
-                }
-
-                var first = true;
-                foreach (var file in context.Request.Form.Files)
-                {
-                    // Accessing the stream directly from the request
-                    using var stream = file.OpenReadStream();
-
-                    // Example: Save to disk in Arizona-based storage
-                    var databaseFile = await FileManager.UploadFile(stream, file.FileName);
-
-                    if (!first) continue;
-                    first = false;
-
-                    context.Response.ContentType = "application/json";
-                    var json = JsonSerializer.Serialize(databaseFile, JsonExtensions.Default);
-                    await context.Response.WriteAsync(json);
-                    await context.Response.Body.FlushAsync();
-                    await context.Response.CompleteAsync();
-
-                }
-            }
-            catch (Exception ex)
-            {
-                context.Response.ContentType = "application/json";
-                context.Response.StatusCode = 500;
-                var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
-                await context.Response.WriteAsync(json);
-            }
-        }
-
-
-#endif
-
-        public async Task SetDragging(bool dragging)
-        {
-            OnFileDragging?.Invoke(dragging);
-        }
-
-
-#if WINDOWS
-        
-#endif
-
-
-
-        internal int currentProgress = 0;
-
-
-
         public async Task<File?> UploadFile(string localPath)
         {
             using var localStream = System.IO.File.OpenRead(localPath);
@@ -89,11 +30,25 @@ namespace Hosting.Services
         }
 
 
+
+
+        public async Task SetDragging(bool dragging)
+        {
+            OnFileDragging?.Invoke(dragging);
+        }
+
+
+
+
+
         // TODO: generalize not just for anki and add a parameter like string source = "Uploads"
         //   so any implementer can designate themselves as the source of the data
 
-        public async Task<File?> ReceiveFile(Stream localStream, string localPath, string? source = "Uploads")
+        public async Task<File?> ReceiveFile(Stream? localStream, string localPath, string? source = "Uploads")
         {
+            if(localStream == null)
+                throw new InvalidOperationException("No files provided.");
+
             var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());
             using var fileStream = System.IO.File.Create(savePath);
             await localStream.CopyToAsync(fileStream);
@@ -118,69 +73,6 @@ namespace Hosting.Services
             return null;
         }
 
-        public async Task<File?> UploadFile(Stream fileStream, string localPath, string? source = "Uploads")
-        {
-            if (Http == null)
-            {
-                throw new InvalidOperationException("No Http client.");
-            }
-
-            var content = new MultipartFormDataContent();
-
-            var streamContent = new ProgressableStreamContent(fileStream, 4096, (sent) =>
-            {
-                var percentage = (double)sent / fileStream.Length * 100;
-                // Update your Blazor Progress Bar variable here
-                currentProgress = (int)percentage;
-            });
-
-            content.Add(streamContent, "file", Path.GetFileName(localPath));
-            var route = 
-            var response = await Http.PostAsync("/api/upload", content);
-            var result = await response.Content.ReadFromJsonAsync<File>();
-            OnFileUploaded?.Invoke(result);
-            return result;
-            // TODO: update file list wasn't implemented until after saving
-
-        }
-
-        public async Task<string?> OpenFile(string file)
-        {
-            var result = Http.GetStringAsync(file);
-            if (result == null) return null;
-            return await result;
-        }
     }
 
-
-    public partial class ProgressableStreamContent(Stream stream, int bufferSize, Action<long> onProgress) : HttpContent
-    {
-        private readonly Stream _fileStream = stream;
-        private readonly int _bufferSize = bufferSize;
-        private readonly Action<long> _onProgress = onProgress;
-
-        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
-        {
-            var buffer = new byte[_bufferSize];
-            long uploaded = 0;
-
-            while (true)
-            {
-                var length = await _fileStream.ReadAsync(buffer);
-                if (length <= 0) break;
-
-                uploaded += length;
-                await stream.WriteAsync(buffer.AsMemory(0, length));
-                _onProgress(uploaded); // Trigger progress update
-            }
-        }
-
-        protected override bool TryComputeLength(out long length)
-        {
-            length = _fileStream.Length;
-            return true;
-        }
-
-
-    }
 }

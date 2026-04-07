@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Extensions.JsonVoorhees;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Json;
 
 namespace Hosting.Services
@@ -50,23 +52,50 @@ namespace Hosting.Services
 
         }
 
+        internal int currentProgress = 0;
 
-        public async Task<TResult?> RespondRemote<TResult>(MemberInfo methodInfo)
+
+
+        public async Task<TResult?> RespondRemote<TResult>(MemberInfo methodInfo, params object?[]? parameters)
         {
             if (Http == null)
                 throw new InvalidOperationException("Http client not available");
+
+            var route = methodInfo.Route() ?? throw new InvalidOperationException("Member is not routable: " + methodInfo);
+
 
             if (methodInfo is MethodInfo runable)
             {
                 var serviceTypes = runable.GetParameters().ToServices(Service);
                 // TODO: dont serialize services, they will get rebuilt on the ends
+
+            }
+
+            if(parameters?.FirstOrDefault(o => o.GetType().Extends(typeof(Stream))) is Stream stream)
+            {
+                var content = new MultipartFormDataContent();
+
+                var streamContent = new ProgressableStreamContent(stream, 4096, (sent) =>
+                {
+                    var percentage = (double)sent / stream.Length * 100;
+                    // Update your Blazor Progress Bar variable here
+                    currentProgress = (int)percentage;
+                });
+
+                content.Add(streamContent, "file", Path.GetFileName(localPath));
+                url = QueryHelpers.AddQueryString(url, "source", source ?? "Uploads");
+
+                result = await Http.GetFromJsonAsync<TResult>(route);
+            }
+            else
+            {
+                result = await Http.GetFromJsonAsync<TResult>(route);
             }
             // TODO: add fun serialization
-            result = await Http.GetFromJsonAsync<TResult>(Path);
 
 
             // TODO: put special file upload handlers, and expression serializer in here automatically
-
+            // TODO: use InvokeService extension but add named parameters from IFormFactor.QueryParameters context
         }
 
 
@@ -84,11 +113,49 @@ namespace Hosting.Services
         };
 
 
-        public static async Task OnExecuteAsync(ICircuitProvider service)
+
+#if !BROWSER
+        public static async Task OnExecuteAsync(HttpContext context, IFileManager FileManager, ICircuitProvider Circuit, IFormFactor Form)
         {
-            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<, TResult>, service.DefaultTTL, method, parameters);
+            try
+            {
+
+                var first = true;
+
+                foreach (var file in Form.Files)
+                {
+                    // Accessing the stream directly from the request
+                    using var stream = file.OpenReadStream();
+
+                    // Example: Save to disk in Arizona-based storage
+                    var databaseFile = await FileManager.UploadFile(stream, file.Name);
+
+                    // this allows the client to send multiple files at once but get a response as soon as the first one saves to disk
+                    if (!first) continue;
+                    first = false;
+
+                    context.Response.ContentType = "application/json";
+                    var json = JsonSerializer.Serialize(databaseFile, JsonExtensions.Default);
+                    await context.Response.WriteAsync(json);
+                    await context.Response.Body.FlushAsync();
+                    await context.Response.CompleteAsync();
+
+                }
+
+                // TODO:
+                return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<, TResult>, service.DefaultTTL, method, parameters);
+            }
+            catch (Exception ex)
+            {
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = 500;
+                var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
+                await context.Response.WriteAsync(json);
+            }
+
         }
 
+#endif
 
         public async Task<TResult?> ExecuteAsyncDebounced<TResult>(
             Type type,
@@ -104,12 +171,17 @@ namespace Hosting.Services
             //    return _cachedValue;
             //}
 
+            // TODO: look up type based on method string input
+
+
             MemberInfo? methodInfo = type.GetMethods(method).FirstOrDefault() as MemberInfo
                 ?? type.GetProperties(method).FirstOrDefault() as MemberInfo
                 ?? type.GetFields(method).FirstOrDefault() as MemberInfo;
 
             if (methodInfo == null || !methodInfo.IsRoutable())
                 throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
+
+
         }
     }
 }

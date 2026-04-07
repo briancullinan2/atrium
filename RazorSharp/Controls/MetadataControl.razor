@@ -1,5 +1,6 @@
 @using System.Reflection
 
+@inject IServiceProvider Service
 @typeparam TModel
 
 <div class="@containerClass auto-form-container">
@@ -25,7 +26,7 @@
 @code {
     [Parameter] public IEnumerable<PropertyMetadata>? Model { get; set; }
     [Parameter] public IEnumerable<TModel>? Data { get; set; }
-    [Parameter] public EventCallback<Tuple<PropertyMetadata, TModel?, object?>>? ValueChanged { get; set; }
+    [Parameter] public Delegate? ValueChanged { get; set; }
 
     string? containerClass;
     private Dictionary<string, object> _componentInstances = new();
@@ -58,7 +59,7 @@
                 {
                     { "Model", prop },
                     { "ValueChanged", EventCallback.Factory.Create<object?>(this, (val) => { 
-                        ValueChanged?.InvokeAsync(new Tuple<PropertyMetadata, TModel?, object?>(prop, Data?.Count() > i ? (Data ?? []).ElementAt(i) : default(TModel), val)); 
+                        ValueChanged?.InvokeService(Service, prop, Data?.Count() > i ? (Data ?? []).ElementAt(i) : default(TModel), val); 
                     })}
                 }
             )).ToList();

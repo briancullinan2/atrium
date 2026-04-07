@@ -5,25 +5,42 @@ namespace Extensions.PrometheusTypes
     public static partial class TypeExtensions
     {
 
-        public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service)
+        public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
         {
 
             if (myDelegate == null) return true; // Default to show if no method found
 
+            var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
             var parameters = myDelegate.Method.GetParameters();
             var parameterValues = new object?[parameters.Length];
 
             for (int i = 0; i < parameters.Length; i++)
             {
+                var realType = Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType;
                 // TODO: add more special service injection handlers
                 if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
                 {
                     var nav = service.GetRequiredService<NavigationManager>();
                     parameterValues[i] = IdentifyNavigation(nav.Uri);
                 }
+                else if(args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
+                {
+                    parameterValues[i] = null;
+                }
+                // TODO: find a way to match parameter names to a dictionary passed in or query params?
+                else if(args?.ElementAtOrDefault(i) is object obj
+                    && obj.GetType().Extends(realType))
+                {
+                    parameterValues[i] = Convert.ChangeType(args[i], realType);
+                }
+                else if (!string.IsNullOrEmpty(parameters[i].Name)
+                    && formFactor?.QueryParameters?.ContainsKey(parameters[i].Name!) is object queryParameter)
+                {
+                    parameterValues[i] = Convert.ChangeType(queryParameter, realType);
+                }
                 else
                 {
-                    parameterValues[i] = service.GetService(Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType);
+                    parameterValues[i] = service.GetService(realType);
                 }
             }
 

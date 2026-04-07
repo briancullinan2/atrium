@@ -16,8 +16,8 @@
         </span>
 
         <div class="highlighted-link">
-            <button class="deemphasize" @onclick="this.TriggerAppStop">Stop App</button>
-            <button class="cta" @onclick:stopPropagation @onclick="Clear">Clear</button>
+            <button class="deemphasize" @onclick="PageManager.TriggerAppStop">Stop App</button>
+            <button class="cta" @onclick:stopPropagation @onclick="PageManager.Trigg">Clear</button>
         </div>
     </div>
 
@@ -48,10 +48,7 @@
     [Parameter] public bool? Embedded { get; set; }
     private bool _isExpanded = false;
     private void Toggle() => _isExpanded = !_isExpanded;
-    private void Clear()
-    {
-        // Logger.Errors.Clear();
-    }
+
 
 
     public static RenderFragment? MainLayoutInsert(NavigationManager Nav) => Nav.Uri != "/error" && Nav.Uri != "/console"

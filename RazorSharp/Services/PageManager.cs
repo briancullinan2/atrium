@@ -338,11 +338,11 @@ namespace RazorSharp.Services
 
 
 
-        public Delegate? this[PageAction action, string id]
-        {
-            get => _events.TryGetValue((action, id), out var del) ? del : null;
-            set => Subscribe((action, id), value);
-        }
+        //public Delegate? this[PageAction action, string id]
+        //{
+        //    get => _events.TryGetValue((action, id), out var del) ? del : null;
+        //    set => Subscribe((action, id), value);
+        //}
         
 
         public void Unsubscribe((PageAction Action, string Id) key, Delegate? value)
@@ -448,6 +448,8 @@ namespace RazorSharp.Services
         [JSInvokable] public void OnFocused(bool focused) => UpdateStateDebouncer(PageAction.Focus, "window", focused);
         [JSInvokable] public void OnVisibility(string visible) => UpdateStateDebouncer(PageAction.Visible, "window", visible);
         [JSInvokable] public void OnReconnected(string state) => UpdateStateDebouncer(PageAction.Visible, "window", state);
+        [JSInvokable] public void OnPageEvent(string id, object? detail = null) => UpdateStateDebouncer(id.TryParse<PageAction>() ?? PageAction.Action, "window", detail);
+        [JSInvokable] public void OnPageEvent(PageAction id, object? detail = null) => UpdateStateDebouncer(id, "window", detail);
         [JSInvokable] public void OnStopped() => Form.StopAsync();
 
         // 1. Generic GetState for type-safe access in C#
@@ -459,7 +461,7 @@ namespace RazorSharp.Services
             }
             return default;
         }
-        protected void UpdateStateDebouncer(PageAction action, string id, object value)
+        protected void UpdateStateDebouncer(PageAction action, string id, object? value)
         {
             TaskExtensions.Debounce(
                 UpdateState, 100, action, id, value
@@ -482,9 +484,17 @@ namespace RazorSharp.Services
         public async ValueTask TriggerEvent(string eventName, object? detail = null)
         {
             await ModuleInitialize;
+            OnPageEvent(eventName, detail);
             await Module.InvokeVoidAsync("dispatchEvent", eventName, detail);
         }
 
+
+        public async ValueTask TriggerEvent(PageAction eventName, object? detail = null)
+        {
+            await ModuleInitialize;
+            OnPageEvent(eventName, detail);
+            await Module.InvokeVoidAsync("dispatchEvent", eventName.ToString(), detail);
+        }
 
         public async ValueTask InitializeBackground(string mode, string canvas)
         {

@@ -9,7 +9,6 @@ global using Microsoft.AspNetCore.Components.Rendering;
 global using Microsoft.AspNetCore.Components.Web;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.JSInterop;
-global using RazorSharp.Extensions;
 global using RazorSharp.Layout;
 global using RazorSharp.Services;
 global using System;

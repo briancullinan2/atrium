@@ -14,6 +14,8 @@ namespace Extensions.SlenderServices
         bool IsWebContext { get; }
         bool IsMauiContext { get; }
         string ConnectionId { get; }
+        List<IFile> Files { get; }
+
         Task<string?> UpdateTitle(string? title);
         event Action<string?>? OnTitleChanged;
         Dictionary<string, string>? QueryParameters { get; }
@@ -26,4 +28,17 @@ namespace Extensions.SlenderServices
     {
         static abstract string? AppName { get; }
     }
+
+
+
+    public interface IFile
+    {
+        string Name { get; }
+        //DateTimeOffset LastModified { get; }
+        long Size { get; }
+        string ContentType { get; }
+        Stream OpenReadStream();
+    }
+
+
 }

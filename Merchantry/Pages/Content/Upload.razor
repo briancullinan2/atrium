@@ -1,11 +1,9 @@
 @page "/upload"
 @attribute [Display(Name = "Import Packs", GroupName = "Content", Prompt = "bi-cloud-arrow-up")]
 @implements IDisposable
-@inject IFileManager File
-@inject IMenuService MenuService
-@inject IServiceProvider Services
 @inject IAnkiService AnkiService
-@inject IQueryManager QueryManager
+@inject IPageManager Page
+@inject IFileManager FileManager
 
 <div class="flash-card animate-in @(isDragOver ? "dropping" : "")"
      @ondragover:preventdefault="true"
@@ -25,16 +23,17 @@
         <label>Source</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, File, object?>>(this, OnAnkiSelected))" TModel="File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
+
+    <MetadataControl ValueChanged="Page.AnkiSelected" TModel="FlashData.Entities.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
 
     <div class="link-list">
         @if (!OperatingSystem.IsWindows())
         {
-            <InputFile class="cta" OnChange="HandleFileSelection" />
+            <InputFile class="cta" OnChange="Page.Upload" />
         }
         else
         {
-            <button class="btn btn-primary" @onclick="() => File.OpenFileDialog()">
+            <button class="btn btn-primary" @onclick="() => FileManager.OpenFileDialog()">
                 <i class="bi bi-file-earmark-plus"></i>Open File
             </button>
         }
@@ -104,8 +103,8 @@
 
     bool isDragOver = false;
 
-    void HandleDragOver() => File.SetDragging(true);
-    void HandleDragLeave() => File.SetDragging(false);
+    void HandleDragOver() => FileManager.SetDragging(true);
+    void HandleDragLeave() => FileManager.SetDragging(false);
 
     protected override void OnInitialized()
     {
@@ -113,7 +112,7 @@
         MenuService.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         FilesLayout = typeof(Pages.Content.Upload).Metadata().Categories["Display"]?.ToList();
         CardsLayout = typeof(Pages.Content.Upload).Metadata().Categories["Content"]?.ToList();
-        File.OnFileDragging += OnDragging;
+        FileManager.OnFileDragging += OnDragging;
         _ = PopulateUploads();
     }
 
@@ -142,10 +141,12 @@
     protected async Task HandleFileSelection(InputFileChangeEventArgs e)
     {
         isDragOver = false;
+        // TODO: move this to IFormFactor
+        // TODO: port over form checker from clearview project
         // Process the dropped files
-        foreach (var file in e.GetMultipleFiles())
+        foreach (IBrowserFile file in e.GetMultipleFiles())
         {
-            _ = File.UploadFile(file.OpenReadStream(), file.Name);
+            _ = FileManager.UploadFile(file.OpenReadStream(), file.Name);
             // Access file properties like file.Name, file.Size, etc.
             // You can read the file stream here:
             // using var stream = file.OpenReadStream();
@@ -158,13 +159,13 @@
 
     protected async Task HandleDrop(DragEventArgs e)
     {
-        _ = File.SetDragging(false);
+        _ = FileManager.SetDragging(false);
         // In Blazor Hybrid, e.DataTransfer.Files is usually populated
         if (e.DataTransfer.Files != null)
         {
             foreach (var file in e.DataTransfer.Files)
             {
-                _ = File.UploadFile(file);
+                _ = FileManager.UploadFile(file);
             }
         }
 
@@ -176,6 +177,6 @@
 
     public void Dispose()
     {
-        File.OnFileDragging -= OnDragging;
+        FileManager.OnFileDragging -= OnDragging;
     }
 }

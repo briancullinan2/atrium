@@ -8,7 +8,7 @@
 @inject IMenuService Menu
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-logo" @onclick="() => ToggleStudy()">
+    <div class="container-logo" @onclick="PageManager.ToggleStudyMode">
         <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
         <a class="navbar-brand">Atrium</a>
     </div>
@@ -36,7 +36,7 @@
     else
     {
         __builder.OpenComponent(0, currentMenu);
-        __builder.AddComponentReferenceCapture(4, inst => {
+        __builder.AddComponentReferenceCapture(1, inst => {
             _componentInstances[currentMenu.Name] = inst;
             var menu = inst as IHasMenu;
             if (menu == null) return;

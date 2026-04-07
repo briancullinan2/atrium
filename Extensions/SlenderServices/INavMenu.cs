@@ -14,6 +14,7 @@ namespace Extensions.SlenderServices
 
         List<Type> EnabledMenus { get; }
         List<Type> EnabledContexts { get; }
+        List<Type> EnabledLayouts { get; }
     }
 
     public interface IHasMenu : IComponent
@@ -37,5 +38,10 @@ namespace Extensions.SlenderServices
         static abstract Delegate ContextInsert { get; }
     }
 
+
+    public interface INotHasWrapper : IComponent
+    {
+
+    }
 
 }

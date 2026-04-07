@@ -6,7 +6,7 @@
 @inject IMenuService MenuService
 @inject IThemeService ThemeService
 @inject ITitleService TitleService
-@inject IServiceProvider Services
+@inject IServiceProvider Service
 @inject IPageManager PageManager
 @inject IFormFactor Form
 @inject IRenderState RenderState
@@ -93,6 +93,15 @@
     </main>
 
     @*TODO: insert services through page manager*@
+    @foreach(var currentLayout in MenuService.EnabledLayouts)
+    {
+        var myDelegate = currentLayout.GetProperties(nameof(IHasLayout.LayoutInsert)).First().GetValue(null) as Delegate;
+        if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+        ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+            throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
+        var fragment = myDelegate.InvokeService(Service) as RenderFragment;
+        @fragment
+    }
 
 </div>
 
@@ -115,6 +124,7 @@
     public bool? ShowChat { get; set; }
     [CascadingParameter] private ErrorBoundary? _errorBoundary { get; set; }
     private Exception? _lastException;
+    private Dictionary<string, object> _componentInstances = new();
 
     /*
      * This is so fucking dumb this isn't more obvious like Nav.GetComponent(route);
@@ -208,15 +218,16 @@
         {
             return; 
         }
+
         // never wrap study-now
-        if(currentType == typeof(Pages.Landing.Home))
+        if(currentType.Extends(typeof(INotHasWrapper)))
         {
             _previousList.AddLast((MarkupString?)null);
             return;
         }
 
 
-        _previousList.AddLast(await PageManager.Copy(_activeBody, Services));
+        _previousList.AddLast(await PageManager.Copy(_activeBody, Service));
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)

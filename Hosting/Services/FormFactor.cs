@@ -16,7 +16,7 @@ namespace Hosting.Services
     public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     {
         public Dictionary<string, string>? QueryParameters { get; private set; }
-        public IPageManager? Page { get; }
+        public IPageManager Page { get; }
         public NavigationManager Navigation { get; }
 
         public abstract bool IsBrowser { get; }
@@ -27,8 +27,9 @@ namespace Hosting.Services
         public abstract Task StopAsync();
         public abstract string BaseUrl { get; }
         public abstract string ConnectionId { get; }
+        public abstract List<IFile> Files { get; }
 
-        public BaseFormFactor(NavigationManager nav, IPageManager? page = null)
+        public BaseFormFactor(NavigationManager nav, IPageManager page)
         {
             Page = page;
             Navigation = nav;
@@ -65,7 +66,7 @@ namespace Hosting.Services
             return _title;
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             Navigation.LocationChanged -= Nav_LocationChanged;
             GC.SuppressFinalize(this);
@@ -93,12 +94,7 @@ namespace Hosting.Services
 
 #if BROWSER
 
-    public partial class FormFactor(
-        NavigationManager nav
-        , IPageManager page
-        , IJSRuntime? JS = null
-        , Lazy<WebAssemblyHost?>? App = null
-    ) : BaseFormFactor(nav, page)
+    public partial class FormFactor : BaseFormFactor
     {
         public override bool IsBrowser => true;
         public override bool IsWebContext => true;
@@ -107,6 +103,39 @@ namespace Hosting.Services
         public override string BaseUrl => "http://localhost:8080";
         public override string GetFormFactor() => "WebAssembly";
         public override string ConnectionId => "Browser";
+
+        public List<IFile> CurrentFormFiles = [];
+        private readonly Lazy<WebAssemblyHost?>? App;
+        private readonly IJSRuntime JS;
+
+        public override List<IFile> Files { get => CurrentFormFiles; }
+
+        public FormFactor(
+        NavigationManager nav
+        , IPageManager page
+        , IJSRuntime js 
+        , Lazy<WebAssemblyHost?>? app = null
+        ) : base(nav, page)
+        {
+            App = app;
+            JS = js;
+            Page.Subscribe((PageAction.Upload, "window"), SwapFileListasync);
+        }
+
+
+        protected async Task SwapFileListasync(InputFileChangeEventArgs args)
+        {
+            CurrentFormFiles = [..CurrentFormFiles, ..args.GetMultipleFiles().Select(f => new BrowserFile(f) as IFile)];
+        }
+
+
+        public override void Dispose()
+        {
+            Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListasync);
+            base.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
 
         public override async Task<string?> UpdateTitle(string? title)
         {
@@ -133,11 +162,13 @@ namespace Hosting.Services
 
     public partial class FormFactor(
         NavigationManager nav
+        , IPageManager page
         , HttpContext? Context = null
         , Lazy<Application?>? Desktop = null
         , Lazy<MauiApp?>? Maui = null
         , Lazy<WebApplication?>? App = null
-    ) : BaseFormFactor(nav)
+        
+    ) : BaseFormFactor(nav, page)
     {
         public override bool IsBrowser => OperatingSystem.IsBrowser();
         public override bool IsWebContext => Context != null;
@@ -147,6 +178,7 @@ namespace Hosting.Services
         public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
         public override string ConnectionId => Context?.Connection.Id ?? "Internal";
 
+        public override List<IFile> Files => [..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? []];
 
         public override async Task SetSessionCookie(string name, string value, int days)
         {
@@ -200,5 +232,34 @@ namespace Hosting.Services
     }
 
 #endif
+
+#if !BROWSER
+    public class FormFile(IFormFile File) : IFile
+    {
+        public string Name => File.Name;
+
+        public long Size => File.Length;
+
+        public string ContentType => ContentType;
+
+        public Stream OpenReadStream()
+           => File.OpenReadStream();
+    }
+#else
+    
+#endif
+
+    public class BrowserFile(IBrowserFile File) : IFile
+    {
+        public string Name => File.Name;
+
+        public long Size => File.Size;
+
+        public string ContentType => ContentType;
+
+        public Stream OpenReadStream()
+           => File.OpenReadStream();
+    }
+
 
 }

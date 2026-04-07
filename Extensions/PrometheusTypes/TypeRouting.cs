@@ -59,15 +59,15 @@ namespace Extensions.PrometheusTypes
         public static bool TypeExtendsAny(this Type any, ParameterInfo type) => type.ParameterType.Extends(any);
 
 
-        public static string? Route(this MethodInfo? sharing)
+        public static string? Route(this MemberInfo? sharing)
         {
             if (sharing == null) return null;
             if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route;
             var type = sharing.DeclaringType;
             if (!sharing.HasAuthorization()
-#if !BROWSER
-                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
-#endif
+//#if !BROWSER
+//                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
+//#endif
             )
                 return null;
             
@@ -157,6 +157,27 @@ namespace Extensions.PrometheusTypes
         }
 
 
+
+
+
+        static readonly ConcurrentDictionary<Assembly, List<Type>> _layoutCache = [];
+        public static List<Type> ToLayouts(this Assembly ass)
+        {
+            if (_layoutCache.TryGetValue(ass, out var services)) return services;
+            List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasLayout).Extends)];
+            _layoutCache.TryAdd(ass, menus);
+            return menus;
+        }
+
+
+        public static List<Type> ToLayouts(this IEnumerable<Assembly?>? ass)
+        {
+            if (ass == null) return [];
+            return [.. ass.SelectMany(a => a?.ToLayouts() ?? []).Where(t => t != null)];
+        }
+
+
+
         static readonly ConcurrentDictionary<Assembly, List<Type>> _metaCache = [];
         public static List<Type> ToMetas(this Assembly ass)
         {
@@ -194,7 +215,7 @@ namespace Extensions.PrometheusTypes
 
 
         private static readonly ConcurrentDictionary<Type, string?> _cachedRouteTypes = [];
-        private static readonly ConcurrentDictionary<MethodInfo, string?> _cachedRouteMethods = [];
+        private static readonly ConcurrentDictionary<MemberInfo, string?> _cachedRouteMethods = [];
 
 
         public static bool HasAuthorization<T>(this T _) where T : class

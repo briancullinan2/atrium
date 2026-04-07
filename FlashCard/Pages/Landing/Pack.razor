@@ -217,12 +217,29 @@
         base.OnInitialized();
         CardLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Display"]?.ToList();
         ResultLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Results"]?.ToList();
-        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-pinpoint"></span>Study Mode</a>);
     }
 
 
-    public static Delegate ShowContext { get => (Type routeControl) => ; }
+    public static Delegate ShowContext { get => (Type routeControl) => routeControl == typeof(Landing.Pack); }
 
+
+    public static Delegate ContextInsert => (Func<IStudyService, RenderFragment>)(
+        (Service) => (__builder) =>
+        {
+            __builder.OpenElement(0, "button");
+            __builder.AddAttribute(1, "onclick", EventCallback.Factory.Create(null, () => Service.SetStudyMode(true)));
+            __builder.AddContent(2, "Start Study");
+            __builder.CloseElement();
+        }
+    );
+
+    /*
+    public Delegate ContextInsert => (Func<IStudyService, RenderFragment>)(
+        (service) => @<a @onclick="() => service.SetStudyMode(true)">
+         <span class="bi bi-pinpoint"></span>Study Mode
+     </a>
+    );
+    */
 
     protected string? GetDisplayClass(int? step)
     {

@@ -48,11 +48,25 @@ namespace RazorSharp.Services
         {
             var myDelegate = m.GetProperties(nameof(IHasMenu.ShowMenu)).First().GetValue(null) as Delegate;
             if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType) 
-                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
-                throw new InvalidOperationException("Menu delegate must return a RenderFragment" + myDelegate?.Method);
-            return myDelegate.InvokeService(service);
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(bool)) != true)
+                throw new InvalidOperationException("IHasMenu.ShowMenu delegate must return a bool" + myDelegate?.Method);
+            return (bool?)myDelegate.InvokeService(service) == true;
         })];
 
+
+        public static List<Type> Layouts { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToLayouts()];
+
+        public List<Type> EnabledLayouts { get; private set; } = GetEnabledLayouts(Service);
+
+
+        public static List<Type> GetEnabledLayouts(IServiceProvider service) => [.. Layouts.Where(m =>
+        {
+            var myDelegate = m.GetProperties(nameof(IHasLayout.ShowLayout)).First().GetValue(null) as Delegate;
+            if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(bool)) != true)
+                throw new InvalidOperationException("IHasLayout.ShowLayout delegate must return a bool" + myDelegate?.Method);
+            return (bool?)myDelegate.InvokeService(service) == true;
+        })];
 
         public event Action<RenderFragment?>? OnMenuChanged;
 
@@ -82,9 +96,9 @@ namespace RazorSharp.Services
         {
             var myDelegate = m.GetProperties(nameof(IHasContext.ShowContext)).First().GetValue(null) as Delegate;
             if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
-                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
-                throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
-            return myDelegate.InvokeService(service);
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(bool)) != true)
+                throw new InvalidOperationException("IHasContext.ShowContext delegate must return a bool" + myDelegate?.Method);
+            return (bool?)myDelegate.InvokeService(service) == true;
         })];
 
 
