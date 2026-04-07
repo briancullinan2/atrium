@@ -16,9 +16,8 @@ namespace RazorSharp.Services
             .Distinct()];
 
 
-        public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = TypeExtensions.AllRoutes
-            .Select(r => r.DeclaringType)
-            .Distinct()
+
+        public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = TypeExtensions.AllRoutable
             .Where(r => r?.GetCustomAttribute<DisplayAttribute>() is DisplayAttribute attr
                 && !string.IsNullOrWhiteSpace(attr.GroupName))
             .ToDictionary(r => r!, r => r!.GetCustomAttribute<DisplayAttribute>()!);

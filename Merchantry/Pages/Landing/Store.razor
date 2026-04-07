@@ -1,8 +1,6 @@
 @page "/store"
-@using FlashCard.Services
 @inject IMenuService MenuService
-
-<SyncedTitle Title="Store"></SyncedTitle>
+@attribute [Display(Name = "Store", GroupName = "Main", Prompt = "bi-cart")]
 
 <div class="flash-card animate-in">
 
@@ -17,10 +15,5 @@
 
 @code {
 
-    protected override void OnInitialized()
-    {
-        // Define the contextual menu for THIS page
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
-    }
 
 }

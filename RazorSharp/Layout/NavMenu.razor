@@ -91,12 +91,6 @@
     }
 
 
-    protected void ToggleStudy()
-    {
-        _studyMode = !StudyService.Study;
-        StudyService?.SetStudyMode(_studyMode);
-    }
-
     protected void ToggleMenus()
     {
         var currentMenu = Menu.EnabledMenus.ElementAt(CurrentMenu % Menu.EnabledMenus.Count);
@@ -142,15 +136,12 @@
     };
 
     // This is your Iterator/List
-    public static IEnumerable<INavMenuItem> MenuStructure = new List<INavMenuItem>
-        {
-            new NavMenuItem<Pages.Landing.Home>() { Title = "Home", Icon = "" }
-        }.Concat(MenuService.GetMenuItems("Main"));
+    public static List<INavMenuItem> MenuStructure = MenuService.GetMenuItems("Main");
         //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
     /*
     new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "" },
         new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
-        new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "bi-cart" },
+        new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "" },
         new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
         
         new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "bi-person-gear" },
@@ -196,11 +187,11 @@
     ];
     */
 
-    private IEnumerable<INavMenuItem> GetVisibleItems()
+    private List<INavMenuItem> GetVisibleItems()
     {
         // Filter out items the user shouldn't see
         // For example: hide Premium link if they already paid
-        return MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid);
+        return [..MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid)];
     }
     
 

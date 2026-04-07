@@ -1,16 +1,17 @@
 @implements IDisposable
 
-@attribute [Display(Name = "Study Packs", GroupName = "Main", Prompt = "bi-card-list")]
+@attribute [Display(Name = "Study Packs", ShortName = "Packs", GroupName = "Main", Prompt = "bi-card-list")]
 @page "/packs"
 @page "/packs/list"
 @page "/packs/owner"
 @page "/packs/{Id:int}/add"
 @page "/packs/{Filter}"
-
+@implements IHasContext
 @inject IMenuService MenuService
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 @inject ILoginService LoginService
+@inject IQueryManager QueryManager
 
 <div class="flash-card animate-in">
 
@@ -33,8 +34,15 @@
 </div>
 
 @code {
+    public static Delegate ShowContext
+    {
+        get => (Type routeControl, NavigationManager Nav) => routeControl == typeof(Pages.Landing.Courses)
+        || routeControl == typeof(Pages.Landing.Packs) || Nav.Uri.Contains("upload") || Nav.Uri.Contains("store");
+    }
 
-    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+    public static Delegate ContextInsert => TypeExtensions.GetNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add });
+
+    [CascadingParameter] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
     public List<FlashData.Entities.Pack> Recent { get; set; } = new();
@@ -52,8 +60,6 @@
         RecentLayout = typeof(Pages.Landing.Packs).Metadata().Categories["Recent"]?.ToList();
 
         if (IsStaticRender) return;
-
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
     }
 
     protected void SetControlMode()
@@ -94,11 +100,11 @@
             Id = currentPack?.Id;
         }
 
-        if (LoginService.User != null && !LoginService.User.UserPacks.Any(up => up.Pack?.Id == Id))
+        if (LoginService.User != null && !QueryManager.Query<FlashData.Entities.UserPack>(up => up.UserId == LoginService.UserId).Any())
         {
             var up = new UserPack() { UserId = LoginService.UserId, Pack = currentPack };
-            LoginService.User.UserPacks.Add(up);
-            up = await up.Save();
+            //LoginService.User.UserPacks.Add(up);
+            up = await up.Save() as UserPack;
         }
         await InvokeAsync(StateHasChanged);
 

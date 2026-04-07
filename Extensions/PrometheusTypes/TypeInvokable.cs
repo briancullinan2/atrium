@@ -37,7 +37,7 @@ namespace Extensions.PrometheusTypes
                 {
                     parameterValues[i] = Convert.ChangeType(obj, realType);
                 }
-                else if (args?.FirstOrDefault(a => a.GetType().Extends(realType)) is object obj2)
+                else if (args?.FirstOrDefault(a => a?.GetType().Extends(realType) == true) is object obj2)
                 {
                     parameterValues[i] = Convert.ChangeType(obj2, realType);
                 }

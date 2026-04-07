@@ -4,6 +4,7 @@
 @inject IAnkiService AnkiService
 @inject IPageManager Page
 @inject IFileManager FileManager
+@inject IQueryManager QueryManager
 
 <div class="flash-card animate-in @(isDragOver ? "dropping" : "")"
      @ondragover:preventdefault="true"

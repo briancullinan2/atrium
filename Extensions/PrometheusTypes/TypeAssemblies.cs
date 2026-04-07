@@ -14,17 +14,25 @@ namespace Extensions.PrometheusTypes
 
         public static List<Type> AllRoutable { get; }
 
+        public static List<MethodInfo> AllRoutes { get; };
+
 
         static TypeExtensions()
         {
             RegisterAssembly(Assembly.GetExecutingAssembly());
 
             // TODO: need a list of servicable types, anything in the namespace Services that has any routes
+            var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
 
-            AllRoutable = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetExecutingAssembly())
+            AllRoutable = [..assemblies
                 .SelectMany(ass => ass.GetTypes())
                 .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any())
-                .ToList();
+                ];
+
+            AllRoutes = [..assemblies
+                .Routes()
+                .Distinct()
+                ];
 
             foreach (var type in AllRoutable)
             {

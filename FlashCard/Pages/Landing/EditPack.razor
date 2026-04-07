@@ -6,26 +6,26 @@
 @page "/pack/{Id:int}/add/{Page:int}/{Take:int}"
 @page "/pack/{Id:int}/cards"
 @page "/pack/{Id:int}/cards/{Page:int}"
-@using Utilities.Extensions
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
+
 @inject IMenuService MenuService
 @inject ITitleService TitleService
 @inject NavigationManager Nav
+
+@implements IHasContext
+@attribute [Display(Name = "Edit Pack", Prompt = "bi-file-earmark-plus")]
 
 @if (CurrentPack != null)
 {
 
     <div class="pack-edit flash-card @GetDisplayClass(ControlMode.Edit)">
         <h2>
-            <MetadataControl TModel="Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
+            <MetadataControl TModel="FlashData.Entities.Pack" Model="@([TitleLayout])" Data="[CurrentPack]"></MetadataControl>
         </h2>
 
         <div>
             <fieldset>
                 <legend>Pack Info</legend>
-                <MetadataControl TModel="Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
+                <MetadataControl TModel="FlashData.Entities.Pack" Model="@GeneralLayout" Data="[CurrentPack]"></MetadataControl>
             </fieldset>
         </div>
 
@@ -33,7 +33,7 @@
         <div>
             <fieldset>
                 <legend>Pack Status</legend>
-                <MetadataControl TModel="Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
+                <MetadataControl TModel="FlashData.Entities.Pack" Model="@StatusLayout" Data="[CurrentPack]"></MetadataControl>
             </fieldset>
         </div>
 
@@ -100,10 +100,42 @@
 
 @code
 {
+    public static Delegate ShowContext { get => (Type routeControl, NavigationManager Nav) => routeControl == typeof(Pages.Landing.Courses)
+        || routeControl == typeof(Pages.Landing.Packs) || Nav.Uri.Contains("upload") || Nav.Uri.Contains("store"); }
+        
+
+        // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
+    public static Delegate ContextInsert => (Func<RenderFragment>)(
+        () => (__builder) =>
+        {
+            __builder.OpenComponent<NavLink>(0);
+            __builder.AddAttribute(1, "class", "header-link");
+            __builder.AddAttribute(2, "href", "/packs/add");
+            __builder.AddAttribute(3, "Match", NavLinkMatch.All);
+    
+            // The inner HTML of a component is passed via the "ChildContent" attribute
+            __builder.AddAttribute(4, "ChildContent", (RenderFragment)((__builder2) =>
+            {
+                // 1. The <i> icon tag
+                __builder2.OpenElement(0, "i");
+                __builder2.AddAttribute(1, "class", $"bi bi-file-earmark-plus");
+                __builder2.AddAttribute(2, "aria-hidden", "true");
+                __builder2.CloseElement();
+
+                // 2. The <span> text tag
+                __builder2.OpenElement(3, "span");
+                __builder2.AddAttribute(4, "class", "header-text");
+                __builder2.AddContent(5, "Create Pack");
+                __builder2.CloseElement();
+            }));
+
+            __builder.CloseComponent();
+        }
+    );
 
 
     [Category("Pack")]
-    public Pack? CurrentPack { get; set; }
+    public FlashData.Entities.Pack? CurrentPack { get; set; }
     [Category("Cards")]
     public IEnumerable<Card>? CurrentCards { get => CurrentPack?.Cards; }
     [Category("Edit")]
@@ -138,9 +170,9 @@
 
     protected override void OnInitialized()
     {
-        TitleLayout = Pack.Metadata.Groups["Title"]?.FirstOrDefault();
-        GeneralLayout = Pack.Metadata.Groups["Pack Info"];
-        StatusLayout = Pack.Metadata.Groups["Pack Status"];
+        TitleLayout = FlashData.Entities.Pack.Metadata.Groups["Title"]?.FirstOrDefault();
+        GeneralLayout = FlashData.Entities.Pack.Metadata.Groups["Pack Info"];
+        StatusLayout = FlashData.Entities.Pack.Metadata.Groups["Pack Status"];
         CardsLayout = typeof(Pages.Landing.EditPack).Metadata().Categories["Edit"];
         Nav.LocationChanged += OnLocationChanged;
         MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
@@ -178,9 +210,9 @@
             newStep = segments.ElementAt(segments.Count() == 2 ? 1 : 2).TryParse<ControlMode>() ?? ControlMode.Edit;
         }
 
-        if (newStep != ControlMode)
+        if (newStep != Mode)
         {
-            PreviousMode = ControlMode;
+            PreviousMode = Mode;
             Mode = newStep;
             InvokeAsync(StateHasChanged);
         }
@@ -208,10 +240,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<FlashData.Entities.Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<FlashData.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<FlashData.Entities.Pack>;
         return packs?.ToList();
     }
 
