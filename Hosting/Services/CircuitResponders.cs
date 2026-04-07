@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Maui;
 #endif
 
+
 namespace Hosting.Services
 {
     public partial class CircuitProvider : ICircuitProvider
@@ -63,29 +64,60 @@ namespace Hosting.Services
 
             var route = methodInfo.Route() ?? throw new InvalidOperationException("Member is not routable: " + methodInfo);
 
+            var isPost = false; // parameters?.Any(p => p?.GetType().IsSimple() != true);
 
-            if(parameters?.FirstOrDefault(o => o?.GetType().Extends(typeof(Stream)) == true) is Stream stream)
+            var multiPartContent = new MultipartFormDataContent();
+
+            var url = methodInfo.Route() + "?" + string.Join("&", parameters?.Where(p => p != null && p.GetType().IsSimple()).Select(p => $"{p.GetType().Name.ToLower()}={Uri.EscapeDataString(p.ToString() ?? "")}") ?? []);
+
+            var methodParameters = methodInfo is MethodInfo method ? method.GetParameters()
+                : methodInfo is PropertyInfo property ? property.GetIndexParameters()
+                : [];
+
+            for (var i = 0; i < parameters?.Length; i++)
             {
-                var content = new MultipartFormDataContent();
+                isPost = true;
+                var parameter = parameters[i];
 
-                var streamContent = new ProgressableStreamContent(stream, 4096, (sent) =>
+                if (parameter == null) continue;
+                if (parameter.GetType().IsSimple()) continue;
+
+                var realParameter = methodParameters[i];
+                var possibleName = realParameter.Name ?? "file";
+
+
+                // special case for streams
+                if (parameter is Stream stream)
                 {
-                    var percentage = (double)sent / stream.Length * 100;
-                    // Update your Blazor Progress Bar variable here
-                    currentProgress = (int)percentage;
-                });
+                    var streamContent = new ProgressableStreamContent(stream, 4096, (sent) =>
+                    {
+                        var percentage = (double)sent / stream.Length * 100;
+                        // Update your Blazor Progress Bar variable here
+                        currentProgress = (int)percentage;
+                    });
 
-                content.Add(streamContent, "file", Path.GetFileName(localPath));
-                url = QueryHelpers.AddQueryString(url, "source", source ?? "Uploads");
+                    var localPath = parameters?.OfType<string>().FirstOrDefault();
+                    multiPartContent.Add(streamContent, possibleName, localPath ?? possibleName);
+                }
+                else if (parameter is Expression expr)
+                {
+                    // TODO: same thing as remote querymanager
+                }
+                else if (!parameter.GetType().IsSimple())
+                {
+                    var jsonPayload = JsonSerializer.Serialize(parameter);
+                    var jsonContent = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                    multiPartContent.Add(jsonContent, possibleName, possibleName);
+                }
+            }
 
-                result = await Http.GetFromJsonAsync<TResult>(route);
+            if(isPost)
+            {
+                var result = await Http.PostAsync(route, multiPartContent);
             }
             else
             {
-
-
-
-                result = await Http.GetFromJsonAsync<TResult>(route);
+                var result = await Http.GetFromJsonAsync<TResult>(route);
             }
             // TODO: add fun serialization
 

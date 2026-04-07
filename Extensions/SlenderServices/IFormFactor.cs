@@ -33,6 +33,7 @@ namespace Extensions.SlenderServices
 
     public interface IFile
     {
+        string FileName { get; }
         string Name { get; }
         //DateTimeOffset LastModified { get; }
         long Size { get; }

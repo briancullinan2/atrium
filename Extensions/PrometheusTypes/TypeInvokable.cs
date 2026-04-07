@@ -35,7 +35,11 @@ namespace Extensions.PrometheusTypes
                 else if (args?.ElementAtOrDefault(i) is object obj
                     && obj.GetType().Extends(realType))
                 {
-                    parameterValues[i] = Convert.ChangeType(args[i], realType);
+                    parameterValues[i] = Convert.ChangeType(obj, realType);
+                }
+                else if (args?.FirstOrDefault(a => a.GetType().Extends(realType)) is object obj2)
+                {
+                    parameterValues[i] = Convert.ChangeType(obj2, realType);
                 }
                 else if (!string.IsNullOrEmpty(parameters[i].Name)
                     && formFactor?.QueryParameters?.ContainsKey(parameters[i].Name!) is object queryParameter)

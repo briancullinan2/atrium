@@ -236,6 +236,8 @@ namespace Hosting.Services
 #if !BROWSER
     public class FormFile(IFormFile File) : IFile
     {
+        public string FileName => File.FileName;
+
         public string Name => File.Name;
 
         public long Size => File.Length;
@@ -251,6 +253,8 @@ namespace Hosting.Services
 
     public class BrowserFile(IBrowserFile File) : IFile
     {
+        public string FileName => File.Name;
+
         public string Name => File.Name;
 
         public long Size => File.Size;

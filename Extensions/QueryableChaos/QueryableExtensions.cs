@@ -232,15 +232,15 @@ namespace Extensions.QueryableChaos
         {
             if (maxDepth == 0) yield break;
 
-            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && (p.PropertyType == typeof(string) || p.PropertyType.IsPrimitive || p.PropertyType.IsEnum));
+            var props = type.GetProperties(null)
+                .Where(p => p.CanRead && p.PropertyType.IsSimple());
 
             foreach (var prop in props)
             {
                 yield return string.IsNullOrEmpty(prefix) ? prop.Name : $"{prefix}.{prop.Name}";
 
                 // If it's a complex type (but not string/primitive), recurse
-                if (!prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string))
+                if (!prop.PropertyType.IsSimple())
                 {
                     // Optional: check for a [Searchable] attribute here
                     foreach (var child in ToSearch(prop.PropertyType, maxDepth - 1, prop.Name))
@@ -277,8 +277,8 @@ namespace Extensions.QueryableChaos
 
                 // Use EF Core's ToListAsync extension via reflection
                 var toListMethod = typeof(EntityFrameworkQueryableExtensions)
-                    .GetMethods()
-                    .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.ToListAsync) && m.IsGenericMethod)
+                    .GetMethods(nameof(EntityFrameworkQueryableExtensions.ToListAsync), 1)
+                    .First()
                     .MakeGenericMethod(elementType);
 
                 executionResult = toListMethod.Invoke(null, [finalQueryable, null]); // Returns Task<List<T>>
