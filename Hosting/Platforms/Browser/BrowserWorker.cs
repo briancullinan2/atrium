@@ -4,14 +4,48 @@ using Hosting.Services;
 using Microsoft.JSInterop;
 using System.Net.Http.Json;
 
-public class BrowserWorker(IJSRuntime JS, HttpClient Http) : IServiceWorkerService, IAsyncDisposable
+public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
 {
     private DotNetObjectReference<BrowserWorker>? _selfReference;
-    private IJSObjectReference? Module;
+    private IJSObjectReference? _module = null;
+    public IJSObjectReference Module
+    {
+        get
+        {
+            if (!_renderTcs.Task.IsCompleted || _module == null)
+            {
+                throw new InvalidOperationException("Module is not available. Must await ModuleInitialize before refering to JS module.");
+            }
+            return _module;
+        }
+        private set => _module = value;
+    }
     //private DotNetObjectReference<ServiceWorkerService>? _selfReference;
+    public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
+    private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly IJSRuntime JS;
+    private readonly HttpClient Http;
+    private readonly IRenderState Rendered;
 
     public event Action<object>? OnMessageReceived;
+    public Task ModuleInitialize => _renderTcs.Task;
 
+    public BrowserWorker(IJSRuntime _js, HttpClient _http, IRenderState _rendered)
+    {
+        JS = _js;
+        Http = _http;
+        Rendered = _rendered;
+        // Start the import immediately
+        Rendered.OnRendered += NotifyRendered;
+        Rendered.OnEmptied += NotifyEmptied;
+    }
+
+    protected void NotifyEmptied()
+    {
+        if (_renderTcs.Task.IsCompleted)
+            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+    protected void NotifyRendered() => _ = InitializeAsync();
 
     public async Task InitializeAsync()
     {
@@ -55,7 +89,7 @@ public class BrowserWorker(IJSRuntime JS, HttpClient Http) : IServiceWorkerServi
     public async Task ForceSyncVersionAsync(string versionUrl)
     {
         // 1. Get Server Truth
-        var serverHandshake = await _http.GetFromJsonAsync<long[]>(versionUrl + "?t=" + DateTime.Now.Ticks);
+        var serverHandshake = await Http.GetFromJsonAsync<long[]>(versionUrl + "?t=" + DateTime.Now.Ticks);
         if (serverHandshake == null) return;
         long serverVersion = serverHandshake[1];
 

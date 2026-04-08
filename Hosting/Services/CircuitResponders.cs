@@ -2,6 +2,7 @@
 #if !BROWSER
 using Microsoft.AspNetCore.Http;
 using Microsoft.Maui;
+using System.Runtime.CompilerServices;
 #endif
 
 
@@ -34,11 +35,11 @@ public partial class CircuitProvider : ICircuitProvider
         {
             result = field.GetValue(Implementation) is TResult;
         }
-        if (methodInfo is PropertyInfo property)
+        else if (methodInfo is PropertyInfo property)
         {
             result = parameters?.Length > 0 ? property.GetValue(Implementation, parameters) : property.GetValue(Implementation);
         }
-        if (methodInfo is MethodInfo runable)
+        else if (methodInfo is MethodInfo runable)
         {
             // TODO: put together a list of parameters and services
             result = runable.Invoke(Implementation, parameters);
@@ -155,15 +156,15 @@ public partial class CircuitProvider : ICircuitProvider
 
 #if !BROWSER
     public static async Task OnExecuteAsync(
-        HttpContext context, 
+        HttpContext Context,
+        NavigationManager Nav, 
         IFileManager FileManager, 
         ICircuitProvider Circuit, 
-        IFormFactor Form,
-        IServiceProvider Service)
+        IFormFactor Form)
     {
         try
         {
-            var method = context.Request.Path.Value;
+            var method = Nav.Uri;
             var potentialType = TypeExtensions.AllRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
             var methodInfo = TypeExtensions.AllRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
                 ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
@@ -184,11 +185,11 @@ public partial class CircuitProvider : ICircuitProvider
                 if (!first) continue;
                 first = false;
 
-                context.Response.ContentType = "application/json";
+                Context.Response.ContentType = "application/json";
                 var json = JsonSerializer.Serialize(databaseFile, JsonExtensions.Default);
-                await context.Response.WriteAsync(json);
-                await context.Response.Body.FlushAsync();
-                await context.Response.CompleteAsync();
+                await Context.Response.WriteAsync(json);
+                await Context.Response.Body.FlushAsync();
+                await Context.Response.CompleteAsync();
 
             }
 
@@ -197,16 +198,20 @@ public partial class CircuitProvider : ICircuitProvider
                 ?.MakeGenericMethod(methodInfo.ReturnType)
                 ?? throw new InvalidOperationException("Couldn't render ExecuteAsyncDebounced for: " + methodInfo);
 
-            return await TaskExtensions.Debounce((method, parameters) 
-                => debouncedTyped.Invoke(Circuit, [method, parameters]), 
-                Circuit.DefaultTTL, method, parameters);
+            var result = await TaskExtensions.Debounce<string?, object?[], object?>(async (method, parameters) 
+                => {
+                    var result = debouncedTyped.Invoke(Circuit, [method, parameters]);
+                    if(result is Task task) await task;
+                    return (result as dynamic)?.Result;
+                }, Circuit.DefaultTTL, method, [..Form.Files.Cast<object?>()]);
+
         }
         catch (Exception ex)
         {
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = 500;
+            Context.Response.ContentType = "application/json";
+            Context.Response.StatusCode = 500;
             var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
-            await context.Response.WriteAsync(json);
+            await Context.Response.WriteAsync(json);
         }
 
     }

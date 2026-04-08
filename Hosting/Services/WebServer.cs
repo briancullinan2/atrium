@@ -7,31 +7,36 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Hosting;
+using UserModel.Services;
 #endif
 
 namespace Hosting.Services;
 
-internal static class WebServer
+public class WebServer
+#if !BROWSER
+    : IHasService<WebApplication>
+#endif
 {
 
+#if !BROWSER
     private static readonly WebApplication _private = StartWebServer([]);
     public static WebApplication Current => _private;
-
+    public static IServiceProvider Services => _private.Services;
+#endif
 
     public static void BuildSharedServiceList(IServiceCollection Services)
     {
 
         SharedRegistry.BuildSharedServiceList(Services);
 
+#if !BROWSER
         // add ourselves
-        Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
+        //Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
 
-        Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
+        //Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
 
         // TODO: make this optional for server only service mode
-        Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
-#if WINDOWS
-        Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(AtriumWebServer.Current));
+        //Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
 #endif
 
 
@@ -41,17 +46,15 @@ internal static class WebServer
         });
 
 
-#if DEBUG
+#if !BROWSER
         Services.AddBlazorWebViewDeveloperTools();
-#endif
         // Inject the server instance into MAUI's DI
-#if WINDOWS
-        Atrium.Services.AuthService.BuildAuthentication(Services);
+        ServerAuthService.BuildAuthentication(Services);
 #endif
 
     }
 
-
+#if !BROWSER
 
     public static WebApplication StartWebServer(string[] args)
     {
@@ -87,17 +90,15 @@ internal static class WebServer
 
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
-            webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
-            webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
+            //webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
+            //webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
 
             // get a shared logger
             webBuilder.Services.AddScoped<SimpleLogger>(sp => 
-                MauiProgram.Current.Services.GetService<SimpleLogger>() 
-                ?? sp.GetKeyedService<SimpleLogger>("web")
+                //MauiProgram.Current.Services.GetService<SimpleLogger>() 
+                sp.GetKeyedService<SimpleLogger>("web")
                 ?? new SimpleLogger(sp));
             webBuilder.Services.AddKeyedScoped<SimpleLogger>("web");
-            webBuilder.Services.AddSingleton<BaseCircuitProvider>();
-            webBuilder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<BaseCircuitProvider>());
 
             webBuilder.Services.AddSignalR()
                 .AddJsonProtocol()
@@ -140,6 +141,8 @@ internal static class WebServer
             });
 
 
+            webBuilder.Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(Current));
+            webBuilder.Services.AddKeyedSingleton<Lazy<WebApplication?>>("webserver", (sp, _) => new Lazy<WebApplication?>(Current));
 
             var webApp = webBuilder.Build();
 
@@ -200,24 +203,17 @@ internal static class WebServer
             //webApp.MapBlazorHub();
             webApp.UseExceptionHandler("/error", createScopeForErrors: true);
 
-            webApp.MapGet("/version.json", HostingService.OnVersionCheck);
-            webApp.MapPost("/api/query", QueryService.RespondQuery).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/upload", FileManager.OnUploadFile).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/inspect", AnkiService.OnInspectFile).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/search", AnkiService.OnSearchAnki).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/download", AnkiService.OnDownloadAnki).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/status", HostingService.OnStatusCheck).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/chat/presets", ChatService.OnPresets).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/chat/ping", ChatService.OnPing).RequireCors(myAllowSpecificOrigins);
-            webApp.MapPost("/api/chat", ChatService.OnChat).RequireCors(myAllowSpecificOrigins);
+            webApp.MapFullCircuits();
 
             //webApp.MapHub<Hub>("/_blazor");
 
-            webApp.MapRazorComponents<Components.App>()
+            webApp.MapRazorComponents<WebClient.Components.App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(
-                typeof(FlashCard._Imports).Assembly,
+                //typeof(FlashCard._Imports).Assembly,
+                //typeof(Merchantry._Imports).Assembly,
+                //typeof(UserModel._Imports).Assembly,
                 typeof(WebClient._Imports).Assembly)
                 .DisableAntiforgery();
 
@@ -235,5 +231,8 @@ internal static class WebServer
             throw new Exception("bs", ex);
         }
     }
+
+#endif
+
 }
 

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
     <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
@@ -95,6 +95,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.Maui.Resizetizer" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
 	</ItemGroup>
 	
@@ -102,8 +104,16 @@
 		<PackageReference Include="log4net" Version="3.3.*-*" />
 	</ItemGroup>
 
+	<PropertyGroup Condition="$(TargetFramework) == 'net10.0'">
+		<StartupObject>Atrium.WinUI.App</StartupObject>
+	</PropertyGroup>
+
+
 	<ItemGroup>
-		<Compile Include="GlobalUsings.cs" />
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
+	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">

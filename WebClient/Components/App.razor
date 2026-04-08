@@ -60,15 +60,14 @@
 
 </html>
 
-@code {
 
-    [Inject(Key = nameof(StringExtensions.Query))] public Lazy<Dictionary<string, string>?>? Query { get; set; } = null;
+@inject NavigationManager Navigation
+
+@code {
 
     // Default to Wasm, but allow an override
     IComponentRenderMode preferredMode = RenderMode.InteractiveServer;
 
-    [Inject] public NavigationManager? Navigation { get; set; } = null;
-    
     private bool IsDebug = false;
 
     protected override void OnInitialized()
@@ -77,12 +76,12 @@
 #if DEBUG
         IsDebug = true;
 #endif
-
+        var Query = App.Query(Navigation.Uri);
         if(Navigation?.Uri.Contains("#mode=server") == true)
         {
             preferredMode = InteractiveServer;
         }
-        else if (Query?.Value != null && Query.Value.TryGetValue("mode", out var mode) == true)
+        else if (Query?.TryGetValue("mode", out var mode) == true)
         {
             preferredMode = mode == "server"
                 ? RenderMode.InteractiveServer
@@ -91,6 +90,18 @@
 
         Console.WriteLine($"Starting in {preferredMode.ToString()} mode");
 
+    }
+
+   
+    public static Dictionary<string, string> Query(string uri)
+    {
+        // Use a simple split/regex to avoid heavy libraries
+        var query = uri.TrimStart('?');
+        var parameters = query.Split('&')
+                              .Select(p => p.Split('='))
+                              .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");
+
+        return parameters;
     }
 
 }

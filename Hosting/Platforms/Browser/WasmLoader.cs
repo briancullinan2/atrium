@@ -7,7 +7,11 @@ public partial class QuakeEngine
     internal static partial Task InitializeWasm(string path);
 
     // Export a C# method so the WASM can call it for "Sys_Milliseconds"
+#if BROWSER
     [JSExport]
+#else
+    [JSInvokable]
+#endif
     public static int GetMilliseconds() =>
         (int)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 

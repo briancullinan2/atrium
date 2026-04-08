@@ -73,7 +73,7 @@ import { dotnet } from './_framework/dotnet.js'
 
 export async function initWasm(wasmPath) {
     const { getAssemblyExports } = await dotnet.create();
-    const exports = await getAssemblyExports("YourAssemblyName.dll");
+    const exports = await getAssemblyExports("Hosting.dll");
 
     const importObject = {
         env: {

@@ -2,6 +2,8 @@
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
 
+using Atrium.Platforms.Windows;
+
 namespace Atrium.WinUI;
 
 /// <summary>
@@ -10,20 +12,6 @@ namespace Atrium.WinUI;
 public partial class App : MauiWinUIApplication
 {
 
-    /// <summary>
-    /// Initializes the singleton application object.  This is the first line of authored code
-    /// executed, and as such is the logical equivalent of main() or WinMain().
-    /// </summary>
-
-    public App()
-    {
-        InitializeComponent();
-    }
-
-    protected override MauiApp CreateMauiApp()
-    {
-        return MauiProgram.Current;
-    }
 
     [STAThread]
     public static void Main(string[] args)
@@ -54,6 +42,8 @@ public partial class App : MauiWinUIApplication
             _ = new App();
         });
     }
+
+
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         base.OnLaunched(args);
@@ -81,4 +71,23 @@ public partial class App : MauiWinUIApplication
             appWindow.SetIcon("teardrop.ico");
         }
     }
+
+
+    /// <summary>
+    /// Initializes the singleton application object.  This is the first line of authored code
+    /// executed, and as such is the logical equivalent of main() or WinMain().
+    /// </summary>
+
+    public App()
+    {
+        InitializeComponent();
+    }
+
+    protected override MauiApp CreateMauiApp()
+    {
+        return MauiProgram.Current;
+    }
+
+
+
 }

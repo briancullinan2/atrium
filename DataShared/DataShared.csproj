@@ -16,8 +16,4 @@
 	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Entities\" />
-	</ItemGroup>
-
 </Project>

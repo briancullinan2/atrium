@@ -1,5 +1,4 @@
 ﻿
-using Interfacing.Entity;
 using Microsoft.AspNetCore.Authorization;
 
 
@@ -7,7 +6,7 @@ namespace Hosting.Services;
 
 
 
-public partial class FileManager(IQueryManager Query, HttpClient Http) : IFileManager
+public partial class FileManager(IQueryManager Query, ICircuitProvider Circuit) : IFileManager
 {
     public event Action<object?>? OnFileUploaded;
     public event Action<bool>? OnFileDragging;
@@ -32,6 +31,17 @@ public partial class FileManager(IQueryManager Query, HttpClient Http) : IFileMa
 
 
 
+    public async Task<object?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
+    {
+        if(OperatingSystem.IsBrowser() && !Circuit.IsSignalCircuit)
+        {
+            return Circuit.InvokeAsync<object?>(ReceiveFileMethod.Route(), [localStream, localPath, source]);
+        }
+        return await ReceiveFile(localStream, localPath, source);
+    }
+
+
+
 
     public async Task SetDragging(bool dragging)
     {
@@ -39,7 +49,7 @@ public partial class FileManager(IQueryManager Query, HttpClient Http) : IFileMa
     }
 
 
-
+    public static MethodInfo ReceiveFileMethod { get; } = typeof(FileManager).GetMethod(nameof(ReceiveFile)) ?? throw new InvalidOperationException("ReceiveFile method not found.");
 
 
     // TODO: generalize not just for anki and add a parameter like string source = "Uploads"

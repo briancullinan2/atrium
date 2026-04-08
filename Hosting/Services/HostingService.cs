@@ -129,6 +129,8 @@ internal class HostingService(HttpClient Http) : IHostingService
         catch (Exception ex) { return $"Error: {ex.Message}"; }
     }
 
+    // TODO: check versions from clients using full circuit?
+
 #if !BROWSER
     public static async Task OnVersionCheck(HttpContext context)
     {

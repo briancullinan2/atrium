@@ -1,25 +1,28 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿#if !BROWSER
+using Wasmtime;
+#endif
 
 namespace Hosting.Platforms.Windows;
 
 
-public class QuakeModule : IDisposable
+public partial class QuakeModule : IDisposable
 {
+#if !BROWSER
     private readonly Engine _engine = new();
     private readonly Linker _linker;
     private readonly Store _store;
-    private readonly Module _module;
-    private Instance _instance;
-    private Memory _memory;
+    private readonly Wasmtime.Module _module;
+    private readonly Instance _instance;
+    private readonly Memory _memory;
 
     public QuakeModule(string wasmPath)
     {
         _store = new Store(_engine);
-        _module = Module.FromFile(_engine, wasmPath);
+        _module = Wasmtime.Module.FromFile(_engine, wasmPath);
         _linker = new Linker(_engine);
 
         // 1. Initialize Memory
-        _memory = new Memory(_store, initialPages: 3200, maximumPages: 32000);
+        _memory = new Memory(_store, minimum: 3200, maximum: 32000);
         _linker.Define("env", "memory", _memory);
 
         // 2. Bind host functions (Add your GL/SND/FS calls here)
@@ -56,7 +59,7 @@ public class QuakeModule : IDisposable
 
     // Helper to invoke WASM exports from C#
     public T CallExport<T>(string name, params object[] args) =>
-        (T)_instance.GetFunction(name)?.Invoke(args);
+        (T)_instance.GetFunction(name)?.Invoke([..args.Select(ValueBox.AsBox)])!;
 
     private int WriteStringsToMemory(string[] args)
     {
@@ -68,8 +71,13 @@ public class QuakeModule : IDisposable
         for (int i = 0; i < args.Length; i++)
         {
             pointers[i] = currentPtr;
-            var bytes = Encoding.UTF8.GetBytes(args[i] + "\0");
-            _memory.Write(currentPtr, bytes);
+            byte[] bytes = Encoding.UTF8.GetBytes(args[i] + '\0');
+
+            // Copy the managed byte[] into the WASM memory span.
+            // Memory.Write<T> requires an unmanaged T, so we use GetSpan and Span.CopyTo instead.
+            var dest = _memory.GetSpan(currentPtr, bytes.Length);
+            bytes.AsSpan().CopyTo(dest);
+
             currentPtr += bytes.Length;
         }
 
@@ -82,5 +90,15 @@ public class QuakeModule : IDisposable
         return argvPtr;
     }
 
-    public void Dispose() { _store.Dispose(); _module.Dispose(); _engine.Dispose(); }
+    public void Dispose() { 
+        _store.Dispose();
+        _module.Dispose();
+        _engine.Dispose();
+        GC.SuppressFinalize(this);
+    }
+#else
+    public void Dispose() { 
+        GC.SuppressFinalize(this);
+    }
+#endif
 }

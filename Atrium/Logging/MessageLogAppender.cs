@@ -1,13 +1,18 @@
-﻿
+﻿#if !BROWSER
 using log4net.Appender;
 using log4net.Core;
 using log4net.Util;
+#endif
+using RazorSharp.Services;
 
 
 namespace Atrium.Logging;
 
 // Token: 0x02000061 RID: 97
-public class MessageLogAppender : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
+public class MessageLogAppender
+#if !BROWSER
+    : IBulkAppender, IAppender, IOptionHandler, IAppenderAttachable
+#endif
 {
     public string Name { get; set; }
 

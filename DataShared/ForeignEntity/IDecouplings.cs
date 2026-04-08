@@ -43,3 +43,13 @@ public interface IHasGroup
 {
     int? GroupId { get; set; }
 }
+
+public interface IHasService
+{
+    static abstract IServiceProvider Services { get; }
+}
+
+public interface IHasService<T> : IHasService
+{
+    static abstract T? Current { get; }
+}

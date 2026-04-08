@@ -13,11 +13,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	  <Folder Include="Entities\" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Entities\" />
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 
 
