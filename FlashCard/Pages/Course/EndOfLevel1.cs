@@ -1,6 +1,8 @@
-﻿namespace FlashCard.Pages.Course;
+﻿
 
-public class EndOfLevel1 : Generators.IGenerator<Card>
+namespace FlashCard.Pages.Course;
+
+public class EndOfLevel1 : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

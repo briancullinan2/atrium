@@ -48,7 +48,7 @@
 @for(var i = 0; i < CurrentQuiz?.Count(); i++)
 {
     <div class="flash-card @(QuizStep == i + 1 || (PreviousStep == StepMode.Quiz && i == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && i == QuizStep) ? "animate-in" : "hidden")">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, OnQuizAnswered))" TModel="Card" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
+        <MetadataControl ValueChanged="OnQuizAnswered" TModel="Card" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="() => { 
                 if(QuizStep > 0) {

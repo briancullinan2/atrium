@@ -1,4 +1,4 @@
-﻿global using Extensions.ForeignEntity;
+﻿global using DataShared.ForeignEntity;
 global using Microsoft.EntityFrameworkCore;
 global using System;
 global using System.Collections.Generic;

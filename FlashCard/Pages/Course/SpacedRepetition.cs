@@ -1,6 +1,6 @@
 ﻿namespace FlashCard.Pages.Course;
 
-public class SpacedRepetition : Generators.IGenerator<Card>
+public class SpacedRepetition : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

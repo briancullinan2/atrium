@@ -1,6 +1,6 @@
 ﻿namespace FlashCard.Pages.Course;
 
-public class ActiveReading : Generators.IGenerator<Card>
+public class ActiveReading : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

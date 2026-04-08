@@ -1,6 +1,8 @@
 @attribute [SupportsType(typeof(Pack))]
 @attribute [SupportsType(typeof(IEnumerable<Pack>))]
 @implements IHasMeta
+@inject ILoginService LoginService
+@inject IQueryManager QueryManager
 
 @code
 {
@@ -8,11 +10,13 @@
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
-    [Inject] public ILoginService? LoginService { get; set; }
+
+    public IEnumerable<Pack> Packs { get => Data?.Cast<Pack>() ?? []; }
+    public List<UserPack> UserPacks { get => LoginService?.User?.UserPacks ?? []; }
 }
 
 
-@foreach (var pack in Data ?? [])
+@foreach (var pack in Packs)
 {
     <div class="flex-row">
         <span><img src="@(pack.LogoHosted ?? pack.Logo?.Url)" /></span>

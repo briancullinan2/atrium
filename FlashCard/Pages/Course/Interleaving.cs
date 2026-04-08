@@ -1,6 +1,6 @@
 ﻿namespace FlashCard.Pages.Course;
 
-public class Interleaving : Generators.IGenerator<Card>
+public class Interleaving : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

@@ -1,5 +1,5 @@
 ﻿
-global using Extensions.ForeignEntity;
+global using DataShared.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
@@ -27,3 +27,4 @@ global using File = System.IO.File;
 global using Path = System.IO.Path;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
+global using Interfacing.Services;

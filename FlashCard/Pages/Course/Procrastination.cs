@@ -1,6 +1,6 @@
 ﻿namespace FlashCard.Pages.Course;
 
-public class Procrastination : Generators.IGenerator<Card>
+public class Procrastination : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

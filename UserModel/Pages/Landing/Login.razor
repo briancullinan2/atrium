@@ -11,8 +11,7 @@
 @inject IQueryManager QueryManager
 @inject NavigationManager Nav
 @inject IPageManager PageManager
-
-<SyncedTitle Title="User Login"></SyncedTitle>
+@attribute [Display(Name = "User Login", ShortName = "Login", GroupName = "Main", Prompt = "bi-box-arrow-right")]
 
 @if (string.Equals(Nav.ToBaseRelativePath(Nav.Uri).Split('/').FirstOrDefault(), "access-denied"))
 {
@@ -27,11 +26,12 @@
         {
             <div class="user-avatar">
                 <a @onclick="() => HandleLogin(user)">
-                    @if (user.PhotoHosted != null || user.Photo?.Url != null)
+                    @*TODO: fix this cross table thingy
+                        @if (user.PhotoHosted != null || user.Photo?.Url != null)
                     {
                         <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
-                    } else
-                    {
+                    } else*@
+                    @{
                         <span style="@GetBackgroundColor(user)" class="bi bi-person-circle"></span>
                     }
                     <span>@user.FirstName @user.LastName</span>
@@ -127,8 +127,8 @@
         // Equivalent to: Source={x:Static data:EntityMetadata.User.Categories[Login Info]}
         // We assign the specific "Login Info" object to the Model property
         //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
-        MenuService.SetMenu(null);
-        MenuService.SetHeader(false);
+        //MenuService.SetMenu(null);
+        //MenuService.SetHeader(false);
         PageManager.ClassNames.TryAdd("login-mode", "login-mode");
         LoginService.SetLoginMode(true);
         LoginService.SetUser(null);
@@ -136,8 +136,9 @@
     }
 
 
-    public void SetUser(User? user)
+    public void SetUser(object? passed)
     {
+        var user = passed as User;
         // this is cool because if they login with QR code it will automatically reroute
         if (user != null
             && !user.Roles.Any(r => r.Name == nameof(DefaultRoles.Guest))

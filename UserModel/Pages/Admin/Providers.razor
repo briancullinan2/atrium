@@ -19,7 +19,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var p in Services.AuthService.Providers)
+            @foreach (var p in AuthenticationExtensions.Providers)
             {
                 var isEditing = Editing.TryGetValue(p, out var value) ? value : false;
                 <tr class="@(isEditing ? "table-active" : "")">

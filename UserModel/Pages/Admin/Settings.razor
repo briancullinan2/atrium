@@ -54,9 +54,9 @@
     </div>
 
 
-    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
-    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Setting, object?>>(this, HandleTheme))" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="HandleTheme" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="HandleTheme" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="HandleTheme" />
 
     <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
 
@@ -77,10 +77,12 @@
         <input type="checkbox" />
     </div>
 
+    @*
+    TODO: this injection part of the page will be a whole thingy on its own    
     <h2><a href="@(TypeExtensions.GetUri<Hosting.Pages.Hosting>())">Hosting</a></h2>
     <div>
         <span><a href="@(TypeExtensions.GetUri<Hosting.Pages.Hosting>())">Enable hosting</a> to access your own study system from the web.</span>
-    </div>
+    </div>*@
 </div>
 
 

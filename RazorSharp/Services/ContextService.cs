@@ -1,4 +1,5 @@
 ﻿
+
 namespace RazorSharp.Services;
 
 // TODO: see ContextMenu.razor for a .razor example, works exactly the same
@@ -14,7 +15,8 @@ internal class ContextService : IHasContext
     public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
         (Type routeControl, NavigationManager Nav) => (__builder) =>
         {
-            if (routeControl.Extends(typeof(INotHasWrapper)))
+            if (!routeControl.Extends(typeof(INotHasWrapper))
+                && !Nav.Uri.Contains("/login", StringComparison.InvariantCultureIgnoreCase))
             {
                 TypeExtensions.ToNavLink<Pages.Landing.Search>()(__builder);
             }

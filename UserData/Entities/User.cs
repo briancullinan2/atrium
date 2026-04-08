@@ -112,6 +112,9 @@ public class User : Entity<User>, IHasLogo
     [InverseProperty(nameof(Role.Users))]
     public virtual ICollection<Role> Roles { get; set; } = [];
 
+    // NO! Settings are permissions implemented, Permission is just a cached list of whatever is looked up in the app
+    //[InverseProperty(nameof(Permission.Users))]
+    //public virtual ICollection<Permission> Permissions { get; set; } = [];
 
     // --- Complex Properties Handling ---
 

@@ -1,6 +1,6 @@
 ﻿namespace FlashCard.Pages.Course;
 
-public class TeachToLearn : Generators.IGenerator<Card>
+public class TeachToLearn : IGenerator<Card>
 {
     public static IEnumerable<Card> Generate()
     {

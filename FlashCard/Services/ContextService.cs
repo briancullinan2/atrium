@@ -1,4 +1,5 @@
 ﻿
+
 namespace FlashCard.Services;
 
 // TODO: see ContextMenu.razor for a .razor example, works exactly the same
@@ -7,7 +8,8 @@ internal class ContextService : IHasContext
     public static Delegate ShowContext
     {
         get => (Type routeControl, NavigationManager Nav) => Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase)
-            || routeControl == typeof(Pages.Landing.Courses) || routeControl == typeof(Pages.Landing.EditPack);
+            || routeControl == typeof(Pages.Landing.Courses) || routeControl == typeof(Pages.Landing.EditPack)
+            || routeControl == typeof(Pages.Landing.Packs);
     }
 
 
@@ -15,16 +17,15 @@ internal class ContextService : IHasContext
     public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
         (Type routeControl, NavigationManager Nav) => (__builder) =>
         {
-            if (routeControl.Extends(typeof(INotHasWrapper)))
+            //if (Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
             {
                 TypeExtensions.ToNavLink<Pages.Landing.EditPack>(p => new() { Mode = ControlMode.Edit }, "Create Pack", "bi-file-earmark-plus");
+            }
+            if (!Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
+            {
                 TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Owner }, "My Packs", "bi-file-earmark-text");
                 TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Purchased" }, "Purchases", "bi-shield-lock");
                 TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Subscribe" }, "Subscribe", "bi-envelope-at");
-            }
-            if (Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
-            {
-                TypeExtensions.ToNavLink<Pages.Landing.EditPack>(p => new() { Mode = ControlMode.Edit }, "Create Pack", "bi-file-earmark-plus");
             }
 
         }

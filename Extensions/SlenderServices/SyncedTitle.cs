@@ -4,7 +4,7 @@
 public class SyncedTitle : ComponentBase
 {
     // 1. Replaces @inject
-    [Inject] public IFormFactor TitleService { get; set; } = default!;
+    [Inject] public ITitleService TitleService { get; set; } = default!;
 
     // 2. The Parameter stays the same
     [Parameter] public string? Title { get; set; }

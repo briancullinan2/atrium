@@ -1,4 +1,4 @@
-﻿using Interfacing.Entity;
+﻿
 
 namespace UserModel.Services;
 
@@ -7,7 +7,6 @@ namespace UserModel.Services;
 public abstract class AuthService(
     NavigationManager Navigation,
     IQueryManager Query,
-    IPageManager Page,
     ICircuitProvider Context,
     IFormFactor Form
 ) : AuthenticationStateProvider, IAuthService {
@@ -75,12 +74,12 @@ public abstract class AuthService(
 
     public void SaveSessionData(Session newSession)
     {
-        if (Context.IsSignalCircuit || OperatingSystem.IsBrowser())
+        //if (Context.IsSignalCircuit || OperatingSystem.IsBrowser())
         {
             // set and forget, so way we're holding up for this
-            _ = Page.SetSessionCookie(CookieName, newSession.Id, newSession.Lifetime / 86400);
+            _ = Form.SetSessionCookie(CookieName, newSession.Id, newSession.Lifetime / 86400);
         }
-        else
+        //else
         {
             
         }
@@ -169,14 +168,14 @@ public abstract class AuthService(
 
 
     public async Task<string?> TryGetSessionFromCookie() {
-        if (Context.IsSignalCircuit || OperatingSystem.IsBrowser())
+        //if (Context.IsSignalCircuit || OperatingSystem.IsBrowser())
         {
-            return await Page.GetSessionCookie(CookieName);
+            return await Form.GetSessionCookie(CookieName);
         }
-        else
-        {
-            return Context?.Request.Cookies[CookieName];
-        }
+        //else
+        //{
+        //    return Context?.Request.Cookies[CookieName];
+        //}
     }
 
 

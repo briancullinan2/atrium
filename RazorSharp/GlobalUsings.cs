@@ -1,4 +1,4 @@
-﻿global using Extensions.ForeignEntity;
+﻿global using DataShared.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
@@ -26,5 +26,5 @@ global using UserData.Entities;
 global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
-
+global using Interfacing.Services;
 

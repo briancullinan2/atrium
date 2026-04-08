@@ -1,4 +1,4 @@
-﻿@implements Generators.IGenerator<Pack>
+﻿@implements IGenerator<Pack>
 @code {
     [Parameter] public Type? Lesson { get; set; }
 
@@ -20,7 +20,7 @@
 
     public static IEnumerable<Card>? GetCourseCards(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         IEnumerable<Card>? cards = generator?.Invoke(null, []) as IEnumerable<Card>;
         return cards?.Where(c => c.QuizOnly != true).ToList();
     }

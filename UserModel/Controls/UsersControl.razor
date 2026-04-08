@@ -26,11 +26,11 @@
 {
     <div class="flex-row">
         <span>
-            @if (user.PhotoHosted != null || user.LogoId != null) 
+            @*@if (user.PhotoHosted != null || user.LogoId != null) 
             {
                 <img src="@(user.PhotoHosted ?? user.Photo?.Url)" />
             }
-            else
+            else*@
             {
                 <span style="@GetBackgroundColor(user)" class="bi bi-person-circle"></span>
             }

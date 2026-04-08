@@ -16,6 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
 	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 

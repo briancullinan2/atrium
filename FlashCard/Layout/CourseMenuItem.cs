@@ -1,6 +1,4 @@
-﻿using RazorSharp.Layout;
-using System.Collections.Generic;
-
+﻿
 namespace FlashCard.Layout;
 
 

@@ -1,4 +1,4 @@
-﻿global using Extensions.ForeignEntity;
+﻿global using DataShared.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
@@ -23,3 +23,4 @@ global using UserData.Entities;
 global using UserData.Generators;
 global using UserModel.Extensions;
 global using static UserModel.Extensions.AuthenticationExtensions;
+global using Interfacing.Services;

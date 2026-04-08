@@ -1,7 +1,7 @@
 ﻿
 
 
-using Interfacing.Entity;
+
 
 namespace UserModel.Services;
 
@@ -65,6 +65,9 @@ public class LoginService : ILoginService, IDisposable
 
     public Task ModuleInitialize => _restartRequired.Task;
 
+    public List<string>? Roles => (User as User)?.Roles.Select(r => r.Name ?? string.Empty).ToList();
+
+    public Dictionary<string, string?>? Permissions => (User as User)?.Settings.ToDictionary(s => s.Name ?? string.Empty, s => s.Value);
 
     private async Task SynchronizeUserAsync()
     {

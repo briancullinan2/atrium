@@ -1,4 +1,5 @@
-﻿namespace FlashData.Entities;
+﻿
+namespace FlashData.Entities;
 
 [Table("card")]
 public class Card : Entity<Card>
