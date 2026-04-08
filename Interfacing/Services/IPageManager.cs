@@ -6,6 +6,9 @@ namespace Interfacing.Services;
 
 public interface IPageManager : IAsyncDisposable
 {
+    void ClearRedirect();
+
+
     Task SetState(IComponent? state);
     Task<Dictionary<string, string?>?> RestoreState(IComponent component);
     Task SetError(Exception? error);

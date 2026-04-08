@@ -8,10 +8,10 @@ public static partial class TypeExtensions
     public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
-        return myDelegate.Method.InvokeService(service, args);
+        return myDelegate.Method.InvokeService(service, myDelegate.Target, args);
     }
 
-    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider service, params object?[]? args)
+    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider service, object? thisObject = null, params object?[]? args)
     {
         if(myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
@@ -52,6 +52,10 @@ public static partial class TypeExtensions
             }
         }
 
+        if(thisObject != null)
+        {
+            return myDelegate.Invoke(thisObject, parameterValues);
+        }
         return myDelegate.Invoke(null, parameterValues);
     }
 
@@ -222,6 +226,7 @@ public static partial class TypeExtensions
                     if (comp == parent)
                         continue;
 
+                    // skip context menus and stuff
                     if (comp.GetType().Namespace?.Contains("Shared", StringComparison.InvariantCultureIgnoreCase) == true)
                         continue;
 

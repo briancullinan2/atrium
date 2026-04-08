@@ -8,8 +8,6 @@ public static partial class TypeExtensions
     private static readonly HashSet<string> _loadedAssemblies = [];
     private static readonly Lock _loaderLock = new();
 
-    public static List<Type> AllServices { get; }
-
     public static List<Type> AllRoutableInterfaces { get; }
 
     public static List<Type> AllRoutable { get; }
@@ -59,6 +57,65 @@ public static partial class TypeExtensions
         }
     }
 
+    public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
+    {
+        return asses.ToServices().GetServicable();
+    }
+
+
+    public static List<Type> GetServicable(this IEnumerable<Type> asses)
+    {
+        List<Type> concrete = [..asses.Where(s => s.IsConcrete())];
+        List<string> interfaces = [..asses
+            .Where(s => s.IsInterface)
+            .Select(i => i.Name)
+            ];
+
+        List<Type> servicable = [..concrete
+            .Where(c => c.GetInterfaces()
+                .Select(i => i.Name)
+                .Intersect(interfaces) // Finds names present in both lists
+                .Any())                // Returns true if the intersection isn't empty
+            ];
+
+        List<Type> currents = [..servicable
+            .Where(t => t.Extends(typeof(IHasService<>)))
+            .Select(t => {
+                var interf = t.GetInterfaces().Where(i => i.Extends(typeof(IHasService)) && i.GenericTypeArguments.Length > 0).First();
+                return interf.GetGenericArguments().First();
+            })];
+
+        return [..servicable.Concat(currents).Distinct()];
+    }
+
+
+    public static bool IsService(this Type t)
+    {
+        return t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
+            || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true
+            || t.Extends(typeof(IHasService));
+    }
+
+
+    public static List<Type> ToServices(this IEnumerable<Assembly?>? ass)
+    {
+        if (ass == null) return [];
+        return [.. ass.SelectMany(a => a?.ToServices() ?? []).Where(t => t != null)];
+    }
+
+
+
+    static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
+    public static List<Type> ToServices(this Assembly ass)
+    {
+        if (_serviceCache.TryGetValue(ass, out var services)) return services;
+        List<Type> interfaces = [..ass.GetTypes().Where(IsService)];
+        List<Type> servicesToCache = [.. interfaces.Concat(ass.GetTypes().Where(interfaces.AnyExtendsAny)).Distinct()];
+        _serviceCache.TryAdd(ass, servicesToCache);
+        return servicesToCache;
+    }
+
+
 
     static TypeExtensions()
     {
@@ -66,23 +123,19 @@ public static partial class TypeExtensions
 
         // TODO: need a list of servicable types, anything in the namespace Services that has any routes
         var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
-        if (MineOnly)
-        {
-            assemblies = [..assemblies.GetMine()];
-        }
+        //if (MineOnly)
+        //{
+        //    assemblies = [..assemblies.GetMine()];
+        //}
 
-        AllServices = [..assemblies
-            .SelectMany(ass => ass.GetTypes())
-            .Where(t => t.Name.Contains("Service") || t.Namespace?.Contains("Service") == true)
-            ];
+        List<Type> connectedTypes = [..assemblies
+            .SelectMany(ass => ass.GetTypes())];
 
-        AllRoutableInterfaces = [..assemblies
-            .SelectMany(ass => ass.GetTypes())
+        AllRoutableInterfaces = [..connectedTypes
             .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.IsInterface)
             ];
 
-        AllRoutable = [..assemblies
-            .SelectMany(ass => ass.GetTypes())
+        AllRoutable = [..connectedTypes
             .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any())
             ];
 

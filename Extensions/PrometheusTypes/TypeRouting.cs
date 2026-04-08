@@ -99,25 +99,6 @@ public static partial class TypeExtensions
     }
 
 
-    public static List<Type> ToServices(this IEnumerable<Assembly?>? ass)
-    {
-        if (ass == null) return [];
-        return [..ass.SelectMany(a => a?.ToServices() ?? []).Where(t => t!=null)];
-    }
-
-
-
-
-    static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
-    public static List<Type> ToServices(this Assembly ass)
-    {
-        if (_serviceCache.TryGetValue(ass, out var services)) return services;
-        List<Type> interfaces = [..ass.GetTypes().Where(t => t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
-            || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true)];
-        List<Type> servicesToCache = [.. interfaces.Concat(ass.GetTypes().Where(interfaces.AnyExtendsAny))];
-        _serviceCache.TryAdd(ass, servicesToCache);
-        return servicesToCache;
-    }
 
 
     static readonly ConcurrentDictionary<Assembly, List<Type>> _contextCache = [];

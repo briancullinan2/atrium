@@ -26,18 +26,10 @@ public static class SharedRegistry
         // LOL i was going to look at all "service" names and namespaces, then try to find other constructors they
         //   are used in, and if its at least one that should be a good list, automatically scoped unless it's routable?
         // FUCK DI
-        var concrete = TypeExtensions.AllServices.Where(s => s.IsConcrete()).ToList();
-        var interfaces = TypeExtensions.AllServices
-            .Where(s => s.IsInterface)
-            .Select(i => i.Name)
-            .ToList();
-
-        var servicable = concrete
-            .Where(c => c.GetInterfaces()
-                .Select(i => i.Name)
-                .Intersect(interfaces) // Finds names present in both lists
-                .Any())                // Returns true if the intersection isn't empty
-            .ToList();
+        var servicable = Assembly.GetCallingAssembly()
+            .GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetMine()
+            .GetServicable();
 
         foreach (var service in servicable)
         {

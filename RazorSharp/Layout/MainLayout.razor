@@ -4,11 +4,8 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject IMenuService MenuService
-@inject IThemeService ThemeService
-@inject ITitleService TitleService
 @inject IServiceProvider Service
 @inject IPageManager PageManager
-@inject IFormFactor Form
 @inject IRenderState RenderState
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager Nav
@@ -151,7 +148,7 @@
     private bool _isTransitioning;
 
     private IDisposable? _registration;
-    
+
 
     private bool PageHasChanged = true;
 
@@ -168,8 +165,7 @@
         }
 
         await Task.Delay(400);
-        if (PageManager.InFlight.ContainsKey(Form.ConnectionId))
-            PageManager.InFlight.Remove(Form.ConnectionId);
+        PageManager.ClearRedirect();
 
         _isTransitioning = false;
         _previousList.Clear();
@@ -261,9 +257,10 @@
         // Subscribe to the push event
         _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
         Nav.LocationChanged += OnLocationChanged;
-        Form.OnTitleChanged += SetTitle;
-        ThemeService.OnApplicationChanged += SetApplication;
-        ThemeService.OnSidebarChanged += SetSidebar;
+        // TODO: set title automatically from attribute
+        //Form.OnTitleChanged += SetTitle;
+        //ThemeService.OnApplicationChanged += SetApplication;
+        //ThemeService.OnSidebarChanged += SetSidebar;
         PageManager.OnStateChanged += SetState;
         PageManager.OnErrorChanged += SetError;
         RenderState.NotifyEmptied();
@@ -382,10 +379,10 @@
         // Unsubscribe to prevent memory leaks
         _registration?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;
-        Form.OnTitleChanged -= SetTitle;
-        ThemeService.OnApplicationChanged -= SetApplication;
-        ThemeService.OnSidebarChanged -= SetSidebar;
-        ThemeService.OnBackgroundChanged -= SetBackground;
+        //Form.OnTitleChanged -= SetTitle;
+        //ThemeService.OnApplicationChanged -= SetApplication;
+        //ThemeService.OnSidebarChanged -= SetSidebar;
+        //ThemeService.OnBackgroundChanged -= SetBackground;
         PageManager.OnStateChanged -= SetState;
         PageManager.OnErrorChanged -= SetError;
     }
