@@ -23,9 +23,6 @@
     <ProjectReference Include="..\Extensions\Extensions.csproj" />
     <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
     <ProjectReference Include="..\FlashData\FlashData.csproj" />
-    <ProjectReference Include="..\Retheme\Retheme.csproj" />
-    <ProjectReference Include="..\UserData\UserData.csproj" />
-    <ProjectReference Include="..\UserModel\UserModel.csproj" />
   </ItemGroup>
 
 	<ItemGroup>

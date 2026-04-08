@@ -34,7 +34,7 @@ public class Response : Entity<Response>, IHasUser
 
     // i don't know why tf this is here.
     //[ForeignKey(nameof(FileId")]
-    //public virtual FlashData.Entities.File Attachment { get; set; }
+    //public virtual DataShared.ForeignEntity.File Attachment { get; set; }
 
     public string? Value { get; set; }
 

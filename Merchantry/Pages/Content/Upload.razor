@@ -25,7 +25,7 @@
         <label>Actions</label>
     </heading>
 
-    <MetadataControl ValueChanged="Page.AnkiSelected" TModel="FlashData.Entities.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
+    <MetadataControl ValueChanged="Page.AnkiSelected" TModel="DataShared.ForeignEntity.File" Model="@FilesLayout" Data="@Uploads?.Take(Take).ToList()"></MetadataControl>
 
     <div class="link-list">
         @if (!OperatingSystem.IsWindows())
@@ -63,8 +63,9 @@
         <label>Answers</label>
         <label>Actions</label>
     </heading>
+    @*
     <MetadataControl TModel="EditCardControl.EditControl" Model="@CardsLayout" Data="@CurrentCards?.Take(Take).ToList()"></MetadataControl>
-
+    *@
 </div>
 
 
@@ -76,7 +77,7 @@
     public List<File>? AnkiSearch { get; set; }
     public IEnumerable<File>? Inside { get; set; }
     [Category("Content")]
-    public List<EditCardControl.EditControl>? CurrentCards { get; set; }
+    //public List<EditCardControl.EditControl>? CurrentCards { get; set; }
     public IEnumerable<PropertyMetadata>? FilesLayout { get; set; }
     public IEnumerable<PropertyMetadata>? CardsLayout { get; set; }
 
@@ -93,7 +94,7 @@
 
     protected async Task InitAnkiSearch()
     {
-        AnkiSearch = (await AnkiService.Search(Search))?.ToList();
+        AnkiSearch = (await AnkiService.Search(Search))?.Cast<DataShared.ForeignEntity.File>().ToList();
         if (AnkiSearch == null)
         {
             return;
@@ -110,7 +111,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        MenuService.SetMenu(@<FlashCard.Pages.Shared.Packs />);
         FilesLayout = typeof(Pages.Content.Upload).Metadata().Categories["Display"]?.ToList();
         CardsLayout = typeof(Pages.Content.Upload).Metadata().Categories["Content"]?.ToList();
         FileManager.OnFileDragging += OnDragging;
@@ -123,7 +123,7 @@
         if (ankiResults == null) return;
 
         Inside = ankiResults.Item1;
-        CurrentCards = ankiResults.Item2.Select(c => new EditCardControl.EditControl() { Card = c }).ToList();
+        //CurrentCards = ankiResults.Item2.Select(c => new EditCardControl.EditControl() { Card = c }).ToList();
     }
 
 

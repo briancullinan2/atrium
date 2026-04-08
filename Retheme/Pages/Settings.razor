@@ -1,0 +1,234 @@
+@page "/theme"
+@page "/theme/edit"
+@page "/theme/add"
+@page "/theme/list"
+
+@attribute [Display(Name = "Application Theme", ShortName = "Theme", GroupName = "Admin", Prompt = "bi-collection")]
+
+@inject IPageManager PageManager
+@inject IFileManager FileManager
+@inject IThemeService ThemeService
+
+
+<div class="flash-card app-settings @GetDisplayClass(ControlMode.Edit)">
+
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationBackground.ToString(), Value = Background.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(0)]" ValueChanged="HandleTheme" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationTheme.ToString(), Value = Application.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(1)]" ValueChanged="HandleTheme" />
+    <MetadataControl Data="@([new Setting() { Name = DefaultPermissions.ApplicationSidebar.ToString(), Value = Sidebar.ToString() }])" TModel="Setting" Model="[ThemeLayout?.ElementAt(2)]" ValueChanged="HandleTheme" />
+
+    <button name="themeSelect" class="cta" @onclick="() => RandomizeTheme()">Randomize Theme</button>
+
+</div>
+
+<div class="flash-card @GetDisplayClass(ControlMode.List)">
+    <div class="settings-page">
+        @foreach (var label in themeLabels)
+        {
+            <label>@label</label>
+        }
+
+        @foreach (var theme in extractedThemes ?? [])
+        {
+            <span class="sticky-left">@theme.ClassName?.Replace("theme-", "")</span>
+            @foreach (var variableKey in ThemeVariableKeys)
+            {
+                <span><span class="sensor" style="@(GetStyle(theme, variableKey))"></span>@theme.Variables.GetValueOrDefault(variableKey)</span>
+            }
+            <span></span>
+        }
+    </div>
+
+    <button class="cta" @onclick="() => CopyToCSV()">Copy to CSV</button>
+</div>
+
+@code
+{
+    public ControlMode? Mode { get; set; } = ControlMode.Edit;
+    public ControlMode? PreviousMode { get; set; }
+
+    protected string? GetDisplayClass(ControlMode mode)
+    {
+        if (Mode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+    
+    public static readonly List<string> themeLabels = new List<string>
+    {
+        "Theme Name",
+        "Background",
+        "Surface",
+        "Card",
+        "Border",
+        "Emerald",
+        "Bolt",
+        "Amber",
+        "Compliment",
+        "Text",
+        "Muted",
+        "Sidebar",
+        "Stone",
+        "Nature",
+        "Electric",
+        "Gold",
+        "Actions"
+    };
+
+    // TODO: move this to ThemeService
+    public static readonly List<string> ThemeVariableKeys = new()
+    {
+        "--slate-bg",
+        "--slate-surface",
+        "--slate-card",
+        "--slate-border",
+        "--emerald-glow",
+        "--cyan-bolt",
+        "--amber-locus",
+        "--amber-compliment",
+        "--text-main",
+        "--text-muted",
+        "--text-sidebar",
+        "--atrium-stone",
+        "--atrium-nature",
+        "--atrium-electric",
+        "--atrium-gold"
+    };
+
+    public static List<Retheme.ThemeData>? extractedThemes { get; set; }
+
+    private async Task CopyToCSV()
+    {
+        var csvBuilder = new System.Text.StringBuilder();
+
+        // 1. Add Headers
+        csvBuilder.AppendLine(string.Join("\t", themeLabels));
+
+        // 2. Add Rows
+        foreach (var theme in extractedThemes ?? [])
+        {
+            // Note: If data contains commas, you'd wrap values in quotes: "{item.Name}"
+            csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string?>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
+        }
+
+        await PageManager.Clipboard(csvBuilder.ToString());
+    }
+
+
+    public string GetStyle(Retheme.ThemeData theme, string key)
+    {
+        return "background-color: " + theme.Variables.GetValueOrDefault(key);
+    }
+
+    
+    protected static string? themeContent;
+
+    protected async Task InitializeTheme()
+    {
+        themeContent = await FileManager.OpenFile("_content/FlashCard/css/theme.css");
+        extractedThemes = Retheme.Theme.ExtractThemes(themeContent ?? "");
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    
+    public ApplicationTheme? _app;
+    [Display(GroupName = "Themes", Order = 1)]
+    public ApplicationTheme? Application
+    {
+        get
+        {
+            return _app;
+        }
+        set
+        {
+            _app = value;
+            ThemeService.SetApplication(_app);
+        }
+    }
+
+    public SidebarTheme? _theme;
+    [Display(GroupName = "Themes", Order = 2)]
+    public SidebarTheme? Sidebar
+    {
+        get
+        {
+            return _theme;
+        }
+        set
+        {
+            _theme = value;
+            ThemeService.SetSidebar(_theme);
+        }
+    }
+
+    IEnumerable<PropertyMetadata>? ThemeLayout { get; set; }
+
+
+    public AnimationMode? _background;
+    [Display(GroupName = "Themes", Order = 0)]
+    public AnimationMode? Background
+    {
+        get
+        {
+            return _background;
+        }
+        set
+        {
+            _background = value;
+            ThemeService.SetBackground(_background);
+        }
+    }
+
+
+    protected void RandomizeTheme()
+    {
+        var animationValues = Enum.GetValues<AnimationMode>();
+        int randomAnimation = Random.Shared.Next(1, animationValues.Length);
+        Background = animationValues[randomAnimation];
+
+        var themeValues = Enum.GetValues<ApplicationTheme>();
+        int randomTheme = Random.Shared.Next(1, themeValues.Length);
+        Application = themeValues[randomTheme];
+
+        // TODO: always make random sidebar and application match?
+        var sidebarValues = Enum.GetValues<SidebarTheme>();
+        //int randomSidebar = Random.Shared.Next(1, sidebarValues.Length);
+        Sidebar = sidebarValues[randomTheme];
+    }
+
+    
+
+    private async Task HandleTheme(Tuple<PropertyMetadata, Setting, object?> selectedValue)
+    {
+        var baseType = Nullable.GetUnderlyingType(selectedValue.Item1.PropertyType) ?? selectedValue.Item1.PropertyType;
+        if (baseType == typeof(ApplicationTheme))
+        {
+            Application = selectedValue.Item3 as ApplicationTheme?;
+        }
+        else if (baseType == typeof(SidebarTheme))
+        {
+            Sidebar = selectedValue.Item3 as SidebarTheme?;
+        }
+        else if (baseType == typeof(AnimationMode))
+        {
+            Background = selectedValue.Item3 as AnimationMode?;
+        }
+    }
+    
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ThemeLayout = typeof(Pages.Settings).Metadata().Groups["Themes"]?.ToList();
+        
+        if (IsStaticRender) return;
+        // we don't have to reinitialize theme just to get it to show up now
+        //   because it's stored in static property after the first load
+
+        //Nav.LocationChanged += OnLocationChanged;
+        _ = InitializeTheme();
+    }
+}

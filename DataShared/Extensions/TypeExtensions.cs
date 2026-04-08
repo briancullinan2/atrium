@@ -1,7 +1,7 @@
 ﻿
 namespace DataShared.Extensions;
 
-internal static class TypeExtensions
+internal static partial class ExtendsExtensions
 {
 
     public static bool Extends([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type? type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? genericDefinition)

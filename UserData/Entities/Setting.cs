@@ -3,7 +3,7 @@ namespace UserData.Entities;
 
 [PrimaryKey(nameof(Name), nameof(Guid), nameof(RoleId))]
 [Table("setting")]
-public class Setting : Entity<Setting>
+public class Setting : Entity<Setting>, IHasValue
 {
     public string? Name { get; set; }
     public string? Value { get; set; }

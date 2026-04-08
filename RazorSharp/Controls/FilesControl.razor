@@ -1,9 +1,7 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using System.Text.Json.Serialization
+@using File = DataShared.ForeignEntity.File
 @inject IFileManager FileManager
 @attribute [SupportsType(typeof(File))]
-@attribute [SupportsType(typeof(IEnumerable<File>))]
+@attribute [SupportsType(typeof(IEnumerable<IFile>))]
 @implements IHasMeta
 @inject IAnkiService AnkiService
 

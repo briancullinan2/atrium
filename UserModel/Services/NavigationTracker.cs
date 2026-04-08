@@ -1,15 +1,13 @@
 ﻿
 using Microsoft.AspNetCore.Components.Routing;
 
-namespace RazorSharp.Services;
+namespace UserModel.Services;
 
-public class NavigationTracker(IQueryManager query, AuthenticationStateProvider auth) : IDisposable
+public class NavigationTracker(NavigationManager nav, IQueryManager query, AuthenticationStateProvider auth) : IDisposable
 {
-    private NavigationManager? nav;
 
-    public void InitializeTracker(NavigationManager navManager)
+    public void InitializeTracker()
     {
-        nav = navManager;
         //nav = service.GetRequiredService<NavigationManager>();
         nav.LocationChanged += OnLocationChanged;
         OnLocationChanged(null, new LocationChangedEventArgs(nav.Uri, false));

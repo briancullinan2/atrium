@@ -4,16 +4,13 @@
 namespace FlashData.Entities;
 
 [Table("course")]
-public class Course : Entity<Course>, IHasUser
+public class Course : Entity<Course>, IHasUser, IHasLogo
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; protected set; }
     // Logo Relationship
-    public int? FileId { get; set; }
-
-    [ForeignKey(nameof(FileId))]
-    public virtual File? Logo { get; set; }
+    public int? LogoId { get; set; }
     public virtual string? LogoHosted { get; set; }
 
     [Required]

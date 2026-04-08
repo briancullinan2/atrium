@@ -24,6 +24,11 @@ public interface IHasEntityTypes
     static abstract List<Type> EntityTypes { get; }
 }
 
+public interface IHasValue
+{
+    string? Value { get; set; }
+}
+
 public interface IHasLogo
 {
     int? LogoId { get; set; }

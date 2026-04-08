@@ -14,9 +14,10 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
-	  <ProjectReference Include="..\FlashData\FlashData.csproj" />
-	  <ProjectReference Include="..\Retheme\Retheme.csproj" />
-	  <ProjectReference Include="..\UserData\UserData.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Entities\" />
 	</ItemGroup>
 
 

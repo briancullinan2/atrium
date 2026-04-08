@@ -1,4 +1,4 @@
-@using UserModel.Services
+
 @attribute [SupportsType(typeof(Pack))]
 @attribute [SupportsType(typeof(IEnumerable<Pack>))]
 @implements IHasMeta
@@ -32,7 +32,7 @@
 @foreach (FlashData.Entities.Course course in Courses)
 {
     <div class="flex-row">
-        <span><img src="@(course.LogoHosted ?? course.Logo?.Url)" /></span>
+        <span><img src="@(course.LogoHosted @*?? course.Logo?.Url*@)" /></span>
         <span>
             @if (UserPacks?.FirstOrDefault(up => up.PackId == course.Id) != null)
             {

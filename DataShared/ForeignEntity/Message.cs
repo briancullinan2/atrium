@@ -1,5 +1,6 @@
 ﻿
-namespace FlashData.Entities;
+
+namespace DataShared.ForeignEntity;
 
 [Table("message")]
 public class Message : Entity<Message>

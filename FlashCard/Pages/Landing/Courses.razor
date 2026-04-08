@@ -50,7 +50,9 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
+            @*
             <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<UserModel.Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            *@
             @if(CurrentCourse.CanonicalFingerprint != null)
             {
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Courses>(c => new () { Mode = ControlMode.Group, Id = CurrentCourse.Id }))">Course Membership</a>
@@ -106,8 +108,8 @@
         base.OnInitialized();
         // Define the contextual menu for THIS page
         RecentLayout = typeof(Pages.Landing.Courses).Metadata().Categories["Recent"]?.ToList();
-        InfoLayout = Group.Metadata.Groups["Group Info"]?.ToList();
-        ExtendedLayout = Group.Metadata.Groups["Extended Info"]?.ToList();
+        InfoLayout = FlashData.Entities.Course.Metadata.Groups["Group Info"]?.ToList();
+        ExtendedLayout = FlashData.Entities.Course.Metadata.Groups["Extended Info"]?.ToList();
 
         if (IsStaticRender) return;
 

@@ -1,4 +1,4 @@
-﻿global using Extensions.ForeignEntity;
+﻿global using DataShared.ForeignEntity;
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
@@ -14,5 +14,6 @@ global using System.Linq;
 global using System.Net.Http;
 global using System.Text.Json;
 global using System.Threading.Tasks;
-global using File = FlashData.Entities.File;
+global using File = DataShared.ForeignEntity.File;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
+global using Interfacing.Services;

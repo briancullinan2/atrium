@@ -1,6 +1,5 @@
 ﻿
 
-using Interfacing.Entity;
 
 namespace AnkiParser;
 

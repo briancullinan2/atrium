@@ -1,7 +1,7 @@
 ﻿
 
 
-namespace FlashData.Entities;
+namespace DataShared.ForeignEntity;
 
 [Table("file")]
 [Index(nameof(Source), Name = "IX_File_Source")]

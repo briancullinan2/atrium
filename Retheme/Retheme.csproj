@@ -39,4 +39,15 @@
 			<Options>-visitor -listener</Options>
 		</Antlr4>
 	</ItemGroup>
+	
+	<ItemGroup>
+	  <Folder Include="Pages\" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	  <ProjectReference Include="..\UserData\UserData.csproj" />
+	</ItemGroup>
 </Project>

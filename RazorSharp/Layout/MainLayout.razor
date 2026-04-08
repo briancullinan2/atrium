@@ -1,4 +1,4 @@
-﻿@using Retheme
+﻿
 @inherits LayoutComponentBase
 @implements IDisposable
 @implements IAsyncDisposable
@@ -13,7 +13,6 @@
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
-@inject NavigationTracker Tracker
 
 <div class="page @(string.Join(" ", PageManager.ClassNames))">
     <div id="theme-sensor" style="display:none;">
@@ -407,12 +406,6 @@
         }
 
         _ = InitializeRender();
-
-        if (firstRender)
-        {
-            // At this point, the WebView is 100% initialized.
-            await InvokeAsync(() => Tracker.InitializeTracker(Nav));
-        }
     }
 
 

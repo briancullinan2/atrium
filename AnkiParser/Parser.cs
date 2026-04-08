@@ -1,4 +1,4 @@
-﻿using Interfacing.Entity;
+﻿using DataShared.ForeignEntity;
 using System.IO.Compression;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -99,16 +99,16 @@ public static partial class Parser
         anki2Database.Close();
 
 
-        using var context = new TranslationContext(tempPath, new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<TranslationContext>().Options);
-        var connection = Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(context.Database);
+        using var context = new TranslationContext(tempPath, Query, new DbContextOptionsBuilder<TranslationContext>().Options);
+        var connection = RelationalDatabaseFacadeExtensions.GetDbConnection(context.Database);
 
         // 1. Get the Note Models (Col.models JSON) 
         // Anki stores deck configs and note models in the 'col' table 'models' column
-        var collection = context.Set<Anki.Entities.Collection>().First();
+        var collection = context.Set<AnkiParser.Entities.Collection>().First();
         var models = JsonSerializer.Deserialize<Dictionary<long, AnkiModel>>(collection.NoteTypes, JsonExtensions.Default);
 
         var results = new List<Card>();
-        var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<Anki.Entities.Card>().Where(c => c.Note != null));
+        var cards = await EntityFrameworkQueryableExtensions.ToListAsync(context.Set<AnkiParser.Entities.Card>().Where(c => c.Note != null));
 
         foreach (var card in cards)
         {

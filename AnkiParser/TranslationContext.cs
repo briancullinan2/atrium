@@ -1,5 +1,4 @@
 ﻿using DataStore.Providers;
-using Interfacing.Entity;
 
 namespace AnkiParser;
 

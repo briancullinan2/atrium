@@ -1,4 +1,4 @@
-﻿namespace Extensions.PrometheusTypes;
+﻿namespace DataShared.Extensions;
 
 public static partial class TypeExtensions
 {

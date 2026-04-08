@@ -1,11 +1,9 @@
 ﻿global using Extensions.PrometheusTypes;
-global using Extensions.SlenderServices;
 global using FlashCard.Layout;
 global using FlashData;
 global using Microsoft.AspNetCore.Components;
 global using System;
 global using System.Threading.Tasks;
-global using UserData;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 global using System.Collections.Generic;
 global using FlashData.Entities;

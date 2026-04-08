@@ -4,7 +4,7 @@
 namespace FlashData.Entities;
 
 [Table("pack")]
-public class Pack : Entity<Pack>, IHasGroup, IHasUser
+public class Pack : Entity<Pack>, IHasGroup, IHasUser, IHasLogo
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -26,10 +26,7 @@ public class Pack : Entity<Pack>, IHasGroup, IHasUser
     public string? UserId { get; set; }
 
     // Logo Relationship
-    public int? FileId { get; set; }
-
-    [ForeignKey(nameof(FileId))]
-    public virtual File? Logo { get; set; }
+    public int? LogoId { get; set; }
     public virtual string? LogoHosted { get; set; }
 
     [Required]

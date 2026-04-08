@@ -57,7 +57,7 @@ public partial class FileManager(IQueryManager Query, HttpClient Http) : IFileMa
         fileStream.Close();
         localStream.Close();
 
-        var task = Query.Save(new FlashData.Entities.File()
+        var task = Query.Save(new DataShared.ForeignEntity.File()
         {
             Filename = savePath,
             Source = source // TODO: fill in from nav or parameter or something

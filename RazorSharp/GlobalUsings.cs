@@ -2,7 +2,6 @@
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
-global using FlashData.Entities;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Authorization;
 global using Microsoft.AspNetCore.Components.Rendering;
@@ -21,10 +20,7 @@ global using System.Runtime.CompilerServices;
 global using System.Text.Json;
 global using System.Threading;
 global using System.Threading.Tasks;
-global using UserData;
-global using UserData.Entities;
 global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 global using Interfacing.Services;
-

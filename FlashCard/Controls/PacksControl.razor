@@ -29,7 +29,7 @@
 @foreach (var pack in Packs)
 {
     <div class="flex-row">
-        <span><img src="@(pack.LogoHosted ?? pack.Logo?.Url)" /></span>
+        <span><img src="@(pack.LogoHosted @*?? pack.Logo?.Url*@)" /></span>
         <span>
             @if (UserPacks?.FirstOrDefault(up => up.PackId == pack.Id) != null)
             {
