@@ -8,9 +8,18 @@ public class PageManager : IPageManager
 {
 
     #region "Initialization"
-    public Dictionary<string, string?> InFlight { get; } = [];
+    public ConcurrentDictionary<string, string?> InFlight { get; } = [];
 
-    public ConcurrentDictionary<string, string> ClassNames { get; } = [];
+    public List<string>? StoredClassNames { get; set; } = null;
+    public List<string> ClassNames { 
+        get => [..(PageClasses ?? [])
+            .Concat([Theme, Sidebar, Background])
+            .Concat(StoredClassNames ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .OfType<string>()
+            ];
+        set => StoredClassNames = value;
+    }
 
     public string ContextKey => Form?.ConnectionId ?? string.Empty;
 
@@ -28,7 +37,8 @@ public class PageManager : IPageManager
     readonly IFormFactor? Form;
     readonly ILoggerFactory Logger;
     readonly IRenderState Rendered;
-    readonly ICircuitProvider? Context;
+    //readonly ICircuitProvider? Context;
+    private readonly IAuthService? Auth;
     readonly NavigationManager Nav;
 
 
@@ -38,24 +48,38 @@ public class PageManager : IPageManager
         ILoggerFactory _logger,
         IRenderState _rendered,
         NavigationManager _nav,
-        ICircuitProvider? _context = null,
-        IFormFactor? _formFactor = null
+        //ICircuitProvider? _context = null,
+        IFormFactor? _formFactor = null,
+        IAuthService? _auth = null
     ) : base() {
         Nav = _nav;
         Form = _formFactor;
         Logger = _logger;
         Rendered = _rendered;
-        Context = _context;
+        //Context = _context;
+        Auth = _auth;
         Rendered.OnEmptied += NotifyEmptied;
         Rendered.OnRendered += NotifyRendered;
+        Nav.LocationChanged += Nav_LocationChanged;
     }
 
+    private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClasses = ["Home"];
+        PageClasses = [..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ];
+    }
 
     protected void NotifyEmptied() 
     {
+        StoredClassNames?.Add("cover-page");
+        StoredClassNames?.Add("login-mode");
         if (_restartRequired.Task.IsCompleted)
             _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
+
 
     protected void NotifyRendered() => _ = EnsureModuleLoaded();
 
@@ -76,6 +100,11 @@ public class PageManager : IPageManager
 
 
     private IJSObjectReference? _module = null;
+    private List<string>? PageClasses = [];
+    public string? Theme;
+    public string? Sidebar { get; private set; }
+    public string? Background;
+
     public IJSObjectReference Module
     {
         get
@@ -103,12 +132,19 @@ public class PageManager : IPageManager
         try
         {
             if (_restartRequired.Task.IsCompleted) return;
-            Module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/FlashCard/page.js");
+            Module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
             var dotNetHelper = DotNetObjectReference.Create(this);
             _restartRequired.TrySetResult(true);
             await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
             OffsetInMinutes = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
-
+            //ClassNames.TryRemove("cover-page", out _);
+            // let login manager remove login mode?
+            //if (Auth == null)
+            //    ClassNames.TryRemove("login-mode", out _);
+        }
+        catch (Exception)
+        {
+            throw;
         }
         finally
         {
@@ -127,7 +163,7 @@ public class PageManager : IPageManager
     public void ClearRedirect()
     {
         if (InFlight.ContainsKey(ContextKey))
-            InFlight.Remove(ContextKey);
+            InFlight.Remove(ContextKey, out _);
     }
 
 
@@ -497,7 +533,7 @@ public class PageManager : IPageManager
     [JSInvokable] public void OnVisibility(string visible) => UpdateStateDebouncer(PageAction.Visible, "window", visible);
     [JSInvokable] public void OnReconnected(string state) => UpdateStateDebouncer(PageAction.Visible, "window", state);
     [JSInvokable] public void OnPageEvent(string id, object? detail = null) => UpdateStateDebouncer(id.TryParse<PageAction>() ?? PageAction.Action, "window", detail);
-    [JSInvokable] public void OnPageEvent(PageAction id, object? detail = null) => UpdateStateDebouncer(id, "window", detail);
+    public void OnPageEvent(PageAction id, object? detail = null) => UpdateStateDebouncer(id, "window", detail);
     [JSInvokable] public void OnStopped() => Form?.StopAsync();
 
     // 1. Generic GetState for type-safe access in C#
@@ -554,6 +590,34 @@ public class PageManager : IPageManager
     {
         await ModuleInitialize;
         await Rendered.Runtime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+
+    public void SetPageClasses(List<string> classes)
+    {
+        PageClasses = classes;
+    }
+
+    public void SetTheme(string? classes)
+    {
+        var newClass = "theme-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Theme = newClass;
+    }
+
+    public void SetSidebar(string? classes)
+    {
+        Sidebar = classes;
+    }
+
+    public void SetBackground(string? classes)
+    {
+        var newClass = "background-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
+
+    private void SetBackground(AnimationMode? theme)
+    {
+        var newClass = "background-" + (theme?.ToString()?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
     }
 
     #endregion

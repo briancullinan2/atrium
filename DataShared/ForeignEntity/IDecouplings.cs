@@ -53,3 +53,15 @@ public interface IHasService<T> : IHasService
 {
     static abstract T? Current { get; }
 }
+
+public interface IHasPlugins
+{
+    static abstract Task<string?> Installed { get; }
+    static abstract List<Type>? Plugins { get; }
+}
+
+public interface IHasFeatures
+{
+    static abstract Task<List<string>?> Installed { get; }
+    static abstract Dictionary<Type, string>? DisplayNames { get; }
+}

@@ -123,7 +123,7 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-Pr60TUOQE3eT3HInVQHlT8hQlZ5zKqPR4SLxqxr2SCQ=",
-      "url": "_content/FlashCard/favicon.ico"
+      "url": "_content/RazorSharp/favicon.ico"
     },
     {
       "hash": "sha256-4mWsDy3aHl36ZbGt8zByK7Pvd4kRUoNgTYzRnwmPHwg=",
@@ -187,7 +187,7 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-XAhmLJUAT+rAvtOns9ZvlLdy8VBY4BHm9HV8IhSPuZM=",
-      "url": "_content/FlashCard/teardrop.svg"
+      "url": "_content/RazorSharp/triangle.svg"
     },
     {
       "hash": "sha256-/Lz2YCcy4E3H1W6aIqNVjb5A2ObjXBkpt8jkR4Ru98k=",

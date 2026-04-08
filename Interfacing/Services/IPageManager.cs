@@ -42,7 +42,6 @@ public interface IPageManager : IAsyncDisposable
     Task ScrollSlightlyAsync(string id, int amount = 10);
     Task<string> GetLineHeightAsync(string? elementId = null);
     Task<int> GetLineHeightIntAsync(string? elementId = null);
-    ValueTask InitializeBackground(string mode, string canvas);
     ValueTask Clipboard(string text);
 
     Task EnsureModuleLoaded();
@@ -60,8 +59,16 @@ public interface IPageManager : IAsyncDisposable
     ValueTask TriggerEvent(PageAction id, object? detail = null);
     bool IsReady { get; }
     int OffsetInMinutes { get; }
-    Dictionary<string, string?> InFlight { get; }
-    ConcurrentDictionary<string, string> ClassNames { get; }
+    ConcurrentDictionary<string, string?> InFlight { get; }
+    List<string> ClassNames { get; set; }
+
+    void SetPageClasses(List<string> classes);
+    void SetTheme(string? classes);
+    void SetSidebar(string? classes);
+    void SetBackground(string? classes);
+    string? Sidebar { get; }
+    ValueTask InitializeBackground(string mode, string canvas);
+
     IJSRuntime Runtime { get; }
 
     Task Redirect(string url);

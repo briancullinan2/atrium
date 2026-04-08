@@ -105,7 +105,7 @@ public static partial class TypeExtensions
     public static List<Type> ToContexts(this Assembly ass)
     {
         if (_contextCache.TryGetValue(ass, out var services)) return services;
-        List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasContext).Extends)];
+        List<Type> menus = [.. ass.GetTypes().Except([typeof(object)]).Where(typeof(IHasContext).Extends).Where(IsConcrete)];
         _contextCache.TryAdd(ass, menus);
         return menus;
     }
@@ -123,7 +123,7 @@ public static partial class TypeExtensions
     public static List<Type> ToMenus(this Assembly ass)
     {
         if (_menuCache.TryGetValue(ass, out var services)) return services;
-        List<Type> menus = [..ass.GetTypes().Where(typeof(IHasMenu).Extends)];
+        List<Type> menus = [.. ass.GetTypes().Except([typeof(object)]).Where(typeof(IHasMenu).Extends).Where(IsConcrete)];
         _menuCache.TryAdd(ass, menus);
         return menus;
     }
@@ -143,7 +143,7 @@ public static partial class TypeExtensions
     public static List<Type> ToLayouts(this Assembly ass)
     {
         if (_layoutCache.TryGetValue(ass, out var services)) return services;
-        List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasLayout).Extends)];
+        List<Type> menus = [.. ass.GetTypes().Except([typeof(object)]).Where(typeof(IHasLayout).Extends).Where(IsConcrete)];
         _layoutCache.TryAdd(ass, menus);
         return menus;
     }
@@ -161,7 +161,7 @@ public static partial class TypeExtensions
     public static List<Type> ToMetas(this Assembly ass)
     {
         if (_metaCache.TryGetValue(ass, out var services)) return services;
-        List<Type> menus = [.. ass.GetTypes().Where(typeof(IHasMeta).Extends)];
+        List<Type> menus = [.. ass.GetTypes().Except([typeof(object)]).Where(typeof(IHasMeta).Extends).Where(IsConcrete)];
         _metaCache.TryAdd(ass, menus);
         return menus;
     }

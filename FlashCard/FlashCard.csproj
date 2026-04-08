@@ -36,7 +36,7 @@
 	</ItemGroup>
 	
   <ItemGroup>
-    <Content Update="wwwroot\teardrop.svg">
+    <Content Update="wwwroot\triangle.svg">
       <Color>transparent</Color>
     </Content>
   </ItemGroup>

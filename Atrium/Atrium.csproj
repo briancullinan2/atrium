@@ -62,14 +62,14 @@
 	
   <ItemGroup>
     <!-- App Icon -->
-    <MauiIcon Include="Resources\AppIcon\teardrop.svg" Color="transparent" />
+    <MauiIcon Include="Resources\AppIcon\triangle.svg" Color="transparent" />
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+    <MauiSplashScreen Include="Resources\AppIcon\triangle.svg" Color="#512BD4" BaseSize="128,128" />
 
     <!-- Images -->
     <MauiImage Include="Resources\Images\*" />
-    <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
+    <MauiImage Update="Resources\AppIcon\triangle.svg" BaseSize="168,208" />
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
@@ -123,7 +123,7 @@
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
 		<ItemGroup>
-			<_GeneratedWinIcon Include="$(IntermediateOutputPath)resizetizer\r\teardrop.ico" />
+			<_GeneratedWinIcon Include="$(IntermediateOutputPath)resizetizer\r\triangle.ico" />
 		</ItemGroup>
 
 		<Copy SourceFiles="@(_GeneratedWinIcon)" DestinationFolder="$(OutputPath)" Condition="Exists('%(_GeneratedWinIcon.Identity)')" SkipUnchangedFiles="true" />

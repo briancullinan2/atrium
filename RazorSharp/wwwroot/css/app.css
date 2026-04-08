@@ -10,6 +10,34 @@ html, body {
 
 }
 
+.cover-page {
+    display: flex;
+    text-align: center;
+    z-index: 1000;
+    width: 100%;
+    height: calc(100vh);
+    background: white;
+    transition: opacity ease-in-out 0.5s;
+}
+
+.cover-page .content
+{
+    height: calc(100vh - 3.5rem);
+    align-items:center;
+    display:flex;
+    justify-content:center;
+}
+
+.cover-page.loaded {
+    opacity: 0;
+}
+
+.cover-page svg
+{
+    max-width: 50%;
+    max-height: 50%;
+}
+
 #app
 {
     height: 100%;

@@ -13,8 +13,9 @@ public static class SharedRegistry
 
         AllTranslations = [..assemblies
         .SelectMany(ass => ass.GetTypes())
-            .Where(t => t != typeof(object) && t.Extends(typeof(ITranslationContext)))
-            ];
+        .Except([typeof(object)])
+        .Where(typeof(ITranslationContext).Extends)
+        ];
 
     }
 

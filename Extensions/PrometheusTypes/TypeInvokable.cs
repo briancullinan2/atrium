@@ -25,7 +25,7 @@ public static partial class TypeExtensions
             if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
             {
                 var nav = service.GetRequiredService<NavigationManager>();
-                parameterValues[i] = IdentifyNavigation(nav.Uri);
+                parameterValues[i] = IdentifyNavigation(nav.Uri).ComponentType;
             }
             else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
             {
@@ -52,11 +52,11 @@ public static partial class TypeExtensions
             }
         }
 
-        if(thisObject != null)
+        if(thisObject != null && !myDelegate.IsStatic)
         {
             return myDelegate.Invoke(thisObject, parameterValues);
         }
-        return myDelegate.Invoke(null, parameterValues);
+        return myDelegate.Invoke(null, thisObject != null ? [thisObject, .. parameterValues] : parameterValues);
     }
 
 #pragma warning disable BL0006 // Do not use RenderTree types

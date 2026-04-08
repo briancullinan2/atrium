@@ -9,7 +9,7 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-logo" @onclick="PageManager.ToggleStudyMode">
-        <img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />
+        <!--<img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />-->
         <a class="navbar-brand">Atrium</a>
     </div>
     @if (Menu.EnabledMenus.Count > 1)
@@ -64,30 +64,34 @@
         var currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
         bool isOnTargetPage = string.Equals(currentUrl, item.Href.Trim('/'), StringComparison.InvariantCultureIgnoreCase);
 
-        if(item.Children.Count() == 0 || PageManager.ClassNames.Keys.Contains("study-mode"))
-        {
-            Nav.NavigateTo(item.Href);
-            menuMode = false;
-        }
-        else if (!item.IsCollapsed)
+        //if(item.Children.Count() == 0 || PageManager.ClassNames.Contains("study-mode"))
+        //{
+        //    Nav.NavigateTo(item.Href);
+        //    menuMode = false;
+        //}
+        //else 
+        if (!item.IsCollapsed)
         {
             if (isOnTargetPage)
             {
                 // Rule: Only collapse if they are already on that page
                 item.IsCollapsed = true;
             }
-            else
-            {
-                // Rule: Only connect to href if it is already expanded
-                Nav.NavigateTo(item.Href);
-                menuMode = false;
-            }
+            //else 
+            //{
+            // Rule: Only connect to href if it is already expanded
+            //}
         }
         else
         {
             // If it's currently collapsed, just expand it
             item.IsCollapsed = false;
         }
+
+        // always navigate
+        Nav.NavigateTo(item.Href);
+        menuMode = false;
+
     }
 
 

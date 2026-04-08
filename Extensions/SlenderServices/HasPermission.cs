@@ -7,16 +7,13 @@ namespace Extensions.SlenderServices;
 public class HasPermission : ComponentBase, IDisposable
 {
     ILoginService? StoredLoginService { get; set; }
-    [Inject]
-    public ILoginService LoginService
+    [Inject] IServiceProvider? Service { get; set; }
+    public ILoginService? LoginService
     {
         get
         {
-            if (StoredLoginService == null)
-            {
-                throw new InvalidOperationException("LoginService is not available. Ensure that you have registered ILoginService in your DI container and that this component is used within a context where it can be injected.");
-            }
-            return StoredLoginService;
+            return StoredLoginService ??= Service?.GetService<ILoginService>();
+                //?? throw new InvalidOperationException("LoginService is not available. Ensure that you have registered ILoginService in your DI container and that this component is used within a context where it can be injected."); ;
         }
         set => StoredLoginService = value;
     }
@@ -34,11 +31,11 @@ public class HasPermission : ComponentBase, IDisposable
             // 1. AllowAnonymous always wins
             if (IsAllowAnonymous) return true;
 
-            if (AuthorizeAttributes.Any() && LoginService.User == null) return false;
+            if (AuthorizeAttributes.Any() && LoginService?.User == null) return false;
 
 
             // 3. Admin Bypass (The "God Mode" check)
-            if (LoginService.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true) return true;
+            if (LoginService?.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true) return true;
 
             foreach (var attr in AuthorizeAttributes)
             {
@@ -50,7 +47,7 @@ public class HasPermission : ComponentBase, IDisposable
                     {
                         bool isNegated = role.StartsWith('!');
                         string actualRole = isNegated ? role[1..] : role;
-                        bool hasRole = LoginService.Roles?.Any(r => string.Equals(r, actualRole, StringComparison.InvariantCultureIgnoreCase)) == true;
+                        bool hasRole = LoginService?.Roles?.Any(r => string.Equals(r, actualRole, StringComparison.InvariantCultureIgnoreCase)) == true;
 
                         // If it starts with ! and user HAS it, or no ! and user LACKS it... fail.
                         if ((isNegated && hasRole) || (!isNegated && !hasRole))
@@ -62,7 +59,7 @@ public class HasPermission : ComponentBase, IDisposable
                 if (!string.IsNullOrEmpty(attr.Policy))
                 {
                     // Check if the user has a setting that matches the Policy name
-                    if (LoginService.Permissions?.Any(s => string.Equals(s.Key, attr.Policy, StringComparison.InvariantCultureIgnoreCase)) != true)
+                    if (LoginService?.Permissions?.Any(s => string.Equals(s.Key, attr.Policy, StringComparison.InvariantCultureIgnoreCase)) != true)
                         return false;
                 }
             }
@@ -82,13 +79,13 @@ public class HasPermission : ComponentBase, IDisposable
     [Parameter] public RenderFragment? Authorizing { get; set; }
 
     // Logic for loading state (e.g., if LoginService is still initializing)
-    private bool IsLoading => LoginService.User == null && !LoginService.IsReady;
+    private bool IsLoading => LoginService?.User == null && LoginService?.IsReady != true;
 
     private bool RequiredPermission =>
         Permission == null ||
         Permission.TryParse<DefaultPermissions>() == DefaultPermissions.Unset ||
-        LoginService.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true ||
-        LoginService.Permissions?.Any(s => string.Equals(s.Key, nameof(DefaultPermissions.Unrestricted), StringComparison.InvariantCultureIgnoreCase) ||
+        LoginService?.Roles?.Any(r => r == nameof(DefaultRoles.Admin)) == true ||
+        LoginService?.Permissions?.Any(s => string.Equals(s.Key, nameof(DefaultPermissions.Unrestricted), StringComparison.InvariantCultureIgnoreCase) ||
             string.Equals(s.Key, Permission, StringComparison.InvariantCultureIgnoreCase)) == true;
 
 
@@ -209,7 +206,7 @@ public class HasPermission : ComponentBase, IDisposable
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        LoginService.OnUserChanged += NotifyUserChanged;
+        LoginService?.OnUserChanged += NotifyUserChanged;
     }
 
     public void NotifyUserChanged(object? user)
@@ -220,7 +217,7 @@ public class HasPermission : ComponentBase, IDisposable
 
     public void Dispose()
     {
-        LoginService.OnUserChanged -= NotifyUserChanged;
+        LoginService?.OnUserChanged -= NotifyUserChanged;
         GC.SuppressFinalize(this);
     }
 

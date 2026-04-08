@@ -1,0 +1,110 @@
+﻿
+.course-container {
+    margin: auto;
+    max-width: 800px;
+    position: relative;
+    perspective: 1000px;
+    padding: 10px 30px 30px 30px;
+    min-height: calc(100vh - 3.5rem);
+    text-align: center;
+}
+
+
+.flash-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 10px 20px rgba(255,255,255,0.8), 5px 5px 10px rgba(0,0,0,1.0);
+    /*transition: all 0.5s ease-in-out;*/
+    min-height: calc(50vh);
+    max-height: calc(100vh - 5.7rem);
+    overflow: auto;
+    transition: min-height ease-in-out 0.2s, max-height ease-in-out 0.4s, padding ease-in-out 0.3s;
+    opacity: 1.0;
+    text-align: left;
+    /*transform: rotate(0) translate(0) scale(0);*/
+}
+
+.flash-card .flash-card {
+    box-shadow: none;
+    padding: 0;
+    background: none;
+    min-height: 0;
+    max-height: none;
+    transform: none;
+    /*transition: none;*/
+    animation: none;
+}
+
+.page.login-mode .flash-card {
+    padding-top: 6rem;
+}
+
+.page.login-mode .flash-card h2 {
+    position: fixed;
+    top: 2rem;
+}
+
+.flash-card.animate-out {
+    padding: 0;
+    max-height: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.flash-card.animate-out * {
+    overflow: hidden;
+}
+
+.flash-card.hidden {
+    display: none;
+}
+
+
+
+.animate-out {
+    animation: toss-away 0.8s forwards ease-in;
+}
+
+.animate-in {
+    animation: catch-card 0.7s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes toss-away {
+    0% {
+        transform: rotateY(0deg) translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    30% {
+        /* Slight lift before the throw */
+        transform: rotateY(45deg) translate(20px, -20px) scale(1.05);
+    }
+
+    100% {
+        /* Flip 180 degrees, move up/right, and shrink */
+        transform: rotateY(180deg) translate(400px, -600px) scale(0.2);
+        opacity: 0;
+    }
+}
+
+@keyframes catch-card {
+    0% {
+        /* Start far off-screen, rotated 180, and tiny */
+        transform: translate(-200px, -100px) rotateY(-180deg) scale(0.2);
+        opacity: 0;
+    }
+
+    60% {
+        /* Over-shoot slightly for the "slap" effect */
+        opacity: 1;
+        transform: translate(20px, 10px) rotateY(-20deg) scale(1.05);
+    }
+
+    100% {
+        /* Settle at neutral position */
+        transform: translate(0, 0) rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+

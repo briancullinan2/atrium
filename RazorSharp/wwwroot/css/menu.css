@@ -25,7 +25,7 @@
 
 .bi-study::before {
     content: " ";
-    mask: url(/_content/FlashCard/teardrop.svg) no-repeat center / contain;
+    mask: url(/_content/RazorSharp/triangle.svg) no-repeat center / contain;
     width: 20px;
     height: 20px;
     background-size: 100% 100%;

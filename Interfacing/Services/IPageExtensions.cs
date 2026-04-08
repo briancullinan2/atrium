@@ -16,7 +16,7 @@ public static partial class PageExtensions
 
 
     public static async Task ToggleStudyMode(this IPageManager Page, MouseEventArgs _)
-        => await Page.TriggerEvent(PageAction.Study, !Page.ClassNames.ContainsKey("study-mode"));
+        => await Page.TriggerEvent(PageAction.Study, !Page.ClassNames.Contains("study-mode"));
 
 
     public static async Task TriggerEvent<TEvent>(this IPageManager Page, TEvent _)

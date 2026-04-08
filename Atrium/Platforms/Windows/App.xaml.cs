@@ -68,7 +68,7 @@ public partial class App : MauiWinUIApplication
             appWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
             // This path looks in your bin output folder for the icon
             // Ensure "appicon.ico" is actually being copied there by our MSBuild target
-            appWindow.SetIcon("teardrop.ico");
+            appWindow.SetIcon("triangle.ico");
         }
     }
 

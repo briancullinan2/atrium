@@ -7,10 +7,9 @@ namespace Hosting.Services;
 
 
 public partial class FileManager(
-    IQueryManager Query, ICircuitProvider Circuit
-#if BROWSER
+    IQueryManager Query
+    , ICircuitProvider Circuit
     , HttpClient Http
-#endif
 ) : IFileManager
 {
     public event Action<object?>? OnFileUploaded;

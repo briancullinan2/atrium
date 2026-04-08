@@ -9,7 +9,7 @@ public interface INavMenuItem
     string? RoleRequired { get; set; }
     bool IsBeta { get; set; }
     bool IsCollapsed { get; set; }
-    IEnumerable<INavMenuItem> Children { get; set; }
+    List<INavMenuItem> Children { get; set; }
     DefaultPermissions? Permission { get; set; }
     string? RequiredPermission { get; set; }
 }
@@ -28,5 +28,5 @@ public class NavMenuItem<TComponent> : INavMenuItem
     public bool IsCollapsed { get; set; } = true; // Added state
     public virtual DefaultPermissions? Permission { get => RequiredPermission?.TryParse<DefaultPermissions>(); set => RequiredPermission = value.ToString(); }
     public virtual string? RequiredPermission { get; set; } = nameof(DefaultPermissions.Unset);
-    public virtual IEnumerable<INavMenuItem> Children { get; set; } = [];
+    public virtual List<INavMenuItem> Children { get; set; } = [];
 }

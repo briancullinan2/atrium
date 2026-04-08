@@ -32,10 +32,10 @@ public class MenuService(IServiceProvider Service) : IMenuService
             var navItem = Activator.CreateInstance(pageTyped) as INavMenuItem ?? throw new InvalidOperationException("Failed to create menu entry: " + r.Key);
             navItem.Title = r.Value.ShortName ?? r.Value.Name ?? throw new InvalidOperationException("Menu title must be set through [Display(Name, ShortName)]: " + r.Key);
             navItem.Icon = r.Value.Prompt ?? string.Empty;
-            if (navItem.Title != null)
-                navItem.Children = GetMenuItems(navItem.Title);
-            if (r.Value.ShortName != null)
-                navItem.Children = navItem.Children.Concat(GetMenuItems(r.Value.ShortName));
+            if (r.Value.Name != null)
+                navItem.Children = GetMenuItems(r.Value.Name);
+            if (r.Value.ShortName != null && r.Value.ShortName != r.Value.Name)
+                navItem.Children = [..navItem.Children.Concat(GetMenuItems(r.Value.ShortName))];
             return navItem;
         })
         .OfType<INavMenuItem>()];
@@ -82,9 +82,8 @@ public class MenuService(IServiceProvider Service) : IMenuService
 
 
     // TODO: make this a static interface on IHasContext to make it ask for types up front
-    public static List<Type> Contexts { get; } = [.. new List<Type> { typeof(Layout.NavMenu) } // make our menu first
-    .Concat((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies().ToContexts())
-    .Distinct()];
+    public static List<Type> Contexts { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+        .GetAssemblies().ToContexts().Distinct()];
 
     public List<Type> EnabledContexts { get; private set; } = GetEnabledContexts(Service);
 

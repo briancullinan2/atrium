@@ -65,7 +65,15 @@ public static partial class TypeExtensions
 
     public static List<Type> GetServicable(this IEnumerable<Type> asses)
     {
+
+        List<Type> plugins = [..asses
+            .Where(t => t.IsConcrete() && t.Extends(typeof(IHasPlugins)))
+            .SelectMany(t => t.GetProperty(nameof(IHasPlugins.Plugins), BindingFlags.Static)?.GetValue(null) as List<Type> ?? [])];
+
+        asses = [..asses.Concat(plugins)];
+
         List<Type> concrete = [..asses.Where(s => s.IsConcrete())];
+
         List<string> interfaces = [..asses
             .Where(s => s.IsInterface)
             .Select(i => i.Name)
@@ -93,7 +101,9 @@ public static partial class TypeExtensions
     {
         return t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
             || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true
-            || t.Extends(typeof(IHasService));
+            || t.Extends(typeof(IHasService))
+            || t.Extends(typeof(IHasPlugins))
+            || t.Extends(typeof(IHasFeatures));
     }
 
 

@@ -1,6 +1,7 @@
 ﻿#if !BROWSER
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
+using static System.Net.WebRequestMethods;
 #endif
 
 namespace Hosting.Services;
@@ -13,16 +14,55 @@ public partial class FileManager
 
     public async Task<string?> OpenFile(string file)
     {
-        string path = Path.Combine("wwwroot", file);
+        string baseDir = AppContext.BaseDirectory;
 
-        if (await FileSystem.AppPackageFileExistsAsync(path))
+        string fullPath = Path.GetFullPath(Path.Combine(baseDir, file));
+
+        if (!fullPath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
         {
-            using var stream = await FileSystem.OpenAppPackageFileAsync(path);
+            // Path attempted to escape the app directory
+            return null;
+        }
+
+        string packagePath = Path.Combine(baseDir, "wwwroot", file);
+
+        if (File.Exists(file))
+        {
+            return File.ReadAllText(fullPath);
+        }
+        throw new InvalidOperationException("File not found locally: " + file);
+    }
+
+    public async Task<string?> OpenFileAsync(string file)
+    {
+        string baseDir = AppContext.BaseDirectory;
+
+        string fullPath = Path.GetFullPath(Path.Combine(baseDir, file));
+
+        if (!fullPath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
+        {
+            // Path attempted to escape the app directory
+            return null;
+        }
+
+        string packagePath = Path.Combine(baseDir, "wwwroot", file);
+
+        if (await FileSystem.AppPackageFileExistsAsync(packagePath))
+        {
+            using var stream = await FileSystem.OpenAppPackageFileAsync(packagePath);
             using var reader = new StreamReader(stream);
             return await reader.ReadToEndAsync();
         }
+        else if (File.Exists(file))
+        {
+            return await File.ReadAllTextAsync(fullPath);
+        }
+        else
+        {
+            return await Http.GetStringAsync(file);
+        }
 
-        return null;
+
     }
 #else
 

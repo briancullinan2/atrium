@@ -28,7 +28,7 @@
     <div class="canvas-container">
         <canvas id="lichtenbergCanvas"></canvas>
     </div>
-    <div class="sidebar theme-@(Sidebar.ToString()?.ToLowerInvariant())">
+    <div class="sidebar theme-@(PageManager.Sidebar?.ToLowerInvariant())">
         <NavMenu />
     </div>
     
@@ -59,13 +59,29 @@
     <main>
         
         <article class="content course-container">
-            @if (_previousBody != null)
+
+            @if (PageManager.ClassNames.Contains("cover-page"))
             {
-                <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
-                    @(_previousBody)
-                </div>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.25 3.9V12.92C11.25 13.25 11.09 13.55 10.82 13.74L3.61 18.79C3.02 19.2 2.18 18.88 2.05 18.17C1.9 17.31 2.1 16.3 2.7 15.21L5.82 9.6L8.76 4.31C8.99 3.9 9.24 3.54 9.5 3.23C10.1 2.53 11.25 2.98 11.25 3.9Z" fill="#292D32" />
+
+                    <path d="M20.39 18.79L13.18 13.74C12.91 13.55 12.75 13.25 12.75 12.92V3.9C12.75 2.98 13.9 2.53 14.5 3.23C14.76 3.54 15.01 3.9 15.24 4.31L18.18 9.6L21.3 15.21C21.9 16.3 22.1 17.31 21.95 18.17C21.82 18.88 20.98 19.2 20.39 18.79Z" fill="#292D32" />
+
+                    <path d="M5.26 19.14L11.41 15.04C11.74 14.82 12.28 14.82 12.61 15.04L18.76 19.14C20.39 20.23 20.12 21.12 18.16 21.12H5.85C3.9 21.11 3.63 20.22 5.26 19.14Z" fill="#292D32" />
+                </svg>
+
             }
-            @_activeBody
+            else
+            {
+                @if (_previousBody != null)
+                {
+                    <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
+                        @(_previousBody)
+                    </div>
+                }
+                @_activeBody
+
+            }
         </article>
 
         <ErrorBoundary @ref="_errorBoundary">
@@ -231,26 +247,8 @@
             _previousBody = _previousList.FirstOrDefault();
             _previousList.Clear();
         }
-        SetPageClass();
     }
 
-    private void SetPageClass()
-    {
-        string[] PageClass;
-        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClass = ["Home"];
-        else PageClass = Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0]).Split('/')
-                .Select(seg => seg.ToSafe())
-                .ToArray();
-        var toRemove = PageManager.ClassNames.Keys
-            .Where(c => c.Substring(0, 11) != "background-" && c.Substring(0, 6) != "theme-" 
-                && c != "study-mode" && c != "chatting" && c != "login-mode" && c != "page")
-            .ToList();
-        foreach (var remove in toRemove)
-            PageManager.ClassNames.TryRemove(remove, out _);
-        foreach (var add in PageClass)
-            PageManager.ClassNames.TryAdd(add, add);
-        InvokeAsync(StateHasChanged);
-    }
 
     protected override void OnInitialized()
     {
@@ -265,13 +263,6 @@
         PageManager.OnErrorChanged += SetError;
         RenderState.NotifyEmptied();
 
-        //AuthProvider.AuthenticationStateChanged += (task) =>
-        //{
-        // If this line never hits when you login, the UI is NOT
-        // subscribed to the instance you are calling Notify on.
-        //Console.WriteLine("UI received Auth Change Notification!");
-        //};
-        SetPageClass();
     }
 
     public void SetState(IComponent? state)
@@ -290,30 +281,6 @@
     }
 
 
-
-
-    private void SetApplication(ApplicationTheme? theme)
-    {
-        if (PageManager.ClassNames.Keys.FirstOrDefault(k => k.Contains("theme-")) is string bg)
-            PageManager.ClassNames.TryRemove(bg, out _);
-        var newClass = "theme-" + (theme.ToString()?.ToLowerInvariant() ?? string.Empty);
-        PageManager.ClassNames.TryAdd(newClass, newClass);
-        InvokeAsync(StateHasChanged);
-    }
-
-
-    public SidebarTheme? Sidebar { get; set; }
-
-    private void SetSidebar(SidebarTheme? theme)
-    {
-        if (theme != Sidebar)
-        {
-            Sidebar = theme;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-
     public AnimationMode? Background { get; set; } = AnimationMode.none;
     public bool initRender { get; set; } = true;
 
@@ -323,11 +290,6 @@
         {
             Background = theme;
             initRender = true;
-            if(PageManager.ClassNames.Keys.FirstOrDefault(k => k.Contains("background-")) is string bg)
-                PageManager.ClassNames.TryRemove(bg, out _);
-            var newClass = "background-" + (theme.ToString()?.ToLowerInvariant() ?? string.Empty);
-            PageManager.ClassNames.TryAdd(newClass, newClass);
-            InvokeAsync(StateHasChanged);
             _ = InitializeRender();
         }
     }
