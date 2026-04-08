@@ -2,12 +2,13 @@
 @using static FlashData.Entities.UserPack
 @using FlashData.Extensions
 @implements INotHasWrapper
-@attribute [Display(Name = "Home", GroupName = "Main", Prompt = "bi-house-door-fill")]
+@attribute [Display(Name = "Study Now", ShortName = "Home", GroupName = "Main", Prompt = "bi-house-door-fill")]
 @attribute [AllowAnonymous]
 @inject IFormFactor FormFactor
 @inject IMenuService MenuService
 @inject IQueryManager Query
 @inject ILoginService LoginService
+
 
 <a class="big-button" href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() {Mode = PackMode.Shuffle}))">
     <span>
@@ -18,10 +19,11 @@
 
 <div class="study-now">
     <h2><a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = PackMode.Shuffle }))">Start studying now</a></h2>
-    @if (LoginService.User == null)
+    @*@if (LoginService.User == null)
     {
         <h3><a href="@(TypeExtensions.GetUri<Pages.Landing.Login>())">Login to track progress</a></h3>
     }
+    *@
     @if (LoginService.User == null || PacksDue?.Count == 0)
     {
         <h4><a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>())">Subscribe to packs to memorize content quickly.</a></h4>
@@ -54,6 +56,7 @@
     public List<UserPack>? UserPacks { get; set; }
     public Dictionary<int, CardRetention>? Retention { get; set; }
     public Dictionary<UserPack, int>? PacksDue { get; set; }
+
 
     protected override void OnInitialized()
     {

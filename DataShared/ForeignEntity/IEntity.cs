@@ -6,7 +6,8 @@ public interface IEntity : IDisposable
     //abstract internal static IEntity Create(IEntity target);
     //abstract internal static IEntity Wrap(IEntity target);
     Task<IEntity?> Update(IEntity? entity = null);
-    Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity;
+    Task<TEntity?> Update<TEntity>(TEntity? entity = null, IQueryManager? query = null) 
+        where TEntity : class, IEntity<TEntity>, IEntity;
     Task<IEntity> Save(IQueryManager? query = null);
     int? CanonicalFingerprint { get; set; }
     public IQueryManager? QueryManager { get; set; }

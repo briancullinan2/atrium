@@ -37,14 +37,14 @@ public class CourseMenuItem : NavMenuItem<Pages.Course.Course>, ICourseMenuItem
             // If this item is a top-level course, just return the Level link
             if (Lesson == courseType)
             {
-                return TypeExtensions.GetUri<Pages.Course.Course>(c => new() { Level = Level });
+                return TypeExtensions.GetUri<Pages.Course.Course>(c => new() { SetLevel = Level });
             }
 
             // Otherwise, return the Level + Lesson link
             return TypeExtensions.GetUri<Pages.Course.Course>(c => new()
             {
-                Level = Level,
-                Lesson = Lesson.Name.ToSafe()
+                SetLevel = Level,
+                SetLesson = Lesson.Name.ToSafe()
             });
         }
     }

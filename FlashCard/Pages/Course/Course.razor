@@ -1,14 +1,15 @@
 @implements IDisposable
 @implements IGenerator<FlashData.Entities.Course>
+@implements IHasContext
 
 @page "/course"
-@page "/course/{Level:int}"
-@page "/course/{Level:int}/{Lesson}"
-@page "/course/{Level:int}/{Lesson}/Intro"
-@page "/course/{Level:int}/{Lesson}/Video"
-@page "/course/{Level:int}/{Lesson}/Quiz"
-@page "/course/{Level:int}/{Lesson}/Reward"
-@page "/course/{Level:int}/{Lesson}/Investment"
+@page "/course/{SetLevel:int}"
+@page "/course/{SetLevel:int}/{SetLesson}"
+@page "/course/{SetLevel:int}/{SetLesson}/Intro"
+@page "/course/{SetLevel:int}/{SetLesson}/Video"
+@page "/course/{SetLevel:int}/{SetLesson}/Quiz"
+@page "/course/{SetLevel:int}/{SetLesson}/Reward"
+@page "/course/{SetLevel:int}/{SetLesson}/Investment"
 
 
 @inject NavigationManager Nav
@@ -19,17 +20,17 @@
 
 <div class="flash-card @GetCurrentClass(StepMode.Intro)">
     @*TODO: change this to load dynamically from menu when i get bored of updating it*@
-    @if (ActiveItem?.Course == typeof(Course1))
+    @if (CourseService.Course == typeof(Course1))
     {
-        <Course1 Lesson="@ActiveItem.Lesson" />
+        <Course1 Lesson="@CourseService.Lesson" />
     }
-    else if (ActiveItem?.Course == typeof(Course2))
+    else if (CourseService.Course == typeof(Course2))
     {
-        <Course2 Lesson="@ActiveItem.Lesson" />
+        <Course2 Lesson="@CourseService.Lesson" />
     }
-    else if (ActiveItem?.Course == typeof(Course3))
+    else if (CourseService.Course == typeof(Course3))
     {
-        <Course3 Lesson="@ActiveItem.Lesson" />
+        <Course3 Lesson="@CourseService.Lesson" />
     }
     <div class="highlighted-link">
         <button class="cta" @onclick="() => Next(StepMode.Video)">Start Lesson</button>
@@ -37,7 +38,7 @@
 </div>
 
 <div class="flash-card @GetCurrentClass(StepMode.Video)">
-    <div class="video-placeholder">Video content for @Lesson</div>
+    <div class="video-placeholder">Video content for @CourseService.Lesson</div>
     <div class="highlighted-link">
         <button class="deemphasize back" @onclick="() => Next(StepMode.Intro)"><span class="bi bi-chevron-left"></span>Back</button>
         <button class="cta" @onclick="() => Next(StepMode.Quiz)">Take Quiz</button>
@@ -47,7 +48,7 @@
 @*TODO: need to stream this on the really big sets?*@
 @for(var i = 0; i < CurrentQuiz?.Count(); i++)
 {
-    <div class="flash-card @(QuizStep == i + 1 || (PreviousStep == StepMode.Quiz && i == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && i == QuizStep) ? "animate-in" : "hidden")">
+    <div class="flash-card @(QuizStep == i + 1 || (CourseService.PreviousStep == StepMode.Quiz && i == CurrentQuiz?.Count() - 1) ? "animate-out" : (SetStep == StepMode.Quiz && i == QuizStep) ? "animate-in" : "hidden")">
         <MetadataControl ValueChanged="OnQuizAnswered" TModel="Card" Model="@CardLayout" Data="[CurrentQuiz?.ElementAt(i)]"></MetadataControl>
         <div class="highlighted-link">
             <button class="deemphasize back" @onclick="() => { 
@@ -74,7 +75,7 @@
 }
 
 
-<div class="flash-card @((PreviousStep == StepMode.Quiz && QuizStep == CurrentQuiz?.Count() - 1) ? "animate-out" : (Step == StepMode.Quiz && CurrentQuiz?.Count() == QuizStep) ? "animate-in" : "hidden")">
+<div class="flash-card @((CourseService.PreviousStep == StepMode.Quiz && QuizStep == CurrentQuiz?.Count() - 1) ? "animate-out" : (CourseService.Step == StepMode.Quiz && CurrentQuiz?.Count() == QuizStep) ? "animate-in" : "hidden")">
     <h2>Quiz Results:</h2>
     <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="CurrentQuiz?.Select(card => new Controls.ResultsCardControl.ResultCard() {Card = card, Response = Responses.FirstOrDefault(r => r.Card == card)}).ToList()"></MetadataControl>
     <div class="highlighted-link">
@@ -89,17 +90,17 @@
 
 <div class="flash-card @GetCurrentClass(StepMode.Reward)">
     <div class="reward">
-        @if (ActiveItem?.Course == typeof(Course1))
+        @if (CourseService.Course == typeof(Course1))
         {
-            <Course1Reward Lesson="@ActiveItem.Lesson" />
+            <Course1Reward Lesson="@CourseService.Lesson" />
         }
-        else if (ActiveItem?.Course == typeof(Course2))
+        else if (CourseService.Course == typeof(Course2))
         {
-            <Course2Reward Lesson="@ActiveItem.Lesson" />
+            <Course2Reward Lesson="@CourseService.Lesson" />
         }
-        else if (ActiveItem?.Course == typeof(Course3))
+        else if (CourseService.Course == typeof(Course3))
         {
-            <Course3Reward Lesson="@ActiveItem.Lesson" />
+            <Course3Reward Lesson="@CourseService.Lesson" />
         }
 
     </div>
@@ -111,7 +112,7 @@
 </div>
 
 <div class="flash-card @GetCurrentClass(StepMode.Investment)">
-    <CourseInvestment Next="@Next" Lesson="@ActiveItem?.Lesson" />
+    <CourseInvestment Next="@Next" Lesson="@CourseService.Lesson" />
 </div>
 
 
@@ -132,12 +133,11 @@
 
 @code {
     [JsonPropertyName("level")]
-    [Parameter] public int? Level { get; set; }
+    [Parameter] public int? SetLevel { get; set; }
     [JsonPropertyName("lesson")]
-    [Parameter] public string? Lesson { get; set; }
+    [Parameter] public string? SetLesson { get; set; }
     [JsonPropertyName("step")]
-    public StepMode Step { get; set; } = StepMode.Intro;
-    public StepMode? PreviousStep { get; set; } = null;
+    [Parameter] public StepMode? SetStep { get; set; }
 
     [JsonPropertyName("quiz")]
     [Category("Display")]
@@ -150,17 +150,29 @@
 
     private List<Response> Responses = new();
 
-    public ICourseMenuItem? ActiveItem { get; set; }
     public int? QuizStep { get; set; }
-    public int? CurrentIndex { get => Step < StepMode.Quiz 
-        ? (int)Step : Step > StepMode.Quiz
-        ? (CurrentQuiz?.Count() + (int)Step) : ((int)Step + QuizStep); }
+    public int? CurrentIndex { get => CourseService.Step < StepMode.Quiz 
+        ? (int)CourseService.Step : CourseService.Step > StepMode.Quiz
+        ? (CurrentQuiz?.Count() + (int)CourseService.Step) : ((int)CourseService.Step + QuizStep); }
     // minus one because first step of quiz is the first question, UNDO minus one for quiz results page
     public int? TotalCards { get => Enum.GetValues<StepMode>().Count() + CurrentQuiz?.Count(); }
     public string? IndexToStep(int i) => i < (int)StepMode.Quiz 
         ? Enum.GetName<StepMode>((StepMode)i)?.ToString() : i > (CurrentQuiz?.Count() + (int)StepMode.Quiz) 
         ? Enum.GetName<StepMode>((StepMode)(i - CurrentQuiz!.Count()))?.ToString()
         : "Quiz " + (i - (int)StepMode.Quiz + 1);
+
+    public static Delegate ShowContext { get => (Type routeControl) => typeof(Pages.Course.Course); }
+
+
+    public static Delegate ContextInsert { get => (Func<ICourseService, RenderFragment>)((ICourseService Service) => __builder =>
+        {
+            __builder.OpenComponent<FlashCard.Pages.Shared.Course>(0);
+            __builder.AddAttribute(1, "Step", (int)Service.Step);
+            __builder.AddAttribute(2, "Level", Service.Level);
+            __builder.AddAttribute(3, "Lesson", Service.Lesson);
+            __builder.CloseComponent();
+        });
+    }
 
     protected async Task OnQuizAnswered(Tuple<PropertyMetadata, Card, object?> valueChanged)
     {
@@ -224,7 +236,7 @@
     {
         base.OnParametersSet();
         OnSetCourseParameters();
-        CurrentQuiz = GetCurrentQuiz(ActiveItem?.Lesson);
+        CurrentQuiz = GetCurrentQuiz(CourseService.Lesson);
         PageManager.SetState(this);
     }
 
@@ -236,10 +248,10 @@
 
     protected void OnSetCourseParameters()
     {
-        var newItem = CourseMenu.GetActiveItem(Level, Lesson);
+        var newItem = CourseMenu.GetActiveItem(SetLevel, SetLesson);
 
-        if (ActiveItem?.Course != newItem?.Course
-            || ActiveItem?.Lesson != newItem?.Lesson)
+        if (CourseService.Course != newItem?.Course
+            || CourseService.Lesson != newItem?.Lesson)
         {
             CourseService.SetCourse(newItem);
             CourseService.SetStep(StepMode.Intro);
@@ -255,7 +267,7 @@
         if (segments.Count() >= 4)
         {
             newStep = segments[3].TryParse<StepMode>() ?? StepMode.Intro;
-            if (newStep != Step)
+            if (newStep != CourseService.Step)
             {
                 CourseService.SetStep(newStep ?? StepMode.Intro);
             }
@@ -264,41 +276,27 @@
 
     protected string GetCurrentClass(StepMode step)
     {
-        if (Step == step) return "animate-in";
-        if (PreviousStep == step) return "animate-out";
+        if (CourseService.Step == step) return "animate-in";
+        if (CourseService.PreviousStep == step) return "animate-out";
         return "hidden";
     }
 
     protected void OnStepChanged(StepMode? step)
     {
-        PreviousStep = Step;
-        Step = step ?? StepMode.Intro;
         SetCourseTitle();
         InvokeAsync(StateHasChanged);
     }
 
     protected void OnCourseChanged(ICourseMenuItem? item)
     {
-        PreviousStep = null;
         QuizStep = 0;
-        ActiveItem = item;
         SetCourseTitle();
         InvokeAsync(StateHasChanged);
     }
 
     protected void SetCourseTitle()
     {
-        TitleService.UpdateTitle(ActiveItem?.Title + " - " + Step.ToString());
-        //Layout?.SetHeaderTitle(builder => builder.AddContent(0, ActiveItem?.Title + " - " + Step.ToString()));
-
-        MenuService.SetMenu(@<FlashCard.Pages.Shared.Course Step="@((int)Step)" Level="@Level" Lesson="@Lesson" />);
-    
-        if (ActiveItem?.Lesson != null)
-        {
-            //_ = LoadDataAsync();
-            //CurrentQuiz = new PackControl.ViewPack { Pack = Context.Packs.Where(p => p.Title == ActiveItem.Lesson.Name).FirstOrDefault() };
-        }
-
+        TitleService.UpdateTitle(CourseService.Title + " - " + CourseService.Step.ToString());
     }
     
     public void Dispose()
@@ -308,7 +306,10 @@
         CourseService.OnCourseChanged -= OnCourseChanged;
     }
 
-    private void Next(StepMode nextStep) => Nav.NavigateTo<Pages.Course.Course>(c => new() { Level = ActiveItem != null ? ActiveItem.Level : 1, Lesson = ActiveItem != null && ActiveItem.Lesson != null ? ActiveItem.Lesson.Name.ToSafe() : "", Step = nextStep });
+    private void Next(StepMode nextStep) => Nav.NavigateTo<Pages.Course.Course>(c => new() { 
+        SetLevel = CourseService.Menu != null ? CourseService.Level : 1, 
+        SetLesson = CourseService.Menu != null && CourseService.Lesson != null ? CourseService.Lesson.Name.ToSafe() : "", 
+        SetStep = nextStep });
 
     private void Finish() { /* Navigate back or to next lesson */ }
 

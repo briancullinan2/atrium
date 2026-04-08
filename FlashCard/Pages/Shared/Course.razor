@@ -35,7 +35,7 @@
 
     public string GetHref(StepMode Step)
     {
-        return TypeExtensions.GetUri<Pages.Course.Course>(c => new() { Step = Step, Level = Level, Lesson = Lesson });
+        return TypeExtensions.GetUri<Pages.Course.Course>(c => new() { SetStep = Step, SetLevel = Level, SetLesson = Lesson });
     }
 
     protected override void OnParametersSet()

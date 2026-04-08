@@ -9,6 +9,8 @@
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
 
+    public IEnumerable<Card> Cards { get => Data?.Cast<Card>() ?? []; }
+
     protected override void OnInitialized()
     {
         AnswerLayout = Card.Metadata.Categories["Answers"]?.ToList();
@@ -17,7 +19,7 @@
 
 }
 
-@foreach (var card in Data ?? [])
+@foreach (var card in Cards)
 {
 
     <div class="card-front @card.ResponseType-card-type">
@@ -46,11 +48,11 @@
             }
             else if (card.ResponseType == CardType.TrueFalse) // True/False
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, HandleAnswer))" TModel="Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="HandleAnswer" TModel="Card" Model="@AnswerLayout" Data="Cards"></MetadataControl>
             }
             else if (card.ResponseType == CardType.Multiple) // Multiple Choice
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, HandleAnswer))" TModel="Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="HandleAnswer" TModel="Card" Model="@AnswerLayout" Data="Cards"></MetadataControl>
             }
         </div>
     </div>

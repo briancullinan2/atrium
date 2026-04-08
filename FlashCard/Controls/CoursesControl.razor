@@ -2,7 +2,8 @@
 @attribute [SupportsType(typeof(Pack))]
 @attribute [SupportsType(typeof(IEnumerable<Pack>))]
 @implements IHasMeta
-
+@inject IQueryManager QueryManager
+@inject ILoginService LoginService
 @code
 {
 
@@ -12,7 +13,19 @@
 
     public IEnumerable<FlashData.Entities.Course> Courses { get => Data?.OfType<FlashData.Entities.Course>() ?? []; }
 
-    [Inject] public ILoginService? LoginService { get; set; }
+    public IEnumerable<Pack> Packs { get => Data?.Cast<Pack>() ?? []; }
+    public List<UserPack>? UserPacks { get; set; }
+    public List<Response>? Responses { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        QueryManager.Query<UserPack>(up => up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => UserPacks = await list);
+        QueryManager.Query<Response>(up => up.Created > DateTime.Now.AddDays(-32) && up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => Responses = await list);
+    }
+
 }
 
 
@@ -21,7 +34,7 @@
     <div class="flex-row">
         <span><img src="@(course.LogoHosted ?? course.Logo?.Url)" /></span>
         <span>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) != null)
+            @if (UserPacks?.FirstOrDefault(up => up.PackId == course.Id) != null)
             {
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = course.Id, Mode = PackMode.Card }))">@course.Title</a>
             }
@@ -38,12 +51,12 @@
             }
         </span>
         <span>@course.Lessons.Count()</span>
-        <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
+        <span>@(Responses?.LastOrDefault(up => up.Card?.PackId == course.Id)?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
             <a href="@(TypeExtensions.GetUri<Pages.Landing.Courses>(p => new() { Mode = ControlMode.Edit, Id = course.Id }))">
                 <span class="bi bi-pencil"></span>
             </a>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == course.Id) == null)
+            @if (UserPacks?.FirstOrDefault(up => up.PackId == course.Id) == null)
             {
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add, Id = course.Id }))">
                     <span class="bi bi-check-circle-fill"></span>

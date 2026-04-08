@@ -12,6 +12,7 @@
 @inject IQueryManager Query
 @implements IHasContext
 
+@using FlashData.Extensions
 
 @if (Mode == null)
 {
@@ -31,7 +32,7 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, Card, object?>>(this, OnQuizAnswered))"
+        <MetadataControl ValueChanged="OnQuizAnswered"
             TModel="Card" Model="@CardLayout" Data="[card]"></MetadataControl>
         <div class="highlighted-link">
             @if (QuizStep > 0)
@@ -58,7 +59,7 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
+        <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses?.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
         <div class="link-list">
             @if (QuizStep > 0)
             {
@@ -118,7 +119,7 @@
 
 
     public PackMode? Mode { get; set; }
-    private List<Response> Responses = new();
+
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;
     public int? PreviousStep { get; set; }
@@ -128,6 +129,8 @@
     private double CumulativeX = 0;
     private double CumulativeY = 0;
 
+    public List<UserPack>? UserPacks { get; set; }
+    public List<Response>? Responses { get; set; }
 
 
     private string CurrentManualTransform = "";
@@ -217,17 +220,21 @@
         base.OnInitialized();
         CardLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Display"]?.ToList();
         ResultLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Results"]?.ToList();
+        Query.Query<UserPack>(up => up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => UserPacks = await list);
+        Query.Query<Response>(up => up.Created > DateTime.Now.AddDays(-32) && up.UserId == LoginService.UserId).ToListAsync()
+        .Then(async list => Responses = await list);
     }
 
 
     public static Delegate ShowContext { get => (Type routeControl) => routeControl == typeof(Landing.Pack); }
 
 
-    public static Delegate ContextInsert => (Func<IStudyService, RenderFragment>)(
-        (Service) => (__builder) =>
+    public static Delegate ContextInsert => (Func<IPageManager, RenderFragment>)(
+        (Page) => (__builder) =>
         {
             __builder.OpenElement(0, "button");
-            __builder.AddAttribute(1, "onclick", EventCallback.Factory.Create(null, () => Service.SetStudyMode(true)));
+            __builder.AddAttribute(1, "onclick", Page.ToggleStudyMode);
             __builder.AddContent(2, "Start Study");
             __builder.CloseElement();
         }
@@ -235,9 +242,9 @@
 
     /*
     public Delegate ContextInsert => (Func<IStudyService, RenderFragment>)(
-        (service) => @<a @onclick="() => service.SetStudyMode(true)">
+    (service) => @<a @onclick="() => service.SetStudyMode(true)">
          <span class="bi bi-pinpoint"></span>Study Mode
-     </a>
+    </a>
     );
     */
 
@@ -266,9 +273,11 @@
             // TODO: if user hasn't logged in, shuffle 5 built in study sauce and then ask for sign up like demo sequence
 
             List<Card> results = [];
-            foreach (var up in LoginService.User?.UserPacks ?? [])
+            foreach (var up in UserPacks ?? [])
             {
-                var due = (await up.Update())?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key);
+                await up.Update();
+                var retention = Responses?.Where(r => r.Card?.PackId == up.PackId).ToList().GetRetention();
+                var due = retention?.Where(r => r.Value.IsDue).Select(r => r.Key);
                 results.AddRange(up.Pack?.Cards.Where(c => due?.Contains(c.Id) == true) ?? []);
             }
             CurrentQuiz = results.Shuffle().ToList();
@@ -277,17 +286,19 @@
         else if (Id != null)
         {
             // only show one id quiz
-            var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
-            if (up?.Update() is Task<UserPack> task)
+            if (UserPacks?.FirstOrDefault(up => up.Pack?.Id == Id)
+                ?.Update<UserPack>() is Task<UserPack> task
+                && await task is UserPack up)
             {
-                up = await task;
-                var retention = up.GetRetention();
-                var due = retention.Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
+                var retention = Responses?.Where(r => r.Card?.PackId == up.PackId).ToList().GetRetention();
+                var due = retention?.Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
                 var cards = up.Pack?.Cards.Where(c => due.Contains(c.Id) == true).ToList() ?? [];
                 var result = new List<Card>();
                 foreach(var card in cards)
                 {
-                    result.Add(await card.Update());
+                    var updated = await card.Update<Card>();
+                    if (updated == null) return;
+                    result.Add(updated);
                 }
                 CurrentQuiz = result;
                 await InvokeAsync(StateHasChanged);
@@ -296,7 +307,7 @@
             //Console.WriteLine(answers);
         }
 
-        _ = Form.UpdateTitle(CurrentQuiz?.ElementAtOrDefault(QuizStep)?.Pack?.Title);
+        _ = TitleService.UpdateTitle(CurrentQuiz?.ElementAtOrDefault(QuizStep)?.Pack?.Title);
 
     }
 
@@ -324,7 +335,7 @@
             IsCorrect = answer.IsCorrect,
             Card = valueChanged.Item2
         };
-        Responses.Add(response);
+        Responses?.Add(response);
         NextStep();
     }
 

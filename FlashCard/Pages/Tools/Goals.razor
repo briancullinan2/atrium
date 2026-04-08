@@ -89,21 +89,21 @@
         EditState.Clear();
     }
 
-    private string GetFriendlyTypeName(string type) => type switch {
+    private string GetFriendlyTypeName(string? type) => type switch {
         "behavior" => "Study Hours",
         "milestone" => "Study Milestone",
         "outcome" => "Study Outcome",
         _ => "Goal"
     };
 
-    private string GetSuffixForType(string type) => type switch {
+    private string GetSuffixForType(string? type) => type switch {
         "behavior" => "hours per week",
         "milestone" => "grade on exam",
         "outcome" => "target GPA",
         _ => ""
     };
 
-    private List<string> GetOptionsForType(string type) => type switch {
+    private List<string> GetOptionsForType(string? type) => type switch {
         "behavior" => new() { "10", "20", "30", "40", "50" },
         "milestone" => new() { "A+", "A", "A-", "B+", "B" },
         "outcome" => new() { "4.0", "3.75", "3.5", "3.25", "3.0" },

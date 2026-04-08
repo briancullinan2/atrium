@@ -16,7 +16,7 @@ public static partial class IEntityExtensions
     }
 
 
-    public static async Task<T> Update<T>(this T entity, IQueryManager? query = null) where T : Entity<T>, IEntity
+    public static async Task<T> Update<T>(this T entity, IQueryManager? query = null) where T : class, IEntity<T>, IEntity
     {
         var Query = query ?? entity.QueryManager
             ?? throw new InvalidOperationException("No service provider.");

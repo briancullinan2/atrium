@@ -9,7 +9,7 @@ public static class EntityExtensions
 
     private static readonly int[] Intervals = [1, 2, 4, 7, 14, 28, 84, 168, 364];
 
-    public static Dictionary<int, CardRetention> GetRetention(this List<Response> responses, string? userId, bool refresh = false)
+    public static Dictionary<int, CardRetention> GetRetention(this List<Response> responses, string? userId = null, bool refresh = false)
     {
 
         var result = new Dictionary<int, CardRetention>();

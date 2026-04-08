@@ -12,7 +12,17 @@
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
     public IEnumerable<Pack> Packs { get => Data?.Cast<Pack>() ?? []; }
-    public List<UserPack> UserPacks { get => LoginService?.User?.UserPacks ?? []; }
+    public List<UserPack>? UserPacks { get; set; }
+    public List<Response>? Responses { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        QueryManager.Query<UserPack>(up => up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => UserPacks = await list);
+        QueryManager.Query<Response>(up => up.Created > DateTime.Now.AddDays(-32) && up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => Responses = await list);
+    }
 }
 
 
@@ -21,7 +31,7 @@
     <div class="flex-row">
         <span><img src="@(pack.LogoHosted ?? pack.Logo?.Url)" /></span>
         <span>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) != null)
+            @if (UserPacks?.FirstOrDefault(up => up.PackId == pack.Id) != null)
             {
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = PackMode.Card }))">@pack.Title</a>
             }
@@ -37,18 +47,21 @@
             }
         </span>
         <span>@pack.Cards.Count()</span>
-        <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
+        <span>@(Responses?.LastOrDefault(up => up.Card?.PackId == pack.Id)?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
             <a href="@(TypeExtensions.GetUri<Pages.Landing.EditPack>(p => new () { Mode = ControlMode.Edit, Id = pack.Id}))">
                 <span class="bi bi-pencil"></span>
             </a>
             @if(LoginService?.User == null)
             {
+            @*
+                TODO: service injection for IHasMeta???    
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Login>())">
                     <span class="bi bi-check-circle"></span>
                 </a>
+            *@
             }
-            else if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) == null)
+            else if (UserPacks?.FirstOrDefault(up => up.PackId == pack.Id) == null)
             {
                 <a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add, Id = pack.Id }))">
                     <span class="bi bi-check-circle"></span>

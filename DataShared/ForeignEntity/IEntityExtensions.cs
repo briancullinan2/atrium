@@ -42,7 +42,8 @@ public partial class Entity<T>
         return await IEntityExtensions.Update<T>((T)this, query);
     }
 
-    public async Task<TEntity?> Update<TEntity>(TEntity? entity = null, IQueryManager? query = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity<T>, IEntity
+    public async Task<TEntity?> Update<TEntity>(TEntity? entity = null, IQueryManager? query = null) 
+        where TEntity : class, IEntity<TEntity>, IEntity
     {
         if (entity == null && this is TEntity that)
         {
@@ -54,12 +55,6 @@ public partial class Entity<T>
         }
         else
             return default;
-    }
-
-    public async Task<TEntity> Update<TEntity>(TEntity? entity = null) where TEntity : Entity<TEntity>, IEntity<TEntity>, IEntity
-    {
-        entity ??= this as TEntity;
-        return await IEntityExtensions.Update(entity!);
     }
 
     //async Task<TEntity> IEntity.Update<TEntity>(TEntity? entity) where TEntity : class

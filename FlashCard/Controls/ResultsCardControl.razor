@@ -22,6 +22,7 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
 
+    public IEnumerable<ResultCard> Results { get => Data?.Cast<ResultCard>() ?? []; }
     //private IEnumerable<PropertyMetadata>? AnswerLayout;
     //private IEnumerable<PropertyMetadata>? CardLayout;
 
@@ -34,7 +35,7 @@
 }
 
 
-@foreach (ResultCard result in Data ?? [])
+@foreach (ResultCard result in Results)
 {
     <div class="card-back">
         <div class="preview-inner">

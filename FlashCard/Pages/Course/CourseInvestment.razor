@@ -41,7 +41,7 @@ else if (Lesson == typeof(StudyingForTests))
     <h2>Think about your classes and exams. Are they objective or subjective?</h2>
     <div class="highlighted-link">
         <button class="deemphasize back" @onclick="() => Next(StepMode.Reward)"><span class="bi bi-chevron-left"></span>Back</button>
-        <a href="@(TypeExtensions.GetUri<Pages.Landing.Main>())">Study Now</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Landing.Home>())">Study Now</a>
     </div>
 }
 else if (Lesson == typeof(IntroToStrategies))
@@ -57,7 +57,7 @@ else if(Lesson == typeof(SpacedRepetition))
     <h2>We hope you enjoyed the course. Please let us know what you thought.</h2>
     <div class="highlighted-link">
         <button class="deemphasize back" @onclick="() => Next(StepMode.Reward)"><span class="bi bi-chevron-left"></span>Back</button>
-        <a class="cta" href="@(TypeExtensions.GetUri<Pages.Landing.Main>())">Study Now</a>
+        <a class="cta" href="@(TypeExtensions.GetUri<Pages.Landing.Home>())">Study Now</a>
     </div>
 }
 else if(Lesson == typeof(TeachToLearn))

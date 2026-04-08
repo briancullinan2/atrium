@@ -8,7 +8,7 @@
     [Parameter] public PropertyMetadata? Model { get; set; }
     [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
     public List<Answer> Answers { get; set; } = new List<Answer>();
-
+    public Card? Card { get; set; } = null;
 
     public ControlMode Mode
     {
@@ -21,8 +21,9 @@
 
     protected override void OnInitialized()
     {
-        Answers = Data?.ElementAt(0).Answers.ToList() ?? [];
-        if(Data?.ElementAt(0).ResponseType == CardType.TrueFalse)
+        Card = Data?.ElementAt(0) as Card;
+        Answers = Card?.Answers.ToList() ?? [];
+        if (Card?.ResponseType == CardType.TrueFalse)
         {
             if (!Answers.Any(a => string.Equals(a.Value, "true", StringComparison.InvariantCultureIgnoreCase)))
             {
@@ -50,6 +51,6 @@
 
 @foreach (var answer in Answers)
 {
-    <input class="large-present" type="radio" value="@answer.Value ?? answer.Content" id="@answer.Content?.ToSafe()" name="@Data?.ElementAt(0).Content.ToSafe()" />
+    <input class="large-present" type="radio" value="@answer.Value ?? answer.Content" id="@answer.Content?.ToSafe()" name="@Card?.Content.ToSafe()" />
     <label for="@answer.Content?.ToSafe()" onclick="@(() => ValueChanged?.InvokeAsync(answer))">@answer.Content</label>
 }
