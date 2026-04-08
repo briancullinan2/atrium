@@ -16,6 +16,49 @@ public static partial class TypeExtensions
 
     public static List<MethodInfo> AllRoutes { get; }
 
+    public static bool MineOnly { get; } = true;
+
+    static string? GetProduct(Assembly entry) => entry.GetCustomAttribute<AssemblyProductAttribute>()
+        ?.Product;
+    static string? GetPackage(Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+        ?.Where(attr => attr.Key.Contains("PackageName")).FirstOrDefault()?.Value;
+    static string? GetPublisher(Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+        ?.Where(attr => attr.Key.Contains("PublisherName")).FirstOrDefault()?.Value;
+    static string? GetCompany(Assembly entry) =>
+        entry.GetCustomAttributes<AssemblyCompanyAttribute>()
+        ?.FirstOrDefault()?.Company
+        ?? entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+        ?.Where(attr => attr.Key.Contains("CompanyName")).FirstOrDefault()?.Value;
+
+    public static IEnumerable<Assembly> GetMine(this IEnumerable<Assembly> asses)
+    {
+        var entry = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+        var entryDirectory = Path.GetDirectoryName(entry.Location);
+        var product = GetProduct(entry);
+        var package = GetPackage(entry);
+        var publisher = GetPublisher(entry);
+        var company = GetCompany(entry);
+
+        if (entryDirectory == null) yield break;
+
+        foreach (var ass in asses)
+        {
+            if (!string.Equals(ass.Location[..Math.Min(entryDirectory.Length, ass.Location.Length)],
+                        entryDirectory, StringComparison.InvariantCultureIgnoreCase)) continue;
+
+            if ((product != null && string.Equals(product, GetProduct(ass), StringComparison.InvariantCultureIgnoreCase))
+
+                || (package != null && string.Equals(package, GetPackage(ass), StringComparison.InvariantCultureIgnoreCase))
+
+                || (publisher != null && string.Equals(publisher, GetPublisher(ass), StringComparison.InvariantCultureIgnoreCase))
+
+                || (company != null && string.Equals(company, GetCompany(ass), StringComparison.InvariantCultureIgnoreCase))
+            )
+        
+            yield return ass;
+        }
+    }
+
 
     static TypeExtensions()
     {
@@ -23,6 +66,10 @@ public static partial class TypeExtensions
 
         // TODO: need a list of servicable types, anything in the namespace Services that has any routes
         var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+        if (MineOnly)
+        {
+            assemblies = [..assemblies.GetMine()];
+        }
 
         AllServices = [..assemblies
             .SelectMany(ass => ass.GetTypes())

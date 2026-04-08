@@ -27,7 +27,7 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
     private readonly HttpClient Http;
     private readonly IRenderState Rendered;
 
-    public event Action<object>? OnMessageReceived;
+    public event Action<object?>? OnMessageReceived;
     public Task ModuleInitialize => _renderTcs.Task;
 
     public BrowserWorker(IJSRuntime _js, HttpClient _http, IRenderState _rendered)
@@ -55,13 +55,14 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
     }
 
     [JSInvokable]
-    public void ReceiveInternal(object data) => OnMessageReceived?.Invoke(data);
+    public void ReceiveInternal(object? data) => OnMessageReceived?.Invoke(data);
 
     public async Task<ServiceWorkerStatus> GetStatusAsync() =>
         await Module!.InvokeAsync<ServiceWorkerStatus>("getStatus");
 
-    public async Task<bool> RegisterAsync(string? _, string scriptUrl) =>
+    public async Task<bool> RegisterAsync(string _, string? a = null, string? scriptUrl = null) =>
         await Module!.InvokeAsync<bool>("register", scriptUrl);
+
 
     public async Task<bool> UnregisterAsync() =>
         await Module!.InvokeAsync<bool>("unregister");
@@ -111,7 +112,7 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
         status = await GetStatusAsync();
         if (!status.IsActive)
         {
-            await RegisterAsync(null, "/service-worker.published.js");
+            await RegisterAsync(string.Empty, null, "/service-worker.published.js");
         }
     }
 
@@ -121,4 +122,5 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
         if (Module != null) await Module.DisposeAsync();
         GC.SuppressFinalize(this);
     }
+
 }

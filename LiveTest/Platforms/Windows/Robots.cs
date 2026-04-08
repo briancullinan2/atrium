@@ -1,6 +1,6 @@
 ﻿namespace LiveTest.Platforms.Windows;
 
 // All the code in this file is only included on Windows.
-public class Robots
+public partial class Robots
 {
 }

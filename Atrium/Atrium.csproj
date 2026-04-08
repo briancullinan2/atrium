@@ -34,11 +34,12 @@
 
     <!-- Display name -->
     <ApplicationTitle>Atrium</ApplicationTitle>
+    <ApplicationId>com.atrium.desktop</ApplicationId>
+	<Authors>Brian Cullinan</Authors>
+	  <Product>Atrium</Product>
+	  <Company>Atrium</Company>
 
-    <!-- App Identifier -->
-    <ApplicationId>com.companyname.atrium</ApplicationId>
-
-    <!-- Versions -->
+	  <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
@@ -54,6 +55,9 @@
 	  <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
 		<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
 	  <RuntimeIdentifier Condition="$(TargetFramework.Contains('-windows'))">win-x64</RuntimeIdentifier>
+	  <PackageCertificateThumbprint>94B89D853E13C43243CD6FE22C185EE81FD0AA1E</PackageCertificateThumbprint>
+	  <PackageCertificateKeyFile>Atrium_TemporaryKey.pfx</PackageCertificateKeyFile>
+	  <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
 	
   <ItemGroup>
@@ -105,6 +109,7 @@
 	</ItemGroup>
 
 	<PropertyGroup Condition="$(TargetFramework) == 'net10.0'">
+		<OutputType>WinExe</OutputType>
 		<StartupObject>Atrium.WinUI.App</StartupObject>
 	</PropertyGroup>
 

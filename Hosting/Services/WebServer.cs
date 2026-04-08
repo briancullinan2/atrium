@@ -22,39 +22,7 @@ public class WebServer
     private static readonly WebApplication _private = StartWebServer([]);
     public static WebApplication Current => _private;
     public static IServiceProvider Services => _private.Services;
-#endif
 
-    public static void BuildSharedServiceList(IServiceCollection Services)
-    {
-
-        SharedRegistry.BuildSharedServiceList(Services);
-
-#if !BROWSER
-        // add ourselves
-        //Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
-
-        //Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
-
-        // TODO: make this optional for server only service mode
-        //Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
-#endif
-
-
-        Services.AddSingleton(sp => new HttpClient
-        {
-            BaseAddress = new Uri("https://0.0.0.1")
-        });
-
-
-#if !BROWSER
-        Services.AddBlazorWebViewDeveloperTools();
-        // Inject the server instance into MAUI's DI
-        ServerAuthService.BuildAuthentication(Services);
-#endif
-
-    }
-
-#if !BROWSER
 
     public static WebApplication StartWebServer(string[] args)
     {
@@ -86,7 +54,18 @@ public class WebServer
             });
 
 
-            BuildSharedServiceList(webBuilder.Services);
+            webBuilder.Services.AddSingleton(sp => new HttpClient
+            {
+                BaseAddress = new Uri("https://0.0.0.1")
+            });
+
+
+#if !BROWSER
+            webBuilder.Services.AddBlazorWebViewDeveloperTools();
+            // Inject the server instance into MAUI's DI
+            ServerAuthService.BuildAuthentication(webBuilder.Services);
+#endif
+            SharedRegistry.BuildSharedServiceList(webBuilder.Services);
 
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
@@ -140,9 +119,6 @@ public class WebServer
                     });
             });
 
-
-            webBuilder.Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(Current));
-            webBuilder.Services.AddKeyedSingleton<Lazy<WebApplication?>>("webserver", (sp, _) => new Lazy<WebApplication?>(Current));
 
             var webApp = webBuilder.Build();
 

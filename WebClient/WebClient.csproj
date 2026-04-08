@@ -12,6 +12,11 @@
 	  <BlazorEnableCompression>false</BlazorEnableCompression>
 	  <WasmDebugLevel>1</WasmDebugLevel>
 	  <RunAOTCompilation>false</RunAOTCompilation>
+	  <ApplicationTitle>Atrium</ApplicationTitle>
+	  <ApplicationId>com.atrium.desktop</ApplicationId>
+	  <Authors>Brian Cullinan</Authors>
+	  <Product>Atrium</Product>
+	  <Company>Atrium</Company>
   </PropertyGroup>
 	
 	

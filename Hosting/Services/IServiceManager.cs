@@ -16,7 +16,7 @@ public interface IServiceWorkerService
     bool IsReady { get; }
     Task InitializeAsync();
     Task<ServiceWorkerStatus> GetStatusAsync();
-    Task<bool> RegisterAsync(string? scheme, string scriptUrl);
+    Task<bool> RegisterAsync(string serviceName, string? displayName = null, string? appPath = null);
 
     // Lifecycle
     Task<bool> UnregisterAsync();
@@ -28,5 +28,5 @@ public interface IServiceWorkerService
     Task<long?> GetVersionAsync();
     Task ForceSyncVersionAsync(string versionUrl);
 
-    event Action<object>? OnMessageReceived;
+    event Action<object?>? OnMessageReceived;
 }

@@ -6,7 +6,12 @@ namespace Hosting.Services;
 
 
 
-public partial class FileManager(IQueryManager Query, ICircuitProvider Circuit) : IFileManager
+public partial class FileManager(
+    IQueryManager Query, ICircuitProvider Circuit
+#if BROWSER
+    , HttpClient Http
+#endif
+) : IFileManager
 {
     public event Action<object?>? OnFileUploaded;
     public event Action<bool>? OnFileDragging;

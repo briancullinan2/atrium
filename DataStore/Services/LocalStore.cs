@@ -9,9 +9,9 @@ public class LocalStore : ILocalStore
 {
 
     private readonly IRenderState Rendered;
-    private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool NeedsInitialize { get; protected set; } = true;
 
+    private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
     public LocalStore(IRenderState _rendered)

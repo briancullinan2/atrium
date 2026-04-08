@@ -1,7 +1,26 @@
 ﻿@inject NavigationManager Nav
-@inject IAuthService AuthService
 @inject IRenderState Rendered
+@inject IServiceProvider Service
 
+@*what the fuck is this?*@
+@if (AuthService == null)
+{
+    <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
+        <Found Context="routeData">
+            @*TODO: make HasPermission log the access violations anyways?*@
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            @* DO NOT leave this empty or put complex logic here yet *@
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+                <NotFoundControl />
+            </LayoutView>
+        </NotFound>
+    </Router>
+}
+else
+{
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
         <Found Context="routeData">
@@ -18,11 +37,15 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+}
+
 
 @code
 {
+    protected IAuthService? FirstAuthService = null;
+    protected IAuthService? AuthService { get => FirstAuthService ??= Service.GetService<IAuthService>(); }
 
-    protected AuthenticationState? State { get; set; }
+    protected AuthenticationState? State { get; set; } = null;
 
     public void Dispose()
     {
@@ -32,12 +55,15 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        if(AuthService != null)
+            NotifyReload();
         Rendered.OnEmptied += NotifyReload;
     }
 
     public void NotifyReload()
     {
-        _ = AuthService.GetAuthenticationStateAsync()
+        FirstAuthService = null;
+        _ = AuthService?.GetAuthenticationStateAsync()
         .Then(async state =>
         {
             State = state;
@@ -45,11 +71,4 @@
         });
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-
-        State = await AuthService.GetAuthenticationStateAsync();
-        await InvokeAsync(StateHasChanged);
-    }
 }

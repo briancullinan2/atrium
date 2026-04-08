@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
-
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
-
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-
+		<TargetFrameworks>net10.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
+		<ApplicationTitle>Atrium</ApplicationTitle>
+		<ApplicationId>com.atrium.desktop</ApplicationId>
+		<Authors>Brian Cullinan</Authors>
+		<Product>Atrium</Product>
+		<Company>Atrium</Company>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -5,6 +5,11 @@
 		<Nullable>enable</Nullable>
 		<WasmFingerprintAssets>false</WasmFingerprintAssets>
 		<ImplicitUsings>disable</ImplicitUsings>
+		<ApplicationTitle>Atrium</ApplicationTitle>
+		<ApplicationId>com.atrium.desktop</ApplicationId>
+		<Authors>Brian Cullinan</Authors>
+		<Product>Atrium</Product>
+		<Company>Atrium</Company>
 	</PropertyGroup>
 
 	<ItemGroup>

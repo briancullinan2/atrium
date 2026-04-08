@@ -204,7 +204,7 @@ public static partial class TypeExtensions
         => [.. typeof(T).Routes()];
 
     public static List<MethodInfo> Routes(this Type sharing)
-        => [.. sharing.GetMethods(null).Where(m => m.IsRoutable())];
+        => [.. sharing.GetMethods(null).Where(m => ((MemberInfo)m).IsRoutable())];
 
 
 

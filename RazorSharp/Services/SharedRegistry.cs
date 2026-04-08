@@ -13,33 +13,63 @@ public static class SharedRegistry
 
         AllTranslations = [..assemblies
         .SelectMany(ass => ass.GetTypes())
-            .Where(t => t.Extends(typeof(ITranslationContext)))
+            .Where(t => t != typeof(object) && t.Extends(typeof(ITranslationContext)))
             ];
 
     }
 
 
-    public static void BuildSharedServiceList(IServiceCollection Services)
+    public static void BuildSharedServiceList(IServiceCollection Services, string? key = null)
     {
         Services.AddCascadingValue(sp => new ErrorBoundary());
 
         // LOL i was going to look at all "service" names and namespaces, then try to find other constructors they
         //   are used in, and if its at least one that should be a good list, automatically scoped unless it's routable?
         // FUCK DI
+        var concrete = TypeExtensions.AllServices.Where(s => s.IsConcrete()).ToList();
+        var interfaces = TypeExtensions.AllServices
+            .Where(s => s.IsInterface)
+            .Select(i => i.Name)
+            .ToList();
 
-        foreach (var service in TypeExtensions.AllServices)
+        var servicable = concrete
+            .Where(c => c.GetInterfaces()
+                .Select(i => i.Name)
+                .Intersect(interfaces) // Finds names present in both lists
+                .Any())                // Returns true if the intersection isn't empty
+            .ToList();
+
+        foreach (var service in servicable)
         {
-            Services.AddScoped(service, service);
-            if(service.BaseType != null && service.BaseType != typeof(object))
-                Services.AddScoped(service.BaseType, service);
-            foreach (var inter in service.GetInterfaces())
+            if (key != null)
             {
-                Services.AddScoped(inter, sp => sp.GetRequiredService(service));
+                Services.AddKeyedScoped(service, key, service);
+                if (service.BaseType != null && service.BaseType != typeof(object))
+                    Services.AddKeyedScoped(service.BaseType, key, service);
+                foreach (var inter in service.GetInterfaces())
+                {
+                    Services.AddKeyedScoped(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
+                }
+            }
+            else
+            {
+                Services.AddScoped(service, service);
+                if (service.BaseType != null && service.BaseType != typeof(object))
+                    Services.AddScoped(service.BaseType, service);
+                foreach (var inter in service.GetInterfaces())
+                {
+                    Services.AddScoped(inter, sp => sp.GetRequiredService(service));
+                }
             }
         }
 
-        Services.AddAuthorizationCore();
-        Services.AddCascadingAuthenticationState();
+        var hasAuth = servicable.Any(t => t.Extends(typeof(IAuthService)));
+
+        if (hasAuth)
+        {
+            Services.AddAuthorizationCore();
+            Services.AddCascadingAuthenticationState();
+        }
 
         BuildSharedDatabases(Services);
 
@@ -55,19 +85,20 @@ public static class SharedRegistry
 
     public static void BuildSharedDatabases(IServiceCollection Services)
     {
-        foreach (var translationType in AllTranslations)
+        var concrete = AllTranslations.Where(t => t.IsConcrete()).ToList();
+        foreach (var translationType in concrete)
         {
             // 1. Find the AddDbContextFactory method via reflection
             var method = typeof(EntityFrameworkServiceCollectionExtensions)
-                .GetMethods()
-                .First(m => m.Name == nameof(EntityFrameworkServiceCollectionExtensions.AddDbContextFactory)
-                       && m.GetParameters().Length == 2); // Looking for (IServiceCollection, Action<DbContextOptionsBuilder>)
+                .GetMethods(nameof(EntityFrameworkServiceCollectionExtensions.AddDbContextFactory), 1)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException("Could not render AddDbContextFactory method");
 
             // 2. Turn AddDbContextFactory<T> into AddDbContextFactory<YourDynamicType>
             var genericMethod = method.MakeGenericMethod(translationType);
 
             // 3. Invoke it: Services.AddDbContextFactory<translationType>(options => ...)
-            genericMethod.Invoke(null, new object?[] { Services, null });
+            genericMethod.Invoke(null, [ Services, null, ServiceLifetime.Singleton ]);
 
             // 4. Register the Scoped DbContext using the Factory
             // We need to construct the IDbContextFactory<T> type dynamically
@@ -82,4 +113,25 @@ public static class SharedRegistry
         }
     }
 
+    public static void AddLazyScoped(this IServiceCollection services, Type serviceType, Type implementationType, string? key = null)
+    {
+        var lazyType = typeof(Lazy<>).MakeGenericType(serviceType);
+        if (key != null)
+        {
+            services.AddKeyedScoped(lazyType, key, (sp, key) =>
+            {
+                Func<object?> factory = () => sp.GetKeyedService(implementationType, key);
+                return Activator.CreateInstance(lazyType, factory)!;
+            });
+        }
+        else
+        {
+            services.AddScoped(lazyType, sp =>
+            {
+                Func<object?> factory = () => sp.GetService(implementationType);
+                return Activator.CreateInstance(lazyType, factory)!;
+            });
+        }
+
+    }
 }

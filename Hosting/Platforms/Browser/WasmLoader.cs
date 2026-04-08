@@ -1,5 +1,7 @@
 ﻿using System.Runtime.InteropServices.JavaScript;
 
+namespace Hosting.Platforms.Browser;
+
 public partial class QuakeEngine
 {
     // Directly import the JS function that initializes the WASM

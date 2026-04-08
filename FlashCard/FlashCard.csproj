@@ -1,10 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-	  <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
+	  <TargetFrameworks>net10.0</TargetFrameworks>
 	  <Nullable>enable</Nullable>
 	  <ImplicitUsings>disable</ImplicitUsings>
 	  <WasmFingerprintAssets>false</WasmFingerprintAssets>
+	  <ApplicationTitle>Atrium</ApplicationTitle>
+	  <ApplicationId>com.atrium.desktop</ApplicationId>
+	  <Authors>Brian Cullinan</Authors>
+	  <Product>Atrium</Product>
+	  <Company>Atrium</Company>
   </PropertyGroup>
 	
 	<PropertyGroup>

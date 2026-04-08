@@ -1,6 +1,6 @@
-﻿namespace LiveTest.Platforms.Windows;
+﻿namespace LiveTest.Platforms.MacCatalyst;
 
 // All the code in this file is only included on Windows.
-public class PlatformClass1
+public partial class PlatformClass1
 {
 }

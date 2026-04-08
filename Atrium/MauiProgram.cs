@@ -4,6 +4,7 @@
 using DataShared.ForeignEntity;
 using DataStore.Services;
 using Interfacing.Services;
+using RazorSharp.Services;
 
 namespace Atrium;
 
@@ -43,6 +44,11 @@ public class MauiProgram : IHasService<MauiApp>
         builder.Services.AddBlazorWebViewDeveloperTools();
         //builder.Logging.AddDebug();
 #endif
+#if !BROWSER
+        // Inject the server instance into MAUI's DI
+        //ServerAuthService.BuildAuthentication(builder.Services);
+#endif
+        SharedRegistry.BuildSharedServiceList(builder.Services);
 
 #if WINDOWS
         // start the web server
@@ -55,9 +61,6 @@ public class MauiProgram : IHasService<MauiApp>
         //builder.Services.AddSingleton<SimpleLogger>();
 #endif
 
-
-        builder.Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
-        builder.Services.AddKeyedSingleton<Lazy<MauiApp?>>("desktop", (sp, _) => new Lazy<MauiApp?>(Current));
 
         var mauiApp = builder.Build();
 
