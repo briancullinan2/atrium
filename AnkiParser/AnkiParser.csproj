@@ -11,9 +11,18 @@
         <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.*-*" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
 	    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
-	    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" />
       </ItemGroup>
-	
+
+	<ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' != 'true'">
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" ExcludeAssets="all" />
+		<PackageReference Include="SQLitePCLRaw.provider.sqlite3" Version="3.0.*-*" />
+	</ItemGroup>
+
+
 	<ItemGroup Condition="'$(PublishTrimmed)' == 'true'">
 		<TrimmerRootAssembly Include="Microsoft.EntityFrameworkCore" />
 		<TrimmerRootAssembly Include="Microsoft.EntityFrameworkCore.Sqlite" />

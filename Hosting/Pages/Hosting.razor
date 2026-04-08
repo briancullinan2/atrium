@@ -96,7 +96,6 @@
     {
         Instance = this;
         Services = ServiceProvider;
-        MenuService?.SetMenu(@<Hosting.Pages.Shared.Hosting />);
         _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
         _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3);
     }

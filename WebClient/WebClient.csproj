@@ -30,6 +30,21 @@
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*-*" />
   </ItemGroup>
 
+	<ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' != 'true'">
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" ExcludeAssets="all" />
+		<PackageReference Include="SQLitePCLRaw.provider.sqlite3" Version="3.0.*-*" />
+	</ItemGroup>
+	
+  <ItemGroup>
+    <ProjectReference Include="..\DataShared\DataShared.csproj" />
+    <ProjectReference Include="..\DataStore\DataStore.csproj" />
+    <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+  </ItemGroup>
+
 	<ItemGroup>
 	  <Content Update="wwwroot\service-worker-static.js">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>

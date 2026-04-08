@@ -68,7 +68,10 @@ public partial class CircuitProvider : ICircuitProvider
 
         var multiPartContent = new MultipartFormDataContent();
 
-        var url = methodInfo.Route() + "?" + string.Join("&", parameters?.Where(p => p != null && p.GetType().IsSimple()).Select(p => $"{p.GetType().Name.ToLower()}={Uri.EscapeDataString(p.ToString() ?? "")}") ?? []);
+        // serialize primitives in the url string
+        var url = methodInfo.Route() + "?" + string.Join("&", parameters?
+            .Where(p => p != null && p.GetType().IsSimple())
+            .Select(p => $"{p!.GetType().Name.ToLower()}={Uri.EscapeDataString(p.ToString() ?? "")}") ?? []);
 
         var methodParameters = methodInfo is MethodInfo method ? method.GetParameters()
             : methodInfo is PropertyInfo property ? property.GetIndexParameters()
@@ -114,14 +117,22 @@ public partial class CircuitProvider : ICircuitProvider
         if(isPost)
         {
             var result = await Http.PostAsync(route, multiPartContent);
+            var task = result.Content.ReadFromJsonAsync<TResult>();
+            return await task;
         }
         else
         {
             var result = await Http.GetFromJsonAsync<TResult>(route);
+            return result;
         }
         // TODO: add fun serialization
+        /*
+        var debouncedTyped = typeof(CircuitProvider).GetMethod(nameof(CircuitProvider.ExecuteAsyncDebounced))
+            ?.MakeGenericMethod((methodInfo as MethodInfo)?.ReturnType)
+            ?? throw new InvalidOperationException("Couldn't render ExecuteAsyncDebounced for: " + methodInfo);
 
-
+        debouncedTyped.Invoke(this, [ methodInfo.Name, parameters ]);
+        */
         // TODO: put special file upload handlers, and expression serializer in here automatically
         // TODO: use InvokeService extension but add named parameters from IFormFactor.QueryParameters context
     }
@@ -143,10 +154,21 @@ public partial class CircuitProvider : ICircuitProvider
 
 
 #if !BROWSER
-    public static async Task OnExecuteAsync(HttpContext context, IFileManager FileManager, ICircuitProvider Circuit, IFormFactor Form)
+    public static async Task OnExecuteAsync(
+        HttpContext context, 
+        IFileManager FileManager, 
+        ICircuitProvider Circuit, 
+        IFormFactor Form,
+        IServiceProvider Service)
     {
         try
         {
+            var method = context.Request.Path.Value;
+            var potentialType = TypeExtensions.AllRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
+            var methodInfo = TypeExtensions.AllRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
+                ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
+            var type = methodInfo.DeclaringType ?? throw new InvalidOperationException("Method has no declaring type: " + method);
+
 
             var first = true;
 
@@ -171,7 +193,13 @@ public partial class CircuitProvider : ICircuitProvider
             }
 
             // TODO:
-            return await TaskExtensions.Debounce(service.ExecuteAsyncDebounced<, TResult>, service.DefaultTTL, method, parameters);
+            var debouncedTyped = typeof(CircuitProvider).GetMethod(nameof(CircuitProvider.ExecuteAsyncDebounced))
+                ?.MakeGenericMethod(methodInfo.ReturnType)
+                ?? throw new InvalidOperationException("Couldn't render ExecuteAsyncDebounced for: " + methodInfo);
+
+            return await TaskExtensions.Debounce((method, parameters) 
+                => debouncedTyped.Invoke(Circuit, [method, parameters]), 
+                Circuit.DefaultTTL, method, parameters);
         }
         catch (Exception ex)
         {

@@ -9,11 +9,22 @@
 @code {
     private List<INavMenuItem> HeaderLinks = new()
     {
-        new NavMenuItem<Pages.Admin.Hosting>() { Title = "Hosting", Icon = "bi-hdd-network" },
-        new NavMenuItem<Pages.Content.Marshal>() { Title = "Marshalling", Icon = "bi-database-lock" },
-        new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
-        new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "bi-exclamation-triangle" }
+        new NavMenuItem<Pages.Hosting>() { Title = "Hosting", Icon = "bi-hdd-network" },
     };
+    
+    public static Delegate ShowContext
+    {
+        get => (Type routeControl) => routeControl == typeof(Pages.Hosting);
+    }
+
+    public static Delegate ContextInsert
+    {
+        get => (Func<RenderFragment>)(() => __builder =>
+        {
+            __builder.OpenComponent<Pages.Shared.Hosting>(0);
+            __builder.CloseComponent();
+        });
+    }
 
 }
 

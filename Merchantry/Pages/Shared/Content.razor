@@ -1,6 +1,6 @@
 @implements IHasContext
 
-@foreach (var item in HeaderLinks)
+@foreach (var item in HeaderLinks ?? [])
 {
     <NavLink class="header-link" href="@item.Href" Match="NavLinkMatch.All">
         <i class="bi @item.Icon" aria-hidden="true"></i>
@@ -9,23 +9,36 @@
 }
 
 @code {
-    private List<INavMenuItem> HeaderLinks = new()
-    {
-        new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
-        new NavMenuItem<Pages.Content.Analysis>() { Title = "Analysis", Icon = "bi-search-heart" },
-        new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
-        new NavMenuItem<Pages.Content.Merchant>() { Title = "Merchant Tools", Icon = "bi-shop" },
-        new NavMenuItem<Pages.Content.Recovery>() { Title = "Recovery", Icon = "bi-life-preserver" }
-    };
+    [Parameter] public bool Short { get; set; }
 
-    public static Delegate ShowContext { get => (Type routeControl) 
-        => routeControl == typeof(Pages.Content.Analysis); }
-    
+    private List<INavMenuItem>? HeaderLinks;
+
+    protected override void OnInitialized()
+    {
+        HeaderLinks = Short ? new()
+        {
+            new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
+            new NavMenuItem<Pages.Content.Analysis>() { Title = "Analysis", Icon = "bi-search-heart" },
+            new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
+            new NavMenuItem<Pages.Content.Merchant>() { Title = "Merchant Tools", Icon = "bi-shop" },
+            new NavMenuItem<Pages.Content.Recovery>() { Title = "Recovery", Icon = "bi-life-preserver" }
+        } : new()
+        {
+            new NavMenuItem<Pages.Content.Analytics>() { Title = "Marshalling", Icon = "bi-database-lock" },
+            new NavMenuItem<Pages.Content.Analysis>() { Title = "Backups", Icon = "bi-device-hdd" },
+        };
+    }
+
+    public static Delegate ShowContext { get => (Type routeControl, NavigationManager Nav) 
+        => routeControl == typeof(Pages.Content.Analysis)
+        || Nav.Uri.Contains("/hosting", StringComparison.InvariantCultureIgnoreCase); }
+        
     public static Delegate ContextInsert
     {
-        get => (Func<RenderFragment>)(() => __builder =>
+        get => (Func<NavigationManager, RenderFragment>)((NavigationManager Nav) => __builder =>
         {
             __builder.OpenComponent<Pages.Shared.Content>(0);
+            __builder.AddAttribute(1, "Short", Nav.Uri.Contains("/hosting", StringComparison.InvariantCultureIgnoreCase));
             __builder.CloseComponent();
         });
     }
