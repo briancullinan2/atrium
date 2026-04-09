@@ -2,11 +2,9 @@
 using log4net;
 #endif
 
-using RazorSharp.Services;
-
 namespace Atrium.Logging;
 
-internal class Log : Log.ILog
+internal class Log : Interfacing.Services.Log.ILog
 {
 #if WINDOWS
     // Use a ConcurrentDictionary to cache loggers for performance
@@ -34,7 +32,7 @@ internal class Log : Log.ILog
         WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
     }
 
-    Action<object, Exception?> ILog.this[string level]
+    Action<object, Exception?> Interfacing.Services.Log.ILog.this[string level]
     {
         get => GetLogger(Filepath ?? Category ?? string.Empty)[level];
         set => GetLogger(Filepath ?? Category ?? string.Empty)[level] = value;
@@ -83,15 +81,15 @@ internal class Log : Log.ILog
 
     // the main project links down, and the LostLogger links up to here
 
-    public static SimpleLogger GetLogger(string filePath)
+    public static Interfacing.Services.Log GetLogger(string filePath)
     {
         // Extracts the class name from the file path to use as the category
         string category = Path.GetFileNameWithoutExtension(filePath);
 #if WINDOWS
         var logger = _loggerCache.GetOrAdd(category, LogManager.GetLogger);
-        var simple = SimpleLogger.GetLogger(filePath, typeof(log4net.ILog), logger);
+        var simple = Interfacing.Services.Log.GetLogger(filePath, typeof(log4net.ILog), logger);
 #else
-        var simple = SimpleLogger.GetLogger(filePath);
+        var simple = Interfacing.Services.Log.GetLogger(filePath);
 #endif
         if (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
         {

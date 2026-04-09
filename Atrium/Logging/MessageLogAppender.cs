@@ -3,7 +3,6 @@ using log4net.Appender;
 using log4net.Core;
 using log4net.Util;
 #endif
-using RazorSharp.Services;
 
 
 namespace Atrium.Logging;
@@ -68,14 +67,14 @@ public class MessageLogAppender
     {
         try
         {
-            if (loggingEvent.ExceptionObject != null)
+            /*if (loggingEvent.ExceptionObject != null)
             {
                 _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), loggingEvent.ExceptionObject.Message, loggingEvent.ExceptionObject);
             }
             else
             {
                 _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage) ?? string.Empty, loggingEvent.ExceptionObject);
-            }
+            }*/
 
         }
         catch (Exception ex)

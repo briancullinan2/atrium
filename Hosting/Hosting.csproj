@@ -11,8 +11,9 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<Product>Atrium</Product>
-		<Company>Atrium</Company>
+		<Company>Brian Cullinan</Company>
 		<Authors>Brian Cullinan</Authors>
+		<Publisher>Brian Cullinan</Publisher>
 	</PropertyGroup>
 	
 	<ItemGroup>

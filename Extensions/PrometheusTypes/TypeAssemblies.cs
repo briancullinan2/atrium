@@ -1,8 +1,4 @@
-﻿using System.IO.Pipelines;
-using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-
+﻿
 namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
@@ -23,17 +19,24 @@ public static partial class TypeExtensions
 
     public static bool MineOnly { get; } = true;
 
-    public static string? GetProduct(this Assembly entry) => entry.GetCustomAttribute<AssemblyProductAttribute>()
-        ?.Product;
-    public static string? GetPackage(this Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
-        ?.Where(attr => attr.Key.Contains("PackageName")).FirstOrDefault()?.Value;
-    public static string? GetPublisher(this Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
-        ?.Where(attr => attr.Key.Contains("PublisherName")).FirstOrDefault()?.Value;
-    public static string? GetCompany(this Assembly entry) =>
-        entry.GetCustomAttributes<AssemblyCompanyAttribute>()
-        ?.FirstOrDefault()?.Company
+    public static string? GetProduct(this Assembly entry)
+        => entry.GetCustomAttribute<AssemblyProductAttribute>()?.Product
+        ?? entry.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
+
+    public static string? GetPackage(this Assembly entry)
+        => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+        ?.FirstOrDefault(attr => attr.Key == "PackageName" || attr.Key == "PackageId")?.Value
+        ?? entry.GetName().Name; // Fallback to the actual DLL name
+
+    public static string? GetPublisher(this Assembly entry)
+        => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+        ?.FirstOrDefault(attr => attr.Key == "PublisherName" || attr.Key == "Authors" || attr.Key == "Owner")?.Value
+        ?? entry.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company;
+
+    public static string? GetCompany(this Assembly entry)
+        => entry.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company
         ?? entry.GetCustomAttributes<AssemblyMetadataAttribute>()
-        ?.Where(attr => attr.Key.Contains("CompanyName")).FirstOrDefault()?.Value;
+        ?.FirstOrDefault(attr => attr.Key == "CompanyName" || attr.Key == "Organization")?.Value;
 
 
     public static IEnumerable<Assembly> GetMine(this IEnumerable<Assembly> asses)
@@ -64,44 +67,6 @@ public static partial class TypeExtensions
         })];
     }
 
-    /*
-    private static (string Name, string Value) DecodeAttribute(MetadataReader mr, CustomAttribute attr)
-    {
-        string name = "";
-        if (attr.Constructor.Kind == HandleKind.MemberReference)
-        {
-            var mrf = mr.GetMemberReference((MemberReferenceHandle)attr.Constructor);
-            var tr = mr.GetTypeReference((TypeReferenceHandle)mrf.Parent);
-            name = mr.GetString(tr.Name);
-        }
-
-        var reader = mr.GetBlobReader(attr.Value);
-
-        // Attributes start with a 0x0001 prolog
-        if (reader.Length < 4 || reader.ReadUInt16() != 1) return (name, "");
-
-        string val = "";
-        try
-        {
-            // Step 1: Read the compressed length of the first string
-            int len = reader.ReadCompressedInteger();
-            val = reader.ReadSerializedString() ?? string.Empty; // This is the helper for the actual data
-
-            if (name == "AssemblyMetadataAttribute")
-            {
-                // Step 2: Read the second string (the Value in the Key/Value pair)
-                // Note: We don't need to manually read the length for ReadSerializedString
-                // as it handles the compressed integer internally.
-                string key = val;
-                string data = reader.ReadSerializedString() ?? string.Empty;
-                val = $"{key}|{data}";
-            }
-        }
-        catch {  }
-
-        return (name, val);
-    }
-    */
 
 
     public static bool IsMine(this Assembly ass)
@@ -159,33 +124,6 @@ public static partial class TypeExtensions
         return entry?.Assembly.GetAssemblyInfo() ?? new AssemblyInfo(null, null, null, null);
     }
 
-    /*
-    public static AssemblyInfo GetAssemblyInfo(this MetadataReader? mr)
-    {
-        if(mr == null) return new AssemblyInfo(null, null, null, null);
-
-        string? product = null, company = null, publisher = null, package = null;
-
-        foreach (var handle in mr.CustomAttributes)
-        {
-            var attr = mr.GetCustomAttribute(handle);
-            var (name, value) = DecodeAttribute(mr, attr);
-
-            switch (name)
-            {
-                case "AssemblyProductAttribute": product = value; break;
-                case "AssemblyCompanyAttribute": company = value; break;
-                case "AssemblyMetadataAttribute":
-                    // Value for MetadataAttribute is "Key|Value"
-                    if (value.StartsWith("PublisherName|")) publisher = value.Split('|')[1];
-                    if (value.StartsWith("PackageName|")) package = value.Split('|')[1];
-                    if (value.StartsWith("CompanyName|") && company == null) company = value.Split('|')[1];
-                    break;
-            }
-        }
-        return new AssemblyInfo(product, company, publisher, package);
-    }
-    */
 
     public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
     {
@@ -293,7 +231,7 @@ public static partial class TypeExtensions
             ];
 
         AllRoutable = [.._allKnownTypes
-            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any())
+            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes().Any(a => a.GetType().Name.Contains("Route")))
             ];
 
         AllRoutes = [.._registeredAssemblies

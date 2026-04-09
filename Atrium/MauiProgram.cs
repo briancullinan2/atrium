@@ -1,10 +1,7 @@
 ﻿//#if DEBUG
 //using Microsoft.Extensions.Logging;
 //#endif
-using DataShared.ForeignEntity;
-using DataStore.Services;
 using Interfacing.Services;
-using RazorSharp.Services;
 
 namespace Atrium;
 
@@ -34,8 +31,8 @@ public class MauiProgram : IHasService<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-        builder.Services.AddSingleton<ILocalStore, LocalStore>();
-        builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
+        //builder.Services.AddSingleton<ILocalStore, LocalStore>();
+        //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
@@ -47,7 +44,7 @@ public class MauiProgram : IHasService<MauiApp>
         // Inject the server instance into MAUI's DI
         //ServerAuthService.BuildAuthentication(builder.Services);
 #endif
-        SharedRegistry.BuildSharedServiceList(builder.Services);
+        //SharedRegistry.BuildSharedServiceList(builder.Services);
 
 #if WINDOWS
         // get shared circuit state from web server

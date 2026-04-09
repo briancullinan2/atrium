@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Extensions.SlenderServices;
+namespace Interfacing.Services;
 
 public class Log : Log.ILog
 {
@@ -14,6 +14,7 @@ public class Log : Log.ILog
 
     public interface ILog
     {
+        //static abstract Log GetLogger(string filePath, Type levels, object? replacement = null);
         static abstract Log GetLogger(string filePath);
         Action<object, Exception?> this[string level] { get; set; }
         string? Filepath { get; set; }
@@ -73,18 +74,23 @@ public class Log : Log.ILog
 
     public static Log GetLogger(string filePath)
     {
-        // Extracts the class name from the file path to use as the category
-        string category = Path.GetFileNameWithoutExtension(filePath);
         var parentLogger = (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType)
             ? WrappedLogger?.Invoke(null, [filePath])
             : throw new InvalidOperationException("Logger not implemented.")) ?? throw new InvalidOperationException("Logger not working.");
+        return GetLogger(filePath, typeof(ILog), parentLogger);
+    }
+
+    public static Log GetLogger(string filePath, Type levels, object? replacement = null)
+    {
+        // Extracts the class name from the file path to use as the category
+        string category = Path.GetFileNameWithoutExtension(filePath);
         var simpleLogger = new Log
         {
             Category = category,
             Filepath = filePath,             // TODO: [System.Runtime.CompilerServices.IndexerName("Levels")]
                                              // lookup [DefaultMember("Item")]
-            MappedLevels = parentLogger.GetType().GetProperty("Item"),
-            WrappedInstance = parentLogger
+            MappedLevels = (replacement?.GetType() ?? levels).GetProperty("Item"),
+            WrappedInstance = replacement
         };
         return simpleLogger;
     }

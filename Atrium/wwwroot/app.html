@@ -5,6 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Atrium</title>
     <base href="/" />
+    <style>
+        html, body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            padding: 0;
+            margin: 0;
+            max-width: 100%;
+            /* TODO: look up cross platform system backups font-family: Verdana, Geneva, Tahoma, sans-serif; */
+            drag-drop-zone: none; /* Non-standard, but some engines respect it */
+            -webkit-user-drag: none;
+            height: 100%;
+            line-height: 1.6em;
+        }
+
+        .page {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+            height: 100%;
+        }
+
+        main {
+            flex: 1;
+            max-width: 100%;
+            min-width: 200px;
+            padding: 0;
+            overflow: hidden;
+            min-height: 100%;
+            min-height: calc(100vh - 3.5rem);
+        }
+
+        .cover-page {
+            display: flex;
+            text-align: center;
+            z-index: 1000;
+            width: 100%;
+            height: calc(100vh);
+            background: white;
+            transition: opacity ease-in-out 0.5s;
+        }
+
+            .cover-page .content {
+                height: calc(100vh - 3.5rem);
+                align-items: center;
+                display: flex;
+                justify-content: center;
+            }
+
+            .cover-page.loaded {
+                opacity: 0;
+            }
+
+            .cover-page svg {
+                max-width: 50%;
+                max-height: 50%;
+            }
+
+        #app {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+
+    <!--
     <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/_content/RazorSharp/css/app.css" />
     <link rel="stylesheet" href="/_content/RazorSharp/css/layout.css" />
@@ -15,7 +79,6 @@
     <link rel="stylesheet" href="/_content/RazorSharp/css/forms.css" />
     <link rel="stylesheet" href="/_content/RazorSharp/css/console.css" />
     <link rel="stylesheet" href="/_content/RazorSharp/css/card.css" />
-    <!--
     TODO:
     <link rel="stylesheet" href="/_content/FlashCard/css/study.css" />
     <link rel="stylesheet" href="/_content/FlashCard/css/timeline.css" />

@@ -10,14 +10,13 @@ public interface IPageManager : IAsyncDisposable
     void ClearRedirect();
 
 
-    Task SetState(IComponent? state);
-    Task<Dictionary<string, string?>?> RestoreState(IComponent component);
+    Task SetState(object? state);
+    Task<Dictionary<string, string?>?> RestoreState(object component);
     Task SetError(Exception? error);
-    Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services);
 
     // page data handling instead of built in MS uninspectable crap
     Dictionary<string, string?> State { get; set; }
-    event Action<IComponent?>? OnStateChanged;
+    event Action<object?>? OnStateChanged;
     event Action<Exception?>? OnErrorChanged;
 
     // page events
@@ -46,8 +45,7 @@ public interface IPageManager : IAsyncDisposable
     ValueTask Clipboard(string text);
 
     Task EnsureModuleLoaded();
-    Task ModuleInitialize { get; }
-    IJSObjectReference Module { get; }
+
 
     void OnFocused(bool focused);
     void OnScrolled(string id, bool atBottom);
@@ -70,7 +68,6 @@ public interface IPageManager : IAsyncDisposable
     string? Sidebar { get; }
     ValueTask InitializeBackground(string mode, string canvas);
 
-    IJSRuntime Runtime { get; }
 
     Task Redirect(string url);
 }

@@ -1,6 +1,4 @@
-﻿using Interfacing.Services;
-using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Components.Web;
+﻿
 
 namespace Interfacing.Services;
 
@@ -8,14 +6,14 @@ public static partial class PageExtensions
 {
     
 
-    public static async Task TurnOnStudyMode(this IPageManager Page, MouseEventArgs _)
+    public static async Task TurnOnStudyMode(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Study, true);
 
-    public static async Task TurnOffStudyMode(this IPageManager Page, MouseEventArgs _)
+    public static async Task TurnOffStudyMode(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Study, false);
 
 
-    public static async Task ToggleStudyMode(this IPageManager Page, MouseEventArgs _)
+    public static async Task ToggleStudyMode(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Study, !Page.ClassNames.Contains("study-mode"));
 
 
@@ -26,14 +24,14 @@ public static partial class PageExtensions
         });
 
 
-    public static async Task TriggerAppStop(this IPageManager Page, MouseEventArgs _)
+    public static async Task TriggerAppStop(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.StopApp);
 
 
     public static async Task ScrollToElement(this IPageManager Page, string elementId)
         => await Page.TriggerEvent(PageAction.Scroll, new { Id = elementId });
 
-    public static async Task ReconnectSocket(this IPageManager Page, MouseEventArgs _)
+    public static async Task ReconnectSocket(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Reconnect, null);
 
     public static async Task SetPageVisibility(this IPageManager Page, bool isVisible)
@@ -47,15 +45,15 @@ public static partial class PageExtensions
         => await Page.TriggerEvent(PageAction.RemoveCard, cardId);
 
     // Step Navigation
-    public static async Task StepNext(this IPageManager Page, MouseEventArgs _)
+    public static async Task StepNext(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.NextStep, null);
 
-    public static async Task StepBack(this IPageManager Page, MouseEventArgs _)
+    public static async Task StepBack(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.PreviousStep, null);
 
 
 
-    public static async Task TriggerSave(this IPageManager Page, MouseEventArgs _)
+    public static async Task TriggerSave(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Save, DateTime.Now);
 
     public static async Task ToggleMenu(this IPageManager Page, string menuKey)
@@ -71,7 +69,7 @@ public static partial class PageExtensions
         => await Page.TriggerEvent(PageAction.Copy, text);
 
 
-    public static async Task LogoutUser(this IPageManager Page, MouseEventArgs _)
+    public static async Task LogoutUser(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Login, false);
 
     public static async Task GrantPermission(this IPageManager Page, Guid userId, string permission)
@@ -87,11 +85,11 @@ public static partial class PageExtensions
     public static async Task AddFormParameter(this IPageManager Page, string key, object value)
         => await Page.TriggerEvent(PageAction.AddParameter, new { Key = key, Value = value });
 
-    public static async Task ExecuteForm(this IPageManager Page, MouseEventArgs _)
+    public static async Task ExecuteForm(this IPageManager Page, EventArgs _)
         => await Page.TriggerEvent(PageAction.Execute, null);
 
 
-    public static async Task Upload(this IPageManager Page, InputFileChangeEventArgs args)
+    public static async Task Upload(this IPageManager Page, EventArgs args)
         => await Page.TriggerEvent(PageAction.Upload, args);
 
 }

@@ -55,12 +55,12 @@ public class LoginService : ILoginService, IDisposable
     public void Dispose()
     {
         Rendered.OnEmptied -= NotifyEmptied;
-        Auth.AuthenticationStateChanged -= OnAuthStateChanged;
+        Auth.OnAuthChanged -= OnAuthStateChanged;
         GC.SuppressFinalize(this);
     }
 
 
-    private void OnAuthStateChanged(Task<AuthenticationState> task) => _ = SynchronizeUserAsync();
+    private void OnAuthStateChanged(Task<ClaimsPrincipal?> task) => _ = SynchronizeUserAsync();
 
 
     public Task ModuleInitialize => _restartRequired.Task;
@@ -71,8 +71,7 @@ public class LoginService : ILoginService, IDisposable
 
     private async Task SynchronizeUserAsync()
     {
-        var state = await Auth.GetAuthenticationStateAsync();
-        var principal = state.User;
+        var principal = await Auth.GetUserClaimsAsync();
 
         if (principal.Identity?.IsAuthenticated == true)
         {
@@ -125,7 +124,7 @@ public class LoginService : ILoginService, IDisposable
         Rendered = _rendered;
         Auth = _auth;
         Query = _query;
-        Auth.AuthenticationStateChanged += OnAuthStateChanged;
+        Auth.OnAuthChanged += OnAuthStateChanged;
         Rendered.OnEmptied += NotifyEmptied;
         // first time is static so really first time
         if (!FirstTime) return;

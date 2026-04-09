@@ -5,19 +5,19 @@ namespace Interfacing.Services;
 public interface IRenderState
 {
     bool IsRendered { get; }
-    IJSRuntime Runtime { get; }
+    object Runtime { get; }
     event Action OnRendered;
     event Action OnEmptied;
     void NotifyEmptied();
-    void NotifyRendered(IJSRuntime Runtime);
+    void NotifyRendered(object Runtime);
     Task WaitForRender { get; }
 }
 
 public class RenderStateProvider : IRenderState
 {
 
-    private IJSRuntime? _runtime = null;
-    public IJSRuntime Runtime
+    private object? _runtime = null;
+    public object Runtime
     {
         get
         {
@@ -55,7 +55,7 @@ public class RenderStateProvider : IRenderState
 
     public bool IsRendered => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
-    public void NotifyRendered(IJSRuntime runtime)
+    public void NotifyRendered(object runtime)
     {
         Runtime = runtime;
         // Fulfill the promise for everyone currently waiting

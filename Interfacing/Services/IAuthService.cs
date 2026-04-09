@@ -1,10 +1,11 @@
-﻿namespace Interfacing.Services;
+﻿
+namespace Interfacing.Services;
 
 public interface IAuthService
 {
     Task MarkUserAsAuthenticated(ClaimsPrincipal user);
-    event AuthenticationStateChangedHandler? AuthenticationStateChanged;
-    Task<AuthenticationState> GetAuthenticationStateAsync();
+    event Action<Task<ClaimsPrincipal?>> OnAuthChanged;
+    Task<ClaimsPrincipal> GetUserClaimsAsync();
     Task<JsonDocument?> GetFreshUserInfo(AuthID providerId, string accessToken);
     Task<string?> TryResponseToken();
 }

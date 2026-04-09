@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Extensions.PlayfulPlatforms.Windows;
+namespace Atrium.Platforms.Windows;
 
 internal static partial class WinTrust
 {

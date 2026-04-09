@@ -115,10 +115,7 @@
 
 
 	<ItemGroup>
-	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
-	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
 	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
-	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
