@@ -45,25 +45,29 @@ public class TrustedLoader : ITrustProvider
     }
 
 
-    public static bool VerifyStrongName(string filePath, string? thumbprint = null)
+    public static AssemblyName? VerifyStrongName(string filePath, string? thumbprint = null)
     {
-        if (!File.Exists(filePath)) return false;
+        if (!File.Exists(filePath)) return null;
 
         try
         {
             var name = AssemblyName.GetAssemblyName(filePath);
             var token = name.GetPublicKeyToken();
 
-            if (token == null || token.Length == 0) return false;
+            if (token == null || token.Length == 0) return null;
 
-            if(thumbprint != null)
-                return string.Equals(Convert.ToHexString(token), thumbprint, StringComparison.InvariantCultureIgnoreCase);
-            return Whitelist.Contains(Convert.ToHexString(token));
+            if(thumbprint != null
+                && string.Equals(Convert.ToHexString(token), thumbprint, StringComparison.InvariantCultureIgnoreCase))
+                return name;
+
+            if (Whitelist.Contains(Convert.ToHexString(token)))
+                return name;
+            return null;
         }
         catch
         {
             // Likely a native DLL or corrupt file
-            return false;
+            return null;
         }
     }
 
@@ -86,17 +90,26 @@ public class TrustedLoader : ITrustProvider
 
     public async Task<AssemblyInfo?> GetAssemblyInfoAsync(string filePath, string? expectedPublicKeyToken = null)
     {
+        AssemblyInfo? meta = null;
         var level = LevelOfTrust.Meta;
 
-        if (VerifyStrongName(filePath, expectedPublicKeyToken))
+        if (VerifyStrongName(filePath, expectedPublicKeyToken) is AssemblyName name)
+        {
+            meta = new AssemblyInfo(
+                "Not Loaded",
+                null,
+                null,
+                name.Name,
+                LevelOfTrust.Published
+                );
             level = LevelOfTrust.Published;
+        }
         else
             return null;
 
 
-        AssemblyInfo? meta = null;
         if (TypeExtensions.AllAssemblies
-            .FirstOrDefault(a => string.Equals(a.Location, filePath, StringComparison.InvariantCultureIgnoreCase))
+            .FirstOrDefault(a => string.Equals(a.Location ?? System.AppContext.BaseDirectory, filePath, StringComparison.InvariantCultureIgnoreCase))
             is Assembly ass)
             meta = new AssemblyInfo(
                 ass.GetProduct(),

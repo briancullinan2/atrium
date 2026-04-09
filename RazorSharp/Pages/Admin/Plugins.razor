@@ -7,53 +7,78 @@
 
 <div class="flash-card animate-in">
 
-    <p>Status: @(IsBootstrapping ? "Scanning Assemblies..." : "Ready")</p>
+    <p>Status: @(IsBootstrapping ? ("Scanning Assemblies... " + Scanning) : "Ready")</p>
 
-    <div class="grid">
-        <div>Name</div>
-        <div>Package / Publisher</div>
-        <div>Path</div>
-        <div>Status</div>
-        <div>Enable</div>
-        @foreach (var plugin in DiscoveredStatus ?? [])
-        {
-            <div class="name-col">
-                <strong>@plugin.Title</strong>
-                <span class="product-tag">@plugin.Metadata.Product</span>
-            </div>
-
-            <div class="meta-col">
-                <small>Pkg: @plugin.Metadata.Package</small><br />
-                <small>Pub: @plugin.Metadata.Publisher</small>
-            </div>
-
-            <div class="path-col">
-                <code>@plugin.InstallPath</code>
-            </div>
-
-            <div class="status-col">
-                @if (plugin.IsTrusted)
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Package</th>
+                <th>Path</th>
+                <th>Status</th>
+                <th>Enable</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                @foreach (var plugin in DiscoveredStatus ?? [])
                 {
-                    <span class="status-icon trusted" title="Signed & Verified">🛡️</span>
-                }
-                else
-                {
-                    <span class="status-icon untrusted" title="Unknown Origin">⚠️</span>
-                }
-            </div>
+                    <td class="name-col">
+                        <strong>@plugin.Title</strong>
+                        <span class="product-tag">@plugin.Metadata.Company</span>
+                    </td>
 
-            <div class="enable-col">
-                <label class="switch">
-                    <input type="checkbox" @checked="plugin.IsActive" />
-                    <span class="slider"></span>
-                </label>
-            </div>
-        }
-    </div>
+                    <td class="meta-col">
+                        <small>Pkg: @plugin.Metadata.Package</small><br />
+                        <small>Pub: @plugin.Metadata.Publisher</small>
+                    </td>
+
+                    <td class="path-col">
+                        <code>@plugin.InstallPath</code>
+                    </td>
+
+                    <td class="status-col">
+                        @switch (plugin.Metadata.TrustLevel)
+                        {
+                            case LevelOfTrust.Full: // System / Internal
+                                <i class="bi bi-gem" title="System Core Component"></i>
+                                break;
+                            case LevelOfTrust.Trusted: // Signed but Third Party
+                                <i class="bi bi-scroll" title="Digitally Trusted"></i>
+                                break;
+                            case LevelOfTrust.Verified: // Fully Verified / Partner
+                                <i class="bi bi-shield-check" title="Verified Publisher"></i>
+                                break;
+                            case LevelOfTrust.Mine: 
+                            case LevelOfTrust.Signed: // Community / Unsigned
+                                <i class="bi bi-people" title="Community Contributed"></i>
+                                break;
+                            case LevelOfTrust.Published: // Local / Dev Mode
+                                <i class="bi bi-tools" title="Local Development Build"></i>
+                                break;
+                            case LevelOfTrust.None:
+                            case LevelOfTrust.Meta: // Unknown / Danger
+                            default:
+                                <i class="bi bi-exclamation-triangle" title="Unknown Origin"></i>
+                                break;
+                        }
+                    </td>
+
+                    <td class="enable-col">
+                        <label class="switch">
+                            <input type="checkbox" @checked="plugin.IsActive" />
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                }
+            </tr>
+        </tbody>
+    </table>
 </div>
 
+
 @code {
-    public static bool IsBootstrapping { get; } = true;
+    public static bool IsBootstrapping { get; set; } = true;
 
     public static Dictionary<Type, string>? DiscoveredPlugins { get; }
     public static Dictionary<Type, string>? DiscoveredTrust { get; }
@@ -73,6 +98,7 @@
     {
         base.OnInitialized();
         if (IsStaticRender) return;
+        DiscoveredStatus.Clear();
         _ = CheckStatus();
         _ = CheckPluginFiles();
     }
@@ -82,30 +108,6 @@
     .Where(t => t.Extends(typeof(IHasPlugins)))];
 
     public static List<Type> EnabledPlugins = new();
-
-    // TODO: check for non-installed but available plugins and add them to the list with a different status
-    protected async Task CheckPluginFiles()
-    {
-        var plugins = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
-        foreach (var file in plugins)
-        {
-            if (file.Contains("Hosting"))
-                System.Console.WriteLine("goddamnit");
-
-            var metadata = await Trust.GetAssemblyInfoAsync(file);
-
-            if (metadata == null)
-                continue;
-
-            DiscoveredStatus.Add(new PluginContract(
-                    Title: metadata.Product ?? System.IO.Path.GetFileNameWithoutExtension(file),
-                    InstallPath: file,
-                    IsTrusted: (int)metadata.TrustLevel > 2 || metadata.IsMine(),
-                    Metadata: metadata,
-                    IsActive: false
-                ));
-        }
-    }
 
 
     public async Task CheckStatus()
@@ -142,5 +144,72 @@
         return enabledPlugins;
     }
 
+    public static bool IsLoading { get; private set; } = false;
 
+    private async Task RunFullScan()
+    {
+        if (IsLoading) return;
+
+        IsLoading = true;
+        DiscoveredStatus.Clear();
+        StateHasChanged();
+
+        // Offload the heavy file IO to a background thread to keep UI snappy
+        await Task.Run(async () =>
+        {
+            var fileTask = CheckPluginFiles();
+            var statusTask = CheckStatus();
+
+            await Task.WhenAll(fileTask, statusTask);
+        });
+
+        IsLoading = false;
+        StateHasChanged();
+    }
+
+
+    private static string[]? PluginFiles { get; set; } = null;
+    private string? Scanning = null;
+
+    protected async Task DebounceFilename(string? file)
+    {
+        Scanning = file;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected async Task CheckPluginFiles()
+    {
+        // TODO: refresh button
+        PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
+
+        // Process files in parallel batches to speed up metadata extraction
+        await Parallel.ForEachAsync(PluginFiles, async (file, ct) =>
+        {
+            _ = TaskExtensions.Debounce<string>(DebounceFilename, 50, file);
+
+            var metadata = await Trust.GetAssemblyInfoAsync(file);
+            if (metadata == null) return;
+
+            var contract = new PluginContract(
+                Title: metadata.Product ?? System.IO.Path.GetFileNameWithoutExtension(file),
+                InstallPath: file,
+                IsTrusted: (int)metadata.TrustLevel > 2 || metadata.IsMine(),
+                Metadata: metadata,
+                IsActive: false
+            );
+
+            // Thread-safe update to the UI list
+            lock (DiscoveredStatus)
+            {
+                DiscoveredStatus.Add(contract);
+            }
+
+            // Tell the UI to refresh as each item arrives
+            await InvokeAsync(StateHasChanged);
+        });
+        
+        IsBootstrapping = false;
+        await InvokeAsync(StateHasChanged);
+
+    }
 }

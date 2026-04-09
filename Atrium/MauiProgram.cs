@@ -24,7 +24,7 @@ public class MauiProgram : IHasService<MauiApp>
         if (args.Any(a => a.StartsWith("app://")))
         {
             string protocolData = args.First(a => a.StartsWith("app://"));
-            // Handle deep link / configuration inject here
+            // TODO: Handle deep link / configuration inject here
         }
 
         builder
@@ -34,16 +34,15 @@ public class MauiProgram : IHasService<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-
-        //BuildSharedServiceList(builder.Services);
-
         builder.Services.AddSingleton<ILocalStore, LocalStore>();
         builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         //builder.Logging.AddDebug();
+        //builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
+
 #if !BROWSER
         // Inject the server instance into MAUI's DI
         //ServerAuthService.BuildAuthentication(builder.Services);
@@ -51,10 +50,6 @@ public class MauiProgram : IHasService<MauiApp>
         SharedRegistry.BuildSharedServiceList(builder.Services);
 
 #if WINDOWS
-        // start the web server
-        // TODO: this is what i convert IHasService to do
-        //builder.Services.AddSingleton<WebApplication>(sp => AtriumWebServer.Current);
-        
         // get shared circuit state from web server
         //builder.Services.AddSingleton<CircuitHandler>(sp => AtriumWebServer.Current.Services.GetRequiredService<CircuitHandler>());
         // get a shared logger
@@ -72,10 +67,7 @@ public class MauiProgram : IHasService<MauiApp>
         {
             (mauiApp.Services.GetService(typeof(IFileManager)) as dynamic)?.InitializeWndProc(h);
         });
-        // start the web server
-        //_ = mauiApp.Services.GetRequiredService<WebApplication>();
 #endif
-        //_ = mauiApp.Services.GetRequiredService<SimpleLogger>();
 
 
         return mauiApp;
