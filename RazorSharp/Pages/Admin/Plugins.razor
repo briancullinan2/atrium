@@ -1,0 +1,121 @@
+@page "/plugins"
+@using System.Reflection
+@using static Extensions.PrometheusTypes.TypeExtensions
+@inject IServiceProvider Sp
+
+<div class="plugin-container animate-in">
+    <h1>System Components</h1>
+    <p>Status: @(IsBootstrapping ? "Scanning Assemblies..." : "Ready")</p>
+
+    <div class="grid">
+        <div>Name</div>
+        <div>Package / Publisher</div>
+        <div>Path</div>
+        <div>Status</div>
+        <div>Enable</div>
+        @foreach (var plugin in DiscoveredStatus ?? [])
+        {
+            <div class="name-col">
+                <strong>@plugin.Title</strong>
+                <span class="product-tag">@plugin.Metadata.Product</span>
+            </div>
+
+            @* 2. Metadata Column *@
+            <div class="meta-col">
+                <small>Pkg: @plugin.Metadata.Package</small><br />
+                <small>Pub: @plugin.Metadata.Publisher</small>
+            </div>
+
+            @* 3. Path Column *@
+            <div class="path-col">
+                <code>@plugin.InstallPath</code>
+            </div>
+
+            @* 4. Status (Integrity) Column *@
+            <div class="status-col">
+                @if (plugin.IsTrusted)
+                {
+                    <span class="status-icon trusted" title="Signed & Verified">🛡️</span>
+                }
+                else
+                {
+                    <span class="status-icon untrusted" title="Unknown Origin">⚠️</span>
+                }
+            </div>
+
+            @* 5. Enable Column *@
+            <div class="enable-col">
+                <label class="switch">
+                    <input type="checkbox" @checked="plugin.IsActive" />
+                    <span class="slider"></span>
+                </label>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    public static bool IsBootstrapping { get; } = true;
+
+    public static Dictionary<Type, string>? DiscoveredPlugins { get; }
+    public static Dictionary<Type, string>? DiscoveredTrust { get; }
+    public static List<PluginContract> DiscoveredStatus { get; } = new();
+
+    public record PluginContract(
+        string Title,
+        string InstallPath,
+        bool IsTrusted,
+        AssemblyInfo Metadata,
+        bool IsActive);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _ = CheckStatus();
+    }
+
+    public static List<Type> AllPlugins = [..TypeExtensions.AllRegisteredTypes
+        .GetMine()
+        .Where(t => t.Extends(typeof(IHasPlugins)))];
+
+    public static List<Type> EnabledPlugins = new();
+
+    public async Task CheckStatus()
+    {
+        EnabledPlugins ??= await GetEnabledPlugins(Sp);
+        foreach (var plugin in EnabledPlugins)
+        {
+            DiscoveredStatus.Add(new PluginContract(
+                        Title: plugin.Name,
+                        InstallPath: plugin.Assembly.Location,
+                        IsTrusted: false, //metadata?.IsTrusted ?? false,
+                        Metadata: plugin.GetAssemblyInfo(),
+                        IsActive: false // TODO: check if enabled
+                    ));
+        }
+
+        // TODO: check for non-installed but available plugins and add them to the list with a different status
+
+
+    }
+
+    // TODO: use this on service startup? way to bootstrap another container?
+    public static async Task<List<Type>> GetEnabledPlugins(IServiceProvider service)
+    {
+        List<Type> enabledPlugins = new();
+        foreach(var plugin in AllPlugins)
+        {
+            var myDelegate = plugin.GetProperties(nameof(IHasPlugins.Installed)).First().GetValue(null) as Delegate;
+            if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(Task<string?>)) != true)
+                throw new InvalidOperationException("IHasPlugins.Installed delegate must return a Task<string?> with the name of the setting it used to check if its installed or not" + myDelegate?.Method);
+            var result = myDelegate.InvokeService(service);
+            if(result is Task task) await task;
+            if ((result as dynamic)?.Result != null)
+                enabledPlugins.Add(plugin);
+        }
+        return enabledPlugins;
+    }
+
+
+}

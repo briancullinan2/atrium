@@ -6,16 +6,23 @@ namespace RazorSharp.Services;
 public static class SharedRegistry
 {
     public static List<Type> AllTranslations { get; }
+    public static List<Type> AllServices { get; private set; }
 
     static SharedRegistry()
     {
-        var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+        TypeExtensions.RegisterAssembly(Assembly.GetCallingAssembly());
 
-        AllTranslations = [..assemblies
-        .SelectMany(ass => ass.GetTypes())
-        .Except([typeof(object)])
-        .Where(typeof(ITranslationContext).Extends)
+        AllTranslations = [..TypeExtensions.AllRegisteredTypes
+            .Except([typeof(object)])
+            .Where(typeof(ITranslationContext).Extends)
         ];
+
+        // LOL i was going to look at all "service" names and namespaces, then try to find other constructors they
+        //   are used in, and if its at least one that should be a good list, automatically scoped unless it's routable?
+        // FUCK DI
+        AllServices = [..TypeExtensions.AllRegisteredTypes
+            .GetMine()
+            .GetServicable()];
 
     }
 
@@ -24,15 +31,7 @@ public static class SharedRegistry
     {
         Services.AddCascadingValue(sp => new ErrorBoundary());
 
-        // LOL i was going to look at all "service" names and namespaces, then try to find other constructors they
-        //   are used in, and if its at least one that should be a good list, automatically scoped unless it's routable?
-        // FUCK DI
-        var servicable = Assembly.GetCallingAssembly()
-            .GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-            .GetMine()
-            .GetServicable();
-
-        foreach (var service in servicable)
+        foreach (var service in AllServices)
         {
             if (key != null)
             {
@@ -56,7 +55,7 @@ public static class SharedRegistry
             }
         }
 
-        var hasAuth = servicable.Any(t => t.Extends(typeof(IAuthService)));
+        var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));
 
         if (hasAuth)
         {

@@ -2,12 +2,8 @@
 
 @attribute [Display(Name = "System Status", ShortName = "Status", GroupName = "Administration", Prompt = "bi-exclamation-triangle")]
 
-@inject IMenuService MenuService
-@inject HttpClient HttpClient
-@inject IHostingService StatusService
-@inject ICircuitProvider Provider
+@inject IServiceProvider Provider
 
-<SyncedTitle Title="System Status"></SyncedTitle>
 <div class="flash-card">
 
 
@@ -52,11 +48,13 @@
     protected override void OnInitialized()
     {
         // Define the contextual menu for THIS page
-        _ = CheckStatus();
+        //_ = CheckStatus();
     }
 
     private async Task CheckStatus()
     {
+        var StatusService = Provider.GetRequiredService<IHostingService>();
+        var Circuit = Provider.GetRequiredService<ICircuitProvider>();
         try
         {
 
@@ -77,7 +75,7 @@
 
 
             var route = StatusService.GetType().GetMethods(nameof(IHostingService.CheckStatus)).Route();
-            var result = await Provider.InvokeAsync<StatusResponse>(route);
+            var result = await Circuit.InvokeAsync<StatusResponse>(route);
 
             if (StatusResponse.ItWorks?[0] == token)
             {

@@ -1,4 +1,9 @@
-﻿namespace Extensions.PrometheusTypes;
+﻿using System.IO.Pipelines;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+
+namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
 {
@@ -7,6 +12,8 @@ public static partial class TypeExtensions
     private static readonly ConcurrentBag<Type> _allKnownTypes = [];
     private static readonly HashSet<string> _loadedAssemblies = [];
     private static readonly Lock _loaderLock = new();
+
+    public static List<Type> AllRegisteredTypes { get => [.. _allKnownTypes]; }
 
     public static List<Type> AllRoutableInterfaces { get; }
 
@@ -28,33 +35,150 @@ public static partial class TypeExtensions
         ?? entry.GetCustomAttributes<AssemblyMetadataAttribute>()
         ?.Where(attr => attr.Key.Contains("CompanyName")).FirstOrDefault()?.Value;
 
+
     public static IEnumerable<Assembly> GetMine(this IEnumerable<Assembly> asses)
     {
-        var entry = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        var entryDirectory = Path.GetDirectoryName(entry.Location);
+        foreach (var ass in asses)
+        {
+            if (!ass.IsMine()) continue;
+        
+            yield return ass;
+        }
+    }
+
+
+    //public static List<Assembly> GetMine(this IEnumerable<Type> asses)
+    //{
+    //    return [.. asses.Where(a => a.Assembly.IsMine()).Select(a => a.Assembly)];
+    //}
+    public static List<Type> GetMine(this IEnumerable<Type> asses)
+    {
+        HashSet<Assembly> mine = [.. asses.Select(a => a.Assembly).Distinct().Where(s => s.IsMine())];
+        return [..asses.Where(t => mine.Contains(t.Assembly))];
+    }
+
+
+    private static (string Name, string Value) DecodeAttribute(MetadataReader mr, CustomAttribute attr)
+    {
+        string name = "";
+        if (attr.Constructor.Kind == HandleKind.MemberReference)
+        {
+            var mrf = mr.GetMemberReference((MemberReferenceHandle)attr.Constructor);
+            var tr = mr.GetTypeReference((TypeReferenceHandle)mrf.Parent);
+            name = mr.GetString(tr.Name);
+        }
+
+        var reader = mr.GetBlobReader(attr.Value);
+
+        // Attributes start with a 0x0001 prolog
+        if (reader.Length < 4 || reader.ReadUInt16() != 1) return (name, "");
+
+        string val = "";
+        try
+        {
+            // Step 1: Read the compressed length of the first string
+            int len = reader.ReadCompressedInteger();
+            val = reader.ReadSerializedString() ?? string.Empty; // This is the helper for the actual data
+
+            if (name == "AssemblyMetadataAttribute")
+            {
+                // Step 2: Read the second string (the Value in the Key/Value pair)
+                // Note: We don't need to manually read the length for ReadSerializedString
+                // as it handles the compressed integer internally.
+                string key = val;
+                string data = reader.ReadSerializedString() ?? string.Empty;
+                val = $"{key}|{data}";
+            }
+        }
+        catch { /* Not a standard string attribute or empty blob */ }
+
+        return (name, val);
+    }
+
+
+
+    public static bool IsMine(this Assembly ass)
+    {
+
+        if (entryDirectory == null) return false;
+
+        if (!string.Equals(ass.Location[..Math.Min(entryDirectory.Length, ass.Location.Length)],
+                        entryDirectory, StringComparison.InvariantCultureIgnoreCase)) return false;
+
+        if ((product != null && string.Equals(product, GetProduct(ass), StringComparison.InvariantCultureIgnoreCase))
+
+            || (package != null && string.Equals(package, GetPackage(ass), StringComparison.InvariantCultureIgnoreCase))
+
+            || (publisher != null && string.Equals(publisher, GetPublisher(ass), StringComparison.InvariantCultureIgnoreCase))
+
+            || (company != null && string.Equals(company, GetCompany(ass), StringComparison.InvariantCultureIgnoreCase))
+        )
+            return true;
+
+        return false;
+    }
+
+    public static bool IsMine(this AssemblyInfo ass)
+    {
+
+        if (entryDirectory == null) return false;
+
+
+        if ((product != null && string.Equals(product, ass.Product, StringComparison.InvariantCultureIgnoreCase))
+
+            || (package != null && string.Equals(package, ass.Package, StringComparison.InvariantCultureIgnoreCase))
+
+            || (publisher != null && string.Equals(publisher, ass.Publisher, StringComparison.InvariantCultureIgnoreCase))
+
+            || (company != null && string.Equals(company, ass.Company, StringComparison.InvariantCultureIgnoreCase))
+        ) return true;
+
+        return false;
+
+    }
+
+    public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package);
+
+    public static AssemblyInfo GetAssemblyInfo(this Assembly? entry)
+    {
+        if(entry == null) return new AssemblyInfo(null, null, null, null);
         var product = GetProduct(entry);
         var package = GetPackage(entry);
         var publisher = GetPublisher(entry);
         var company = GetCompany(entry);
+        return new AssemblyInfo(product, company, publisher, package);
+    }
 
-        if (entryDirectory == null) yield break;
+    public static AssemblyInfo GetAssemblyInfo(this Type? entry)
+    {
+        return entry?.Assembly.GetAssemblyInfo() ?? new AssemblyInfo(null, null, null, null);
+    }
 
-        foreach (var ass in asses)
+    public static AssemblyInfo GetAssemblyInfo(this MetadataReader? mr)
+    {
+
+        if(mr == null) return new AssemblyInfo(null, null, null, null);
+
+        string? product = null, company = null, publisher = null, package = null;
+
+        foreach (var handle in mr.CustomAttributes)
         {
-            if (!string.Equals(ass.Location[..Math.Min(entryDirectory.Length, ass.Location.Length)],
-                        entryDirectory, StringComparison.InvariantCultureIgnoreCase)) continue;
+            var attr = mr.GetCustomAttribute(handle);
+            var (name, value) = DecodeAttribute(mr, attr);
 
-            if ((product != null && string.Equals(product, GetProduct(ass), StringComparison.InvariantCultureIgnoreCase))
-
-                || (package != null && string.Equals(package, GetPackage(ass), StringComparison.InvariantCultureIgnoreCase))
-
-                || (publisher != null && string.Equals(publisher, GetPublisher(ass), StringComparison.InvariantCultureIgnoreCase))
-
-                || (company != null && string.Equals(company, GetCompany(ass), StringComparison.InvariantCultureIgnoreCase))
-            )
-        
-            yield return ass;
+            switch (name)
+            {
+                case "AssemblyProductAttribute": product = value; break;
+                case "AssemblyCompanyAttribute": company = value; break;
+                case "AssemblyMetadataAttribute":
+                    // Value for MetadataAttribute is "Key|Value"
+                    if (value.StartsWith("PublisherName|")) publisher = value.Split('|')[1];
+                    if (value.StartsWith("PackageName|")) package = value.Split('|')[1];
+                    if (value.StartsWith("CompanyName|") && company == null) company = value.Split('|')[1];
+                    break;
+            }
         }
+        return new AssemblyInfo(product, company, publisher, package);
     }
 
     public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
@@ -125,31 +249,48 @@ public static partial class TypeExtensions
         return servicesToCache;
     }
 
+    public static List<Type> ToEntities<TEntity>()
+    {
+        List<Assembly> ass = [typeof(TEntity).Assembly, .. typeof(TEntity).Assembly.GetAssemblies()];
+        return ass.ToEntities<TEntity>();
+    }
+
+    public static List<Type> ToEntities<TEntity>(this IEnumerable<Assembly?>? ass)
+    {
+        RegisterAssembly([.. ass ?? []]);
+        return [.._allKnownTypes.Where(t => t.IsClass && !t.IsAbstract
+            && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))
+            ];
+    }
+
 
 
     static TypeExtensions()
     {
-        RegisterAssembly(Assembly.GetExecutingAssembly());
+        RegisterAssembly([
+            Assembly.GetCallingAssembly(), 
+            ..Assembly.GetCallingAssembly().GetAssemblies(), 
+            Assembly.GetEntryAssembly(), 
+            ..Assembly.GetEntryAssembly()?.GetAssemblies() ?? [], 
+            Assembly.GetExecutingAssembly()]);
 
-        // TODO: need a list of servicable types, anything in the namespace Services that has any routes
-        var assemblies = Assembly.GetCallingAssembly().GetAssemblies(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
-        //if (MineOnly)
-        //{
-        //    assemblies = [..assemblies.GetMine()];
-        //}
+        entry ??= Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+        entryDirectory ??= Path.GetDirectoryName(entry.Location);
+        product ??= GetProduct(entry);
+        package ??= GetPackage(entry);
+        publisher ??= GetPublisher(entry);
+        company ??= GetCompany(entry);
 
-        List<Type> connectedTypes = [..assemblies
-            .SelectMany(ass => ass.GetTypes())];
 
-        AllRoutableInterfaces = [..connectedTypes
+        AllRoutableInterfaces = [.._allKnownTypes
             .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.IsInterface)
             ];
 
-        AllRoutable = [..connectedTypes
+        AllRoutable = [.._allKnownTypes
             .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes<RouteAttribute>().Any())
             ];
 
-        AllRoutes = [..assemblies
+        AllRoutes = [.._registeredAssemblies
             .Routes()
             .Distinct()
             ];
@@ -163,13 +304,19 @@ public static partial class TypeExtensions
     }
 
 
-    public static void RegisterAssembly(params Assembly[]? assemblies)
+    public static void RegisterAssembly(params Assembly?[]? assemblies)
     {
+        assemblies = [..(assemblies??[]).Concat(AppDomain.CurrentDomain.GetAssemblies())];
+
         if (assemblies == null) return;
 
         foreach (var assembly in assemblies ?? [])
         {
             if (assembly == null) continue;
+
+            if (!_registeredAssemblies.Contains(assembly))
+                _registeredAssemblies.Add(assembly);
+
             var name = assembly.FullName!;
 
             if (_loadedAssemblies.Contains(name)) continue;
@@ -190,33 +337,29 @@ public static partial class TypeExtensions
     private static readonly ConcurrentDictionary<string, Type?> _pathToTypeCache = new();
 
     private static readonly List<Assembly> _registeredAssemblies = [];
+    private static readonly Assembly entry;
+    private static readonly string? entryDirectory;
+    private static readonly string? product;
+    private static readonly string? package;
+    private static readonly string? company;
+    private static readonly string? publisher;
 
-
-    public static List<Assembly> GetAssemblies(this Assembly assembly, params Assembly[]? calling)
+    public static List<Assembly> GetAssemblies(this Assembly assembly, params Assembly?[]? calling)
     {
-        return GetAssemblies([assembly, .. calling ?? []]);
+        RegisterAssembly([assembly, .. calling ?? []]);
+        return [.. _registeredAssemblies];
     }
 
-    public static List<Assembly> GetAssemblies(this AppDomain domain, params Assembly[]? calling)
+    public static List<Assembly> GetAssemblies(this AppDomain domain, params Assembly?[]? calling)
     {
-        return GetAssemblies([.. domain.GetAssemblies(), .. calling ?? []]);
+        RegisterAssembly([.. domain.GetAssemblies(), .. calling ?? []]);
+        return [.. _registeredAssemblies];
     }
 
 
-    public static List<Assembly> GetAssemblies(params Assembly[]? calling)
+    public static List<Assembly> GetAssemblies(params Assembly?[]? calling)
     {
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies()
-            .Concat(calling ?? [])
-            .Concat([Assembly.GetExecutingAssembly(),  Assembly.GetCallingAssembly(),
-              Assembly.GetEntryAssembly()])
-            .Where(a => a != null)
-            .ToList();
-        foreach (var ass in assemblies)
-        {
-            if (ass == null) continue;
-            if (!_registeredAssemblies.Contains(ass))
-                _registeredAssemblies.Add(ass);
-        }
+        RegisterAssembly(calling);
         return [.. _registeredAssemblies];
     }
 

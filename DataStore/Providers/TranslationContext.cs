@@ -7,17 +7,10 @@ namespace DataStore.Providers;
 // This context never connects to a DB; it just holds your Entity mappings
 public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext, IHasEntityTypes
 {
-    static TranslationContext()
-    {
-        var assemblies = typeof(TEntity).Assembly.GetAssemblies(Assembly.GetCallingAssembly());
-        _cachedTypes = [..assemblies.Distinct().SelectMany(a => a.GetTypes()).Distinct()];
-    }
-    private static readonly List<Type> _cachedTypes;
 
     private static List<Type>? CachedEntities { get; set; }
 
-    public static List<Type> EntityTypes => CachedEntities
-        ??= [.. _cachedTypes.Where(t => t.IsClass && !t.IsAbstract && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))];
+    public static List<Type> EntityTypes => CachedEntities ??= TypeExtensions.ToEntities<TEntity>();
 
     //public List<Type> EntityTypes => TranslationContext<TEntity>.EntityTypes;
 
