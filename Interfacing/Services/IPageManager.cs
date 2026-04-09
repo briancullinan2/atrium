@@ -1,4 +1,5 @@
 ﻿
+using System.Collections;
 using System.Collections.Concurrent;
 
 namespace Interfacing.Services;
@@ -60,7 +61,7 @@ public interface IPageManager : IAsyncDisposable
     bool IsReady { get; }
     int OffsetInMinutes { get; }
     ConcurrentDictionary<string, string?> InFlight { get; }
-    List<string> ClassNames { get; set; }
+    ClassNameCollection ClassNames { get; }
 
     void SetPageClasses(List<string> classes);
     void SetTheme(string? classes);
@@ -73,6 +74,39 @@ public interface IPageManager : IAsyncDisposable
 
     Task Redirect(string url);
 }
+
+public class ClassNameCollection : IEnumerable<string>
+{
+    // 1. The "Manual" list (where you Add/Remove things like "login-mode")
+    private readonly HashSet<string> _manualClasses = [];
+
+    // 2. The "Auto" sources (referenced so they update live)
+    public Func<IEnumerable<string?>>? AutoSources { get; set; }
+
+    public void Add(string className) => _manualClasses.Add(className);
+    public void Remove(string className) => _manualClasses.Remove(className);
+
+    // This is what the UI/HTML uses
+    public override string ToString() => string.Join(" ", this.Distinct());
+
+    public IEnumerator<string> GetEnumerator()
+    {
+        // Yield manual classes
+        foreach (var c in _manualClasses) yield return c;
+
+        // Yield auto classes from the delegate
+        if (AutoSources != null)
+        {
+            foreach (var c in AutoSources().Where(s => !string.IsNullOrWhiteSpace(s)))
+            {
+                yield return c!;
+            }
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
 
 public enum PageAction
 {

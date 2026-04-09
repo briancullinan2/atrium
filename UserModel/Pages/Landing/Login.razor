@@ -129,7 +129,7 @@
         //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
         //MenuService.SetMenu(null);
         //MenuService.SetHeader(false);
-        PageManager.ClassNames.TryAdd("login-mode", "login-mode");
+        PageManager.ClassNames.Add("login-mode");
         LoginService.SetLoginMode(true);
         LoginService.SetUser(null);
         LoginService.OnUserChanged += SetUser;

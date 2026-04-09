@@ -23,13 +23,13 @@ public static partial class TypeExtensions
 
     public static bool MineOnly { get; } = true;
 
-    static string? GetProduct(Assembly entry) => entry.GetCustomAttribute<AssemblyProductAttribute>()
+    public static string? GetProduct(this Assembly entry) => entry.GetCustomAttribute<AssemblyProductAttribute>()
         ?.Product;
-    static string? GetPackage(Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+    public static string? GetPackage(this Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
         ?.Where(attr => attr.Key.Contains("PackageName")).FirstOrDefault()?.Value;
-    static string? GetPublisher(Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
+    public static string? GetPublisher(this Assembly entry) => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
         ?.Where(attr => attr.Key.Contains("PublisherName")).FirstOrDefault()?.Value;
-    static string? GetCompany(Assembly entry) =>
+    public static string? GetCompany(this Assembly entry) =>
         entry.GetCustomAttributes<AssemblyCompanyAttribute>()
         ?.FirstOrDefault()?.Company
         ?? entry.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -47,17 +47,24 @@ public static partial class TypeExtensions
     }
 
 
-    //public static List<Assembly> GetMine(this IEnumerable<Type> asses)
-    //{
-    //    return [.. asses.Where(a => a.Assembly.IsMine()).Select(a => a.Assembly)];
-    //}
-    public static List<Type> GetMine(this IEnumerable<Type> asses)
+    public static List<Type> GetMine(this IEnumerable<Type> types)
     {
-        HashSet<Assembly> mine = [.. asses.Select(a => a.Assembly).Distinct().Where(s => s.IsMine())];
-        return [..asses.Where(t => mine.Contains(t.Assembly))];
+        // Local cache to store results of IsMine() for this execution
+        var checkedAssemblies = new Dictionary<Assembly, bool>();
+
+        return [..types.Where(t =>
+        {
+            var asm = t.Assembly;
+            if (!checkedAssemblies.TryGetValue(asm, out bool isMine))
+            {
+                isMine = asm.IsMine();
+                checkedAssemblies[asm] = isMine;
+            }
+            return isMine;
+        })];
     }
 
-
+    /*
     private static (string Name, string Value) DecodeAttribute(MetadataReader mr, CustomAttribute attr)
     {
         string name = "";
@@ -90,11 +97,11 @@ public static partial class TypeExtensions
                 val = $"{key}|{data}";
             }
         }
-        catch { /* Not a standard string attribute or empty blob */ }
+        catch {  }
 
         return (name, val);
     }
-
+    */
 
 
     public static bool IsMine(this Assembly ass)
@@ -137,8 +144,6 @@ public static partial class TypeExtensions
 
     }
 
-    public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package);
-
     public static AssemblyInfo GetAssemblyInfo(this Assembly? entry)
     {
         if(entry == null) return new AssemblyInfo(null, null, null, null);
@@ -154,9 +159,9 @@ public static partial class TypeExtensions
         return entry?.Assembly.GetAssemblyInfo() ?? new AssemblyInfo(null, null, null, null);
     }
 
+    /*
     public static AssemblyInfo GetAssemblyInfo(this MetadataReader? mr)
     {
-
         if(mr == null) return new AssemblyInfo(null, null, null, null);
 
         string? product = null, company = null, publisher = null, package = null;
@@ -180,6 +185,7 @@ public static partial class TypeExtensions
         }
         return new AssemblyInfo(product, company, publisher, package);
     }
+    */
 
     public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
     {
@@ -337,6 +343,7 @@ public static partial class TypeExtensions
     private static readonly ConcurrentDictionary<string, Type?> _pathToTypeCache = new();
 
     private static readonly List<Assembly> _registeredAssemblies = [];
+    public static List<Assembly> AllAssemblies { get => [.. _registeredAssemblies]; }
     private static readonly Assembly entry;
     private static readonly string? entryDirectory;
     private static readonly string? product;

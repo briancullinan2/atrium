@@ -1,10 +1,12 @@
 @page "/plugins"
-@using System.Reflection
-@using static Extensions.PrometheusTypes.TypeExtensions
 @inject IServiceProvider Sp
+@inject ITrustProvider Trust
 
-<div class="plugin-container animate-in">
-    <h1>System Components</h1>
+@attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
+
+
+<div class="flash-card animate-in">
+
     <p>Status: @(IsBootstrapping ? "Scanning Assemblies..." : "Ready")</p>
 
     <div class="grid">
@@ -20,18 +22,15 @@
                 <span class="product-tag">@plugin.Metadata.Product</span>
             </div>
 
-            @* 2. Metadata Column *@
             <div class="meta-col">
                 <small>Pkg: @plugin.Metadata.Package</small><br />
                 <small>Pub: @plugin.Metadata.Publisher</small>
             </div>
 
-            @* 3. Path Column *@
             <div class="path-col">
                 <code>@plugin.InstallPath</code>
             </div>
 
-            @* 4. Status (Integrity) Column *@
             <div class="status-col">
                 @if (plugin.IsTrusted)
                 {
@@ -43,7 +42,6 @@
                 }
             </div>
 
-            @* 5. Enable Column *@
             <div class="enable-col">
                 <label class="switch">
                     <input type="checkbox" @checked="plugin.IsActive" />
@@ -61,6 +59,9 @@
     public static Dictionary<Type, string>? DiscoveredTrust { get; }
     public static List<PluginContract> DiscoveredStatus { get; } = new();
 
+    [CascadingParameter(Name = "IsStaticRender")]
+    public bool IsStaticRender { get; set; }
+
     public record PluginContract(
         string Title,
         string InstallPath,
@@ -71,14 +72,41 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        if (IsStaticRender) return;
         _ = CheckStatus();
+        _ = CheckPluginFiles();
     }
 
     public static List<Type> AllPlugins = [..TypeExtensions.AllRegisteredTypes
-        .GetMine()
-        .Where(t => t.Extends(typeof(IHasPlugins)))];
+    .GetMine()
+    .Where(t => t.Extends(typeof(IHasPlugins)))];
 
     public static List<Type> EnabledPlugins = new();
+
+    // TODO: check for non-installed but available plugins and add them to the list with a different status
+    protected async Task CheckPluginFiles()
+    {
+        var plugins = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
+        foreach (var file in plugins)
+        {
+            if (file.Contains("Hosting"))
+                System.Console.WriteLine("goddamnit");
+
+            var metadata = await Trust.GetAssemblyInfoAsync(file);
+
+            if (metadata == null)
+                continue;
+
+            DiscoveredStatus.Add(new PluginContract(
+                    Title: metadata.Product ?? System.IO.Path.GetFileNameWithoutExtension(file),
+                    InstallPath: file,
+                    IsTrusted: (int)metadata.TrustLevel > 2 || metadata.IsMine(),
+                    Metadata: metadata,
+                    IsActive: false
+                ));
+        }
+    }
+
 
     public async Task CheckStatus()
     {
@@ -93,9 +121,6 @@
                         IsActive: false // TODO: check if enabled
                     ));
         }
-
-        // TODO: check for non-installed but available plugins and add them to the list with a different status
-
 
     }
 

@@ -57,6 +57,12 @@ a, .btn-link {
     color: #006bb7;
 }
 
+.grid {
+    display: grid;
+    grid-template-columns: 180px repeat(6, 1fr);
+}
+
+
 .content {
     padding-top: 1.1rem;
 }

@@ -1,142 +1,199 @@
 ﻿using Extensions.PlayfulPlatforms.Windows;
 using Extensions.PrometheusTypes;
+using Interfacing.Services;
+using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using static Extensions.PlayfulPlatforms.Windows.WinTrust;
+using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 
-namespace Atrium.Services
+namespace Atrium.Services;
+
+
+public class TrustedLoader : ITrustProvider
 {
+    // GUID for the Action to verify a file using the Authenticode Policy Provider
+    private static readonly Guid WINTRUST_ACTION_GENERIC_VERIFY_V2 = new("{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}");
+    private static readonly string MyThumbprint = "024eb7945944bb29c8fc16b7e83e885cda191fdf";
+    //private static readonly X509Certificate2 cert = X509CertificateLoader.LoadCertificateFromStore(MyThumbprint);
+    private static string HomeDir => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    private static string MyCertificatePath => Path.Combine(HomeDir, ".credentials\\my-code-signing.pfx");
+    private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
+    private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
 
-    public static class TrustedLoader
+    public static bool VerifyDotNet(string filePath, string? expectedPublicKeyToken = null)
     {
-        // GUID for the Action to verify a file using the Authenticode Policy Provider
-        private static readonly Guid WINTRUST_ACTION_GENERIC_VERIFY_V2 = new("{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}");
+        if (!File.Exists(filePath)) return false;
 
-        public static bool VerifyDotNet(string filePath, string expectedPublicKeyToken)
+        expectedPublicKeyToken ??= WINTRUST_ACTION_GENERIC_VERIFY_V2.ToString();
+        
+        try
         {
-            if (!File.Exists(filePath)) return false;
+            var assemblyName = AssemblyName.GetAssemblyName(filePath);
+            byte[]? tokenBytes = assemblyName.GetPublicKeyToken();
+            if (tokenBytes == null) return false;
+            string actualToken = Convert.ToHexString(tokenBytes);
 
-            // 1. Layer One: Strong Name / Identity Check
-            try
-            {
-                var assemblyName = AssemblyName.GetAssemblyName(filePath);
-                byte[]? tokenBytes = assemblyName.GetPublicKeyToken();
-                string actualToken = Convert.ToHexString(tokenBytes);
+            if (!string.Equals(actualToken, expectedPublicKeyToken, StringComparison.OrdinalIgnoreCase))
+                return false; // Not your assembly
 
-                if (!string.Equals(actualToken, expectedPublicKeyToken, StringComparison.OrdinalIgnoreCase))
-                    return false; // Not your assembly
-
-                return true;
-            }
-            catch { return false; } // Not a .NET assembly at all
+            return true;
         }
+        catch { return false; } // Not a .NET assembly at all
+    }
 
 
-        public static bool VerifyStrongName(string filePath, string expectedToken)
+    public static bool VerifyStrongName(string filePath, string? thumbprint = null)
+    {
+        if (!File.Exists(filePath)) return false;
+
+        try
         {
-            if (!File.Exists(filePath)) return false;
+            var name = AssemblyName.GetAssemblyName(filePath);
+            var token = name.GetPublicKeyToken();
 
-            try
-            {
-                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                using var peReader = new PEReader(fs);
+            if (token == null || token.Length == 0) return false;
 
-                // Ensure it's actually a CLI/Managed assembly
-                if (!peReader.HasMetadata) return false;
-
-                var metadataReader = peReader.GetMetadataReader();
-                var assemblyDefinition = metadataReader.GetAssemblyDefinition();
-
-                // Get the public key (if it exists)
-                byte[] publicKey = metadataReader.GetBlobBytes(assemblyDefinition.PublicKey);
-
-                if (publicKey == null || publicKey.Length == 0)
-                    return false; // Assembly is not signed
-
-                // Calculate the token from the full public key
-                byte[] tokenBytes = CalculatePublicKeyToken(publicKey);
-                string actualToken = Convert.ToHexString(tokenBytes);
-
-                return string.Equals(actualToken, expectedToken, StringComparison.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                // Likely a native DLL or corrupt file
-                return false;
-            }
+            if(thumbprint != null)
+                return string.Equals(Convert.ToHexString(token), thumbprint, StringComparison.InvariantCultureIgnoreCase);
+            return Whitelist.Contains(Convert.ToHexString(token));
         }
-
-        private static byte[] CalculatePublicKeyToken(byte[] publicKey)
+        catch
         {
-            // The Public Key Token is the last 8 bytes of the SHA-1 hash 
-            // of the public key, preceded by a specific header if necessary.
-            byte[] hash = System.Security.Cryptography.SHA1.HashData(publicKey);
-
-            byte[] token = new byte[8];
-            for (int i = 0; i < 8; i++)
-            {
-                token[i] = hash[hash.Length - 1 - i];
-            }
-            // Token is typically represented in reverse order of the hash tail
-            Array.Reverse(token);
-            return token;
-        }
-
-
-        public static bool IsTrustedBinary(string filePath, string expectedPublicKeyToken)
-        {
-            // Layer 1: .NET Identity (Works on Windows, macOS, Linux)
-            if (!VerifyStrongName(filePath, expectedPublicKeyToken)) return false;
-
-            if (!VerifyDotNet(filePath, expectedPublicKeyToken)) return false;
-
-
-            // Layer 2: OS-Level Integrity
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return VerifyWindowsSignature(filePath);
-
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                //return VerifyMacSignature(filePath);
-
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                //return VerifyLinuxIntegrity(filePath);
-
+            // Likely a native DLL or corrupt file
             return false;
         }
+    }
 
-        public static bool VerifyWindowsSignature(string filePath)
+    /*
+    public static bool VerifyCertificate(string filePath, string? thumbprint = null)
+    {
+        try
         {
-            Guid actionId = new("{00AAC56B-CD44-11d0-8CC2-00C04FC295EE}");
-
-            var fileInfo = new WinTrustFileInfo(filePath);
-            IntPtr fileInfoPtr = Marshal.AllocHGlobal(Marshal.SizeOf(fileInfo));
-            Marshal.StructureToPtr(fileInfo, fileInfoPtr, false);
-
-            var trustData = new WinTrustData(fileInfoPtr);
-            IntPtr trustDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf(trustData));
-            Marshal.StructureToPtr(trustData, trustDataPtr, false);
-
-            try
-            {
-                uint result = WinTrust.WinVerifyTrust(IntPtr.Zero, actionId, trustDataPtr);
-                return result == 0; // 0 = ERROR_SUCCESS
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(fileInfoPtr);
-                Marshal.FreeHGlobal(trustDataPtr);
-            }
+            
         }
-
-        public static bool IsMine(string filePath)
+        catch
         {
+            // Likely a native DLL or corrupt file
+            return false;
+        }
+    }
+    */
+
+
+
+    public async Task<AssemblyInfo?> GetAssemblyInfoAsync(string filePath, string? expectedPublicKeyToken = null)
+    {
+        var level = LevelOfTrust.Meta;
+
+        if (VerifyStrongName(filePath, expectedPublicKeyToken))
+            level = LevelOfTrust.Published;
+        else
+            return null;
+
+
+        AssemblyInfo? meta = null;
+        if (TypeExtensions.AllAssemblies
+            .FirstOrDefault(a => string.Equals(a.Location, filePath, StringComparison.InvariantCultureIgnoreCase))
+            is Assembly ass)
+            meta = new AssemblyInfo(
+                ass.GetProduct(),
+                ass.GetCompany(),
+                ass.GetPublisher(),
+                ass.GetPackage(),
+                level
+            );
+
+        //if (VerifyCertificate(filePath, expectedPublicKeyToken))
+        //    level = LevelOfTrust.Signed;
+        //else
+        //    return meta;
+
+        if (expectedPublicKeyToken == null)
+            level = LevelOfTrust.Mine;
+
+        //if(meta == null)
+        //    meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
+
+        if (meta == null) return null;
+
+        if (meta.IsMine())
+            level = LevelOfTrust.Mine;
+
+        expectedPublicKeyToken ??= WINTRUST_ACTION_GENERIC_VERIFY_V2.ToString();
+
+
+        /*
+
+        if (VerifyDotNet(filePath, expectedPublicKeyToken))
+            level = LevelOfTrust.Verified;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (VerifyWindowsSignature(filePath, expectedPublicKeyToken))
+                level = LevelOfTrust.Trusted;
+        */
+
+        return new AssemblyInfo(
+            meta.Product,
+            meta.Company,
+            meta.Publisher,
+            meta.Package,
+            level
+        );
+    }
+    
+
+
+
+    public static bool VerifyWindowsSignature(string filePath, string? expectedPublicKeyToken = null)
+    {
+        var fileInfo = new WinTrustFileInfo(filePath);
+        IntPtr fileInfoPtr = Marshal.AllocHGlobal(Marshal.SizeOf(fileInfo));
+        Marshal.StructureToPtr(fileInfo, fileInfoPtr, false);
+
+        var trustData = new WinTrustData(fileInfoPtr);
+        IntPtr trustDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf(trustData));
+        Marshal.StructureToPtr(trustData, trustDataPtr, false);
+
+        expectedPublicKeyToken ??= WINTRUST_ACTION_GENERIC_VERIFY_V2.ToString();
+
+        try
+        {
+            uint result = WinTrust.WinVerifyTrust(IntPtr.Zero, new Guid(expectedPublicKeyToken), trustDataPtr);
+            return result == 0; // 0 = ERROR_SUCCESS
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(fileInfoPtr);
+            Marshal.FreeHGlobal(trustDataPtr);
+        }
+    }
+
+}
+
+/*
+
+public static class MetadataReaderExtensions
+{
+    public static AssemblyInfo? GetAssemblyInfo(string filePath)
+    {
+        try
+        {
+            if (filePath == null) return null;
+            if (File.Exists(filePath) == false) return null;
             using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var peReader = new PEReader(fs);
             var metadataReader = peReader.GetMetadataReader();
 
-            return metadataReader.GetAssemblyInfo().IsMine();
+            return metadataReader.GetAssemblyInfo();
         }
-
+        catch (Exception)
+        {
+            return null;
+        }
     }
 }
+
+*/

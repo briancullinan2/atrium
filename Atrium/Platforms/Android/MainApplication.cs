@@ -8,6 +8,6 @@ public class MainApplication(IntPtr handle, JniHandleOwnership ownership) : Maui
 {
     protected override MauiApp CreateMauiApp()
     {
-        return MauiProgram.CreateMauiApp();
+        return MauiProgram.Current;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using System.Collections;
 
 namespace RazorSharp.Services;
 
@@ -10,16 +11,10 @@ public class PageManager : IPageManager
     #region "Initialization"
     public ConcurrentDictionary<string, string?> InFlight { get; } = [];
 
-    public List<string>? StoredClassNames { get; set; } = null;
-    public List<string> ClassNames { 
-        get => [..(PageClasses ?? [])
-            .Concat([Theme, Sidebar, Background])
-            .Concat(StoredClassNames ?? [])
-            .Where(c => !string.IsNullOrWhiteSpace(c))
-            .OfType<string>()
-            ];
-        set => StoredClassNames = value;
-    }
+    private List<string> GivenClassNames { get; set; } = [];
+    private ClassNameCollection CombinedClassNames { get; } = [];
+    public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [..value]; }
+
 
     public string ContextKey => Form?.ConnectionId ?? string.Empty;
 
@@ -61,6 +56,14 @@ public class PageManager : IPageManager
         Rendered.OnEmptied += NotifyEmptied;
         Rendered.OnRendered += NotifyRendered;
         Nav.LocationChanged += Nav_LocationChanged;
+
+        CombinedClassNames.AutoSources = () => [
+            Theme,
+            Sidebar,
+            Background,
+            .. (PageClasses ?? []),
+            .. GivenClassNames
+        ];
     }
 
     private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -74,8 +77,8 @@ public class PageManager : IPageManager
 
     protected void NotifyEmptied() 
     {
-        StoredClassNames?.Add("cover-page");
-        StoredClassNames?.Add("login-mode");
+        CombinedClassNames?.Add("cover-page");
+        CombinedClassNames?.Add("login-mode");
         if (_restartRequired.Task.IsCompleted)
             _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
@@ -137,10 +140,10 @@ public class PageManager : IPageManager
             _restartRequired.TrySetResult(true);
             await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
             OffsetInMinutes = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
-            //ClassNames.TryRemove("cover-page", out _);
+            ClassNames.Remove("cover-page");
             // let login manager remove login mode?
-            //if (Auth == null)
-            //    ClassNames.TryRemove("login-mode", out _);
+            if (Auth == null)
+                ClassNames.Remove("login-mode");
         }
         catch (Exception)
         {
@@ -623,3 +626,4 @@ public class PageManager : IPageManager
     #endregion
 
 }
+
