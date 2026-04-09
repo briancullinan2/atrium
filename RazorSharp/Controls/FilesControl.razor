@@ -10,7 +10,7 @@
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
 
 
     protected override void OnInitialized()
@@ -27,14 +27,14 @@
     {
         var ankiResults = await AnkiService.Download(file.Url);
         if (ValueChanged == null) return;
-        await ValueChanged.Value.InvokeAsync(ankiResults as object);
+        ValueChanged.DynamicInvoke(ankiResults as object);
     }
 
     public async Task Import(File file)
     {
         var ankiResults = await AnkiService.InspectFile(file.Filename);
         if (ValueChanged == null) return;
-        await ValueChanged.Value.InvokeAsync(ankiResults as object);
+        ValueChanged.DynamicInvoke(ankiResults as object);
     }
 
 }

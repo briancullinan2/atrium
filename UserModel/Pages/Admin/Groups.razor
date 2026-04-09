@@ -56,7 +56,7 @@
             </fieldset>
         </div>
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
+            <button class="deemphasize back" @onclick="(() => RenderExtensions.NavigateTo<Pages.Admin.Groups>(Nav, u => new() { Mode = ControlMode.List }))"><span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentGroup.CanonicalFingerprint != null)
             {
                 <a href="">Group Membership</a>

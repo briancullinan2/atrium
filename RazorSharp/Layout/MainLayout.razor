@@ -237,7 +237,7 @@
         }
 
 
-        _previousList.AddLast(await PageManager.Copy(_activeBody, Service));
+        _previousList.AddLast(await ((PageManager)PageManager).Copy(_activeBody, Service));
     }
 
     protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
@@ -265,7 +265,7 @@
 
     }
 
-    public void SetState(IComponent? state)
+    public void SetState(object? state)
     {
         if(state == null)
         {

@@ -1,7 +1,8 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Rendering;
+using RazorSharp.Controls;
 
-namespace Extensions.SlenderServices;
+namespace UserModel.Controls;
 
 
 public class HasPermission : ComponentBase, IDisposable

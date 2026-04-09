@@ -49,7 +49,7 @@ public class CourseMenuItem : NavMenuItem<Pages.Course.Course>, ICourseMenuItem
         }
     }
 
-    public new IEnumerable<CourseMenuItem> Children { get => base.Children.OfType<CourseMenuItem>(); set => base.Children = value; }
+    public new IEnumerable<CourseMenuItem> Children { get => base.Children.OfType<CourseMenuItem>(); set => base.Children = [..value.Cast<INavMenuItem>()]; }
 
     //IEnumerable<ICourseMenuItem> INavMenuItem<ICourseMenuItem>.Children { get => Children.OfType<ICourseMenuItem>(); set => Children = value.OfType<CourseMenuItem>(); }
 }

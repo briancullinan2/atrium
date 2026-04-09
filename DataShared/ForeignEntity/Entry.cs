@@ -1,5 +1,7 @@
 ﻿
 
+using Microsoft.EntityFrameworkCore;
+
 namespace DataShared.ForeignEntity;
 
 public static partial class IEntityExtensions

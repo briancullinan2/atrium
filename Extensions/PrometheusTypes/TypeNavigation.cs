@@ -1,6 +1,6 @@
 ﻿
 
-using Microsoft.AspNetCore.Components.Routing;
+using System.Diagnostics.Metrics;
 
 [assembly: SuppressMessage("This call site is reachable on all platforms.", "IL2026", Justification = "I hope it does, save me some damn time")]
 
@@ -40,79 +40,13 @@ public static partial class TypeExtensions
     //}
 
 
-    public static void NavigateTo<TComponent>(this NavigationManager Nav, Expression<Func<TComponent, TComponent>>? initializer = null) where TComponent : IComponent, new()
-    {
-        if (initializer == null)
-        {
-            Nav.NavigateTo(GetUri<TComponent>());
-            return;
-        }
-        Nav.NavigateTo(GetUri(initializer));
-    }
-
-
-    public static RenderFragment Coordinate(params RenderFragment[] fragments)
-    {
-        return (__builder) =>
-        {
-            var seq = 1;
-            foreach (var fragment in fragments)
-            {
-                __builder.OpenRegion(seq * 100); // Start a new "coordinate space"
-                fragment(__builder); // This method can safely start at 0
-                __builder.CloseRegion();
-            }
-        };
-    }
-
-
-
-
-
-    public static RenderFragment ToNavLink<TComponent>(
-        Expression<Func<TComponent, TComponent>>? initializer = null
-        , string? overrideTitle = null
-        , string? overrideIcon = null) 
-        where TComponent : Microsoft.AspNetCore.Components.IComponent
-    {
-        var values = initializer?.ToDictionary();
-        var uri = GetUri<TComponent>(values);
-        var display = typeof(TComponent).GetCustomAttribute<DisplayAttribute>();
-        return (__builder) =>
-        {
-            __builder.OpenComponent<NavLink>(0);
-            __builder.AddAttribute(1, "class", "header-link");
-            __builder.AddAttribute(2, "href", uri);
-            __builder.AddAttribute(3, "Match", NavLinkMatch.All);
-
-            // The inner HTML of a component is passed via the "ChildContent" attribute
-            __builder.AddAttribute(4, "ChildContent", (RenderFragment)((__builder2) =>
-            {
-                // 1. The <i> icon tag
-                __builder2.OpenElement(0, "i");
-                __builder2.AddAttribute(1, "class", $"bi ${overrideIcon ?? display?.Prompt}");
-                __builder2.AddAttribute(2, "aria-hidden", "true");
-                __builder2.CloseElement();
-
-                // 2. The <span> text tag
-                __builder2.OpenElement(3, "span");
-                __builder2.AddAttribute(4, "class", "header-text");
-                __builder2.AddContent(5, overrideTitle ?? display?.Name);
-                __builder2.CloseElement();
-            }));
-
-            __builder.CloseComponent();
-        };
-    }
-
-
-    public static string GetUri<TComponent>(Expression<Func<TComponent, bool>>? initializer) where TComponent : Microsoft.AspNetCore.Components.IComponent
+    public static string GetUri<TComponent>(Expression<Func<TComponent, bool>>? initializer) where TComponent : class
     {
         var values = initializer?.ToDictionary();
         return GetUri<TComponent>(values);
     }
 
-    public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>>? initializer) where TComponent : Microsoft.AspNetCore.Components.IComponent
+    public static string GetUri<TComponent>(Expression<Func<TComponent, TComponent>>? initializer) where TComponent : class
     {
         var values = initializer?.ToDictionary();
         return GetUri<TComponent>(values);
@@ -131,7 +65,7 @@ public static partial class TypeExtensions
     //    return GetUri<TComponent>(values);
     //}
 
-    public static string GetUri<TComponent>(Dictionary<string, string?>? initializer = null) where TComponent : IComponent
+    public static string GetUri<TComponent>(Dictionary<string, string?>? initializer = null) where TComponent : class
     {
         var componentType = typeof(TComponent);
         return GetUri(componentType, initializer);
@@ -155,7 +89,10 @@ public static partial class TypeExtensions
             return value;
         }
 
-        return componentType.GetProperties(null).Where(p => p.GetCustomAttributes<SupplyParameterFromQueryAttribute>().Any()).ToDictionary(p => p.Name, p => p.GetCustomAttribute<SupplyParameterFromQueryAttribute>()?.Name);
+        return componentType.GetProperties(null)
+            .Where(p => p.GetCustomAttributes().Any(StaticMatchQueryAttribute))
+            .ToDictionary(p => p.Name, p => (p.GetCustomAttributes().FirstOrDefault(StaticMatchQueryAttribute) as dynamic)
+                ?.Name as string);
     }
 
     private static IEnumerable<ParsedRoute> GetRoutes(Type componentType)
@@ -180,7 +117,11 @@ public static partial class TypeExtensions
                 if (inter.IsInterface) continue;
                 if (!componentType.Interfaces(inter)) continue;
                 // make them searchable by made up interfaces too
-                var interfacedRoutes = inter.GetCustomAttributes<RouteAttribute>().Select(attr => attr.Template).ToList();
+                List<string> interfacedRoutes = [..inter.GetCustomAttributes()
+                    .Where(StaticMatchRouteAttribute)
+                    .Select(attr => (attr as dynamic).Template as string)
+                    .OfType<string>()
+                    ];
                 if (interfacedRoutes == null || interfacedRoutes.Count == 0) continue;
                 routes = interfacedRoutes;
                 break;
@@ -188,7 +129,11 @@ public static partial class TypeExtensions
         }
         else
         {
-            routes = [..componentType.GetCustomAttributes<RouteAttribute>().Select(attr => attr.Template)];
+            routes = [..componentType.GetCustomAttributes()
+                    .Where(StaticMatchRouteAttribute)
+                    .Select(attr => (attr as dynamic).Template as string)
+                    .OfType<string>()
+                    ];
         }
 
         if (routes == null || routes.Count == 0)

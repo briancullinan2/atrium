@@ -20,6 +20,10 @@ html, body {
     transition: opacity ease-in-out 0.5s;
 }
 
+.cover-page td {
+    padding: 10px;
+}
+
 .cover-page .content
 {
     height: calc(100vh - 3.5rem);

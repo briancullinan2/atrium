@@ -1,6 +1,7 @@
 ﻿//#if DEBUG
 //using Microsoft.Extensions.Logging;
 //#endif
+using Atrium.Services;
 using Interfacing.Services;
 
 namespace Atrium;
@@ -31,7 +32,7 @@ public class MauiProgram : IHasService<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-        //builder.Services.AddSingleton<ILocalStore, LocalStore>();
+        builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG

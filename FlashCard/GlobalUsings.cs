@@ -11,3 +11,4 @@ global using DataShared.ForeignEntity;
 global using Interfacing.Services;
 global using RazorSharp.Layout;
 global using System.Linq;
+global using RazorSharp.Extensions;

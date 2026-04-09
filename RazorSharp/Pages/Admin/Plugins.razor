@@ -1,5 +1,4 @@
 @page "/plugins"
-@inject IServiceProvider Sp
 @inject ITrustProvider Trust
 
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
@@ -7,7 +6,7 @@
 
 <div class="flash-card animate-in">
 
-    <p>Status: @(IsBootstrapping ? ("Scanning Assemblies... " + Scanning) : "Ready")</p>
+    <p>Status: @(Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")</p>
 
     <table>
         <thead>
@@ -20,11 +19,11 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                @foreach (var (file, plugin) in DiscoveredStatus ?? [])
-                {
+            @foreach (var (file, plugin) in Trust.DiscoveredStatus ?? [])
+            {
+                <tr>
                     <td class="name-col">
-                        <strong>@plugin.Title</strong>
+                        <strong>@plugin.Title</strong><br />
                         <span class="product-tag">@plugin.Metadata.Product</span>
                     </td>
 
@@ -70,105 +69,17 @@
                             <span class="slider"></span>
                         </label>
                     </td>
-                }
-            </tr>
+                </tr>
+            }
         </tbody>
     </table>
 </div>
 
 
 @code {
-    public static bool IsBootstrapping { get; set; } = true;
-
-    public static Dictionary<Type, string>? DiscoveredPlugins { get; }
-    public static Dictionary<Type, string>? DiscoveredTrust { get; }
-    public static ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; } = new();
 
     [CascadingParameter(Name = "IsStaticRender")]
     public bool IsStaticRender { get; set; }
-
-    public record PluginContract(
-        string Title,
-        string InstallPath,
-        bool IsTrusted,
-        AssemblyInfo Metadata,
-        bool IsActive);
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        if (IsStaticRender) return;
-        DiscoveredStatus.Clear();
-        IsBootstrapping = true;
-        InvokeAsync(RunFullScan);
-    }
-
-    public static List<Type> AllPlugins = [..TypeExtensions.AllRegisteredTypes
-    .GetMine()
-    .Where(t => t.Extends(typeof(IHasPlugins)))];
-
-    public static List<Type> EnabledPlugins = new();
-
-
-    public async Task CheckStatus()
-    {
-        EnabledPlugins ??= await GetEnabledPlugins(Sp);
-        foreach (var plugin in EnabledPlugins)
-        {
-            DiscoveredStatus.TryAdd(plugin.Assembly.Location, new PluginContract(
-                    Title: plugin.Name,
-                    InstallPath: plugin.Assembly.Location,
-                    IsTrusted: false, //metadata?.IsTrusted ?? false,
-                    Metadata: plugin.GetAssemblyInfo(),
-                    IsActive: false // TODO: check if enabled
-                ));
-        }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    // TODO: use this on service startup? way to bootstrap another container?
-    public static async Task<List<Type>> GetEnabledPlugins(IServiceProvider service)
-    {
-        List<Type> enabledPlugins = new();
-        foreach(var plugin in AllPlugins)
-        {
-            var myDelegate = plugin.GetProperties(nameof(IHasPlugins.Installed)).First().GetValue(null) as Delegate;
-            if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
-                ?? myDelegate?.Method.ReturnType)?.Extends(typeof(Task<string?>)) != true)
-                throw new InvalidOperationException("IHasPlugins.Installed delegate must return a Task<string?> with the name of the setting it used to check if its installed or not" + myDelegate?.Method);
-            var result = myDelegate.InvokeService(service);
-            if(result is Task task) await task;
-            if ((result as dynamic)?.Result != null)
-                enabledPlugins.Add(plugin);
-        }
-        return enabledPlugins;
-    }
-
-    public static bool IsLoading { get; private set; } = false;
-
-    private async Task RunFullScan()
-    {
-        if (IsLoading) return;
-
-        IsLoading = true;
-        DiscoveredStatus.Clear();
-        StateHasChanged();
-
-        // Offload the heavy file IO to a background thread to keep UI snappy
-        await Task.Run(async () =>
-        {
-            var fileTask = CheckPluginFiles();
-            var statusTask = CheckStatus();
-
-            await Task.WhenAll(fileTask, statusTask);
-        });
-
-        IsLoading = false;
-        StateHasChanged();
-    }
-
-
-    private static string[]? PluginFiles { get; set; } = null;
     private string? Scanning = null;
 
     protected async Task DebounceFilename(string? file)
@@ -177,58 +88,10 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    protected async Task CheckPluginFiles()
+    protected override void OnInitialized()
     {
-
-        // TODO: refresh button
-        PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
-
-        // Process files in parallel batches to speed up metadata extraction
-        await Parallel.ForEachAsync(PluginFiles, async (file, ct) =>
-        {
-            _ = TaskExtensions.Debounce<string>(DebounceFilename, 50, file);
-
-            var trust = await Trust.GetTrustedAsync(file);
-            if (trust == null) return;
-
-            var contract = new PluginContract(
-                Title: System.IO.Path.GetFileNameWithoutExtension(file),
-                InstallPath: file,
-                IsTrusted: (int)trust.Value > 2,
-                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), trust.Value),
-                IsActive: false
-            );
-
-            // Thread-safe update to the UI list
-            DiscoveredStatus.TryAdd(file, contract);
-
-            // Tell the UI to refresh as each item arrives
-            await InvokeAsync(StateHasChanged);
-
-            if ((int)trust >= (int)LevelOfTrust.Published)
-            {
-                var meta = await Trust.GetAssemblyInfoAsync(file);
-                if (meta != null)
-                {
-                    var newContract = new PluginContract(
-                        Title: System.IO.Path.GetFileNameWithoutExtension(file),
-                        InstallPath: file,
-                        IsTrusted: (int)trust.Value > 2,
-                        Metadata: meta,
-                        IsActive: false
-                    );
-                    if (DiscoveredStatus.ContainsKey(file))
-                        DiscoveredStatus[file] = newContract;
-                    else
-                        DiscoveredStatus.TryAdd(file, newContract);
-                }
-            }
-
-            await InvokeAsync(StateHasChanged);
-        });
-        
-        IsBootstrapping = false;
-        await InvokeAsync(StateHasChanged);
-
+        base.OnInitialized();
+        if (IsStaticRender) return;
     }
+
 }

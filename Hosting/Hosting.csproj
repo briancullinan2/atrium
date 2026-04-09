@@ -61,7 +61,7 @@
 	
 	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
 		<PropertyGroup>
-			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
+			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\$(TargetFramework)\win-x64\</HostBinPath>
 
 			<HostingContentPath>$(HostBinPath)wwwroot\_content\Hosting\</HostingContentPath>
 		</PropertyGroup>

@@ -26,7 +26,7 @@ public class PageManager : IPageManager
 
     public Dictionary<string, string?> State { get; set; } = [];
 
-    public event Action<IComponent?>? OnStateChanged;
+    public event Action<object?>? OnStateChanged;
     public event Action<Exception?>? OnErrorChanged;
 
     readonly IFormFactor? Form;
@@ -37,7 +37,7 @@ public class PageManager : IPageManager
     readonly NavigationManager Nav;
 
 
-    public IJSRuntime Runtime => Rendered.Runtime;
+    public IJSRuntime? Runtime => Rendered.Runtime as IJSRuntime;
 
     public PageManager(
         ILoggerFactory _logger,
@@ -135,11 +135,11 @@ public class PageManager : IPageManager
         try
         {
             if (_restartRequired.Task.IsCompleted) return;
-            Module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
+            Module = await (Rendered.Runtime as IJSRuntime)!.InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
             var dotNetHelper = DotNetObjectReference.Create(this);
             _restartRequired.TrySetResult(true);
             await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
-            OffsetInMinutes = await Rendered.Runtime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+            OffsetInMinutes = await (Rendered.Runtime as IJSRuntime)!.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
             ClassNames.Remove("cover-page");
             // let login manager remove login mode?
             if (Auth == null)
@@ -170,7 +170,7 @@ public class PageManager : IPageManager
     }
 
 
-    public virtual async Task SetState(IComponent? state)
+    public virtual async Task SetState(object? state)
     {
         if (OperatingSystem.IsBrowser())
         {
@@ -184,7 +184,7 @@ public class PageManager : IPageManager
         OnStateChanged?.Invoke(state);
     }
 
-    public virtual async Task<Dictionary<string, string?>?> RestoreState(IComponent component)
+    public virtual async Task<Dictionary<string, string?>?> RestoreState(object component)
     {
         if(!OperatingSystem.IsBrowser())
         {
@@ -592,7 +592,7 @@ public class PageManager : IPageManager
     public async ValueTask Clipboard(string text)
     {
         await ModuleInitialize;
-        await Rendered.Runtime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        await (Rendered.Runtime as IJSRuntime)!.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 
     public void SetPageClasses(List<string> classes)
@@ -625,5 +625,31 @@ public class PageManager : IPageManager
 
     #endregion
 
+}
+
+public static class PageFormExtensions
+{
+    public static async Task SetSessionCookie(this IPageManager? Page, string name, string value, int days)
+    {
+        if (Page is not PageManager Cast) return;
+        await Cast.ModuleInitialize;
+        await Cast.Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+    }
+
+
+    public static async Task<string?> GetSessionCookie(this IPageManager? Page, string name)
+    {
+        if (Page is not PageManager Cast) return null;
+        await Cast.ModuleInitialize;
+        return await Cast.Module.InvokeAsync<string>("getSessionCookie", name);
+    }
+
+
+    public static async Task SetPageTitle(this IPageManager? Page, string? title)
+    {
+        if (Page is not PageManager Cast) return;
+        await Cast.ModuleInitialize;
+        await Cast.Runtime!.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(title));
+    }
 }
 

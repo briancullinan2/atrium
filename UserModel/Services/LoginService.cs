@@ -60,7 +60,7 @@ public class LoginService : ILoginService, IDisposable
     }
 
 
-    private void OnAuthStateChanged(Task<ClaimsPrincipal?> task) => _ = SynchronizeUserAsync();
+    private void OnAuthStateChanged(ClaimsPrincipal? task) => _ = SynchronizeUserAsync();
 
 
     public Task ModuleInitialize => _restartRequired.Task;

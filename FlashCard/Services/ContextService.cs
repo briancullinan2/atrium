@@ -19,13 +19,13 @@ internal class ContextService : IHasContext
         {
             //if (Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
             {
-                TypeExtensions.ToNavLink<Pages.Landing.EditPack>(p => new() { Mode = ControlMode.Edit }, "Create Pack", "bi-file-earmark-plus");
+                RenderExtensions.ToNavLink<Pages.Landing.EditPack>(p => new() { Mode = ControlMode.Edit }, "Create Pack", "bi-file-earmark-plus");
             }
             if (!Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
             {
-                TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Owner }, "My Packs", "bi-file-earmark-text");
-                TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Purchased" }, "Purchases", "bi-shield-lock");
-                TypeExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Subscribe" }, "Subscribe", "bi-envelope-at");
+                RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Owner }, "My Packs", "bi-file-earmark-text");
+                RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Purchased" }, "Purchases", "bi-shield-lock");
+                RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Subscribe" }, "Subscribe", "bi-envelope-at");
             }
 
         }

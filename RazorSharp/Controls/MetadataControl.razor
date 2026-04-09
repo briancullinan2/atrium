@@ -58,7 +58,7 @@
                 new Dictionary<string, object?>
                 {
                     { "Model", prop },
-                    { "ValueChanged", EventCallback.Factory.Create<object?>(this, (val) => { 
+                    { "ValueChanged", (Action<object?>?)((val) => { 
                         ValueChanged?.InvokeService(Service, prop, Data?.Count() > i ? (Data ?? []).ElementAt(i) : default(TModel), val); 
                     })}
                 }

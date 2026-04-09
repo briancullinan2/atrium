@@ -75,17 +75,13 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
 
     public virtual async Task SetSessionCookie(string name, string value, int days)
     {
-        if (Page == null) return;
-        await Page.ModuleInitialize;
-        await Page.Module.InvokeVoidAsync("setSessionCookie", name, value, days);
+        await Page.SetSessionCookie(name, value, days);
     }
 
 
     public virtual async Task<string?> GetSessionCookie(string name)
     {
-        if (Page == null) return null;
-        await Page.ModuleInitialize;
-        return await Page.Module.InvokeAsync<string>("getSessionCookie", name);
+        return await Page.GetSessionCookie(name);
     }
 
 
@@ -140,9 +136,7 @@ public partial class FormFactor : BaseFormFactor
     public override async Task<string?> UpdateTitle(string? title)
     {
         var _title = await base.UpdateTitle(title);
-        if (Page == null) return _title;
-        await Page.ModuleInitialize;
-        await Page.Runtime.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(_title));
+        Page?.SetPageTitle(_title);
         return _title;
     }
 

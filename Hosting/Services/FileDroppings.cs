@@ -1,5 +1,5 @@
 ﻿#if WINDOWS
-using Atrium.Platforms.Windows;
+using Extensions.PlayfulPlatforms.Windows;
 using Microsoft.Maui.Devices;
 #endif
 

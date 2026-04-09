@@ -16,8 +16,8 @@ public class StudyService(IPageManager PageManager) : IStudyService
     public async Task SetStudyMode(bool study)
     {
         Study = study;
-        if (study == true) PageManager.ClassNames.TryAdd("study-mode", "study-mode");
-        else PageManager.ClassNames.TryRemove("study-mode", out _);
+        if (study == true) PageManager.ClassNames.Add("study-mode");
+        else PageManager.ClassNames.Remove("study-mode");
         OnStudyChanged?.Invoke(study);
     }
 }

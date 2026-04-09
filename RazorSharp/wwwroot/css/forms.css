@@ -7,12 +7,14 @@ button {
 
 select,
 textarea,
+input,
 input[type="file"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="date"],
 input[type="text"] {
+    line-height: 1.6em;
     padding: 4px;
     border: 2px solid lightgrey;
     border-radius: 5px;
@@ -49,7 +51,6 @@ input[type="date"]:focus,
 input[type="date"]:active,
 input[type="text"]:focus,
 input[type="text"]:active {
-    line-height: 1.6em;
     border-color: darkorange;
 }
 

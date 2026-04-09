@@ -72,7 +72,9 @@ public class LocalStore : ILocalStore
         {
             // 3. Re-check inside the lock (The "Double-Check" pattern)
             if (_renderTcs.Task.IsCompleted) return;
-            _module = await Rendered.Runtime.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
+            var result = (Rendered.Runtime as IJSRuntime)?.InvokeAsync<IJSObjectReference>("import", "/_content/DataLayer/local.js");
+            if (result is ValueTask<IJSObjectReference> task) await task;
+            _module = (result as dynamic)?.Result;
             _renderTcs.TrySetResult(true);
         }
         finally

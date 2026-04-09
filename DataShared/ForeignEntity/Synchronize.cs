@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
-
-namespace DataShared.ForeignEntity;
+﻿namespace DataShared.ForeignEntity;
 
 
 public static partial class IEntityExtensions

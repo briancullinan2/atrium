@@ -3,6 +3,11 @@ namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
 {
+    public static Func<Attribute, bool> StaticMatchRouteAttribute { get; } = a => a.GetType().Name.Contains("Route");
+    public static Func<Attribute, bool> StaticMatchQueryAttribute { get; } = a => a.GetType().Name.Contains("ParameterFromQuery");
+    public static Func<Attribute, bool> StaticMatchAnonymousAttribute { get; } = a => a.GetType().Name.Contains("AllowAnonymous");
+    public static Func<Attribute, bool> StaticMatchAuthorizeAttribute { get; } = a => a.GetType().Name.Contains("AuthorizeAttribute");
+    public static Func<Attribute, bool> StaticMatchParameterAttribute { get; } = a => a.GetType().Name.Contains("ParameterAttribute");
 
 
     private static readonly ConcurrentBag<Type> _allKnownTypes = [];
@@ -231,7 +236,7 @@ public static partial class TypeExtensions
             ];
 
         AllRoutable = [.._allKnownTypes
-            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes().Any(a => a.GetType().Name.Contains("Route")))
+            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes().Any(StaticMatchRouteAttribute))
             ];
 
         AllRoutes = [.._registeredAssemblies

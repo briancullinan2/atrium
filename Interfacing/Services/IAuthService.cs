@@ -4,10 +4,17 @@ namespace Interfacing.Services;
 public interface IAuthService
 {
     Task MarkUserAsAuthenticated(ClaimsPrincipal user);
-    event Action<Task<ClaimsPrincipal?>> OnAuthChanged;
+    event Action<ClaimsPrincipal?>? OnAuthChanged;
     Task<ClaimsPrincipal> GetUserClaimsAsync();
     Task<JsonDocument?> GetFreshUserInfo(AuthID providerId, string accessToken);
     Task<string?> TryResponseToken();
+}
+
+
+
+public interface ILogin
+{
+    string ReturnUrl { get; set; }
 }
 
 

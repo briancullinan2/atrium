@@ -267,10 +267,10 @@ public class AggressiveVisitor : ExpressionVisitor
         var unsupported = new[] {
             nameof(EntityFrameworkQueryableExtensions.Include),
             nameof(EntityFrameworkQueryableExtensions.ThenInclude),
-            nameof(RelationalQueryableExtensions.FromSqlRaw),
-            nameof(RelationalQueryableExtensions.AsSplitQuery)
+            /*nameof(RelationalQueryableExtensions.*/"FromSqlRaw",
+            /*nameof(RelationalQueryableExtensions.*/"AsSplitQuery"
         };
-        if (node.Method.DeclaringType == typeof(RelationalQueryableExtensions)
+        if (node.Method.DeclaringType?.Name.Contains("RelationalQueryableExtensions") == true // == typeof(RelationalQueryableExtensions)
             || unsupported.Contains(node.Method.Name)
             )
         {

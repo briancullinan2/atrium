@@ -9,7 +9,6 @@ public interface IPageManager : IAsyncDisposable
 {
     void ClearRedirect();
 
-
     Task SetState(object? state);
     Task<Dictionary<string, string?>?> RestoreState(object component);
     Task SetError(Exception? error);

@@ -27,10 +27,10 @@
     public static Delegate ContextInsert => (Func<RenderFragment>)(
         () => (__builder) =>
         {
-            TypeExtensions.ToNavLink<Pages.Landing.Terms>()(__builder);
-            TypeExtensions.ToNavLink<Pages.Landing.Privacy>()(__builder);
-            TypeExtensions.ToNavLink<Pages.Landing.Contact>()(__builder);
-            TypeExtensions.ToNavLink<Pages.Landing.About>()(__builder);
+            RenderExtensions.ToNavLink<Pages.Landing.Terms>()(__builder);
+            RenderExtensions.ToNavLink<Pages.Landing.Privacy>()(__builder);
+            RenderExtensions.ToNavLink<Pages.Landing.Contact>()(__builder);
+            RenderExtensions.ToNavLink<Pages.Landing.About>()(__builder);
         }
     );
 

@@ -1,11 +1,4 @@
-﻿
-
-namespace Extensions.SlenderServices;
-
-public interface ILogin : IComponent
-{
-    string ReturnUrl { get; set; }
-}
+﻿namespace UserModel.Controls;
 
 
 public class RedirectToLogin : ComponentBase

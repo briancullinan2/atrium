@@ -1,5 +1,6 @@
 ﻿
 
+
 namespace RazorSharp.Services;
 
 // TODO: see ContextMenu.razor for a .razor example, works exactly the same
@@ -19,11 +20,11 @@ internal class ContextService : IHasContext
             if (!routeControl.Extends(typeof(INotHasWrapper))
                 && !Nav.Uri.Contains("/login", StringComparison.InvariantCultureIgnoreCase))
             {
-                TypeExtensions.ToNavLink<Pages.Landing.Search>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Landing.Search>()(__builder);
             }
             if (Nav.Uri.Contains("/admin", StringComparison.InvariantCultureIgnoreCase))
             {
-                TypeExtensions.ToNavLink<Pages.Admin.Status>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Status>()(__builder);
             }
             
         }

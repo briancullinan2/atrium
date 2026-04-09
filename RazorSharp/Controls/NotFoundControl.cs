@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
 
-namespace Extensions.SlenderServices;
+namespace RazorSharp.Controls;
 
 
 [AllowAnonymous]

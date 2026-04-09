@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-#if !BROWSER
-#endif
+﻿
 
 namespace Extensions.PrometheusTypes;
 
@@ -36,10 +34,10 @@ public static partial class TypeExtensions
     {
         if(type == null) return null;
         if (_cachedRouteTypes.TryGetValue(type, out var route)) return route;
-        if(type.GetCustomAttribute<RouteAttribute>() is RouteAttribute attr)
+        if(type.GetCustomAttributes().FirstOrDefault(StaticMatchRouteAttribute) is Attribute attr)
         {
-            _cachedRouteTypes.TryAdd(type, attr.Template);
-            return attr.Template;
+            _cachedRouteTypes.TryAdd(type, (attr as dynamic).Template);
+            return (attr as dynamic).Template;
         }
 
         if (!type.HasAuthorization() && type.Routes().Count == 0) return null;
@@ -181,7 +179,7 @@ public static partial class TypeExtensions
         Type any) => interfaces.Any(any.Extends);
 
 
-    public static List<MethodInfo> Routes<T>(this T sharing) where T : class
+    public static List<MethodInfo> Routes<T>(this T _) where T : class
         => [.. typeof(T).Routes()];
 
     public static List<MethodInfo> Routes(this Type sharing)
@@ -202,8 +200,8 @@ public static partial class TypeExtensions
     public static bool HasAuthorization(this Type type)
     {
         if (_cachedRouteTypes.TryGetValue(type, out var route)) return route != null;
-        bool hasAnonymous = type.GetCustomAttribute<AllowAnonymousAttribute>() != null;
-        bool hasAuthorize = type.GetCustomAttribute<AuthorizeAttribute>() != null;
+        bool hasAnonymous = type.GetCustomAttributes().Any(StaticMatchAnonymousAttribute);
+        bool hasAuthorize = type.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute);
         return hasAnonymous || hasAuthorize;
 
     }
@@ -213,10 +211,10 @@ public static partial class TypeExtensions
     {
         if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route != null;
         var type = sharing.DeclaringType;
-        bool hasAnonymous = sharing.GetCustomAttribute<AllowAnonymousAttribute>() != null
-            || type?.GetCustomAttribute<AllowAnonymousAttribute>() != null;
-        bool hasAuthorize = sharing.GetCustomAttribute<AuthorizeAttribute>() != null
-            || type?.GetCustomAttribute<AuthorizeAttribute>() != null;
+        bool hasAnonymous = sharing.GetCustomAttributes().Any(StaticMatchAnonymousAttribute)
+            || type?.GetCustomAttributes().Any(StaticMatchAnonymousAttribute) == true;
+        bool hasAuthorize = sharing.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute)
+            || type?.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute) == true;
         return hasAnonymous || hasAuthorize;
 
     }

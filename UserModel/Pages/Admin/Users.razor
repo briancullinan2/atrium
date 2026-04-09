@@ -57,7 +57,7 @@
         </div>
 
         <div class="highlighted-link">
-            <button class="deemphasize back" @onclick="(() => TypeExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
+            <button class="deemphasize back" @onclick="(() => RenderExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
                 <span class="bi bi-chevron-left"></span>Back</button>
             @if(CurrentUser.CanonicalFingerprint != null)
             {

@@ -10,8 +10,8 @@ public class SupportsTypeAttribute(Type targetType) : Attribute
 
 public interface IHasMeta
 {
-    public IEnumerable<object?>? Data { get; set; }
-    public PropertyMetadata? Model { get; set; }
-    public EventCallback<object?>? ValueChanged { get; set; }
+    IEnumerable<object?>? Data { get; set; }
+    PropertyMetadata? Model { get; set; }
+    Action<object?>? ValueChanged { get; set; }
 
 }

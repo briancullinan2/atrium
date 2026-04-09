@@ -6,7 +6,7 @@
 {
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
     public List<Answer> Answers { get; set; } = new List<Answer>();
     public Card? Card { get; set; } = null;
 
@@ -52,5 +52,5 @@
 @foreach (var answer in Answers)
 {
     <input class="large-present" type="radio" value="@answer.Value ?? answer.Content" id="@answer.Content?.ToSafe()" name="@Card?.Content.ToSafe()" />
-    <label for="@answer.Content?.ToSafe()" onclick="@(() => ValueChanged?.InvokeAsync(answer))">@answer.Content</label>
+    <label for="@answer.Content?.ToSafe()" onclick="@(() => ValueChanged?.DynamicInvoke(answer))">@answer.Content</label>
 }

@@ -7,14 +7,6 @@ global using Extensions.MagicalMaths;
 global using Extensions.PrometheusTypes;
 global using Extensions.QueryableChaos;
 global using Extensions.SlenderServices;
-global using Microsoft.AspNetCore.Components;
-global using Microsoft.AspNetCore.Components.Authorization;
-global using Microsoft.AspNetCore.Components.Rendering;
-global using Microsoft.AspNetCore.Components.RenderTree;
-global using Microsoft.EntityFrameworkCore;
-global using Microsoft.EntityFrameworkCore.Query;
-global using Microsoft.Extensions.DependencyInjection;
-global using Microsoft.JSInterop;
 global using System;
 global using System.Collections;
 global using System.Collections.Concurrent;
@@ -35,9 +27,10 @@ global using System.Text.RegularExpressions;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using CollectionConverter = Extensions.PrometheusTypes.CollectionConverter;
-global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 global using Interfacing.Services;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore.Query;
 
 
 

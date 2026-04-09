@@ -10,9 +10,11 @@
 	  <Authors>Brian Cullinan</Authors>
 	  <Product>Atrium</Product>
 	  <Company>Atrium</Company>
+	  <Publisher>Brian Cullinan</Publisher>
   </PropertyGroup>
 
 	<ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.5" />
         <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.*-*" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
 	    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />

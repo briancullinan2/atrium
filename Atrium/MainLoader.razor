@@ -1,3 +1,8 @@
+@using Atrium.Services
+@using Interfacing.Services
+@inject ITrustProvider Trust
+@implements IDisposable
+
 @if (_showSplash)
 {
     <div class="page login-mode cover-page @(Ready)">
@@ -10,6 +15,36 @@
 
                     <path d="M5.26 19.14L11.41 15.04C11.74 14.82 12.28 14.82 12.61 15.04L18.76 19.14C20.39 20.23 20.12 21.12 18.16 21.12H5.85C3.9 21.11 3.63 20.22 5.26 19.14Z" fill="#292D32" />
                 </svg>
+                <table>
+                    <tr>
+                        <td colspan="3">
+                            @(Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+                        </td>
+                    </tr>
+                    <tbody>
+                        @foreach (var (file, plugin) in Trust.DiscoveredStatus ?? [])
+                        {
+                            <tr>
+                                <td class="name-col">
+                                    <strong>@plugin.Title</strong><br />
+                                    <span class="product-tag">@plugin.Metadata.Product</span>
+                                </td>
+
+                                <td class="meta-col">
+                                    <small>Pkg: @plugin.Metadata.Package</small><br />
+                                    <small>Pub: @plugin.Metadata.Company @plugin.Metadata.Publisher</small>
+                                </td>
+                    
+                                <td class="enable-col">
+                                    <label class="switch">
+                                        <input type="checkbox" @checked="plugin.IsActive" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </article>
         </main>
     </div>
@@ -25,10 +60,12 @@ else
 
     protected override void OnInitialized()
     {
+        base.OnInitialized();
         // Check local storage or your ILocalStore to see if this is the first run
         // or if we should skip the splash.
         var isFirstRun = true; // Use your ILocalStore service here
         _showSplash = isFirstRun;
+        Trust.OnAssemblyLoaded += NotifyAssembly;
     }
 
     private void HandleOnComplete()
@@ -36,5 +73,21 @@ else
         _showSplash = false;
         StateHasChanged();
     }
+
+    private string? Scanning = null;
+
+    protected void NotifyAssembly(PluginContract file)
+    {
+        Ready = "loaded";
+        Scanning = file.InstallPath;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Trust.OnAssemblyLoaded -= NotifyAssembly;
+        GC.SuppressFinalize(this);
+    }
+
 }
 

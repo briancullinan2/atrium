@@ -46,26 +46,117 @@
             transition: opacity ease-in-out 0.5s;
         }
 
-            .cover-page .content {
-                height: calc(100vh - 3.5rem);
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
+        .cover-page td
+        {
+            padding: 10px;
+        }
 
-            .cover-page.loaded {
-                opacity: 0;
-            }
+        .cover-page table {
+            max-height: 0;
+            overflow:hidden;
+            transition: max-height ease-in-out 0.5s;
+        }
 
-            .cover-page svg {
-                max-width: 50%;
-                max-height: 50%;
-            }
+        .cover-page.loaded table
+        {
+            max-height: 400px;
+            max-height: calc(100vh - 50% - 10rem);
+        }
+        
+        .cover-page .content {
+            height: calc(100vh - 3.5rem);
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .cover-page.done-loading {
+            opacity: 0;
+        }
+
+        .cover-page svg {
+            max-width: 50%;
+            max-height: 50%;
+        }
 
         #app {
             height: 100%;
             width: 100%;
         }
+
+        .cover-page input
+        {
+            line-height: 1.6;
+        }
+
+        /* The container/track */
+        .cover-page input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 60px;
+            background-color: #e9e9ea; /* Off state gray */
+            border-radius: 50px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            outline: none;
+            border: 1px solid #d1d1d6; /* Light border */
+            box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
+            align-items: center;
+            display: flex;
+        }
+
+        /* The sliding dot (thumb) */
+        .cover-page input[type="checkbox"]::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            width: calc(1.6em - 4px);
+            height: calc(1.6em - 4px);
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
+        }
+
+        .cover-page input[type="checkbox"]::after {
+            content: "OFF";
+            left: 30px;
+            position: relative;
+            /*top: 4px;*/
+            font-size: 12px;
+            transition: left 0.3s ease;
+        }
+
+
+        .cover-page input[type="checkbox"]:checked::after {
+            content: "ON";
+            left: 5px;
+        }
+
+        /* Active state (Background turns green) */
+        .cover-page input[type="checkbox"]:checked {
+            background-color: #34c759; /* iOS Green */
+            border-color: #34c759;
+        }
+
+        /* Slide the dot over when checked */
+        .cover-page input[type="checkbox"]:checked::before {
+            transform: translateX(26px);
+            transform: translateX(calc(60px - 1.6em - 2px));
+        }
+
+        /* Focus state for accessibility */
+        .cover-page input[type="checkbox"]:focus-visible {
+            box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
+        }
+
     </style>
 
     <!--

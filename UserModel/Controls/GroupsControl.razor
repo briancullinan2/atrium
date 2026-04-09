@@ -8,7 +8,7 @@
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
 
     public IEnumerable<Group> Groups { get => Data?.OfType<Group>() ?? []; }
 

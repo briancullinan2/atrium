@@ -4,18 +4,36 @@ namespace UserModel.Services;
 
 
 
-public abstract class AuthService(
-    NavigationManager Navigation,
-    IQueryManager Query,
-    ICircuitProvider Context,
-    IFormFactor Form
-) : AuthenticationStateProvider, IAuthService {
+public class AuthService : AuthenticationStateProvider, IAuthService, IDisposable {
 
     public record UserClaim(string Type, string Value);
 
-
     public static readonly string CookieName = "AtriumCookie";
+    private readonly NavigationManager Navigation;
+    private readonly IQueryManager Query;
+    private readonly ICircuitProvider Context;
+    private readonly IFormFactor Form;
 
+    public event Action<ClaimsPrincipal?>? OnAuthChanged;
+
+    public AuthService(
+        NavigationManager navigation,
+        IQueryManager query,
+        ICircuitProvider context,
+        IFormFactor form
+    ) {
+        Navigation = navigation;
+        Query = query;
+        Context = context;
+        Form = form;
+        AuthenticationStateChanged += NotifyFrontEnd;
+    }
+
+
+    public void NotifyFrontEnd(Task<AuthenticationState> task)
+    {
+        OnAuthChanged?.Invoke(task.Result.User);
+    }
 
     public async Task<Session> GenerateSession(List<Claim> claims)
     {
@@ -27,6 +45,12 @@ public abstract class AuthService(
 
 
         return newSession;
+    }
+
+    public void Dispose()
+    {
+        AuthenticationStateChanged -= NotifyFrontEnd;
+        GC.SuppressFinalize(this);
     }
 
 
@@ -297,6 +321,9 @@ public abstract class AuthService(
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync());
     }
 
-
-
+    public async Task<ClaimsPrincipal> GetUserClaimsAsync()
+    {
+        var state = await GetAuthenticationStateAsync();
+        return state.User;
+    }
 }

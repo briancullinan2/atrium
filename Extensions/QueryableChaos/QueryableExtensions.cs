@@ -1,5 +1,6 @@
 ﻿
 
+
 namespace Extensions.QueryableChaos;
 
 public static partial class QueryableExtensions

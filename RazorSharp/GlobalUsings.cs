@@ -24,3 +24,4 @@ global using IComponent = Microsoft.AspNetCore.Components.IComponent;
 global using TaskExtensions = Extensions.PrometheusTypes.TaskExtensions;
 global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 global using Interfacing.Services;
+global using RazorSharp.Extensions;

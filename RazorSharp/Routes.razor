@@ -35,7 +35,7 @@ else
 
 
 @code {
-    [Parameter] public Type PermissionControl { get; set; } = typeof(HasPermission);
+    [Parameter] public Type? PermissionControl { get; set; } = null;
     [Parameter] public Type? NotFoundControl { get; set; } = null;
     [Parameter] public Type DefaultLayout { get; set; } = typeof(Layout.MainLayout);
     [Parameter] public System.Reflection.Assembly AppAssembly { get; set; } = typeof(Layout.MainLayout).Assembly;

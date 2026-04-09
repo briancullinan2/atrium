@@ -9,6 +9,7 @@ global using Microsoft.AspNetCore.SignalR.Client;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.JSInterop;
 global using RazorSharp.Services;
+global using RazorSharp.Extensions;
 global using System;
 global using System.Collections.Concurrent;
 global using System.Collections.Generic;

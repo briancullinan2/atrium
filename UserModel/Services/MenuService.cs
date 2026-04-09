@@ -19,24 +19,24 @@ public class MenuService : IHasContext
         {
             if (Nav.Uri.Contains("/status", StringComparison.InvariantCultureIgnoreCase))
             {
-                TypeExtensions.ToNavLink<Pages.Admin.Activity>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Activity>()(__builder);
                 return;
             }
             if(routeControl == typeof(Pages.Admin.Settings)
                 || routeControl == typeof(Pages.Landing.Account)
                 || routeControl == typeof(Pages.Admin.Permissions))
             {
-                TypeExtensions.ToNavLink<Pages.Landing.Account>()(__builder);
-                TypeExtensions.ToNavLink<Pages.Admin.Settings>(s => new() { Mode = ControlMode.List }, "Theme Settings")(__builder);
-                TypeExtensions.ToNavLink<Pages.Admin.Providers>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Landing.Account>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Settings>(s => new() { Mode = ControlMode.List }, "Theme Settings")(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Providers>()(__builder);
             }
 
 
             {
-                TypeExtensions.ToNavLink<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }, "Add User", "bi-person-plus")(__builder);
-                TypeExtensions.ToNavLink<Pages.Admin.Groups>()(__builder);
-                //TypeExtensions.ToNavLink<Pages.Admin.Roles>()(__builder);
-                TypeExtensions.ToNavLink<Pages.Admin.Activity>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }, "Add User", "bi-person-plus")(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Groups>()(__builder);
+                //RenderExtensions.ToNavLink<Pages.Admin.Roles>()(__builder);
+                RenderExtensions.ToNavLink<Pages.Admin.Activity>()(__builder);
             }
         }
     );

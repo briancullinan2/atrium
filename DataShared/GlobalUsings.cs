@@ -21,3 +21,7 @@ global using System.Runtime.Serialization.Json;
 global using System.Text;
 global using System.Text.Json;
 global using DataShared.Extensions;
+global using Microsoft.EntityFrameworkCore.ChangeTracking;
+global using Microsoft.EntityFrameworkCore.Infrastructure;
+global using Microsoft.EntityFrameworkCore.Metadata;
+

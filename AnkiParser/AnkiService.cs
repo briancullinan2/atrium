@@ -1,6 +1,8 @@
 ﻿
 
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace AnkiParser;
 
 public partial class AnkiService(HttpClient Http, IFileManager FileManager, IQueryManager Query) : IAnkiService

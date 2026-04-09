@@ -6,7 +6,7 @@
 {
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
 
     public IEnumerable<Card> Cards { get => Data?.Cast<Card>() ?? []; }
@@ -63,7 +63,7 @@
 
     private async Task HandleAnswer(Tuple<PropertyMetadata, Card, object?> selectedValue)
     {
-        ValueChanged?.InvokeAsync(selectedValue.Item3);
+        ValueChanged?.DynamicInvoke(selectedValue.Item3);
     }
 
 }

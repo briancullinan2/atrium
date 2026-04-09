@@ -47,8 +47,8 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
             {
                 SaveWorkingSettings(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Parameters);
             }
-            if (result) Page.ClassNames.TryAdd("chatting", "chatting");
-            else Page.ClassNames.TryRemove("chatting", out _);
+            if (result) Page.ClassNames.Add("chatting");
+            else Page.ClassNames.Remove("chatting");
             OnChatWorking?.Invoke(result);
             return Tuple.Create(result, json ?? string.Empty);
         }

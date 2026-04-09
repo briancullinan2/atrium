@@ -1,8 +1,10 @@
 ﻿
 
-namespace Extensions.PrometheusTypes;
+using Microsoft.AspNetCore.Components.RenderTree;
 
-public static partial class TypeExtensions
+namespace RazorSharp.Extensions;
+
+public static partial class InvokableExtensions
 {
 
     public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
@@ -25,7 +27,7 @@ public static partial class TypeExtensions
             if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
             {
                 var nav = service.GetRequiredService<NavigationManager>();
-                parameterValues[i] = IdentifyNavigation(nav.Uri).ComponentType;
+                parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
             }
             else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
             {

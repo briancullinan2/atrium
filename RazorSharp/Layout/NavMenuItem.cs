@@ -16,7 +16,7 @@ public interface INavMenuItem
 
 
 public class NavMenuItem<TComponent> : INavMenuItem
-    where TComponent : IComponent, new()
+    where TComponent : class, new()
 {
     public NavMenuItem() { }
     public string Title { get; set; } = string.Empty;

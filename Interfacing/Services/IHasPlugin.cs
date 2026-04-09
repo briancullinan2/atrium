@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 
@@ -58,10 +59,21 @@ public interface IHasPageContext
     static abstract Delegate PageContextInsert { get; }
 }
 
+public record PluginContract(
+    string Title,
+    string InstallPath,
+    bool IsTrusted,
+    AssemblyInfo Metadata,
+    bool IsActive);
+
 public interface ITrustProvider
 {
     Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
     Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
+    event Action<PluginContract> OnAssemblyLoaded;
+    bool IsBootstrapping { get; }
+    ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
+
 }
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.None);

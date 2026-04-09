@@ -21,7 +21,7 @@
 
     [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
     public object[] EnumValues
     {
         get
@@ -69,11 +69,11 @@
 
             if (EnumType != null && Enum.TryParse(EnumType, value, true, out var myEnum))
             {
-                ValueChanged?.InvokeAsync(myEnum);
+                ValueChanged?.DynamicInvoke(myEnum);
             }
             else
             {
-                ValueChanged?.InvokeAsync(value);
+                ValueChanged?.DynamicInvoke(value);
             }
         }
     }

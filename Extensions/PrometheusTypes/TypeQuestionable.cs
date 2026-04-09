@@ -152,7 +152,7 @@ public static partial class TypeExtensions
             if (iProp.PropertyType.Extends(cProp.PropertyType) != true) return false; // Type mismatch
 
             // 3. Optional: Ensure the component property is a [Parameter]
-            if (!cProp.IsDefined(typeof(ParameterAttribute), true)) return false;
+            if (!cProp.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute)) return false;
         }
 
         return true;
