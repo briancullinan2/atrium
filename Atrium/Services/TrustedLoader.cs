@@ -52,8 +52,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
                 Title: args.LoadedAssembly.FullName ?? Path.GetFileNameWithoutExtension(args.LoadedAssembly.Location),
                 InstallPath: args.LoadedAssembly.Location,
                 IsTrusted: true,
-                Metadata: args.LoadedAssembly.GetAssemblyInfo(),
-                IsActive: false
+                Metadata: args.LoadedAssembly.GetAssemblyInfo()
             ));
     }
 
@@ -80,8 +79,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
                 Title: System.IO.Path.GetFileNameWithoutExtension(file),
                 InstallPath: file,
                 IsTrusted: false,
-                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.None),
-                IsActive: false
+                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.None)
             ));
 
             var trust = await GetTrustedAsync(file);
@@ -91,8 +89,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
                 Title: System.IO.Path.GetFileNameWithoutExtension(file),
                 InstallPath: file,
                 IsTrusted: (int)trust.Value > 2,
-                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), trust.Value),
-                IsActive: false
+                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), trust.Value)
             );
 
             // Thread-safe update to the UI list
@@ -113,8 +110,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
                         Title: System.IO.Path.GetFileNameWithoutExtension(file),
                         InstallPath: file,
                         IsTrusted: (int)trust.Value > 2,
-                        Metadata: meta,
-                        IsActive: false
+                        Metadata: meta
                     );
                     if (DiscoveredStatus.ContainsKey(file))
                         DiscoveredStatus[file] = newContract;
@@ -141,8 +137,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
                     Title: plugin.Name,
                     InstallPath: plugin.Assembly.Location,
                     IsTrusted: false, //metadata?.IsTrusted ?? false,
-                    Metadata: plugin.GetAssemblyInfo(),
-                    IsActive: false // TODO: check if enabled
+                    Metadata: plugin.GetAssemblyInfo()
                 );
             DiscoveredStatus.TryAdd(plugin.Assembly.Location, newContract);
             OnAssemblyLoaded?.Invoke(newContract);

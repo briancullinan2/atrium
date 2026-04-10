@@ -14,7 +14,7 @@
 <table>
     <tr>
         <td colspan="3">
-            @(Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+            @(Error != null ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
         </td>
     </tr>
     <tbody>
@@ -32,10 +32,28 @@
                 </td>
                     
                 <td class="enable-col">
-                    <label class="switch">
-                        <input type="checkbox" @checked="plugin.IsActive" />
-                        <span class="slider"></span>
-                    </label>
+                    @if(LoadedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var ass)
+                        && RequiredAssemblies.Contains(ass.GetName().Name ?? ass.GetName().FullName))
+                    {
+                        <span>Required</span>
+                    }
+                    else if (DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    {
+                        <label class="switch" aria-disabled="true">
+                            <input type="checkbox" disabled="disabled" checked="checked" />
+                        </label>
+                        <span>Required By:</span><br />
+                        @foreach (var required in requirees)
+                        {
+                            <span>@required</span><br />
+                        }
+                    }
+                    else
+                    {
+                        <label class="switch">
+                            <input type="checkbox" onchange="@((ChangeEventArgs args) => OnEnabled(plugin, args))" checked="@(GetActive(plugin))" />
+                        </label>
+                    }
                 </td>
             </tr>
             @if (LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
@@ -51,12 +69,89 @@
 @code {
     private bool _showSplash = true;
     protected string Ready = "loading";
-    private static Dictionary<string, Assembly> LoadedAssemblies = AppDomain.CurrentDomain
+    private static Dictionary<string, Assembly>? StoredAssemblies = null;
+    private static Dictionary<string, Assembly> LoadedAssemblies 
+    {
+        get => StoredAssemblies ??= AppDomain.CurrentDomain
         .GetAssemblies().ToDictionary(
-            ass => ass.FullName?.Split(',')[0] 
-            ?? ass.GetName().Name 
-            ?? Path.GetFileNameWithoutExtension( ass.Location),
+            ass => Path.GetFileNameWithoutExtension(ass.Location)
+            ?? ass.FullName?.Split(',')[0]
+            ?? ass.GetName().Name
+            ?? ass.GetName().FullName.Split(',')[0],
             ass => ass);
+    }
+
+    private static List<string> RequiredAssemblies = new List<AssemblyName?>
+        { Assembly.GetEntryAssembly()?.GetName(),
+          Assembly.GetExecutingAssembly().GetName(),
+        }.Concat(Assembly.GetEntryAssembly()?.GetReferencedAssemblies() ?? [])
+        .OfType<AssemblyName>()
+        .Select(n => n.Name ?? n.FullName)
+        .ToList();
+
+
+    private bool GetActive(PluginContract e)
+    {
+        var ass = Path.GetFileNameWithoutExtension(e.InstallPath);
+        if (EnabledAssemblies.ContainsKey(ass))
+            return true;
+        if (LoadedAssemblies.ContainsKey(ass))
+            return true;
+        return false;
+    }
+
+    protected string? Error = null;
+
+    private void OnEnabled(PluginContract plugin, ChangeEventArgs e)
+    {
+        Error = null;
+        var isChecked = (bool)(e.Value ?? false);
+        var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
+        if (!isChecked)
+            EnabledAssemblies.Remove(ass);
+        else
+            EnabledAssemblies.Add(ass, true);
+        try
+        {
+            var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
+            if (loaded == null) return;
+            // temporary whatever
+            LoadedAssemblies.TryAdd(ass, loaded);
+        }
+        catch (Exception ex)
+        {
+            // do something statusy
+            Error = ex.Message;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static Dictionary<string, bool> EnabledAssemblies { get; } = [];
+
+    private static List<Assembly> EnabledAssMappings { get
+        => [..EnabledAssemblies.Keys
+        .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
+        .OfType<Assembly>()];
+    }
+
+    private static Dictionary<string, List<string>> DependedAssemblies { 
+        get => EnabledAssMappings
+        .SelectMany(parentAss =>
+            parentAss.GetReferencedAssemblies()
+                .Select(refAss => new
+                {
+                    Parent = parentAss.GetName().Name ?? parentAss.GetName().FullName,
+                    Dependency = refAss.Name ?? refAss.FullName
+                }))
+        // Filter out null names if any
+        .Where(x => x.Parent != null && x.Dependency != null)
+        // Group by the Dependency (The "Required" assembly on the left)
+        .GroupBy(x => x.Dependency)
+        .ToDictionary(
+            g => g.Key, // The Required Assembly (The "Source")
+            g => g.Select(x => x.Parent).Distinct().ToList() // The "Requirees" (The "Dependents")
+        );
+    }
 
     protected override void OnInitialized()
     {

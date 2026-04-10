@@ -64,8 +64,7 @@ public record PluginContract(
     string Title,
     string InstallPath,
     bool IsTrusted,
-    AssemblyInfo Metadata,
-    bool IsActive);
+    AssemblyInfo Metadata);
 
 public interface ITrustProvider
 {

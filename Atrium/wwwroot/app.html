@@ -12,7 +12,6 @@
             margin: 0;
             max-width: 100%;
             /* TODO: look up cross platform system backups font-family: Verdana, Geneva, Tahoma, sans-serif; */
-            drag-drop-zone: none; /* Non-standard, but some engines respect it */
             -webkit-user-drag: none;
             height: 100%;
             line-height: 1.6em;
@@ -96,6 +95,14 @@
         }
 
         /* The container/track */
+        .cover-page input[type="checkbox"][disabled] {
+            border: 1px solid lightgray;
+        }
+        .cover-page input[type="checkbox"][disabled]:checked {
+            background-color: gray; /* iOS Green */
+            border-color: darkgray;
+        }
+
         .cover-page input[type="checkbox"] {
             appearance: none;
             -webkit-appearance: none;
