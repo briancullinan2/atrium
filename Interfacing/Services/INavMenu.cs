@@ -34,9 +34,13 @@ public interface IHasContext
     static abstract Delegate ContextInsert { get; }
 }
 
-
 public interface INotHasWrapper
 {
 
 }
 
+public interface IHasPageContext
+{
+    static abstract Delegate ShowPageContext { get; }
+    static abstract Delegate PageContextInsert { get; }
+}

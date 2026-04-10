@@ -8,12 +8,11 @@ using Microsoft.AspNetCore.Components;
 namespace Atrium;
 
 
-public class MauiProgram : IHasService<MauiApp>
+public class MauiProgram : IHasCurrent<MauiApp>
 {
 
     private static readonly MauiApp _myApp = CreateMauiApp();
     public static MauiApp Current => _myApp;
-    public static IServiceProvider Services => _myApp.Services;
 
     private static MauiApp CreateMauiApp()
     {
@@ -35,6 +34,7 @@ public class MauiProgram : IHasService<MauiApp>
 
         builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
         builder.Services.AddSingleton<IComponentActivator, PluginActivator>();
+        builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG
@@ -43,6 +43,7 @@ public class MauiProgram : IHasService<MauiApp>
         //builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
+        // TODO: replace these with registering themselves
 #if !BROWSER
         // Inject the server instance into MAUI's DI
         //ServerAuthService.BuildAuthentication(builder.Services);

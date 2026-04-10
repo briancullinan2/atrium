@@ -1,4 +1,5 @@
 ﻿
+using DataShared.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace RazorSharp.Services;
@@ -25,28 +26,26 @@ public class ServiceBuilder : IHasBuilder
     {
         Services.AddCascadingValue(sp => new ErrorBoundary());
 
+        List<Type> AlreadyMapped = [];
+        // TODO: need to map all IHasCurrent values to their functional Current static interface value
+        //   do this before the service creator below reaches them
+        var currents = AllServices.Where(s => s.Extends(typeof(IHasCurrent<>))).ToList();
+        foreach (var cur in currents)
+        {
+            var currentType = cur.GenericTypeArguments[0];
+            Services.AddCurrentAsLazy(cur, key);
+            AlreadyMapped.Add(cur);
+            AlreadyMapped.Add(currentType);
+        }
+
+
         foreach (var service in AllServices)
         {
-            if (key != null)
-            {
-                Services.AddKeyedScoped(service, key, service);
-                if (service.BaseType != null && service.BaseType != typeof(object))
-                    Services.AddKeyedScoped(service.BaseType, key, service);
-                foreach (var inter in service.GetInterfaces())
-                {
-                    Services.AddKeyedScoped(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
-                }
-            }
-            else
-            {
-                Services.AddScoped(service, service);
-                if (service.BaseType != null && service.BaseType != typeof(object))
-                    Services.AddScoped(service.BaseType, service);
-                foreach (var inter in service.GetInterfaces())
-                {
-                    Services.AddScoped(inter, sp => sp.GetRequiredService(service));
-                }
-            }
+            if (AlreadyMapped.Contains(service))
+                continue;
+
+            Services.AddAutoServices(service, key);
+
         }
 
         var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));

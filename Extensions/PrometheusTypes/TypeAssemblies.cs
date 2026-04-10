@@ -160,9 +160,9 @@ public static partial class TypeExtensions
             ];
 
         List<Type> currents = [..servicable
-            .Where(t => t.Extends(typeof(IHasService<>)))
+            .Where(t => t.Extends(typeof(IHasCurrent<>)))
             .Select(t => {
-                var interf = t.GetInterfaces().Where(i => i.Extends(typeof(IHasService)) && i.GenericTypeArguments.Length > 0).First();
+                var interf = t.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>)));
                 return interf.GetGenericArguments().First();
             })];
 
@@ -175,6 +175,7 @@ public static partial class TypeExtensions
         return t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
             || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true
             || t.Extends(typeof(IHasService))
+            || t.Extends(typeof(IHasCurrent<>))
             || t.Extends(typeof(IHasPlugins))
             || t.Extends(typeof(IHasFeatures));
     }

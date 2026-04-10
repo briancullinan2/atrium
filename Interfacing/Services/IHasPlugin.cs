@@ -13,10 +13,10 @@ public interface IHasBuilder
 
 public interface IHasService
 {
-    static abstract IServiceProvider Services { get; }
+    IServiceProvider Services { get; }
 }
 
-public interface IHasService<T> : IHasService
+public interface IHasCurrent<T>
 {
     static abstract T? Current { get; }
 }
@@ -58,12 +58,6 @@ public interface IHasHome
 {
     static abstract Delegate ShowHome { get; }
     static abstract Delegate HomeInsert { get; }
-}
-
-public interface IHasPageContext
-{
-    static abstract Delegate ShowPageContext { get; }
-    static abstract Delegate PageContextInsert { get; }
 }
 
 public record PluginContract(

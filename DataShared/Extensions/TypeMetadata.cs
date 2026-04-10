@@ -6,7 +6,7 @@ public static partial class TypeExtensions
     private static readonly Dictionary<Type, EntityMetadata> _metadataCache = [];
 
 
-
+    // there's another ToPredicate in Extensions.TypeExtensions that turns an object or Dictionary into a Boolean comparator
     public static Expression<Func<TEntity, bool>> ToPredicate<TEntity>(this IEntity entity)
         where TEntity : Entity<TEntity>
     {
@@ -78,6 +78,23 @@ public static partial class TypeExtensions
         return newMeta;
     }
 
+
+
+}
+
+
+internal static class CopiedTypeExtensions
+{
+
+
+    public static bool IsConcrete(this Type type)
+    {
+        if (type == null) return false;
+
+        return !type.IsAbstract &&
+               !type.IsInterface &&
+               !type.IsGenericTypeDefinition;
+    }
 
 
 }

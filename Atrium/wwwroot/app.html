@@ -17,7 +17,7 @@
             line-height: 1.6em;
         }
 
-        .page {
+        .cover-page.page {
             position: relative;
             display: flex;
             flex-direction: column;
@@ -25,7 +25,7 @@
             height: 100%;
         }
 
-        main {
+        .cover-page main {
             flex: 1;
             max-width: 100%;
             min-width: 200px;
@@ -166,6 +166,31 @@
         .cover-page input[type="checkbox"]:focus-visible {
             box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
         }
+
+
+        .cover-page .btn-primary,
+        .cover-page a.cta,
+        .cover-page button.cta {
+            padding: 4px;
+            background: darkorange;
+            color: black;
+            margin: 5px 5px 5px auto;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 2px solid lightgrey;
+            line-height: 1.5rem;
+        }
+
+        .cover-page .btn:focus,
+        .cover-page .btn:active:focus,
+        .cover-page .btn-link.nav-link:focus,
+        .cover-page .form-control:focus,
+        .cover-page .form-check-input:focus,
+        .cover-page button.cta:hover {
+            text-decoration: underline;
+            box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+        }
+
 
     </style>
 

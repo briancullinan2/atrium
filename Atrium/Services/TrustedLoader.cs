@@ -12,17 +12,16 @@ using Atrium.Platforms.Windows;
 
 namespace Atrium.Services;
 
-#pragma warning disable IL3002 // Avoid calling members marked with 'RequiresAssemblyFilesAttribute' when publishing as a single-file
-
-public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDisposable
+public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
 
-    private static IServiceProvider? StoredServices = null;
-    public static IServiceProvider Services {
+    private IServiceProvider? StoredServices = null;
+    public IServiceProvider Services {
         get => StoredServices ?? throw new InvalidOperationException("Services aren't ready yet, load a plugin first.");
         set => StoredServices = value; }
 
+    [RequiresAssemblyFiles]
     public TrustedLoader(IServiceProvider _service)
     {
         StoredServices ??= _service;
@@ -45,16 +44,25 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
     public static List<Type> AllPlugins { get; } = [..Assembly.GetExecutingAssembly().GetTypes()
         .Where(t => typeof(IHasPlugins).IsAssignableFrom(t))];
 
-    [RequiresAssemblyFiles("Calls System.Reflection.Assembly.Location")]
+    [RequiresAssemblyFiles("Uses Location for plugin tracking")]
     private void CurrentDomainOnAssemblyLoad(object? sender, AssemblyLoadEventArgs args)
     {
+        var assembly = args.LoadedAssembly;
+
+        // Fallback: If Location is empty (Single File), use the Simple Name
+        string location = assembly.Location;
+        string title = !string.IsNullOrEmpty(location)
+            ? Path.GetFileNameWithoutExtension(location)
+            : assembly.GetName().Name ?? "Unknown";
+
         OnAssemblyLoaded?.Invoke(new PluginContract(
-                Title: args.LoadedAssembly.FullName ?? Path.GetFileNameWithoutExtension(args.LoadedAssembly.Location),
-                InstallPath: args.LoadedAssembly.Location,
-                IsTrusted: true,
-                Metadata: args.LoadedAssembly.GetAssemblyInfo()
-            ));
+            Title: title,
+            InstallPath: location, // Will be empty string in Single-File
+            IsTrusted: true,
+            Metadata: assembly.GetAssemblyInfo()
+        ));
     }
+
 
     public void Dispose()
     {
@@ -169,6 +177,7 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
 
     public static bool IsLoading { get; private set; } = false;
 
+    [RequiresAssemblyFiles()]
     private async Task RunFullScan()
     {
         if (IsLoading) return;
@@ -625,4 +634,3 @@ internal static class MetadataReaderExtensions
         return myDelegate.Invoke(null, thisObject != null ? [thisObject, .. parameterValues] : parameterValues);
     }
 }
-#pragma warning restore IL3002 // Avoid calling members marked with 'RequiresAssemblyFilesAttribute' when publishing as a single-file

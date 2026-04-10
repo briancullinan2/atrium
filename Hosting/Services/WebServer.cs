@@ -13,14 +13,14 @@ namespace Hosting.Services;
 
 public class WebServer
 #if !BROWSER
-    : IHasService<WebApplication>
+    : IHasCurrent<WebApplication>
 #endif
 {
 
 #if !BROWSER
     private static readonly WebApplication _private = StartWebServer([]);
     public static WebApplication Current => _private;
-    public static IServiceProvider Services => _private.Services;
+    //public static IServiceProvider Services => _private.Services;
 
 
     public static WebApplication StartWebServer(string[] args)

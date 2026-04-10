@@ -3,6 +3,7 @@
 @using System.ComponentModel.DataAnnotations
 @inject ITrustProvider Trust
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
+@inject IServiceProvider Service
 
 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M11.25 3.9V12.92C11.25 13.25 11.09 13.55 10.82 13.74L3.61 18.79C3.02 19.2 2.18 18.88 2.05 18.17C1.9 17.31 2.1 16.3 2.7 15.21L5.82 9.6L8.76 4.31C8.99 3.9 9.24 3.54 9.5 3.23C10.1 2.53 11.25 2.98 11.25 3.9Z" fill="#292D32" />
@@ -14,6 +15,7 @@
 <table>
     <tr>
         <td colspan="3">
+            <button class="cta">Save and Continue</button><br />
             @(Error != null ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
         </td>
     </tr>
@@ -123,6 +125,16 @@
             // do something statusy
             Error = ex.Message;
         }
+
+        // TODO: if the component has visual elements, activate window size from splash mode
+        if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+        {
+            if(EnabledAssemblies.Count == 0)
+                window.ExpandWindow(false);
+            else
+                window.ExpandWindow(true);
+        }
+
         InvokeAsync(StateHasChanged);
     }
 

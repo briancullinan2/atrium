@@ -209,6 +209,8 @@ public partial class FormFactor(
 
     public override async Task<string?> UpdateTitle(string? title)
     {
+        if (Desktop?.Value is IHasWindow growable)
+            _ = growable.ExpandWindow(true); // don't wait on animations
         var _title = await base.UpdateTitle(title);
         MainThread.BeginInvokeOnMainThread(() =>
         {

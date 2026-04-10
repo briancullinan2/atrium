@@ -26,6 +26,12 @@ public interface ITitleService
 }
 
 
+public interface IHasWindow
+{
+    Task ExpandWindow(bool expanding);
+    bool IsSplashMode { get; }
+}
+
 
 public interface IFile
 {
