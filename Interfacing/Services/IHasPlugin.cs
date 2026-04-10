@@ -66,6 +66,8 @@ public record PluginContract(
     bool IsTrusted,
     AssemblyInfo Metadata);
 
+public class Dumbass { }
+
 public interface ITrustProvider
 {
     Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
@@ -77,7 +79,6 @@ public interface ITrustProvider
     Dictionary<string, bool> EnabledAssemblies { get; }
     Dictionary<string, List<string>> DependedAssemblies { get; }
     ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
-
 }
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.None);

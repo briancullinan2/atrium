@@ -1,4 +1,5 @@
 @page "/plugins"
+@using Atrium.Services
 @using Interfacing.Services
 @using System.ComponentModel.DataAnnotations
 @inject ITrustProvider Trust
@@ -13,13 +14,71 @@
     <path d="M5.26 19.14L11.41 15.04C11.74 14.82 12.28 14.82 12.61 15.04L18.76 19.14C20.39 20.23 20.12 21.12 18.16 21.12H5.85C3.9 21.11 3.63 20.22 5.26 19.14Z" fill="#292D32" />
 </svg>
 <table>
-    <tr>
-        <td colspan="3">
-            <button class="cta">Save and Continue</button><br />
-            @(Error != null ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
-        </td>
-    </tr>
     <tbody>
+        <tr>
+            <td colspan="3">
+                <button class="cta">Save and Continue</button><br />
+                @(Error != null ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+            </td>
+        </tr>
+
+        @if(((TrustedLoader)Trust).Layouts.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <select @bind="SelectedLayout">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).Routable.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <select @bind="SelectedLayout">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
+                        {
+                            var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
+                            <option value="@name">@name</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).CatchAll.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <select @bind="SelectedLayout">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).Roots.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <select @bind="SelectedLayout">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
         @foreach (var (file, plugin) in Trust.DiscoveredStatus ?? [])
         {
             <tr>
@@ -70,8 +129,13 @@
 
 @code {
     private bool _showSplash = true;
-    protected string Ready = "loading";
-    
+
+    private string? StoredSelectedLayout = null;
+    private string? SelectedLayout
+    {
+        get => StoredSelectedLayout;
+        set => ((TrustedLoader)Trust).SetDefaultLayout(Type.GetType(StoredSelectedLayout = value));
+    }
 
     private bool GetActive(PluginContract e)
     {
@@ -138,12 +202,51 @@
 
     private string? Scanning = null;
 
+    private CancellationTokenSource? _uiCts;
+    private DateTime _lastUiUpdate = DateTime.MinValue;
+
     protected void NotifyAssembly(PluginContract file)
     {
-        Ready = "loaded";
-        Scanning = file.InstallPath;
-        InvokeAsync(StateHasChanged);
+        // 1. Immediate Throttled UI Update (Max every 200ms)
+        // This keeps the UX fluid without flooding the RenderTree
+        if ((DateTime.Now - _lastUiUpdate).TotalMilliseconds > 200)
+        {
+            Scanning = file.InstallPath;
+            _lastUiUpdate = DateTime.Now;
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        // 2. Cancel the previous "Final Scan" timer
+        _uiCts?.Cancel();
+        _uiCts = new CancellationTokenSource();
+        var token = _uiCts.Token;
+
+        // 3. Schedule the "Final" update
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Wait for the "dust to settle" (the flow of events to stop)
+                await Task.Delay(1000, token);
+
+                // This block only runs if no more NotifyAssembly calls happened for 1 second
+                Scanning = "";
+            
+                var loader = (TrustedLoader)Trust;
+                if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
+                {
+                    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (TaskCanceledException)
+            {
+                // Successfully preempted by a newer assembly notification
+            }
+        }, token);
     }
+
 
     public void Dispose()
     {

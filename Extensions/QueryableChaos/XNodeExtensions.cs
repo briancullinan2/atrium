@@ -59,7 +59,7 @@ public static class XNodeExtensions
         {
             if (prop.GetIndexParameters().Length > 0) continue;
 
-            if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null) continue;
+            if (prop.GetCustomAttributes<JsonIgnoreAttribute>().FirstOrDefault() != null) continue;
 
 
             if (prop.Name == nameof(TypeInfo.ImplementedInterfaces)

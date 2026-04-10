@@ -10,7 +10,7 @@ public static partial class IEntityExtensions
 
     public static List<PropertyInfo> Database(this Type type, bool includePredicate = false)
     {
-        var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
+        var primaryKey = type.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault()?.PropertyNames;
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p =>
                 includePredicate
@@ -33,7 +33,7 @@ public static partial class IEntityExtensions
                 i => [.. type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .Where(p => i.PropertyNames.Contains(p.Name))]);
         if (includePrimary
-            && type.GetCustomAttribute<PrimaryKeyAttribute>() is PrimaryKeyAttribute attr)
+            && type.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() is PrimaryKeyAttribute attr)
         {
             var primaryKey = string.Join("", attr.PropertyNames);
             var primaryProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -72,8 +72,8 @@ public static partial class IEntityExtensions
             .Where(p =>
                 (Attribute.IsDefined(p, typeof(CategoryAttribute))
                 || Attribute.IsDefined(p, typeof(DisplayAttribute)))
-                && (string.Equals(p.GetCustomAttribute<CategoryAttribute>()?.Category, "Display")
-                || string.Equals(p.GetCustomAttribute<DisplayAttribute>()?.GroupName, "Display"))
+                && (string.Equals(p.GetCustomAttributes<CategoryAttribute>().FirstOrDefault()?.Category, "Display")
+                || string.Equals(p.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()?.GroupName, "Display"))
                 && !Attribute.IsDefined(p, typeof(NotMappedAttribute))
                 && !Attribute.IsDefined(p, typeof(JsonIgnoreAttribute))
 

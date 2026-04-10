@@ -48,6 +48,12 @@
         .cover-page td
         {
             padding: 10px;
+            word-break: break-word;
+        }
+
+        .cover-page td[conspan] 
+        {
+            text-align:center;
         }
 
         .cover-page table {
@@ -56,10 +62,15 @@
             transition: max-height ease-in-out 0.5s;
         }
 
+        .cover-page.layout table,
         .cover-page.loaded table
         {
             max-height: 400px;
             max-height: calc(100vh - 50% - 10rem);
+        }
+
+        .cover-page.layout {
+            opacity: 70%;
         }
         
         .cover-page .content {
@@ -117,6 +128,7 @@
             box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
             align-items: center;
             display: flex;
+            padding:0;
         }
 
         /* The sliding dot (thumb) */
@@ -167,6 +179,43 @@
             box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
         }
 
+        .cover-page select,
+        .cover-page textarea,
+        .cover-page input,
+        .cover-page input[type="file"],
+        .cover-page input[type="email"],
+        .cover-page input[type="password"],
+        .cover-page input[type="number"],
+        .cover-page input[type="date"],
+        .cover-page input[type="text"] {
+            line-height: 1.6em;
+            padding: 4px;
+            border: 2px solid lightgrey;
+            border-radius: 5px;
+            min-width: auto;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .cover-page select:focus,
+        .cover-page select:active,
+        .cover-page textarea:focus,
+        .cover-page textarea:active,
+        .cover-page input,
+        .cover-page input[type="file"]:focus,
+        .cover-page input[type="file"]:active,
+        .cover-page input[type="email"]:focus,
+        .cover-page input[type="email"]:active,
+        .cover-page input[type="password"]:focus,
+        .cover-page input[type="password"]:active,
+        .cover-page input[type="number"]:focus,
+        .cover-page input[type="number"]:active,
+        .cover-page input[type="date"]:focus,
+        .cover-page input[type="date"]:active,
+        .cover-page input[type="text"]:focus,
+        .cover-page input[type="text"]:active {
+            border-color: darkorange;
+        }
 
         .cover-page .btn-primary,
         .cover-page a.cta,

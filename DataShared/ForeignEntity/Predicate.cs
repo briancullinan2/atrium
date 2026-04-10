@@ -8,9 +8,9 @@ public static partial class IEntityExtensions
 
     public static List<PropertyInfo> Predicate(this Type type)
     {
-        var primaryKey = type.GetCustomAttribute<PrimaryKeyAttribute>()?.PropertyNames;
+        var primaryKey = type.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault()?.PropertyNames;
         var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetCustomAttribute<KeyAttribute>() != null || primaryKey?.Contains(p.Name) == true)
+            .Where(p => p.GetCustomAttributes<KeyAttribute>().FirstOrDefault() != null || primaryKey?.Contains(p.Name) == true)
             .ToList();
         return keyProperties;
     }
@@ -94,7 +94,7 @@ public static partial class IEntityExtensions
 
         // Get the keys (Reflection logic you already have)
         var keyProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetCustomAttribute<KeyAttribute>() != null).ToList();
+            .Where(p => p.GetCustomAttributes<KeyAttribute>().FirstOrDefault() != null).ToList();
         if (keyProps.Count == 0)
         {
             var idProp = type.GetProperty("Id") ?? type.GetProperty($"{type.Name}Id");

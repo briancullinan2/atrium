@@ -1,6 +1,7 @@
 ﻿//#if DEBUG
 //using Microsoft.Extensions.Logging;
 //#endif
+using Atrium.Components;
 using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
@@ -34,6 +35,7 @@ public class MauiProgram : IHasCurrent<MauiApp>
 
         builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
         builder.Services.AddSingleton<IComponentActivator, PluginActivator>();
+        builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();

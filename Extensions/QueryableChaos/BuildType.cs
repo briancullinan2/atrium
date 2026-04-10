@@ -64,7 +64,7 @@ public static partial class LinqExtensions
             var entity = Activator.CreateInstance(targetType);
             foreach (var prop in props)
             {
-                if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                if (prop.GetCustomAttributes<JsonIgnoreAttribute>().FirstOrDefault() != null)
                     continue;
 
                 if (prop.ReadOnly())

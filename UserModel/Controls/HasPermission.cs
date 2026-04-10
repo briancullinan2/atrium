@@ -20,7 +20,7 @@ public class HasPermission : ComponentBase, IDisposable
     }
 
     private bool IsAllowAnonymous =>
-        RouteData?.PageType.GetCustomAttribute<AllowAnonymousAttribute>() != null;
+        RouteData?.PageType.GetCustomAttributes<AllowAnonymousAttribute>().FirstOrDefault() != null;
 
     private IEnumerable<AuthorizeAttribute> AuthorizeAttributes =>
         RouteData?.PageType.GetCustomAttributes<AuthorizeAttribute>(inherit: true) ?? [];

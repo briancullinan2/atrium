@@ -2,6 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Atrium.Components;
+using Microsoft.AspNetCore.Components;
+
+
 
 #if WINDOWS
 using System.Runtime.InteropServices;
@@ -13,6 +17,7 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
+    public MainLoader? AttachedMain { get; set; }
 
     private IServiceProvider? StoredServices = null;
     public IServiceProvider Services {
@@ -72,8 +77,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(IServiceProvider _service)
+    public TrustedLoader(IServiceProvider _service, Lazy<MainLoader?> _main)
     {
+        AttachedMain = _main.Value;
         StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         DiscoveredStatus.Clear();
@@ -105,13 +111,64 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             ? Path.GetFileNameWithoutExtension(location)
             : assembly.GetName().Name ?? "Unknown";
 
+        LoadedAssemblies.TryAdd(title, assembly);
+
         OnAssemblyLoaded?.Invoke(new PluginContract(
             Title: title,
             InstallPath: location, // Will be empty string in Single-File
             IsTrusted: true,
             Metadata: assembly.GetAssemblyInfo()
         ));
+
+        Task.Run(() => TryFindingInterestingTypes(assembly));
     }
+
+
+    public readonly List<Type> Layouts = [];
+    readonly List<Assembly> Seen = [];
+    public readonly List<Assembly> Routable = [];
+    public readonly List<Type> CatchAll = [];
+    public readonly List<Type> Roots = [];
+
+    private async Task TryFindingInterestingTypes(Assembly ass)
+    {
+        if (Seen.Contains(ass))
+            return;
+
+        Seen.Add(ass);
+        var allTypes = ass.GetTypes();
+        var routable = false;
+
+        foreach (var type in allTypes)
+        {
+            try
+            {
+                if (typeof(LayoutComponentBase).IsAssignableFrom(type)
+                    && type != typeof(LayoutComponentBase))
+                    Layouts.Add(type);
+                if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
+                    && type != typeof(PluginsPage)) // we already know about ourselves
+                {
+                    routable = true;
+                    if (attr.Template.StartsWith("/*")
+                        || attr.Template.StartsWith("/{*")
+                        || attr.Template.StartsWith('*'))
+                        CatchAll.Add(type);
+
+                    if (attr.Template == "/")
+                        Roots.Add(type);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        if (routable)
+            Routable.Add(ass);
+    }
+
 
 
     public void Dispose()
@@ -119,6 +176,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         AppDomain.CurrentDomain.AssemblyLoad -= CurrentDomainOnAssemblyLoad;
         GC.SuppressFinalize(this);
     }
+
+
 
     protected async Task CheckPluginFiles()
     {
@@ -183,9 +242,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
 
-    public static List<Type> EnabledPlugins { get; private set; } = [];
+    
 
     /*
+
+    public static List<Type> EnabledPlugins { get; private set; } = [];
 
     [RequiresAssemblyFiles()]
     public async Task CheckStatus()
@@ -296,6 +357,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             return null;
         }
     }
+
+    public void SetPermission(Type? PermissionType) => AttachedMain?.PermissionType = PermissionType;
+    public void SetNotFound(Type? NotFoundControl) => AttachedMain?.NotFoundControl = NotFoundControl;
+    public void SetAuthWrapper(Type? AuthWrapper) => AttachedMain?.AuthWrapper = AuthWrapper;
+    public void SetDefaultLayout(Type? DefaultLayout) => AttachedMain?.DefaultLayout = DefaultLayout;
+    public void SetAppAssembly(Assembly? AppAssembly) => AttachedMain?.AppAssembly = AppAssembly;
 
     /*
     public static bool VerifyCertificate(string filePath, string? thumbprint = null)

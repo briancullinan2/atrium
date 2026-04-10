@@ -11,7 +11,7 @@ public static partial class JsonExtensions
             .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             .Select(p => (
                 prop: p,
-                include: p.GetCustomAttribute<JsonPropertyNameAttribute>()
+                include: p.GetCustomAttributes<JsonPropertyNameAttribute>().FirstOrDefault()
                 ))
             .Where(p => p.include != null);
         foreach (var (prop, include) in props)
@@ -44,7 +44,7 @@ public static partial class JsonExtensions
             .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             .Select(p => (
                 prop: p,
-                include: p.GetCustomAttribute<JsonPropertyNameAttribute>()
+                include: p.GetCustomAttributes<JsonPropertyNameAttribute>().FirstOrDefault()
             ))
             .Where(p => p.include != null);
         

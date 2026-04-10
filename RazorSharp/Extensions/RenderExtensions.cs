@@ -63,7 +63,7 @@ namespace RazorSharp.Extensions
             , string? overrideIcon = null
             , Type? type = null)
         {
-            var display = type?.GetCustomAttribute<DisplayAttribute>();
+            var display = type?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
             return ToNavLink(uri, overrideTitle ?? display?.ShortName ?? display?.Name, overrideIcon ?? display?.Prompt);
         }
 

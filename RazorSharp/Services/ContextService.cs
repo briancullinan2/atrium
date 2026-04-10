@@ -15,7 +15,7 @@ internal class ContextService : IHasContext
 
     // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
     public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
-        (Type routeControl, NavigationManager Nav) => (__builder) =>
+        (routeControl, Nav) => (__builder) =>
         {
             if (!routeControl.Extends(typeof(INotHasWrapper))
                 && !Nav.Uri.Contains("/login", StringComparison.InvariantCultureIgnoreCase))

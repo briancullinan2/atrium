@@ -10,7 +10,7 @@
     <select @bind="Value">
         @foreach (var value in EnumValues)
         {
-            var attribute = EnumType?.GetField(value.ToString()!)?.GetCustomAttribute<DescriptionAttribute>();
+            var attribute = EnumType?.GetField(value.ToString()!)?.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault();
             <option value="@value.ToString()">@(attribute != null ? attribute.Description : value.ToString())</option>
         }
     </select>

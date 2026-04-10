@@ -15,9 +15,9 @@ public class MenuService(IServiceProvider Service) : IMenuService
 
 
     public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = TypeExtensions.AllRoutable
-        .Where(r => r?.GetCustomAttribute<DisplayAttribute>() is DisplayAttribute attr
+        .Where(r => r?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault() is DisplayAttribute attr
             && !string.IsNullOrWhiteSpace(attr.GroupName))
-        .ToDictionary(r => r!, r => r!.GetCustomAttribute<DisplayAttribute>()!);
+        .ToDictionary(r => r!, r => r!.GetCustomAttributes<DisplayAttribute>().First());
 
 
     public static List<KeyValuePair<string, string>> Categories { get; } = [.. PotentialRoutes

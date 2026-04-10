@@ -116,7 +116,7 @@ public class AggressiveVisitor : ExpressionVisitor
 
                 // swap out the object key for the id key
                 if (members.First().Key is PropertyInfo prop2
-                    && prop2.GetCustomAttribute<ForeignKeyAttribute>()?.Name is string foreign
+                    && prop2.GetCustomAttributes<ForeignKeyAttribute>().FirstOrDefault()?.Name is string foreign
                     && prop2.DeclaringType?.GetProperty(foreign) is PropertyInfo prop3
                     && prop3.IsNumeric())
                     integerToCompare = prop3;

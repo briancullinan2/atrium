@@ -25,8 +25,8 @@ public static partial class TypeExtensions
     public static bool MineOnly { get; } = true;
 
     public static string? GetProduct(this Assembly entry)
-        => entry.GetCustomAttribute<AssemblyProductAttribute>()?.Product
-        ?? entry.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
+        => entry.GetCustomAttributes<AssemblyProductAttribute>().FirstOrDefault()?.Product
+        ?? entry.GetCustomAttributes<AssemblyTitleAttribute>().FirstOrDefault()?.Title;
 
     public static string? GetPackage(this Assembly entry)
         => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -36,10 +36,10 @@ public static partial class TypeExtensions
     public static string? GetPublisher(this Assembly entry)
         => entry.GetCustomAttributes<AssemblyMetadataAttribute>()
         ?.FirstOrDefault(attr => attr.Key == "PublisherName" || attr.Key == "Authors" || attr.Key == "Owner")?.Value
-        ?? entry.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company;
+        ?? entry.GetCustomAttributes<AssemblyCompanyAttribute>().FirstOrDefault()?.Company;
 
     public static string? GetCompany(this Assembly entry)
-        => entry.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company
+        => entry.GetCustomAttributes<AssemblyCompanyAttribute>().FirstOrDefault()?.Company
         ?? entry.GetCustomAttributes<AssemblyMetadataAttribute>()
         ?.FirstOrDefault(attr => attr.Key == "CompanyName" || attr.Key == "Organization")?.Value;
 

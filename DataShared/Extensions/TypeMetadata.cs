@@ -24,7 +24,7 @@ public static partial class TypeExtensions
 
         // 1. Identify the Keys (Mirroring your logic)
         var keyProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetCustomAttribute<KeyAttribute>() != null ||
+            .Where(p => p.GetCustomAttributes<KeyAttribute>().FirstOrDefault() != null ||
                         p.Name == "Id" ||
                         p.Name == $"{type.Name}Id")
             .ToList();

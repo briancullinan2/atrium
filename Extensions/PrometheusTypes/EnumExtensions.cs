@@ -16,15 +16,15 @@ public static class EnumExtensions
         if (member == null) return memberName;
 
         // 1. Check [Display(Description = "")] - Highest priority for modern .NET
-        var display = member.GetCustomAttribute<DisplayAttribute>();
+        var display = member.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
         if (!string.IsNullOrEmpty(display?.GetDescription())) return display.GetDescription()!;
 
         // 2. Check [EnumMember(Value = "")] - Priority for Cloud/Serialization
-        var enumMember = member.GetCustomAttribute<EnumMemberAttribute>();
+        var enumMember = member.GetCustomAttributes<EnumMemberAttribute>().FirstOrDefault();
         if (!string.IsNullOrEmpty(enumMember?.Value)) return enumMember.Value;
 
         // 3. Check [Description("")] - Standard legacy WPF/WinForms support
-        var description = member.GetCustomAttribute<DescriptionAttribute>();
+        var description = member.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault();
         if (!string.IsNullOrEmpty(description?.Description)) return description.Description;
 
         // Fallback: The raw string (munged or otherwise)
@@ -71,7 +71,7 @@ public static class EnumExtensions
             {
                 return (TEnum?)Enum.ToObject(typeof(TEnum), value);
             }
-            var attribute = typeof(TEnum).GetField(value.ToString())?.GetCustomAttribute<DescriptionAttribute>();
+            var attribute = typeof(TEnum).GetField(value.ToString())?.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault();
             if (attribute != null && string.Equals(val.ToString(), Enum.GetName(value)) || string.Equals(val.ToString(), attribute?.Description, StringComparison.InvariantCultureIgnoreCase))
             {
                 return (TEnum?)Enum.ToObject(typeof(TEnum), value);

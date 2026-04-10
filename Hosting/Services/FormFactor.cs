@@ -45,8 +45,8 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     public static string? AppName
     {
         get => Assembly.GetEntryAssembly()?
-                     .GetCustomAttribute<AssemblyProductAttribute>()?
-                     .Product;
+            .GetCustomAttributes<AssemblyProductAttribute>().FirstOrDefault()
+            ?.Product;
     }
 
     internal static string? _title;

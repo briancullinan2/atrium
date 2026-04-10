@@ -29,12 +29,13 @@ public class PropertyMetadata
 
         // Initialize your custom lookups once here
         Custom = _info.GetCustomAttributes();
-        MaxLength = _info.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? _info.GetCustomAttribute<StringLengthAttribute>()?.MaximumLength;
-        DisplayName = _info.GetCustomAttribute<DisplayAttribute>()?.GetName() ?? _info.Name;
-        GroupName = _info.GetCustomAttribute<DisplayAttribute>()?.GetGroupName();
-        Category = _info.GetCustomAttribute<CategoryAttribute>()?.Category;
-        Order = _info.GetCustomAttribute<DisplayAttribute>()?.GetOrder();
-        DataType = _info.GetCustomAttribute<DataTypeAttribute>()?.DataType;
+        MaxLength = _info.GetCustomAttributes<MaxLengthAttribute>().FirstOrDefault()?.Length 
+            ?? _info.GetCustomAttributes<StringLengthAttribute>().FirstOrDefault()?.MaximumLength;
+        DisplayName = _info.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()?.GetName() ?? _info.Name;
+        GroupName = _info.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()?.GetGroupName();
+        Category = _info.GetCustomAttributes<CategoryAttribute>().FirstOrDefault()?.Category;
+        Order = _info.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()?.GetOrder();
+        DataType = _info.GetCustomAttributes<DataTypeAttribute>().FirstOrDefault()?.DataType;
     }
 
     // You can even wrap the actual Get/Set calls
@@ -133,7 +134,7 @@ public partial class EntityMetadata //: INotifyPropertyChanged
         EntityType = entityType;
 
         var props = entityType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-            .Select(p => new { p, attr = p.GetCustomAttribute<DisplayAttribute>() })
+            .Select(p => new { p, attr = p.GetCustomAttributes<DisplayAttribute>().FirstOrDefault() })
             .OrderBy(x => x.attr?.GetOrder() ?? 1000)
             .Select(x => x.p)
             .ToList();
