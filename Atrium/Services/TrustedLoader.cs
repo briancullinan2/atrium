@@ -31,6 +31,13 @@ public partial class TrustedLoader : ITrustProvider, IHasService<AppDomain>, IDi
         IsBootstrapping = true;
         Task.Run(RunFullScan);
 
+
+        /*
+        // TODO: make contexts unloadable LoadPlugins()
+        var context = new AssemblyLoadContext("PluginContext", isCollectible: true);
+        var assembly = context.LoadFromAssemblyPath(Path.Combine(AppContext.BaseDirectory, "Interfacing.dll"));
+        */
+
     }
     public bool IsBootstrapping { get; set; } = true;
     public ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; } = new();

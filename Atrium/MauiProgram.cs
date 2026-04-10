@@ -3,6 +3,7 @@
 //#endif
 using Atrium.Services;
 using Interfacing.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace Atrium;
 
@@ -33,6 +34,7 @@ public class MauiProgram : IHasService<MauiApp>
             });
 
         builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
+        builder.Services.AddSingleton<IComponentActivator, PluginActivator>();
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG

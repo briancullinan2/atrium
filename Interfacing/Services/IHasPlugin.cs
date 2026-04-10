@@ -18,10 +18,11 @@ public interface IHasService<T> : IHasService
 public interface IHasPlugins
 {
     // this is the name of the setting indicating its installed or null for not
-    // should return a Task<string?> 
+    //   this is used to shortcut the enabled process after the first load
+    // should return a Task<string?>
     static abstract Delegate Installed { get; }
     // this is what the service manager should automatically add to DI if enabled after being checked for installed 
-    // should return a List<Type>?
+    // should return a Dictionary<Type, (string Name, string Icon)>?
     static abstract Delegate Plugins { get; }
 }
 
@@ -31,7 +32,7 @@ public interface IHasFeatures
     // should return a Task<List<string>?>
     static abstract Delegate Installed { get; }
     // this is what the UX should display after checking installed
-    // should return a Dictionary<Type, string>?
+    // should return a Dictionary<Type, (string Name, string Icon)>?
     static abstract Delegate DisplayNames { get; }
 }
 

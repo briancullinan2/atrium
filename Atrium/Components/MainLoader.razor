@@ -1,0 +1,58 @@
+@using Atrium.Services
+@using Interfacing.Services
+@inject ITrustProvider Trust
+@implements IDisposable
+
+@if (_showSplash)
+{
+    <div class="page login-mode cover-page @(Ready)">
+        <main>
+            <article class="content course-container">
+                @*TODO: make this a component that can inject itself into a settings page*@
+                <Atrium.Components.PluginsPage />
+            </article>
+        </main>
+    </div>
+}
+else
+{
+    @*<RazorSharp.Routes />*@
+}
+
+@code {
+    private bool _showSplash = true;
+    protected string Ready = "loading";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // Check local storage or your ILocalStore to see if this is the first run
+        // or if we should skip the splash.
+        var isFirstRun = true; // Use your ILocalStore service here
+        _showSplash = isFirstRun;
+        Trust.OnAssemblyLoaded += NotifyAssembly;
+    }
+
+    private void HandleOnComplete()
+    {
+        _showSplash = false;
+        StateHasChanged();
+    }
+
+    private string? Scanning = null;
+
+    protected void NotifyAssembly(PluginContract file)
+    {
+        Ready = "loaded";
+        Scanning = file.InstallPath;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Trust.OnAssemblyLoaded -= NotifyAssembly;
+        GC.SuppressFinalize(this);
+    }
+
+}
+
