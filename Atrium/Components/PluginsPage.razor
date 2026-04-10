@@ -34,12 +34,12 @@
                 </td>
                     
                 <td class="enable-col">
-                    @if(LoadedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var ass)
-                        && RequiredAssemblies.Contains(ass.GetName().Name ?? ass.GetName().FullName))
+                    @if (Trust.LoadedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var ass)
+                        && Trust.RequiredAssemblies.Contains(ass.GetName().Name ?? ass.GetName().FullName))
                     {
                         <span>Required</span>
                     }
-                    else if (DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
                     {
                         <label class="switch" aria-disabled="true">
                             <input type="checkbox" disabled="disabled" checked="checked" />
@@ -58,7 +58,7 @@
                     }
                 </td>
             </tr>
-            @if (LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
+            @if (Trust.LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
             {
                 
             }
@@ -71,33 +71,14 @@
 @code {
     private bool _showSplash = true;
     protected string Ready = "loading";
-    private static Dictionary<string, Assembly>? StoredAssemblies = null;
-    private static Dictionary<string, Assembly> LoadedAssemblies 
-    {
-        get => StoredAssemblies ??= AppDomain.CurrentDomain
-        .GetAssemblies().ToDictionary(
-            ass => Path.GetFileNameWithoutExtension(ass.Location)
-            ?? ass.FullName?.Split(',')[0]
-            ?? ass.GetName().Name
-            ?? ass.GetName().FullName.Split(',')[0],
-            ass => ass);
-    }
-
-    private static List<string> RequiredAssemblies = new List<AssemblyName?>
-        { Assembly.GetEntryAssembly()?.GetName(),
-          Assembly.GetExecutingAssembly().GetName(),
-        }.Concat(Assembly.GetEntryAssembly()?.GetReferencedAssemblies() ?? [])
-        .OfType<AssemblyName>()
-        .Select(n => n.Name ?? n.FullName)
-        .ToList();
-
+    
 
     private bool GetActive(PluginContract e)
     {
         var ass = Path.GetFileNameWithoutExtension(e.InstallPath);
-        if (EnabledAssemblies.ContainsKey(ass))
+        if (Trust.EnabledAssemblies.ContainsKey(ass))
             return true;
-        if (LoadedAssemblies.ContainsKey(ass))
+        if (Trust.LoadedAssemblies.ContainsKey(ass))
             return true;
         return false;
     }
@@ -110,15 +91,15 @@
         var isChecked = (bool)(e.Value ?? false);
         var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
         if (!isChecked)
-            EnabledAssemblies.Remove(ass);
+            Trust.EnabledAssemblies.Remove(ass);
         else
-            EnabledAssemblies.Add(ass, true);
+            Trust.EnabledAssemblies.Add(ass, true);
         try
         {
             var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
             if (loaded == null) return;
             // temporary whatever
-            LoadedAssemblies.TryAdd(ass, loaded);
+            Trust.LoadedAssemblies.TryAdd(ass, loaded);
         }
         catch (Exception ex)
         {
@@ -129,7 +110,7 @@
         // TODO: if the component has visual elements, activate window size from splash mode
         if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
         {
-            if(EnabledAssemblies.Count == 0)
+            if (Trust.EnabledAssemblies.Count == 0)
                 window.ExpandWindow(false);
             else
                 window.ExpandWindow(true);
@@ -138,32 +119,6 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private static Dictionary<string, bool> EnabledAssemblies { get; } = [];
-
-    private static List<Assembly> EnabledAssMappings { get
-        => [..EnabledAssemblies.Keys
-        .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
-        .OfType<Assembly>()];
-    }
-
-    private static Dictionary<string, List<string>> DependedAssemblies { 
-        get => EnabledAssMappings
-        .SelectMany(parentAss =>
-            parentAss.GetReferencedAssemblies()
-                .Select(refAss => new
-                {
-                    Parent = parentAss.GetName().Name ?? parentAss.GetName().FullName,
-                    Dependency = refAss.Name ?? refAss.FullName
-                }))
-        // Filter out null names if any
-        .Where(x => x.Parent != null && x.Dependency != null)
-        // Group by the Dependency (The "Required" assembly on the left)
-        .GroupBy(x => x.Dependency)
-        .ToDictionary(
-            g => g.Key, // The Required Assembly (The "Source")
-            g => g.Select(x => x.Parent).Distinct().ToList() // The "Requirees" (The "Dependents")
-        );
-    }
 
     protected override void OnInitialized()
     {

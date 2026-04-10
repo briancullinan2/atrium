@@ -72,6 +72,10 @@ public interface ITrustProvider
     Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
     event Action<PluginContract> OnAssemblyLoaded;
     bool IsBootstrapping { get; }
+    List<string> RequiredAssemblies { get; }
+    Dictionary<string, Assembly> LoadedAssemblies { get; }
+    Dictionary<string, bool> EnabledAssemblies { get; }
+    Dictionary<string, List<string>> DependedAssemblies { get; }
     ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
 
 }
