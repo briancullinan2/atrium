@@ -26,15 +26,8 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
-	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	  <ProjectReference Include="..\UserData\UserData.csproj" />
 	</ItemGroup>
-
-	<PropertyGroup>
-		<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
-		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
 
 </Project>

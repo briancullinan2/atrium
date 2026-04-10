@@ -28,14 +28,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
-	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
-
-	<PropertyGroup>
-		<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
-		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
 
 
 </Project>

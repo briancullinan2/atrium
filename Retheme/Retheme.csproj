@@ -10,6 +10,7 @@
 	  <Product>Atrium</Product>
 	  <Company>Brian Cullinan</Company>
 	  <Publisher>Brian Cullinan</Publisher>
+	  
   </PropertyGroup>
 
 	<PropertyGroup>
@@ -47,21 +48,11 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-	  <Folder Include="Pages\" />
-	</ItemGroup>
-	
-	<ItemGroup>
 	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
-	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	  <ProjectReference Include="..\UserData\UserData.csproj" />
 	</ItemGroup>
 
 
-	<PropertyGroup>
-		<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
-		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
 
 </Project>

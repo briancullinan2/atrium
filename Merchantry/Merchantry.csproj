@@ -16,7 +16,6 @@
 	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj" />
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
 	  <ProjectReference Include="..\FlashData\FlashData.csproj" />
-	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	</ItemGroup>
 	

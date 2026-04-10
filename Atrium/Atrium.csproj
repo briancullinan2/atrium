@@ -113,15 +113,6 @@
 		<StartupObject>Atrium.WinUI.App</StartupObject>
 	</PropertyGroup>
 
-	<PropertyGroup>
-		<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
-		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\Interfacing\Interfacing.csproj" />
-	</ItemGroup>
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
 		<ItemGroup>

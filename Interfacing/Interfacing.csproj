@@ -14,17 +14,4 @@
 		<Publisher>Brian Cullinan</Publisher>
 	</PropertyGroup>
 
-	<PropertyGroup>
-		<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
-		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
-
-	<!--<ItemGroup>
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.*-*" />
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
-	  <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
-	</ItemGroup>-->
-
 </Project>
