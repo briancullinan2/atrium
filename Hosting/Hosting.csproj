@@ -44,7 +44,6 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
-	  <ProjectReference Include="..\UserModel\UserModel.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

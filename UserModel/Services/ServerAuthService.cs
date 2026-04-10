@@ -3,11 +3,10 @@
 
 namespace UserModel.Services;
 
-public static class ServerAuthService
+public class ServerAuthService : IHasBuilder
 {
 
-
-    public static void BuildAuthentication(IServiceCollection Services)
+    public static void BuildServices(IServiceCollection Services, string? key = null)
     {
         // Define a constant for the claim type to avoid naming mismatches
         const string SessionIdClaimType = "atrium_sid";

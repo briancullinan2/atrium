@@ -23,7 +23,7 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        SharedRegistry.BuildSharedServiceList(builder.Services);
+        ServiceBuilder.BuildSharedServiceList(builder.Services);
 
         builder.Services.RemoveAll<IQueryManager>();
         builder.Services.AddSingleton<IQueryManager, RemoteManager>();

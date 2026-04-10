@@ -1,9 +1,15 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Interfacing.Services;
+
+public interface IHasBuilder
+{
+    static abstract void BuildServices(IServiceCollection services, string? key = null);
+}
 
 public interface IHasService
 {

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Hosting;
-using UserModel.Services;
 #endif
 
 namespace Hosting.Services;
@@ -63,9 +62,9 @@ public class WebServer
 #if !BROWSER
             webBuilder.Services.AddBlazorWebViewDeveloperTools();
             // Inject the server instance into MAUI's DI
-            ServerAuthService.BuildAuthentication(webBuilder.Services);
+            //ServerAuthService.BuildAuthentication(webBuilder.Services);
 #endif
-            SharedRegistry.BuildSharedServiceList(webBuilder.Services);
+            ServiceBuilder.BuildServices(webBuilder.Services);
 
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
