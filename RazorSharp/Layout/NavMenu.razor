@@ -56,7 +56,7 @@
     public bool menuMode { get; set; }
     public int CurrentMenu = 0;
     private Dictionary<string, object> _componentInstances = new();
-
+    [CascadingParameter] public Type? PermissionType { get; set; }
 
 
     private void HandleClick(INavMenuItem item)
@@ -112,19 +112,23 @@
             <div @onclick="() => HandleClick(item)"
                  @onclick:stopPropagation="true"
                  data-href="@item.Href">
-                <HasPermission Permission="@item.RequiredPermission">
-                    <NavLink class="nav-link"
-                             Match="@(string.IsNullOrWhiteSpace(item.Href) ? NavLinkMatch.All : NavLinkMatch.Prefix)">
-
-                        <span class="bi @item.Icon" aria-hidden="true"></span>
-                        <span class="nav-text">@item.Title</span>
-
-                        @if (hasChildren)
-                        {
-                            <span class="bi @(item.IsCollapsed ? "bi-chevron-right" : "bi-chevron-down")"></span>
-                        }
-                    </NavLink>
-                </HasPermission>
+                @if(PermissionType != null)
+                {
+                    __builder.OpenComponent(0, PermissionType);
+                    __builder.AddAttribute(1, "Permission", item.RequiredPermission);
+    
+                    __builder.AddAttribute(2, "ChildContent", (RenderFragment)((__builder2) =>
+                    {
+                        // ToNavLink returns a RenderFragment, invoke it with the current builder
+                        RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon)(__builder2);
+                    }));
+    
+                    __builder.CloseComponent(); // Closes HasPermission
+                }
+                else
+                {
+                    @RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon);
+                }
             </div>
 
             @if (hasChildren && !item.IsCollapsed)
@@ -138,6 +142,9 @@
             }
         </div>
     };
+
+
+
 
     // This is your Iterator/List
     private static List<INavMenuItem> MenuStructure = MenuService.GetMenuItems("Main");

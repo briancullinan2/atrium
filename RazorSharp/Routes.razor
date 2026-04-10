@@ -2,6 +2,7 @@
 @inject IRenderState Rendered
 @inject IServiceProvider Service
 
+<CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
 @*what the fuck is this?*@
 @if (AuthService == null)
 {
@@ -32,17 +33,18 @@ else
         </Router>
     </CascadingAuthenticationState>
 }
-
+</CascadingValue>
 
 @code {
-    [Parameter] public Type? PermissionControl { get; set; } = null;
+    [Parameter] public Type? PermissionType { get; set; } = null;
     [Parameter] public Type? NotFoundControl { get; set; } = null;
     [Parameter] public Type DefaultLayout { get; set; } = typeof(Layout.MainLayout);
     [Parameter] public System.Reflection.Assembly AppAssembly { get; set; } = typeof(Layout.MainLayout).Assembly;
 
     private RenderFragment CreatePermissionContent(RouteData routeData) => builder =>
     {
-        builder.OpenComponent(0, PermissionControl);
+        if (PermissionType == null) throw new InvalidOperationException("CreatePermissionContent was called without auth setup");
+        builder.OpenComponent(0, PermissionType);
 
         // Pass the standard parameters
         builder.AddAttribute(1, "RouteData", routeData);

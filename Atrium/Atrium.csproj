@@ -37,7 +37,7 @@
     <ApplicationId>com.atrium.desktop</ApplicationId>
 	<Authors>Brian Cullinan</Authors>
 	  <Product>Atrium</Product>
-	  <Company>Atrium</Company>
+	  <Company>Brian Cullinan</Company>
 
 	  <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>

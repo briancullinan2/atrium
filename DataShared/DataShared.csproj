@@ -10,7 +10,7 @@
 		<ApplicationId>com.atrium.desktop</ApplicationId>
 		<Authors>Brian Cullinan</Authors>
 		<Product>Atrium</Product>
-		<Company>Atrium</Company>
+		<Company>Brian Cullinan</Company>
 	</PropertyGroup>
 
 	<ItemGroup>

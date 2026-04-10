@@ -1,0 +1,29 @@
+<Project>
+	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
+		<PropertyGroup>
+			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
+
+			<ContentPath>$(HostBinPath)wwwroot\_content\$(MSBuildProjectName)\</ContentPath>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<PluginBinaries Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)wwwroot\**\*.*" />
+
+			<PluginRootAssets Include="$(TargetDir)wwwroot\*.*" />
+
+			<ProjectAssets Include="$(TargetDir)$(MSBuildProjectName)\wwwroot\**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(PluginBinaries)"
+			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(PluginRootAssets)"
+			  DestinationFolder="$(HostBinPath)wwwroot\"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(ProjectAssets)"
+			  DestinationFiles="@(ProjectAssets->'$(ContentPath)%(RecursiveDir)%(Filename)%(Extension)')"
+			  SkipUnchangedFiles="true" />
+	</Target>
+</Project>

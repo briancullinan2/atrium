@@ -8,7 +8,7 @@
 		<ApplicationId>com.atrium.desktop</ApplicationId>
 		<Authors>Brian Cullinan</Authors>
 		<Product>Atrium</Product>
-		<Company>Atrium</Company>
+		<Company>Brian Cullinan</Company>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -27,34 +27,6 @@
 		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
 		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
 	</PropertyGroup>
-
-	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
-		<PropertyGroup>
-			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\$(TargetFramework)\win-x64\</HostBinPath>
-
-			<HostingContentPath>$(HostBinPath)wwwroot\_content\Hosting\</HostingContentPath>
-		</PropertyGroup>
-
-		<ItemGroup>
-			<PluginBinaries Include="$(TargetDir)**\*.*" Exclude="$(TargetDir)wwwroot\**\*.*" />
-
-			<PluginRootAssets Include="$(TargetDir)wwwroot\*.*" />
-
-			<HostingProjectAssets Include="$(TargetDir)Hosting\wwwroot\**\*.*" />
-		</ItemGroup>
-
-		<Copy SourceFiles="@(PluginBinaries)"
-			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
-			  SkipUnchangedFiles="true" />
-
-		<Copy SourceFiles="@(PluginRootAssets)"
-			  DestinationFolder="$(HostBinPath)wwwroot\"
-			  SkipUnchangedFiles="true" />
-
-		<Copy SourceFiles="@(HostingProjectAssets)"
-			  DestinationFiles="@(HostingProjectAssets->'$(HostingContentPath)%(RecursiveDir)%(Filename)%(Extension)')"
-			  SkipUnchangedFiles="true" />
-	</Target>
 
 
 </Project>
