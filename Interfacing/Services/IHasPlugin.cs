@@ -87,11 +87,12 @@ public enum LevelOfTrust : int
 {
     None = 0,
     Meta = 1, // title from a known publisher
-    Published = 2, // strongly named
-    Signed = 3, // strong name or authenticode signature from a trusted authority
-    Mine = 4, // title from a known publisher and matches an assembly already loaded into the app domain
-    Verified = 5, // verified through windows signing
-    Trusted = 6, // cert is already in user store
-    Full = 7 // manually marked as trusted by user
+    Required = 2,
+    Published = 3, // strongly named
+    Signed = 4, // strong name or authenticode signature from a trusted authority
+    Mine = 5, // title from a known publisher and matches an assembly already loaded into the app domain
+    Verified = 6, // verified through windows signing
+    Trusted = 7, // cert is already in user store
+    Full = 8 // manually marked as trusted by user
 }
 

@@ -8,28 +8,27 @@
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
 
-@if (FirstTimeLoad || DefaultLayout == null || AppAssembly == null)
-{
-    <div class="page login-mode cover-page @(Ready)">
+<div class="page login-mode cover-page @(Ready)">
+    @if (FirstTimeLoad || DefaultLayout == null || AppAssembly == null)
+    {
         <main>
             <article class="content course-container">
                 @*TODO: make this a component that can inject itself into a settings page*@
                 <Atrium.Components.PluginsPage />
             </article>
         </main>
-    </div>
-}
-else
-{
-    @*Replace this with a dynamic page builder*@
-    
-    <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
-        <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
-            @RenderWithPermission()
-        </CascadingValue>
-    </CascadingValue>
+    }
 
-}
+    @if(DefaultLayout != null || AppAssembly != null)
+    {
+        <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+            <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                @RenderWithPermission()
+            </CascadingValue>
+        </CascadingValue>
+
+    }
+</div>
 
 @code {
 

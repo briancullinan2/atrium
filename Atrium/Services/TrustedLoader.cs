@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Atrium.Components;
 using Microsoft.AspNetCore.Components;
+using System.Xml.Linq;
+
+
+
 
 
 
@@ -27,17 +31,21 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public Dictionary<string, bool> EnabledAssemblies { get; } = [];
 
+    private List<Assembly>? CachedEnabledAssMappings { get; set; } = null;
     private List<Assembly> EnabledAssMappings
     {
-        get
-        => [..EnabledAssemblies.Keys
+        get => CachedEnabledAssMappings 
+            ??= [..EnabledAssemblies.Keys
         .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
         .OfType<Assembly>()];
     }
 
+    // TODO: reset to null on user input
+    private Dictionary<string, List<string>>? CachedDependedAssemblies { get; set; } = null;
     public Dictionary<string, List<string>> DependedAssemblies
     {
-        get => EnabledAssMappings
+        get => CachedDependedAssemblies
+            ??= EnabledAssMappings
         .SelectMany(parentAss =>
             parentAss.GetReferencedAssemblies()
                 .Select(refAss => new
@@ -54,6 +62,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             g => g.Select(x => x.Parent).Distinct().ToList() // The "Requirees" (The "Dependents")
         );
     }
+
 
     public List<string> RequiredAssemblies { get; } = [..new List<AssemblyName?>
         { Assembly.GetEntryAssembly()?.GetName(),
@@ -82,7 +91,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         AttachedMain = _main.Value;
         StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
-        DiscoveredStatus.Clear();
         IsBootstrapping = true;
         Task.Run(RunFullScan);
 
@@ -120,7 +128,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             Metadata: assembly.GetAssemblyInfo()
         ));
 
-        Task.Run(() => TryFindingInterestingTypes(assembly));
+        if (title.StartsWith("System.") || title.StartsWith("Microsoft.")) return;
+
+        if(!Seen.Contains(assembly))
+            Task.Run(() => TryFindingInterestingTypes(assembly));
     }
 
 
@@ -136,7 +147,16 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             return;
 
         Seen.Add(ass);
-        var allTypes = ass.GetTypes();
+        Type[] allTypes;
+        try
+        {
+            allTypes = ass.GetTypes();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            return;
+        }
         var routable = false;
 
         foreach (var type in allTypes)
@@ -186,9 +206,16 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
 
         var counter = PluginFiles.Length;
+        var parallel = Environment.ProcessorCount - 4;
+
+        var options = new ParallelOptions
+        {
+            // Leave at least one or two cores for the UI thread
+            MaxDegreeOfParallelism = Math.Max(1, parallel)
+        };
 
         // Process files in parallel batches to speed up metadata extraction
-        await Parallel.ForEachAsync(PluginFiles, async (file, ct) =>
+        await Parallel.ForEachAsync(PluginFiles, options, async (file, ct) =>
         {
             --counter;
 
@@ -198,6 +225,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 IsTrusted: false,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.None)
             ));
+
+            await Task.Delay((counter % parallel) * 100, ct);
 
             var trust = await GetTrustedAsync(file);
             if (trust == null) return;
@@ -218,6 +247,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             // Tell the UI to refresh as each item arrives
             OnAssemblyLoaded?.Invoke(contract);
 
+#if false
             if ((int)trust >= (int)LevelOfTrust.Published)
             {
                 var meta = await GetAssemblyInfoAsync(file);
@@ -236,6 +266,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     OnAssemblyLoaded?.Invoke(newContract);
                 }
             }
+#endif
         });
 
         IsBootstrapping = false;
@@ -305,13 +336,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         await Task.Delay(500);
 
         // Offload the heavy file IO to a background thread to keep UI snappy
-        await Task.Run(async () =>
-        {
-            var fileTask = CheckPluginFiles();
-            //var statusTask = CheckStatus();
-
-            await fileTask; // Task.WhenAll(fileTask, statusTask);
-        });
+        _ = CheckPluginFiles();
 
         IsLoading = false;
     }
@@ -336,9 +361,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         if (!File.Exists(filePath)) return null;
 
+        thumbprint ??= Whitelist[0];
+
         try
         {
             var name = AssemblyName.GetAssemblyName(filePath);
+
             var token = name.GetPublicKeyToken();
 
             if (token == null || token.Length == 0) return null;
@@ -347,8 +375,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 && string.Equals(Convert.ToHexString(token), thumbprint, StringComparison.InvariantCultureIgnoreCase))
                 return name;
 
-            if (Whitelist.Contains(Convert.ToHexString(token)))
-                return name;
             return null;
         }
         catch
@@ -382,14 +408,19 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public async Task<LevelOfTrust?> GetTrustedAsync(string filePath, string? expectedPublicKeyToken = null)
     {
-        LevelOfTrust level;
-        if (VerifyStrongName(filePath, expectedPublicKeyToken) != null)
+        LevelOfTrust? level = null;
+
+        if (RequiredAssemblies.Contains(Path.GetFileNameWithoutExtension(filePath)))
+            level = LevelOfTrust.Required;
+
+        if (VerifyStrongName(filePath, expectedPublicKeyToken) is AssemblyName name)
             level = LevelOfTrust.Published;
         else
-            return null;
+            return level;
 
         // TODO: fix flow for this
-        if (expectedPublicKeyToken == null)
+
+        if (Whitelist.Contains(Convert.ToHexString(name.GetPublicKeyToken())))
             level = LevelOfTrust.Mine;
 
 #if WINDOWS
@@ -428,8 +459,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             );
 
         // TODO: temporary
-        /*if (TypeExtensions.AllAssemblies
-            .FirstOrDefault(a => string.Equals(a.Location ?? System.AppContext.BaseDirectory, filePath, StringComparison.InvariantCultureIgnoreCase))
+        AssemblyInfo? meta;
+        if (AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.Location ?? System.AppContext.BaseDirectory, filePath, StringComparison.InvariantCultureIgnoreCase))
             is Assembly ass)
             meta = new AssemblyInfo(
                 ass.GetProduct(),
@@ -438,9 +470,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 ass.GetPackage(),
                 level.Value
             );
-        else*/
+        else
+            meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
 
-        AssemblyInfo? meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
+
         if (meta == null) return new AssemblyInfo(
             "No Metadata",
             "",

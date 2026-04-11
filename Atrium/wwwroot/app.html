@@ -15,6 +15,9 @@
             -webkit-user-drag: none;
             height: 100%;
             line-height: 1.6em;
+            backface-visibility: hidden;
+            perspective: 1000px;
+            will-change: transform;
         }
 
         .cover-page.page {
@@ -56,10 +59,26 @@
             text-align:center;
         }
 
+        .cover-page .status-container
+        {
+            padding-bottom: 8rem;
+            position: relative;
+        }
+
+        .cover-page .box-status {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            height: 8rem;
+            position:absolute;
+        }
+
         .cover-page table {
             max-height: 0;
             overflow:hidden;
-            transition: max-height ease-in-out 0.5s;
+            transition: all ease-in-out 0.5s;
         }
 
         .cover-page.layout table,

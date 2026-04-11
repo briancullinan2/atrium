@@ -16,17 +16,35 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     public Type? PermissionType { get; set; } = null;
     public Type? NotFoundControl { get; set; } = null;
     public Type? AuthWrapper { get; set; } = null;
-    private Type? StoredDefaultLayout = null;
+    
+    Type? StoredDefaultLayout = null;
     public Type? DefaultLayout { 
         get => StoredDefaultLayout;
         set 
         {
             StoredDefaultLayout = value;
-            Ready = "layout";
-            InvokeAsync(StateHasChanged);
+            if (StoredDefaultLayout != null && StoredAppAssembly != null)
+            {
+                Ready = "layout";
+                InvokeAsync(StateHasChanged);
+            }
         }
     }
-    public System.Reflection.Assembly? AppAssembly { get; set; } = null;
+
+    System.Reflection.Assembly? StoredAppAssembly = null;
+    public System.Reflection.Assembly? AppAssembly
+    {
+        get => StoredAppAssembly;
+        set
+        {
+            StoredAppAssembly = value;
+            if (StoredDefaultLayout != null && StoredAppAssembly != null)
+            {
+                Ready = "layout";
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
 
     private bool FirstTimeLoad = true;
     protected string Ready = "loading";

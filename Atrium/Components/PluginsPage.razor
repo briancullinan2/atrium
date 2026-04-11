@@ -16,9 +16,11 @@
 <table>
     <tbody>
         <tr>
-            <td colspan="3">
+            <td colspan="3" class="status-container">
                 <button class="cta">Save and Continue</button><br />
-                @(Error != null ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+                <span class="box-status">@(Error != null 
+                    ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+                </span>
             </td>
         </tr>
 
@@ -26,7 +28,8 @@
         {
             <tr>
                 <td colspan="3">
-                    <select @bind="SelectedLayout">
+                    <span>Layout</span><br />
+                    <select bind="@SelectedLayout">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -40,7 +43,8 @@
         {
             <tr>
                 <td colspan="3">
-                    <select @bind="SelectedLayout">
+                    <span>Routable</span><br />
+                    <select bind="@SelectedRoute">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
                         {
                             var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
@@ -55,7 +59,8 @@
         {
             <tr>
                 <td colspan="3">
-                    <select @bind="SelectedLayout">
+                    <span>Catch All</span><br />
+                    <select bind="@SelectedCatch">
                         @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -69,7 +74,8 @@
         {
             <tr>
                 <td colspan="3">
-                    <select @bind="SelectedLayout">
+                    <span>Root Component</span><br />
+                    <select bind="@SelectedRoot">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -79,7 +85,7 @@
             </tr>
         }
         
-        @foreach (var (file, plugin) in Trust.DiscoveredStatus ?? [])
+        @foreach (var plugin in MyList)
         {
             <tr>
                 <td class="name-col">
@@ -93,12 +99,11 @@
                 </td>
                     
                 <td class="enable-col">
-                    @if (Trust.LoadedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var ass)
-                        && Trust.RequiredAssemblies.Contains(ass.GetName().Name ?? ass.GetName().FullName))
+                    @if (plugin.Metadata.TrustLevel == LevelOfTrust.Required)
                     {
                         <span>Required</span>
                     }
-                    else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    @*else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
                     {
                         <label class="switch" aria-disabled="true">
                             <input type="checkbox" disabled="disabled" checked="checked" />
@@ -108,7 +113,7 @@
                         {
                             <span>@required</span><br />
                         }
-                    }
+                    }*@
                     else
                     {
                         <label class="switch">
@@ -117,10 +122,10 @@
                     }
                 </td>
             </tr>
-            @if (Trust.LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
+            @*@if (Trust.LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
             {
                 
-            }
+            }*@
         }
     </tbody>
 </table>
@@ -129,7 +134,9 @@
 
 @code {
     private bool _showSplash = true;
-
+    private string? SelectedRoute = null;
+    private string? SelectedCatch = null;
+    private string? SelectedRoot = null;
     private string? StoredSelectedLayout = null;
     private string? SelectedLayout
     {
@@ -204,6 +211,7 @@
 
     private CancellationTokenSource? _uiCts;
     private DateTime _lastUiUpdate = DateTime.MinValue;
+    List<PluginContract> MyList = [];
 
     protected void NotifyAssembly(PluginContract file)
     {
@@ -227,16 +235,18 @@
             try
             {
                 // Wait for the "dust to settle" (the flow of events to stop)
-                await Task.Delay(1000, token);
+                await Task.Delay(500, token);
+
+                MyList = Trust.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
 
                 // This block only runs if no more NotifyAssembly calls happened for 1 second
                 Scanning = "";
             
                 var loader = (TrustedLoader)Trust;
-                if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
-                {
-                    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
-                }
+                //if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
+                //{
+                //    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
+                //}
 
                 await InvokeAsync(StateHasChanged);
             }

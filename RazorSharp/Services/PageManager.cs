@@ -161,6 +161,8 @@ public class PageManager : IPageManager
 
     #region "Page State"
 
+    // TODO: move this to IRenderState to free up IPageEvents to only deal with eventing
+
     public int OffsetInMinutes { get; private set; }
 
     public void ClearRedirect()
@@ -595,6 +597,7 @@ public class PageManager : IPageManager
         await (Rendered.Runtime as IJSRuntime)!.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 
+    // TODO: move this to mainloader classes along side SetTitle
     public void SetPageClasses(List<string> classes)
     {
         PageClasses = classes;
