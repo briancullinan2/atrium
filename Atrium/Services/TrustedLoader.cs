@@ -144,6 +144,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public readonly List<Assembly> Routable = [];
     public readonly List<Type> CatchAll = [];
     public readonly List<Type> Roots = [];
+    public readonly List<Type> AllRoutes = [];
 
     private async Task TryFindingInterestingTypes(Assembly ass)
     {
@@ -187,6 +188,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
                     if (attr.Template == "/")
                         Roots.Add(type);
+
+                    AllRoutes.Add(type);
                 }
             }
             catch (Exception ex)

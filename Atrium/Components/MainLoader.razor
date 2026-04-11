@@ -24,6 +24,7 @@
 <div class="page login-mode cover-page @(Ready)">
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
+        <div class="canvas-container"></div>
         <main>
             <article class="content course-container">
                 @*TODO: make this a component that can inject itself into a settings page*@
@@ -34,12 +35,13 @@
 
     @if (StoredAppAssembly != null)
     {
-        <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
-            <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
-                @RenderWithPermission()
+        <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+            <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+                <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                    @RenderWithPermission()
+                </CascadingValue>
             </CascadingValue>
         </CascadingValue>
-
     }
 </div>
 

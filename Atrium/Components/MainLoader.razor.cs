@@ -21,7 +21,8 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     public Type? PermissionType { get; set; } = null;
     public Type? NotFoundControl { get; set; } = null;
     public Type? AuthWrapper { get; set; } = null;
-    
+    public Type? DefaultRoot { get; set; } = null;
+
     Type? StoredDefaultLayout = null;
     public Type? DefaultLayout { 
         get => StoredDefaultLayout;
@@ -228,6 +229,12 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     {
         return __builder =>
         {
+            if(DefaultRoot != null)
+            {
+                __builder.OpenComponent(0, DefaultRoot);
+                __builder.CloseComponent();
+                return;
+            }
             if (NotFoundControl != null)
             {
                 __builder.OpenComponent(0, NotFoundControl);

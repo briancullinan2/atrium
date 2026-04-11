@@ -86,6 +86,25 @@
             </tr>
         }
         
+        @if (((TrustedLoader)Trust).Roots.Count == 0 
+            && ((TrustedLoader)Trust).CatchAll.Count == 0
+            && ((TrustedLoader)Trust).AllRoutes.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <span>Root Component</span><br />
+                    <select bind="@SelectedRoot">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).AllRoutes)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">
+                                @(layoutType.FullName?.Split(',')[0] ?? layoutType.Name ?? layoutType.FullName)
+                            </option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
         @foreach (var plugin in MyList)
         {
             <tr>
@@ -137,7 +156,13 @@
     private bool _showSplash = true;
     private string? SelectedRoute = null;
     private string? SelectedCatch = null;
-    private string? SelectedRoot = null;
+    private string? StoredSelectedRoot = null;
+    private string? SelectedRoot
+    {
+        get => StoredSelectedRoot;
+        set => StoredSelectedRoot = (Main?.DefaultRoot = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
     private MainLoader? Main {
         get => Service.GetService<Lazy<MainLoader?>>()?.Value;
     }
@@ -286,6 +311,15 @@
                 //{
                 //    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
                 //}
+                if (StoredSelectedRoot == null && loader.Roots.Count > 0)
+                {
+                    SelectedRoot = loader.Roots[0].AssemblyQualifiedName;
+                }
+                if (StoredSelectedRoot == null && loader.Roots.Count == 0
+                    && loader.AllRoutes.Count > 0)
+                {
+                    SelectedRoot = loader.AllRoutes[0].AssemblyQualifiedName;
+                }
                 if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
                 {
                     await SetSelectedAssembly(loader.Routable[0].FullName?.Split(',')[0]);

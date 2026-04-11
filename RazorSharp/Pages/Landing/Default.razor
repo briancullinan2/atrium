@@ -5,18 +5,28 @@
 
 @if (!String.IsNullOrWhiteSpace(notFound))
 {
-    <NotFoundControl />
-    return;
+    if(DefaultRoot != null)
+    {
+        __builder.OpenComponent(0, DefaultRoot);
+        __builder.CloseComponent();
+    }
+    else
+    {
+        <NotFoundControl />
+        return;
+    }
 }
-
-<div class="flash-card animate-in">
-Find a home page.
-</div>
+else
+{
+    <div class="flash-card animate-in">
+        TODO: Find a home page.
+    </div>
+}
 
 @code
 {
     // TODO: find the best home page based on the plugins loaded.
-
+    [CascadingParameter] public Type? DefaultRoot { get; set; }
     [Parameter] public string? notFound { get; set; }
 
 }
