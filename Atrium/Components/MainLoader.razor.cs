@@ -241,6 +241,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
                 __builder.CloseComponent();
                 return;
             }
+
             // <div class="flash-card">
             __builder.OpenElement(0, "div");
             __builder.AddAttribute(1, "class", "flash-card");

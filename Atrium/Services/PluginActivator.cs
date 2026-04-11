@@ -1,23 +1,36 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using Interfacing.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace Atrium.Services;
 
-public class PluginActivator(IServiceProvider mainProvider, IServiceProvider registry) : IComponentActivator
+public class PluginActivator(IServiceProvider mainProvider, IServiceProvider registry) : IComponentActivator, IHasService
 {
+    private readonly CompositeServiceProvider Composite = new(registry, mainProvider);
+
+    public IServiceProvider Services => Composite;
+
     public IComponent CreateInstance(Type componentType)
     {
-        var composite = new CompositeServiceProvider(registry, mainProvider);
-        return (IComponent)ActivatorUtilities.CreateInstance(composite, componentType);
+        return (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
     }
 }
 
-public partial class CompositeServiceProvider(IServiceProvider pluginProvider, IServiceProvider mainProvider) : IServiceProvider, ISupportRequiredService
+public partial class CompositeServiceProvider(IServiceProvider pluginProvider, IServiceProvider mainProvider) : IServiceProvider, ISupportRequiredService, IHasService
 {
+    public IServiceProvider Services => this;
+    // something you got to introduce a little... anarchy
+    public IServiceProvider? PluginPopin { get; set; } = null;
+
     public object GetService(Type serviceType)
     {
+        if(serviceType == typeof(CompositeServiceProvider))
+            return this;
+
         // The "Wizard" logic: check plugin first, then fallback
-        return pluginProvider.GetService(serviceType)
-               ?? mainProvider.GetService(serviceType)!;
+        return 
+            PluginPopin?.GetService(serviceType)
+            ?? pluginProvider.GetService(serviceType)
+            ?? mainProvider.GetService(serviceType)!;
     }
 
     public object GetRequiredService(Type serviceType)
