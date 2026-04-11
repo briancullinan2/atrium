@@ -98,3 +98,9 @@ public enum LevelOfTrust : int
     Full = 8 // manually marked as trusted by user
 }
 
+public interface IHasForms
+{
+
+}
+
+

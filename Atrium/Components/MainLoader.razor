@@ -24,8 +24,8 @@
 <div class="page login-mode cover-page @(Ready)">
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
-        <div class="canvas-container"></div>
-        <main>
+        <div class="cover-container"></div>
+        <main class="cover-page">
             <article class="content course-container">
                 @*TODO: make this a component that can inject itself into a settings page*@
                 <Atrium.Components.PluginsPage />

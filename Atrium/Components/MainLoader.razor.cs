@@ -107,16 +107,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     {
         if (AuthWrapper != null)
         {
-            int seq = 0;
-            // 1. Open CascadingAuthenticationState
-            __builder.OpenComponent(seq++, AuthWrapper);
+            __builder.OpenComponent(0, AuthWrapper);
 
-            // 2. Define the ChildContent for the Auth State
-            __builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((__builder2) =>
+            __builder.AddAttribute(1, "ChildContent", (RenderFragment)((__builder2) =>
             {
                 if (DefaultLayout != null)
                 {
-                    // Note: Ensure RenderWithLayout returns a RenderFragment
+                    // TODO: Ensure RenderWithLayout returns a RenderFragment
                     __builder2.AddContent(0, RenderWithLayout());
                 }
                 else
@@ -131,7 +128,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         {
             if (DefaultLayout != null)
             {
-                // Note: Ensure RenderWithLayout returns a RenderFragment
+                // TODO: Ensure RenderWithLayout returns a RenderFragment
                 __builder.AddContent(0, RenderWithLayout());
             }
             else
