@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Interfacing.Services;
@@ -75,6 +76,7 @@ public interface ITrustProvider
     event Action<PluginContract> OnAssemblyLoaded;
     bool IsBootstrapping { get; }
     List<string> RequiredAssemblies { get; }
+    [RequiresAssemblyFiles]
     Dictionary<string, Assembly> LoadedAssemblies { get; }
     Dictionary<string, bool> EnabledAssemblies { get; }
     Dictionary<string, List<string>> DependedAssemblies { get; }

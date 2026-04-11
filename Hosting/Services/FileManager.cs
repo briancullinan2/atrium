@@ -37,7 +37,7 @@ public partial class FileManager(
 
     public async Task<object?> UploadFile(Stream localStream, string localPath, string? source = "Uploads")
     {
-        if(OperatingSystem.IsBrowser() && !Circuit.IsSignalCircuit)
+        if (OperatingSystem.IsBrowser() && !Circuit.IsSignalCircuit)
         {
             return Circuit.InvokeAsync<object?>(ReceiveFileMethod.Route(), [localStream, localPath, source]);
         }
@@ -61,7 +61,7 @@ public partial class FileManager(
     [AllowAnonymous]
     public async Task<object?> ReceiveFile(Stream? localStream, string localPath, string? source = "Uploads")
     {
-        if(localStream == null)
+        if (localStream == null)
             throw new InvalidOperationException("No files provided.");
 
         var savePath = Path.Combine(UploadDirectory, Path.GetFileName(localPath).ToSafe());

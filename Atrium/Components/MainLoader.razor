@@ -8,8 +8,21 @@
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
 
+@if (IsDebug)
+{
+    <script>
+        (function() {
+        const originalInvoke = DotNet.invokeMethodAsync;
+        DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+        console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+        return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+        };
+        })();
+    </script>
+}
+
 <div class="page login-mode cover-page @(Ready)">
-    @if (FirstTimeLoad || DefaultLayout == null || AppAssembly == null)
+    @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
         <main>
             <article class="content course-container">
@@ -19,7 +32,7 @@
         </main>
     }
 
-    @if(DefaultLayout != null || AppAssembly != null)
+    @if (StoredAppAssembly != null)
     {
         <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
             <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
@@ -34,7 +47,7 @@
 
     private RenderFragment RenderWithLayout() => __builder =>
     {
-        <Router AppAssembly="@AppAssembly" AdditionalAssemblies="@Trust.LoadedAssemblies.Values">
+        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@Trust.LoadedAssemblies.Values">
             <Found Context="routeData">
                 @if (AuthService != null)
                 {
@@ -56,7 +69,7 @@
 
     private RenderFragment RenderWithoutLayout() => __builder =>
     {
-        <Router AppAssembly="@AppAssembly">
+        <Router AppAssembly="@StoredAppAssembly">
             <Found Context="routeData">
                 @if (AuthService != null)
                 {

@@ -19,34 +19,21 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Antlr4.CodeGenerator" Version="4.6.*-*">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.*-*" />
-		<PackageReference Include="Antlr4" Version="4.6.*-*">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	  <PackageReference Include="Antlr4.Runtime" Version="4.6.*-*" />
-	  <PackageReference Include="NETStandard.Library" Version="2.0.*-*" />
+		<PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+		<PackageReference Include="Antlr4BuildTasks" Version="12.11.*" PrivateAssets="all" />
 	</ItemGroup>
-	
+
 	<ItemGroup>
-		<Antlr4 Update="Grammars\css3Lexer.g4">
-			<Generator>MSbuild:Compile</Generator>
-			<CustomToolNamespace>Retheme.Grammars</CustomToolNamespace>
-			<TargetLanguage>CSharp</TargetLanguage>
-			<Options>-visitor -listener</Options>
-		</Antlr4>
-		<Antlr4 Update="Grammars\css3Parser.g4">
-			<Generator>MSbuild:Compile</Generator>
-			<CustomToolNamespace>Retheme.Grammars</CustomToolNamespace>
-			<TargetLanguage>CSharp</TargetLanguage>
-			<Options>-visitor -listener</Options>
+		<Antlr4 Include="Grammars\*.g4">
+			<Package>Retheme.Grammars</Package>
+
+			<Visitor>true</Visitor>
+			<Listener>true</Listener>
+
 		</Antlr4>
 	</ItemGroup>
 	
+
 	<ItemGroup>
 	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />

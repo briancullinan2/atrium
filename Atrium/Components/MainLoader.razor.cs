@@ -1,6 +1,8 @@
 ﻿using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
+using System.Collections.Generic;
 
 namespace Atrium.Components;
 
@@ -13,6 +15,9 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         SetCurrent = this;
     }
 
+    // Default to Wasm, but allow an override
+    public IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
+    public bool IsDebug = false;
     public Type? PermissionType { get; set; } = null;
     public Type? NotFoundControl { get; set; } = null;
     public Type? AuthWrapper { get; set; } = null;
@@ -32,17 +37,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     }
 
     System.Reflection.Assembly? StoredAppAssembly = null;
-    public System.Reflection.Assembly? AppAssembly
+    public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
     {
-        get => StoredAppAssembly;
-        set
+        StoredAppAssembly = assembly;
+        if (StoredAppAssembly != null)
         {
-            StoredAppAssembly = value;
-            if (StoredDefaultLayout != null && StoredAppAssembly != null)
-            {
-                Ready = "layout";
-                InvokeAsync(StateHasChanged);
-            }
+            Ready = "layout"; // Explicitly move to layout
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -57,15 +58,40 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         var isFirstRun = true; // Use your ILocalStore service here
         FirstTimeLoad = isFirstRun;
         Trust.OnAssemblyLoaded += NotifyAssembly;
+#if DEBUG
+        IsDebug = true;
+#endif
+        var query = Query(Nav.Uri);
+        if (Nav?.Uri.Contains("#mode=server") == true)
+        {
+            PreferredMode = RenderMode.InteractiveServer;
+        }
+        else if (query?.TryGetValue("mode", out var mode) == true)
+        {
+            PreferredMode = mode == "server"
+                ? RenderMode.InteractiveServer
+                : RenderMode.InteractiveWebAssembly;
+        }
+
+        Console.WriteLine($"Starting in {PreferredMode} mode");
     }
 
+    public static Dictionary<string, string> Query(string uri)
+    {
+        // Use a simple split/regex to avoid heavy libraries
+        var query = uri.TrimStart('?');
+        var parameters = query.Split('&')
+                              .Select(p => p.Split('='))
+                              .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");
+
+        return parameters;
+    }
 
     protected void NotifyAssembly(PluginContract file)
     {
         if (Ready == "loading")
         {
             Ready = "loaded";
-            // TODO: rescan to get a list of MainLayouts and potential home pages
             InvokeAsync(StateHasChanged);
         }
     }
@@ -118,7 +144,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     private RenderFragment RebuildRouter() => __builder =>
     {
         __builder.OpenComponent<Router>(0);
-        __builder.AddAttribute(1, "AppAssembly", AppAssembly);
+        __builder.AddAttribute(1, "AppAssembly", StoredAppAssembly);
         __builder.AddAttribute(2, "AdditionalAssemblies", Trust.LoadedAssemblies.Values);
 
         __builder.AddAttribute(3, "Found", (RenderFragment<RouteData>)((routeData) => (builder2) =>

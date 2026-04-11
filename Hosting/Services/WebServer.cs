@@ -60,7 +60,7 @@ public class WebServer
 
 
 #if !BROWSER
-            webBuilder.Services.AddBlazorWebViewDeveloperTools();
+            //webBuilder.Services.AddBlazorWebViewDeveloperTools();
             // Inject the server instance into MAUI's DI
             //ServerAuthService.BuildAuthentication(webBuilder.Services);
 #endif
@@ -72,7 +72,7 @@ public class WebServer
             //webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
 
             // get a shared logger
-            webBuilder.Services.AddScoped<SimpleLogger>(sp => 
+            webBuilder.Services.AddScoped<SimpleLogger>(sp =>
                 //MauiProgram.Current.Services.GetService<SimpleLogger>() 
                 sp.GetKeyedService<SimpleLogger>("web")
                 ?? new SimpleLogger(sp));
@@ -82,7 +82,7 @@ public class WebServer
                 .AddJsonProtocol()
                 .AddMessagePackProtocol();
             webBuilder.Services.AddHttpContextAccessor();
-            
+
 
             webBuilder.Environment.WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
             webBuilder.WebHost.ConfigureKestrel(options =>
@@ -144,7 +144,7 @@ public class WebServer
                 context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                 context.Response.Headers.Append("Pragma", "no-cache");
                 context.Response.Headers.Append("Expires", "0");
-                
+
                 return next();
             });
 

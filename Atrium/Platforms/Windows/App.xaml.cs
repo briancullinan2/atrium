@@ -38,6 +38,15 @@ public partial class App : MauiWinUIApplication
             {
                 return Assembly.LoadFrom(path);
             }
+            string sharedPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                @"dotnet\shared\Microsoft.AspNetCore.App\10.0.0",
+                name
+            );
+            if (File.Exists(sharedPath))
+            {
+                return Assembly.LoadFrom(sharedPath);
+            }
             return null;
         };
 

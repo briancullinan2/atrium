@@ -115,7 +115,7 @@ public partial class CircuitProvider : ICircuitProvider
             }
         }
 
-        if(isPost)
+        if (isPost)
         {
             var result = await Http.PostAsync(route, multiPartContent);
             var task = result.Content.ReadFromJsonAsync<TResult>();
@@ -157,9 +157,9 @@ public partial class CircuitProvider : ICircuitProvider
 #if !BROWSER
     public static async Task OnExecuteAsync(
         HttpContext Context,
-        NavigationManager Nav, 
-        IFileManager FileManager, 
-        ICircuitProvider Circuit, 
+        NavigationManager Nav,
+        IFileManager FileManager,
+        ICircuitProvider Circuit,
         IFormFactor Form)
     {
         try
@@ -198,12 +198,13 @@ public partial class CircuitProvider : ICircuitProvider
                 ?.MakeGenericMethod(methodInfo.ReturnType)
                 ?? throw new InvalidOperationException("Couldn't render ExecuteAsyncDebounced for: " + methodInfo);
 
-            var result = await TaskExtensions.Debounce<string?, object?[], object?>(async (method, parameters) 
-                => {
-                    var result = debouncedTyped.Invoke(Circuit, [method, parameters]);
-                    if(result is Task task) await task;
-                    return (result as dynamic)?.Result;
-                }, Circuit.DefaultTTL, method, [..Form.Files.Cast<object?>()]);
+            var result = await TaskExtensions.Debounce<string?, object?[], object?>(async (method, parameters)
+                =>
+            {
+                var result = debouncedTyped.Invoke(Circuit, [method, parameters]);
+                if (result is Task task) await task;
+                return (result as dynamic)?.Result;
+            }, Circuit.DefaultTTL, method, [.. Form.Files.Cast<object?>()]);
 
         }
         catch (Exception ex)
@@ -231,7 +232,7 @@ public partial class CircuitProvider : ICircuitProvider
         //    return _cachedValue;
         //}
 
-        if(method == null)
+        if (method == null)
             throw new InvalidOperationException("Method cannot be null");
 
         // TODO: look up type based on method string input
@@ -253,7 +254,7 @@ public partial class CircuitProvider : ICircuitProvider
         if (methodInfo == null || !methodInfo.IsRoutable())
             throw new InvalidOperationException("Tried to invoke unroutable method: " + method + " on " + type.AssemblyQualifiedName);
 
-        if(IsSignalCircuit)
+        if (IsSignalCircuit)
         {
             return await RespondCircuit<TResult>(methodInfo, parameters);
         }
@@ -285,7 +286,7 @@ public partial class CircuitProvider : ICircuitProvider
             else throw new InvalidOperationException("Result did not type cast from: "
                 + result.GetType().AssemblyQualifiedName
                 + " to " + typeof(TResult).AssemblyQualifiedName);
-                
+
         }
     }
 }

@@ -21,7 +21,11 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
-    public MainLoader? AttachedMain { get; set; }
+
+
+    public static Func<string, bool> FILTER_MICROSOFT_DLLS_BY_NAME { get; } = 
+        title => title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
+
 
     private IServiceProvider? StoredServices = null;
     public IServiceProvider Services {
@@ -73,6 +77,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         ];
 
     private static Dictionary<string, Assembly>? StoredAssemblies = null;
+    [RequiresAssemblyFiles]
     public Dictionary<string, Assembly> LoadedAssemblies
     {
         get => StoredAssemblies ??= AppDomain.CurrentDomain
@@ -86,9 +91,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(IServiceProvider _service, Lazy<MainLoader?> _main)
+    public TrustedLoader(IServiceProvider _service)
     {
-        AttachedMain = _main.Value;
         StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         IsBootstrapping = true;
@@ -128,7 +132,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             Metadata: assembly.GetAssemblyInfo()
         ));
 
-        if (title.StartsWith("System.") || title.StartsWith("Microsoft.")) return;
+        if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
         if(!Seen.Contains(assembly))
             Task.Run(() => TryFindingInterestingTypes(assembly));
@@ -151,6 +155,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         try
         {
             allTypes = ass.GetTypes();
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            // Return only the types that were successfully loaded
+            allTypes = [..e.Types.OfType<Type>()];
+            Console.WriteLine(e);
         }
         catch (Exception ex)
         {
@@ -219,8 +229,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         {
             --counter;
 
+            var title = Path.GetFileNameWithoutExtension(file);
+
+            if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+
             OnAssemblyLoaded?.Invoke(new PluginContract(
-                Title: System.IO.Path.GetFileNameWithoutExtension(file),
+                Title: title,
                 InstallPath: file,
                 IsTrusted: false,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.None)
@@ -232,7 +246,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             if (trust == null) return;
 
             var contract = new PluginContract(
-                Title: System.IO.Path.GetFileNameWithoutExtension(file),
+                Title: title,
                 InstallPath: file,
                 IsTrusted: (int)trust.Value > 2,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), trust.Value)
@@ -254,7 +268,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 if (meta != null)
                 {
                     var newContract = new PluginContract(
-                        Title: System.IO.Path.GetFileNameWithoutExtension(file),
+                        Title: title,
                         InstallPath: file,
                         IsTrusted: (int)trust.Value > 2,
                         Metadata: meta
@@ -384,12 +398,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         }
     }
 
-    public void SetPermission(Type? PermissionType) => AttachedMain?.PermissionType = PermissionType;
-    public void SetNotFound(Type? NotFoundControl) => AttachedMain?.NotFoundControl = NotFoundControl;
-    public void SetAuthWrapper(Type? AuthWrapper) => AttachedMain?.AuthWrapper = AuthWrapper;
-    public void SetDefaultLayout(Type? DefaultLayout) => AttachedMain?.DefaultLayout = DefaultLayout;
-    public void SetAppAssembly(Assembly? AppAssembly) => AttachedMain?.AppAssembly = AppAssembly;
-
     /*
     public static bool VerifyCertificate(string filePath, string? thumbprint = null)
     {
@@ -420,7 +428,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         // TODO: fix flow for this
 
-        if (Whitelist.Contains(Convert.ToHexString(name.GetPublicKeyToken())))
+        if (Whitelist.Contains(Convert.ToHexString(name.GetPublicKeyToken()!)))
             level = LevelOfTrust.Mine;
 
 #if WINDOWS
@@ -439,13 +447,14 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public async Task<AssemblyInfo?> GetAssemblyInfoAsync(string filePath, string? expectedPublicKeyToken = null)
     {
         var level = await GetTrustedAsync(filePath);
+        var title = Path.GetFileNameWithoutExtension(filePath);
 
-        if(level == null)
+        if (level == null)
             return new AssemblyInfo(
                 "Not Trustable",
                 null,
                 null,
-                Path.GetFileNameWithoutExtension(filePath),
+                title,
                 LevelOfTrust.None
             );
 
@@ -454,15 +463,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 "Not Loaded",
                 null,
                 null,
-                Path.GetFileNameWithoutExtension(filePath),
+                title,
                 level.Value
             );
 
         // TODO: temporary
         AssemblyInfo? meta;
-        if (AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => string.Equals(a.Location ?? System.AppContext.BaseDirectory, filePath, StringComparison.InvariantCultureIgnoreCase))
-            is Assembly ass)
+        if (LoadedAssemblies.TryGetValue(title, out var ass))
             meta = new AssemblyInfo(
                 ass.GetProduct(),
                 ass.GetCompany(),

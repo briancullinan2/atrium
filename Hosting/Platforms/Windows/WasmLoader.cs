@@ -59,7 +59,7 @@ public partial class QuakeModule : IDisposable
 
     // Helper to invoke WASM exports from C#
     public T CallExport<T>(string name, params object[] args) =>
-        (T)_instance.GetFunction(name)?.Invoke([..args.Select(ValueBox.AsBox)])!;
+        (T)_instance.GetFunction(name)?.Invoke([.. args.Select(ValueBox.AsBox)])!;
 
     private int WriteStringsToMemory(string[] args)
     {
@@ -90,7 +90,8 @@ public partial class QuakeModule : IDisposable
         return argvPtr;
     }
 
-    public void Dispose() { 
+    public void Dispose()
+    {
         _store.Dispose();
         _module.Dispose();
         _engine.Dispose();

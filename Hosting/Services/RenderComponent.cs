@@ -13,7 +13,8 @@ public class RenderComponent(IServiceProvider sp, ILoggerFactory lf) : IComponen
     public async Task<string> GetRenderedHtml<TComponent>(IDictionary<string, object?> parameters) where TComponent : IComponent
     {
         using var renderer = new HtmlRenderer(sp, lf);
-        return await renderer.Dispatcher.InvokeAsync(async () => {
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
             var output = await renderer.RenderComponentAsync<TComponent>(ParameterView.FromDictionary(parameters));
             return output.ToHtmlString();
         });

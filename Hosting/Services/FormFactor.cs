@@ -161,7 +161,7 @@ public partial class FormFactor(
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
-    
+
 ) : BaseFormFactor(nav, page)
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
@@ -173,7 +173,7 @@ public partial class FormFactor(
     public override string ConnectionId => Context?.Connection.Id ?? "Internal";
 
     public override List<IFile> Files => [
-        ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [], 
+        ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
         new BodyBag(Context?.Request) ];
 
 
@@ -187,7 +187,7 @@ public partial class FormFactor(
 
     public override async Task SetSessionCookie(string name, string value, int days)
     {
-        if(Context?.Response.HasStarted != true)
+        if (Context?.Response.HasStarted != true)
             Context?.Response.Cookies.Append(name, value, new CookieOptions
             {
                 HttpOnly = true,
@@ -202,7 +202,7 @@ public partial class FormFactor(
 
     public override async Task<string?> GetSessionCookie(string name)
     {
-        if(Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
+        if (Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
         if (Page == null) return null;
         return await base.GetSessionCookie(name);
     }

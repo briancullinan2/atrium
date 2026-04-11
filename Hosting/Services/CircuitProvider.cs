@@ -179,9 +179,9 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
     public Lazy<Application?>? App { get; }
 
     public CircuitProvider(
-        IServiceProvider service, 
-        CircuitHandler circuit, 
-        Lazy<Microsoft.Maui.Controls.Application?>? app = null, 
+        IServiceProvider service,
+        CircuitHandler circuit,
+        Lazy<Microsoft.Maui.Controls.Application?>? app = null,
         HttpClient? http = null,
         HubConnection? connection = null)
     {
@@ -205,7 +205,7 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
 }
 
 
-public class CircuitHandler() 
+public class CircuitHandler()
     : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler
 {
     public event Action<bool, ConnectionMetadata>? OnConnectionDown;
@@ -228,7 +228,7 @@ public class CircuitHandler()
 
 public static class HttpContextExtensions
 {
-   
+
 
     public static bool IsSignalCircuit(this HttpContext? context)
     {
@@ -257,7 +257,7 @@ public static class HttpContextExtensions
             var routes = service.Routes();
             if (routes == null || routes.Count == 0) continue;
 
-            foreach(var method in routes)
+            foreach (var method in routes)
             {
                 var route = method.Route();
                 if (route == null) continue;

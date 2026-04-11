@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using RazorSharp.Controls
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -27,7 +28,17 @@
     @*@rendermode="InteractiveAuto" *@
     @*new InteractiveServerRenderMode(prerender: false)*@
     @*InteractiveWebAssembly*@
-    <Routes @rendermode="preferredMode" />
+    <Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="@typeof(RazorSharp.Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
+                <NotFoundControl></NotFoundControl>
+            </LayoutView>
+        </NotFound>
+    </Router>
     @*<FlashCard.Pages.Shared.ReconnectModal />*@
     <script src="/_content/WebClient/main.js"></script>
     <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>

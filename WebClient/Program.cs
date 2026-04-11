@@ -2,9 +2,6 @@
 
 
 
-
-using DataStore.Services;
-
 internal class Program
 {
     private static WebAssemblyHost? _app;
@@ -23,10 +20,10 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        ServiceBuilder.BuildSharedServiceList(builder.Services);
+        ServiceBuilder.BuildServices(builder.Services);
 
         builder.Services.RemoveAll<IQueryManager>();
-        builder.Services.AddSingleton<IQueryManager, RemoteManager>();
+        //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 
         builder.Services.AddSingleton(sp => new HttpClient
         {

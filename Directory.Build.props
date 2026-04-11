@@ -4,11 +4,18 @@
 	</ItemGroup>
 
 	<PropertyGroup>
+		<SelfContained>true</SelfContained>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+	
+	<PropertyGroup>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
 		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
 	</PropertyGroup>
 
+	
+	
 	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="'$(MSBuildProjectName)' != 'Atrium' and ('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' or '$(TargetFramework)' == 'net10.0')">
 		<PropertyGroup>
 			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
