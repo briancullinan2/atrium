@@ -236,25 +236,38 @@
             // do something statusy
             Error = ex.Message;
         }
-        
+
         if (!isChecked)
             Trust.Disable(ass);
         else
             Trust.Enable(ass);
 
         // TODO: if the component has visual elements, activate window size from splash mode
-        if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
-        {
-            if (Trust.EnabledAssemblies.Count == 0)
-                _ = window.ExpandWindow(false);
-            else
-                _ = window.ExpandWindow(true);
-        }
+        // TODO: 
+        Trust.OnSettled += TriggerExpand;
 
         await Task.Delay(500);
 
         await InvokeAsync(StateHasChanged);
     }
+
+
+    protected void TriggerExpand()
+    {
+        Trust.OnSettled -= TriggerExpand;
+        InvokeAsync(() =>
+        {
+
+            if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+            {
+                if (Trust.EnabledAssemblies.Count == 0)
+                    _ = window.ExpandWindow(false);
+                else
+                    _ = window.ExpandWindow(true);
+            }
+        });
+    }
+
 
 
     protected override void OnInitialized()

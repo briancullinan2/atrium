@@ -21,6 +21,7 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable, IHasService
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
+    public event Action OnSettled;
 
 
     public static Func<string, bool> FILTER_MICROSOFT_DLLS_BY_NAME { get; } = 
@@ -45,6 +46,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
     private CancellationTokenSource? _rebuildCancellation;
+    private readonly ConcurrentDictionary<string, string> Tried = [];
+
 
     private async Task RebuildServiceContainer()
     {
@@ -56,7 +59,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         try
         {
             // 2. Wait for the "silence" period
-            await Task.Delay(1000, token);
+            await Task.Delay(200, token);
 
             // 3. The actual work
             CachedDependedAssemblies = null;
@@ -70,6 +73,43 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 .Concat(DependedAssMappings)
                 .Where(a => a.IsMine())
                 .ToList();
+
+
+            // TODO: check depended assemblies is empty compared to loaded assemblies then offer an OnSettled even if its preloading is done
+            var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
+            if(missing.Count == 0)
+            {
+                OnSettled?.Invoke();
+            }
+            else
+            {
+                var parallel = Environment.ProcessorCount - 4;
+
+                var options = new ParallelOptions
+                {
+                    // Leave at least one or two cores for the UI thread
+                    MaxDegreeOfParallelism = Math.Max(1, parallel)
+                };
+
+                foreach( var ass in missing) // prevent recursion
+                    Tried.TryAdd(ass.Key, ass.Key);
+
+                _ = Parallel.ForEachAsync(missing, options, async (ass, ct) =>
+                {
+                    try
+                    {
+                        Assembly.Load(ass.Key);
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                });
+                
+                return; // might as well duck out now because we know more are coming
+            }
+
+            OnSettled?.Invoke();
 
             collection.BuildServices(mappings);
 
@@ -207,8 +247,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
-        if(!Seen.Contains(assembly))
+        if (!Seen.Contains(assembly))
+        {
             Task.Run(() => TryFindingInterestingTypes(assembly));
+            _ = RebuildServiceContainer();
+
+        }
     }
 
 
