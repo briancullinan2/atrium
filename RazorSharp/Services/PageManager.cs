@@ -16,7 +16,7 @@ public class PageManager : IPageManager
     public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [..value]; }
 
 
-    public string ContextKey => Form?.ConnectionId ?? string.Empty;
+    //public string ContextKey => Form?.ConnectionId ?? string.Empty;
 
     public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
@@ -29,7 +29,7 @@ public class PageManager : IPageManager
     public event Action<object?>? OnStateChanged;
     public event Action<Exception?>? OnErrorChanged;
 
-    readonly IFormFactor? Form;
+    //readonly IFormFactor? Form;
     readonly ILoggerFactory Logger;
     readonly IRenderState Rendered;
     //readonly ICircuitProvider? Context;
@@ -44,11 +44,9 @@ public class PageManager : IPageManager
         IRenderState _rendered,
         NavigationManager _nav,
         //ICircuitProvider? _context = null,
-        IFormFactor? _formFactor = null,
         IAuthService? _auth = null
     ) : base() {
         Nav = _nav;
-        Form = _formFactor;
         Logger = _logger;
         Rendered = _rendered;
         //Context = _context;
@@ -167,8 +165,8 @@ public class PageManager : IPageManager
 
     public void ClearRedirect()
     {
-        if (InFlight.ContainsKey(ContextKey))
-            InFlight.Remove(ContextKey, out _);
+        //if (InFlight.ContainsKey(ContextKey))
+        //    InFlight.Remove(ContextKey, out _);
     }
 
 
@@ -459,22 +457,22 @@ public class PageManager : IPageManager
     {
 
         // 2. Logic to prevent redirect loops or "double stacking"
-        InFlight.TryGetValue(ContextKey, out var existing);
+        //InFlight.TryGetValue(ContextKey, out var existing);
 
-        var loginUri = TypeExtensions.GetUri<ILogin>(l => l.ReturnUrl == url);
+        //var loginUri = TypeExtensions.GetUri<ILogin>(l => l.ReturnUrl == url);
 
         // Update the InFlight status
-        InFlight[ContextKey] = loginUri;
+        //InFlight[ContextKey] = loginUri;
 
         // 3. Perform the navigation only if we aren't already heading to login
-        if (existing?.Contains("login", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            return;
-        }
+        //if (existing?.Contains("login", StringComparison.OrdinalIgnoreCase) == true)
+        //{
+        //    return;
+        //}
 
         // 'forceLoad: true' triggers a full browser refresh/intercept, 
         // which is standard for Auth redirects.
-        Nav.NavigateTo(loginUri, forceLoad: true);
+        //Nav.NavigateTo(loginUri, forceLoad: true);
     }
 
     private void TriggerState((PageAction Action, string Id) key, Delegate? value, object? newState = null)
@@ -539,7 +537,7 @@ public class PageManager : IPageManager
     [JSInvokable] public void OnReconnected(string state) => UpdateStateDebouncer(PageAction.Visible, "window", state);
     [JSInvokable] public void OnPageEvent(string id, object? detail = null) => UpdateStateDebouncer(id.TryParse<PageAction>() ?? PageAction.Action, "window", detail);
     public void OnPageEvent(PageAction id, object? detail = null) => UpdateStateDebouncer(id, "window", detail);
-    [JSInvokable] public void OnStopped() => Form?.StopAsync();
+    //[JSInvokable] public void OnStopped() => Form?.StopAsync();
 
     // 1. Generic GetState for type-safe access in C#
     public T? GetState<T>(PageAction action, string id)

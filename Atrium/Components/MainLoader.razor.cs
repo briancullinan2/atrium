@@ -60,12 +60,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
 
     private async Task ProbablyUpdateTitle()
     {
-        await Task.Delay(600); // more than MainLayout card animations to insert the page
-        var components = this.GetChildComponents();
-        if (components.LastOrDefault() is IComponent comp
-            && comp.GetType().GetCustomAttributes<DisplayAttribute>().FirstOrDefault() is DisplayAttribute attr)
+        await Task.Delay(3000); // more than MainLayout card animations to insert the page
+        var components = this.GetChildComponents().OrderBy(comp => comp.GetType() != typeof(PluginsPage) ? -1 : 0);
+        var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
+            .FirstOrDefault();
+        if (title is DisplayAttribute attr)
         {
-            var Title = Service.GetService<ITitleService>();
+            var Title = (Service.GetService<IComponentActivator>() as PluginActivator)?.Services.GetService<ITitleService>();
             Title?.UpdateTitle(attr.Name);
         }
     }

@@ -34,7 +34,11 @@ public class MauiProgram : IHasCurrent<MauiApp>
             });
 
         builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
-        builder.Services.AddSingleton<IComponentActivator, PluginActivator>();
+        builder.Services.AddSingleton<PluginActivator>();
+        builder.Services.AddSingleton<IServiceProvider>(sp => sp.GetRequiredService<PluginActivator>().Services);
+        builder.Services.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)sp.GetRequiredService<PluginActivator>().Services);
+        builder.Services.AddSingleton<IComponentActivator>(sp => sp.GetRequiredService<PluginActivator>());
+        builder.Services.AddSingleton<IServiceProviderIsService>(sp => sp.GetRequiredService<PluginActivator>());
         builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));

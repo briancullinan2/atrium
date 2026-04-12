@@ -18,9 +18,17 @@
 }
 else
 {
-    <div class="flash-card animate-in">
-        TODO: Find a home page.
-    </div>
+    if (DefaultRoot != null)
+    {
+        __builder.OpenComponent(0, DefaultRoot);
+        __builder.CloseComponent();
+    }
+    else
+    {
+        <div class="flash-card animate-in">
+            TODO: Find a home page.
+        </div>
+    }
 }
 
 @code

@@ -16,7 +16,7 @@ namespace Hosting.Services;
 public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
 {
     public virtual Dictionary<string, string>? QueryParameters { get; protected set; }
-    public IPageManager Page { get; }
+    //public IPageManager? Page { get; }
     public NavigationManager Navigation { get; }
 
     public abstract bool IsBrowser { get; }
@@ -29,9 +29,8 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     public abstract string ConnectionId { get; }
     public abstract List<IFile> Files { get; }
 
-    public BaseFormFactor(NavigationManager nav, IPageManager page)
+    public BaseFormFactor(NavigationManager nav)
     {
-        Page = page;
         Navigation = nav;
         Navigation.LocationChanged += Nav_LocationChanged;
         QueryParameters = Navigation.Uri.Query();
@@ -75,13 +74,14 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
 
     public virtual async Task SetSessionCookie(string name, string value, int days)
     {
-        await Page.SetSessionCookie(name, value, days);
+        //await Page.SetSessionCookie(name, value, days);
     }
 
 
     public virtual async Task<string?> GetSessionCookie(string name)
     {
-        return await Page.GetSessionCookie(name);
+        return null;
+        //return await Page.GetSessionCookie(name);
     }
 
 
@@ -156,13 +156,12 @@ public partial class FormFactor : BaseFormFactor
 
 public partial class FormFactor(
     NavigationManager nav
-    , IPageManager page
     , HttpContext? Context = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
 
-) : BaseFormFactor(nav, page)
+) : BaseFormFactor(nav)
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Context != null;
@@ -195,16 +194,17 @@ public partial class FormFactor(
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(days)
             });
-        if (Page == null) return;
-        await base.SetSessionCookie(name, value, days);
+        //if (Page == null) return;
+        //await base.SetSessionCookie(name, value, days);
     }
 
 
     public override async Task<string?> GetSessionCookie(string name)
     {
         if (Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
-        if (Page == null) return null;
-        return await base.GetSessionCookie(name);
+        //if (Page == null) 
+            return null;
+        //return await base.GetSessionCookie(name);
     }
 
     public override async Task<string?> UpdateTitle(string? title)

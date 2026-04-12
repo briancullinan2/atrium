@@ -94,8 +94,8 @@
     {
         Instance = this;
         Services = ServiceProvider;
-        _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
-        _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3);
+        _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
+        _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3 * 1000);
     }
 
     private static string? _apiToken;
@@ -105,7 +105,7 @@
         set
         {
             _apiToken = value;
-            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
         }
     }
     private static string? _tunnelName;
@@ -115,7 +115,7 @@
         set
         {
             _tunnelName = value;
-            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
         }
     }
     private static string? _accountId;
@@ -125,7 +125,7 @@
         set
         {
             _accountId = value;
-            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
         }
     }
     private static string? _domain;
@@ -135,7 +135,7 @@
         set
         {
             _domain = value;
-            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3);
+            _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
         }
     }
 

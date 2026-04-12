@@ -1,13 +1,16 @@
 ﻿using Atrium.Components;
 using Atrium.Extensions;
 using Interfacing.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-
-
-
+using System.Net.Http;
 
 
 
@@ -21,7 +24,7 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable, IHasService
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
-    public event Action OnSettled;
+    public event Action? OnSettled;
 
 
     public static Func<string, bool> FILTER_MICROSOFT_DLLS_BY_NAME { get; } = 
@@ -111,10 +114,33 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             OnSettled?.Invoke();
 
+            /*
+            if (Plugin is PluginActivator activator2 && activator2.Services is CompositeServiceProvider composite2)
+            {
+                collection.AddSingleton<IServiceProvider>(sp => activator2.Services);
+                collection.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)activator2.Services);
+                collection.AddSingleton<IComponentActivator>(sp => activator2);
+                collection.AddSingleton<IServiceProviderIsService>(sp => activator2);
+            }
+            */
+
+            collection.AddScoped<NavigationManager>(sp => Service.GetRequiredService<NavigationManager>());
+            collection.AddScoped<IJSRuntime>(sp => Service.GetRequiredService<IJSRuntime>());
+            collection.AddSingleton<IConfiguration>(sp => Service.GetRequiredService<IConfiguration>());
+            collection.AddSingleton<IHostEnvironment>(sp => Service.GetRequiredService<IHostEnvironment>());
+            collection.AddSingleton(typeof(ILogger<>), typeof(Logger<>)); // Usually safe to let the new container own this
+            collection.AddSingleton<ILoggerFactory>(sp => Service.GetRequiredService<ILoggerFactory>());
+            //collection.AddSingleton<IHttpClientFactory>(sp => root.GetRequiredService<IHttpClientFactory>());
+            //collection.AddScoped<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
+            //collection.AddScoped<AuthenticationStateProvider>(sp => root.GetRequiredService<AuthenticationStateProvider>());
+            collection.AddSingleton<IAuthorizationService>(sp => Service.GetRequiredService<IAuthorizationService>());
+
             collection.BuildServices(mappings);
 
             // Finalize the provider
             Services = collection.BuildServiceProvider();
+
+            var test = Services.GetService<ITitleService>();
 
             if (Plugin is PluginActivator activator && activator.Services is CompositeServiceProvider composite)
             {
@@ -203,9 +229,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(IComponentActivator plugin)
+    public TrustedLoader(IComponentActivator plugin, IServiceProvider service)
     {
         Plugin = plugin;
+        Service = service;
         //StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         IsBootstrapping = true;
@@ -476,6 +503,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     //private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
     private readonly IComponentActivator Plugin;
+    private readonly IServiceProvider Service;
 
     public event Action<PluginContract>? OnAssemblyLoaded;
 

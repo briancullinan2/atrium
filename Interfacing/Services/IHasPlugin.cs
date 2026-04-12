@@ -74,7 +74,7 @@ public interface ITrustProvider
     Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
     Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
     event Action<PluginContract> OnAssemblyLoaded;
-    event Action OnSettled;
+    event Action? OnSettled;
     bool IsBootstrapping { get; }
     List<string> RequiredAssemblies { get; }
     [RequiresAssemblyFiles]

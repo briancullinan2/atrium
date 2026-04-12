@@ -51,7 +51,7 @@ public interface IPageManager : IAsyncDisposable
     void OnResized(string id, int width, int height, bool isSmall);
     void OnVisibility(string visible);
     void OnReconnected(string state);
-    void OnStopped();
+    //void OnStopped();
 
     ValueTask TriggerEvent(string eventName, object? detail = null);
     ValueTask TriggerEvent(PageAction id, object? detail = null);
