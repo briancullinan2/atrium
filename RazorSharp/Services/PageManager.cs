@@ -53,7 +53,7 @@ public class PageManager : IPageManager
         Auth = _auth;
         Rendered.OnEmptied += NotifyEmptied;
         Rendered.OnRendered += NotifyRendered;
-        Nav.LocationChanged += Nav_LocationChanged;
+        //Nav.LocationChanged += Nav_LocationChanged;
 
         CombinedClassNames.AutoSources = () => [
             Theme,

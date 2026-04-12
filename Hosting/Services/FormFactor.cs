@@ -1,6 +1,7 @@
 #if !BROWSER
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
@@ -13,11 +14,12 @@ namespace Hosting.Services;
 
 // TODO: designed to shut down both services at the same time
 
-public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
+public abstract class BaseFormFactor(NavigationManager? nav = null) 
+    : IFormFactor, ITitleService
 {
-    public virtual Dictionary<string, string>? QueryParameters { get; protected set; }
+    public virtual NavigationManager? Navigation { get; } = nav;
+    public virtual Dictionary<string, string>? QueryParameters { get => Navigation?.Uri.Query(); }
     //public IPageManager? Page { get; }
-    public NavigationManager Navigation { get; }
 
     public abstract bool IsBrowser { get; }
     public abstract bool IsWebContext { get; }
@@ -29,17 +31,6 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
     public abstract string ConnectionId { get; }
     public abstract List<IFile> Files { get; }
 
-    public BaseFormFactor(NavigationManager nav)
-    {
-        Navigation = nav;
-        Navigation.LocationChanged += Nav_LocationChanged;
-        QueryParameters = Navigation.Uri.Query();
-    }
-
-    protected virtual void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        QueryParameters = Navigation.Uri.Query();
-    }
 
     public static string? AppName
     {
@@ -65,11 +56,6 @@ public abstract class BaseFormFactor : IFormFactor, IDisposable, ITitleService
         return _title;
     }
 
-    public virtual void Dispose()
-    {
-        Navigation.LocationChanged -= Nav_LocationChanged;
-        GC.SuppressFinalize(this);
-    }
 
 
     public virtual async Task SetSessionCookie(string name, string value, int days)
@@ -155,8 +141,8 @@ public partial class FormFactor : BaseFormFactor
 #else
 
 public partial class FormFactor(
-    NavigationManager nav
-    , HttpContext? Context = null
+    NavigationManager nav,
+    HttpContext? Context = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
@@ -171,18 +157,15 @@ public partial class FormFactor(
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Context?.Connection.Id ?? "Internal";
 
+    public override Dictionary<string, string>? QueryParameters => Navigation?.Uri.Query().ToList()
+            .Concat(Context?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .Concat(Context?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .ToDictionary();
+
     public override List<IFile> Files => [
         ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
         new BodyBag(Context?.Request) ];
 
-
-    protected override void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        QueryParameters = Navigation.Uri.Query().ToList()
-            .Concat(Context?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
-            .Concat(Context?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
-            .ToDictionary();
-    }
 
     public override async Task SetSessionCookie(string name, string value, int days)
     {

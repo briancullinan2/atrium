@@ -33,7 +33,8 @@ public class MauiProgram : IHasCurrent<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-        builder.Services.AddSingleton<ITrustProvider, TrustedLoader>();
+        builder.Services.AddSingleton<TrustedLoader>();
+        builder.Services.AddSingleton<ITrustProvider, TrustedLoader>(sp => sp.GetRequiredService<TrustedLoader>());
         builder.Services.AddSingleton<PluginActivator>();
         builder.Services.AddSingleton<IServiceProvider>(sp => sp.GetRequiredService<PluginActivator>().Services);
         builder.Services.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)sp.GetRequiredService<PluginActivator>().Services);

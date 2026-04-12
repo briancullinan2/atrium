@@ -130,17 +130,27 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             collection.AddSingleton<IHostEnvironment>(sp => Service.GetRequiredService<IHostEnvironment>());
             collection.AddSingleton(typeof(ILogger<>), typeof(Logger<>)); // Usually safe to let the new container own this
             collection.AddSingleton<ILoggerFactory>(sp => Service.GetRequiredService<ILoggerFactory>());
+
             //collection.AddSingleton<IHttpClientFactory>(sp => root.GetRequiredService<IHttpClientFactory>());
             //collection.AddScoped<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
             //collection.AddScoped<AuthenticationStateProvider>(sp => root.GetRequiredService<AuthenticationStateProvider>());
+
             collection.AddSingleton<IAuthorizationService>(sp => Service.GetRequiredService<IAuthorizationService>());
+            collection.AddSingleton<ITrustProvider, TrustedLoader>(sp => Service.GetRequiredService<TrustedLoader>());
+            collection.AddSingleton<PluginActivator>(sp => Service.GetRequiredService<PluginActivator>());
+            collection.AddSingleton<Lazy<MainLoader?>>(sp => Service.GetRequiredService<Lazy<MainLoader?>>());
+            collection.AddSingleton<Lazy<Application?>>(sp => Service.GetRequiredService<Lazy<Application?>>());
+            collection.AddSingleton<IServiceProvider>(sp => Service.GetRequiredService<PluginActivator>().Services);
+            collection.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)Service.GetRequiredService<PluginActivator>().Services);
+            collection.AddSingleton<IComponentActivator>(sp => Service.GetRequiredService<PluginActivator>());
+            collection.AddSingleton<IServiceProviderIsService>(sp => Service.GetRequiredService<PluginActivator>());
 
             collection.BuildServices(mappings);
 
             // Finalize the provider
             Services = collection.BuildServiceProvider();
 
-            var test = Services.GetService<ITitleService>();
+            //var test = Services.GetService<ITitleService>();
 
             if (Plugin is PluginActivator activator && activator.Services is CompositeServiceProvider composite)
             {

@@ -147,9 +147,9 @@ internal static class BuilderExtensions
     {
         if (key != null)
         {
-            Services.AddKeyedScoped(service, key, service);
+            Services.AddKeyedScoped(service, (sp, key) => sp.GetRequiredKeyedService(service, key));
             if (service.BaseType != null && service.BaseType != typeof(object))
-                Services.AddKeyedScoped(service.BaseType, key, service);
+                Services.AddKeyedScoped(service.BaseType, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
             foreach (var inter in service.GetInterfaces())
             {
                 Services.AddKeyedScoped(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
@@ -157,9 +157,9 @@ internal static class BuilderExtensions
         }
         else
         {
-            Services.AddScoped(service, service);
+            Services.AddScoped(service);
             if (service.BaseType != null && service.BaseType != typeof(object))
-                Services.AddScoped(service.BaseType, service);
+                Services.AddScoped(service.BaseType, sp => sp.GetRequiredService(service));
             foreach (var inter in service.GetInterfaces())
             {
                 Services.AddScoped(inter, sp => sp.GetRequiredService(service));
