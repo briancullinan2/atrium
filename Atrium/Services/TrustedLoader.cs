@@ -24,7 +24,34 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable, IHasService
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
-    public event Action? OnSettled;
+    private event Action? InternalOnSettled;
+    public event Action? OnSettled
+    {
+        add
+        {
+            InternalOnSettled += value;
+            _ = RebuildServiceContainer();
+        }
+        remove
+        {
+            InternalOnSettled -= value;
+        }
+    }
+
+    // TODO: use a ConcurrentDictionary and actually await the calls?
+    private event Func<Task>? InternalOnSettledAsync;
+    public event Func<Task>? OnSettledAsync
+    {
+        add
+        {
+            InternalOnSettledAsync += value;
+            _ = RebuildServiceContainer();
+        }
+        remove
+        {
+            InternalOnSettledAsync -= value;
+        }
+    }
 
 
     public static Func<string, bool> FILTER_MICROSOFT_DLLS_BY_NAME { get; } = 
@@ -82,7 +109,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
             if(missing.Count == 0)
             {
-                OnSettled?.Invoke();
+                InternalOnSettled?.Invoke();
+                _ = InternalOnSettledAsync?.Invoke();
             }
             else
             {
@@ -112,8 +140,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 return; // might as well duck out now because we know more are coming
             }
 
-            OnSettled?.Invoke();
+            InternalOnSettled?.Invoke();
+            _ = InternalOnSettledAsync?.Invoke();
 
+            InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
+            InternalOnSettledAsync = null;
             /*
             if (Plugin is PluginActivator activator2 && activator2.Services is CompositeServiceProvider composite2)
             {

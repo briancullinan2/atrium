@@ -60,7 +60,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
 
     private async Task ProbablyUpdateTitle()
     {
-        await Task.Delay(1000); // more than MainLayout card animations to insert the page
+        await Task.Delay(400); // more than MainLayout card animations to insert the page
         var components = this.GetChildComponents().OrderBy(comp => comp.GetType() != typeof(PluginsPage) ? -1 : 0);
         var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
             .FirstOrDefault();
@@ -75,13 +75,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     {
         if (firstRender)
         {
-            _ = ProbablyUpdateTitle();
+            Trust.OnSettledAsync += ProbablyUpdateTitle;
         }
     }
 
     private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _ = ProbablyUpdateTitle();
+        Trust.OnSettledAsync += ProbablyUpdateTitle;
     }
 
     // Default to Wasm, but allow an override

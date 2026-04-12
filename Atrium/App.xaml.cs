@@ -37,6 +37,40 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
 
     public bool IsSplashMode { get; set; }
 
+
+    private static async Task<Tuple<double, double, double, double, double>> GetWindowSizeAsync()
+    {
+        var tcs = new TaskCompletionSource<Tuple<double, double, double, double, double>>();
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                var display = DeviceDisplay.Current.MainDisplayInfo;
+                double density = display.Density;
+
+                double width = SPLASH_WIDTH;
+                double height = SPLASH_HEIGHT;
+
+                if (App.Current?.Windows.Count > 0)
+                {
+                    width = App.Current.Windows[0].Width;
+                    height = App.Current.Windows[0].Height;
+                }
+
+                // Signal that we are done and pass the data back
+                tcs.SetResult(Tuple.Create(display.Width, display.Height, width, height, density));
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        // The background thread pauses here until tcs.SetResult is called
+        return await tcs.Task;
+    }
+
     public async Task ExpandWindow(bool expanding)
     {
         _animationCts?.Cancel();
@@ -45,29 +79,20 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
 
         try
         {
-            var display = DeviceDisplay.Current.MainDisplayInfo;
-            double density = display.Density;
+            var (displayWidth, displayHeight, startWidth, startHeight, density) = await App.GetWindowSizeAsync();
 
-            // 1. Get current state as doubles
-            double startWidth = SPLASH_WIDTH;
-            double startHeight = SPLASH_HEIGHT;
-            if (App.Current?.Windows.Count > 0)
-            {
-                startWidth = App.Current.Windows[0].Width;
-                startHeight = App.Current.Windows[0].Height;
-            }
 
             // 2. Pre-calculate targets and round to nearest whole units
-            double targetWidth = Math.Round(expanding ? (display.Width / density) * 0.75 : SPLASH_WIDTH);
-            double targetHeight = Math.Round(expanding ? (display.Height / density) * 0.75 : SPLASH_HEIGHT);
-            double screenWidthUnits = display.Width / density;
-            double screenHeightUnits = display.Height / density;
+            double targetWidth = Math.Round(expanding ? (displayWidth / density) * 0.75 : SPLASH_WIDTH);
+            double targetHeight = Math.Round(expanding ? (displayHeight / density) * 0.75 : SPLASH_HEIGHT);
+            double screenWidthUnits = displayWidth / density;
+            double screenHeightUnits = displayHeight / density;
 
             if (Math.Abs(startWidth - targetWidth) < 1) return;
 
             // 3. Lowering FPS to 30 often improves Window Manager stability during resizes
             int durationMs = 300;
-            int fps = 60;
+            int fps = 50;
             int totalFrames = (int)((durationMs / 1000.0) * fps);
 
             for (int i = 1; i <= totalFrames; i++)
