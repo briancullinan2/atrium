@@ -79,6 +79,8 @@ public interface ITrustProvider
     [RequiresAssemblyFiles]
     Dictionary<string, Assembly> LoadedAssemblies { get; }
     Dictionary<string, bool> EnabledAssemblies { get; }
+    void Enable(string ass);
+    void Disable(string ass);
     Dictionary<string, List<string>> DependedAssemblies { get; }
     ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
 }

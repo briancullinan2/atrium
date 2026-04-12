@@ -1,10 +1,10 @@
-﻿using Interfacing.Services;
+﻿using Atrium.Components;
+using Atrium.Extensions;
+using Interfacing.Services;
+using Microsoft.AspNetCore.Components;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Atrium.Components;
-using Microsoft.AspNetCore.Components;
-using System.Xml.Linq;
 
 
 
@@ -18,7 +18,7 @@ using Atrium.Platforms.Windows;
 
 namespace Atrium.Services;
 
-public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
+public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable, IHasService
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
 
@@ -32,11 +32,66 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         get => StoredServices ?? throw new InvalidOperationException("Services aren't ready yet, load a plugin first.");
         set => StoredServices = value; }
 
+    public void Enable(string ass)
+    {
+        EnabledAssemblies.Add(ass, true);
+        _ = RebuildServiceContainer();
+    }
+
+    public void Disable(string ass)
+    {
+        EnabledAssemblies.Remove(ass);
+        _ = RebuildServiceContainer();
+    }
+
+    private CancellationTokenSource? _rebuildCancellation;
+
+    private async Task RebuildServiceContainer()
+    {
+        // 1. Cancel the previous pending request
+        _rebuildCancellation?.Cancel();
+        _rebuildCancellation = new CancellationTokenSource();
+        var token = _rebuildCancellation.Token;
+
+        try
+        {
+            // 2. Wait for the "silence" period
+            await Task.Delay(1000, token);
+
+            // 3. The actual work
+            CachedDependedAssemblies = null;
+            CachedEnabledAssMappings = null;
+            CachedDependedAssMappings = null;
+
+            var collection = new ServiceCollection();
+
+            // Filter and build your service list
+            var mappings = EnabledAssMappings
+                .Concat(DependedAssMappings)
+                .Where(a => a.IsMine())
+                .ToList();
+
+            collection.BuildServices(mappings);
+
+            // Finalize the provider
+            Services = collection.BuildServiceProvider();
+
+            if (Plugin is PluginActivator activator && activator.Services is CompositeServiceProvider composite)
+            {
+                composite.PluginPopin = Services;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // This is expected! Another call came in and reset the timer.
+        }
+    }
+
 
     public Dictionary<string, bool> EnabledAssemblies { get; } = [];
 
     private List<Assembly>? CachedEnabledAssMappings { get; set; } = null;
-    private List<Assembly> EnabledAssMappings
+    internal List<Assembly> EnabledAssMappings
     {
         get => CachedEnabledAssMappings 
             ??= [..EnabledAssemblies.Keys
@@ -67,6 +122,22 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         );
     }
 
+    private List<Assembly>? CachedDependedAssMappings { get; set; } = null;
+    public List<Assembly> DependedAssMappings
+    {
+        get => CachedDependedAssMappings
+            ??= [..EnabledAssMappings
+        .SelectMany(parentAss => parentAss.GetReferencedAssemblies())
+        .Select(ass => {
+            var title = ass.Name ?? ass.FullName.Split(',')[0];
+            if (LoadedAssemblies.TryGetValue(title, out var loaded) == true) return loaded;
+            return null;
+        })
+        .OfType<Assembly>()
+        .Distinct()
+        ];
+    }
+
 
     public List<string> RequiredAssemblies { get; } = [..new List<AssemblyName?>
         { Assembly.GetEntryAssembly()?.GetName(),
@@ -75,6 +146,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         .OfType<AssemblyName>()
         .Select(n => n.Name ?? n.FullName)
         ];
+
 
     private static Dictionary<string, Assembly>? StoredAssemblies = null;
     [RequiresAssemblyFiles]
@@ -91,9 +163,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(IServiceProvider _service)
+    public TrustedLoader(IComponentActivator plugin)
     {
-        StoredServices ??= _service;
+        Plugin = plugin;
+        //StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         IsBootstrapping = true;
         Task.Run(RunFullScan);
@@ -152,22 +225,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             return;
 
         Seen.Add(ass);
-        Type[] allTypes;
-        try
-        {
-            allTypes = ass.GetTypes();
-        }
-        catch (ReflectionTypeLoadException e)
-        {
-            // Return only the types that were successfully loaded
-            allTypes = [..e.Types.OfType<Type>()];
-            Console.WriteLine(e);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            return;
-        }
+
+        var allTypes = ass.GetAssTypesSafely();
+        
         var routable = false;
 
         foreach (var type in allTypes)
@@ -371,6 +431,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     //private static string MyCertificatePath => Path.Combine(HomeDir, ".credentials\\my-code-signing.pfx");
     //private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
+    private readonly IComponentActivator Plugin;
 
     public event Action<PluginContract>? OnAssemblyLoaded;
 

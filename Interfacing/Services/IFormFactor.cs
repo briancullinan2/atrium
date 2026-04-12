@@ -12,7 +12,6 @@ public interface IFormFactor
     string ConnectionId { get; }
     List<IFile> Files { get; }
 
-    event Action<string?>? OnTitleChanged;
     Dictionary<string, string>? QueryParameters { get; }
     Task SetSessionCookie(string name, string value, int days);
     Task<string?> GetSessionCookie(string name);
@@ -21,7 +20,12 @@ public interface IFormFactor
 
 public interface ITitleService
 {
+    event Action<string?>? OnTitleChanged;
     Task<string?> UpdateTitle(string? title);
+}
+
+public interface IHasName
+{
     static abstract string? AppName { get; }
 }
 

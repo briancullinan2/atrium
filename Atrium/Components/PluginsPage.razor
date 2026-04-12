@@ -29,7 +29,7 @@
             <tr>
                 <td colspan="3">
                     <span>Layout</span><br />
-                    <select bind="@SelectedLayout">
+                    <select @bind="SelectedLayout">
                         <option value="">No Layout</option>
                         @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
                         {
@@ -45,7 +45,7 @@
             <tr>
                 <td colspan="3">
                     <span>Routable</span><br />
-                    <select bind="@SelectedRoute">
+                    <select @bind="SelectedRoute" onchange="@SetRoutable">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
                         {
                             var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
@@ -61,7 +61,7 @@
             <tr>
                 <td colspan="3">
                     <span>Catch All</span><br />
-                    <select bind="@SelectedCatch">
+                    <select @bind="SelectedCatch">
                         @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -76,24 +76,11 @@
             <tr>
                 <td colspan="3">
                     <span>Root Component</span><br />
-                    <select bind="@SelectedRoot">
+                    <select @bind="StoredSelectedRoot" onchange="@SetSelectedRoot">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
                         }
-                    </select>
-                </td>
-            </tr>
-        }
-        
-        @if (((TrustedLoader)Trust).Roots.Count == 0 
-            && ((TrustedLoader)Trust).CatchAll.Count == 0
-            && ((TrustedLoader)Trust).AllRoutes.Count > 0)
-        {
-            <tr>
-                <td colspan="3">
-                    <span>Root Component</span><br />
-                    <select bind="@SelectedRoot">
                         @foreach (var layoutType in ((TrustedLoader)Trust).AllRoutes)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">
@@ -104,6 +91,7 @@
                 </td>
             </tr>
         }
+        
         
         @foreach (var plugin in MyList)
         {
@@ -123,7 +111,7 @@
                     {
                         <span>Required</span>
                     }
-                    @*else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
                     {
                         <label class="switch" aria-disabled="true">
                             <input type="checkbox" disabled="disabled" checked="checked" />
@@ -133,7 +121,7 @@
                         {
                             <span>@required</span><br />
                         }
-                    }*@
+                    }
                     else
                     {
                         <label class="switch">
@@ -207,6 +195,16 @@
         }
     }
 
+    public void SetSelectedRoot(ChangeEventArgs item)
+    {
+        SelectedRoot = item.Value as string;
+    }
+
+
+    public void SetRoutable(ChangeEventArgs item)
+    {
+        _ = SetSelectedAssembly(item.Value as string);
+    }
 
     private bool GetActive(PluginContract e)
     {
@@ -220,15 +218,12 @@
 
     protected string? Error = null;
 
-    private void OnEnabled(PluginContract plugin, ChangeEventArgs e)
+    private async Task OnEnabled(PluginContract plugin, ChangeEventArgs e)
     {
         Error = null;
         var isChecked = (bool)(e.Value ?? false);
         var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
-        if (!isChecked)
-            Trust.EnabledAssemblies.Remove(ass);
-        else
-            Trust.EnabledAssemblies.Add(ass, true);
+
         try
         {
             var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
@@ -241,17 +236,24 @@
             // do something statusy
             Error = ex.Message;
         }
+        
+        if (!isChecked)
+            Trust.Disable(ass);
+        else
+            Trust.Enable(ass);
 
         // TODO: if the component has visual elements, activate window size from splash mode
         if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
         {
             if (Trust.EnabledAssemblies.Count == 0)
-                window.ExpandWindow(false);
+                _ = window.ExpandWindow(false);
             else
-                window.ExpandWindow(true);
+                _ = window.ExpandWindow(true);
         }
 
-        InvokeAsync(StateHasChanged);
+        await Task.Delay(500);
+
+        await InvokeAsync(StateHasChanged);
     }
 
 

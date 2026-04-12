@@ -1,52 +1,22 @@
-﻿using Interfacing.Services;
+﻿using Atrium.Extensions;
+using Atrium.Services;
+using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Atrium.Components;
 
-public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
+public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDisposable
 {
     static MainLoader? SetCurrent = null;
     public static MainLoader Current { get => SetCurrent ?? throw new InvalidOperationException("Start the application first"); }
-    public MainLoader() : base()
-    {
-        SetCurrent = this;
-    }
 
-    // Default to Wasm, but allow an override
-    public IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
-    public bool IsDebug = false;
-    public Type? PermissionType { get; set; } = null;
-    public Type? NotFoundControl { get; set; } = null;
-    public Type? AuthWrapper { get; set; } = null;
-    public Type? DefaultRoot { get; set; } = null;
-
-    Type? StoredDefaultLayout = null;
-    public Type? DefaultLayout { 
-        get => StoredDefaultLayout;
-        set 
-        {
-            StoredDefaultLayout = value;
-            if (StoredDefaultLayout != null && StoredAppAssembly != null)
-            {
-                Ready = "layout";
-                InvokeAsync(StateHasChanged);
-            }
-        }
-    }
-
-    System.Reflection.Assembly? StoredAppAssembly = null;
-    public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
-    {
-        StoredAppAssembly = assembly;
-        if (StoredAppAssembly != null)
-        {
-            Ready = "layout"; // Explicitly move to layout
-            await InvokeAsync(StateHasChanged);
-        }
-    }
 
     private bool FirstTimeLoad = true;
     protected string Ready = "loading";
@@ -54,14 +24,17 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        // Check local storage or your ILocalStore to see if this is the first run
-        // or if we should skip the splash.
+
         var isFirstRun = true; // Use your ILocalStore service here
         FirstTimeLoad = isFirstRun;
-        Trust.OnAssemblyLoaded += NotifyAssembly;
 #if DEBUG
         IsDebug = true;
 #endif
+        SetCurrent = this;
+        Nav.LocationChanged += Nav_LocationChanged;
+        Trust.OnAssemblyLoaded += NotifyAssembly;
+
+
         var query = Query(Nav.Uri);
         if (Nav?.Uri.Contains("#mode=server") == true)
         {
@@ -75,6 +48,88 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         }
 
         Console.WriteLine($"Starting in {PreferredMode} mode");
+    }
+
+
+    public void Dispose()
+    {
+        Trust.OnAssemblyLoaded -= NotifyAssembly;
+        Nav.LocationChanged -= Nav_LocationChanged;
+        GC.SuppressFinalize(this);
+    }
+
+    private async Task ProbablyUpdateTitle()
+    {
+        await Task.Delay(600); // more than MainLayout card animations to insert the page
+        var components = this.GetChildComponents();
+        if (components.LastOrDefault() is IComponent comp
+            && comp.GetType().GetCustomAttributes<DisplayAttribute>().FirstOrDefault() is DisplayAttribute attr)
+        {
+            var Title = Service.GetService<ITitleService>();
+            Title?.UpdateTitle(attr.Name);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ = ProbablyUpdateTitle();
+        }
+    }
+
+    private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = ProbablyUpdateTitle();
+    }
+
+    // Default to Wasm, but allow an override
+    public IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
+    public bool IsDebug = false;
+    public Type? PermissionType { get; set; } = null;
+    public Type? NotFoundControl { get; set; } = null;
+    public Type? AuthWrapper { get; set; } = null;
+
+    static Type? StoredDefaultRoot = null;
+    public Type? DefaultRoot {
+        get => StoredDefaultRoot;
+        set
+        {
+            StoredDefaultRoot = value;
+            if (StoredAppAssembly != null)
+            {
+                Ready = "layout";
+                InvokeAsync(StateHasChanged);
+                _ = ProbablyUpdateTitle();
+            }
+        }
+    }
+
+    static Type? StoredDefaultLayout = null;
+    public Type? DefaultLayout {
+        get => StoredDefaultLayout;
+        set
+        {
+            StoredDefaultLayout = value;
+            if (StoredAppAssembly != null)
+            {
+                Ready = "layout";
+                InvokeAsync(StateHasChanged);
+                _ = ProbablyUpdateTitle();
+            }
+        }
+    }
+
+    static System.Reflection.Assembly? StoredAppAssembly = null;
+    public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
+    {
+        StoredAppAssembly = assembly;
+        if (StoredAppAssembly != null)
+        {
+            Ready = "layout"; // Explicitly move to layout
+            await InvokeAsync(StateHasChanged);
+            _ = ProbablyUpdateTitle();
+        }
     }
 
     public static Dictionary<string, string> Query(string uri)
@@ -97,11 +152,6 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         }
     }
 
-    public void Dispose()
-    {
-        Trust.OnAssemblyLoaded -= NotifyAssembly;
-        GC.SuppressFinalize(this);
-    }
 
     private RenderFragment RenderWithPermission() => __builder =>
     {
@@ -226,7 +276,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
     {
         return __builder =>
         {
-            if(DefaultRoot != null)
+            if (DefaultRoot != null)
             {
                 __builder.OpenComponent(0, DefaultRoot);
                 __builder.CloseComponent();
@@ -257,3 +307,4 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>
         };
     }
 }
+

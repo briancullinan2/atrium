@@ -21,7 +21,7 @@
     </script>
 }
 
-<div class="page login-mode cover-page @(Ready)">
+<div class="page @(Ready)">
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
         <div class="cover-container"></div>
@@ -45,11 +45,12 @@
     }
 </div>
 
+
 @code {
 
     private RenderFragment RenderWithLayout() => __builder =>
     {
-        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@Trust.LoadedAssemblies.Values">
+        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
             <Found Context="routeData">
                 @if (AuthService != null)
                 {
@@ -71,7 +72,7 @@
 
     private RenderFragment RenderWithoutLayout() => __builder =>
     {
-        <Router AppAssembly="@StoredAppAssembly">
+        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
             <Found Context="routeData">
                 @if (AuthService != null)
                 {
