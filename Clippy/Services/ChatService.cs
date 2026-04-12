@@ -2,7 +2,7 @@
 
 namespace Clippy.Services;
 
-public partial class ChatService(HttpClient Http, IPageManager Page) : IChatService
+public partial class ChatService(HttpClient Http, IHasClass Classy) : IChatService
 {
 
     public bool Chat { get; set; } = false;
@@ -47,8 +47,8 @@ public partial class ChatService(HttpClient Http, IPageManager Page) : IChatServ
             {
                 SaveWorkingSettings(service.Url, service.DefaultModel, service.ApiKey, service.ResponsePath, service.Parameters);
             }
-            if (result) Page.ClassNames.Add("chatting");
-            else Page.ClassNames.Remove("chatting");
+            if (result) Classy.ClassNames.Add("chatting");
+            else Classy.ClassNames.Remove("chatting");
             OnChatWorking?.Invoke(result);
             return Tuple.Create(result, json ?? string.Empty);
         }

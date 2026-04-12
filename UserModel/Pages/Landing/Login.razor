@@ -10,7 +10,7 @@
 @inject IAuthService AuthService
 @inject IQueryManager QueryManager
 @inject NavigationManager Nav
-@inject IPageManager PageManager
+@inject IHasClass Classy
 @attribute [Display(Name = "User Login", ShortName = "Login", GroupName = "Main", Prompt = "bi-box-arrow-right")]
 
 @if (string.Equals(Nav.ToBaseRelativePath(Nav.Uri).Split('/').FirstOrDefault(), "access-denied"))
@@ -129,7 +129,7 @@
         //CurrentCategory = EntityMetadata.User.Groups["Login Info"]?.ToList();
         //MenuService.SetMenu(null);
         //MenuService.SetHeader(false);
-        PageManager.ClassNames.Add("login-mode");
+        Classy.ClassNames.Add("login-mode");
         LoginService.SetLoginMode(true);
         LoginService.SetUser(null);
         LoginService.OnUserChanged += SetUser;

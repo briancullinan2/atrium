@@ -26,7 +26,7 @@ public class LocalStore : ILocalStore
         if (_renderTcs.Task.IsCompleted)
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
-    protected void NotifyRendered() => _ = EnsureModuleLoaded();
+    protected void NotifyRendered() => _ = EnsureInitialized();
 
     public async ValueTask DisposeAsync()
     {
@@ -60,7 +60,7 @@ public class LocalStore : ILocalStore
 
     private readonly SemaphoreSlim _loadLock = new(1, 1);
 
-    private async Task EnsureModuleLoaded()
+    public async ValueTask EnsureInitialized()
     {
         // 1. Quick check outside the lock for performance
         if (_renderTcs.Task.IsCompleted) return;

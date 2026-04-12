@@ -5,7 +5,7 @@
 
 @attribute [Display(Name = "Application Theme", ShortName = "Theme", GroupName = "Admin", Prompt = "bi-collection")]
 
-@inject IPageManager PageManager
+@inject IFormFactor Form
 @inject IFileManager FileManager
 @inject IThemeService ThemeService
 
@@ -110,7 +110,7 @@
             csvBuilder.AppendLine("\"" + string.Join("\"\t\"", ((IEnumerable<string?>)[theme.ClassName]).Concat(ThemeVariableKeys.Select(k => theme.Variables.GetValueOrDefault(k)))) + "\"");
         }
 
-        await PageManager.Clipboard(csvBuilder.ToString());
+        await Form.Clipboard(csvBuilder.ToString());
     }
 
 

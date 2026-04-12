@@ -1,16 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
+﻿using Interfacing.Services;
 
 namespace DataShared.ForeignEntity;
 
-public interface ITranslationContext
+public interface ITranslationContext : IHasModule
 {
 
     IQueryManager Query { get; set; }
     DbSet<TEntity> Set<TEntity>() where TEntity : class;
-    Task InitializeIfNeeded();
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;

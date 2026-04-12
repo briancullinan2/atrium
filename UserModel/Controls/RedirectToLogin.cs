@@ -4,7 +4,7 @@
 public class RedirectToLogin : ComponentBase
 {
     [Inject] protected NavigationManager Navigation { get; set; } = default!;
-    [Inject] protected IPageManager PageManager { get; set; } = default!;
+    [Inject] protected IRenderState Rendered { get; set; } = default!;
     [Inject] protected IFormFactor Form { get; set; } = default!;
 
     [CascadingParameter(Name = "IsStaticRender")]
@@ -17,8 +17,15 @@ public class RedirectToLogin : ComponentBase
         if (IsStaticRender) return;
 
         //var currentUri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var loginUri = TypeExtensions.GetUri<ILogin>(l => l.ReturnUrl == Navigation.Uri);
 
-        _ = PageManager.Redirect(Navigation.Uri);
+        _ = Rendered.FilterRedirect(loginUri).Then(r =>
+        {
+            if (r != null)
+            {
+                Navigation.NavigateTo(loginUri, forceLoad: true);
+            }
+        });
     }
 
     // Since this component only handles logic, we provide an empty render tree.

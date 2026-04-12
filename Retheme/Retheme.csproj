@@ -39,6 +39,11 @@
 	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
 	  <ProjectReference Include="..\UserData\UserData.csproj" />
 	</ItemGroup>
+	
+
+	<ItemGroup>
+	  <Folder Include="Pages\Shared\" />
+	</ItemGroup>
 
 
 

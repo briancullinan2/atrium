@@ -4,34 +4,25 @@
 
 namespace RazorSharp.Services
 {
-    public interface ILog
-    {
-        void Info(object message, Exception? ex = null);
-        void Error(object message, Exception? ex = null);
-        void Fatal(object message, Exception? ex = null);
-        void Debug(object message, Exception? ex = null);
-        //static abstract SimpleLogger GetLogger(string filePath);
-        Action<object, Exception?> this[string level] { get; set; }
-        string? Filepath { get; set; }
-        string? Category { get; set; }
-    }
+    
 
-
-    public class SimpleLogger : ILog
+    public class SimpleLogger : ILog, IHasLog, IHasCurrent<ILog>
     {
         public static IServiceProvider? Service { get; set; }
         private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
 
         private static IQueryManager? Query { get; set; }
-        private static IPageManager? Manager { get; set; }
+        private static IRenderState? Manager { get; set; }
+        private static IHasErrors? Errors { get; set; }
         private static Lazy<ILocalStore?>? LocalStore { get; set; }
 
         public SimpleLogger(IServiceProvider _services)
         {
             Service ??= _services;
-            Manager = Service.GetRequiredService<IPageManager>();
-            Query = Service.GetRequiredService<IQueryManager>();
-            LocalStore = Service.GetRequiredService<Lazy<ILocalStore?>>();
+            Manager = Service.GetService<IRenderState>();
+            Query = Service.GetService<IQueryManager>();
+            Errors = Service.GetService<IHasErrors>();
+            LocalStore = Service.GetService<Lazy<ILocalStore?>>();
             ResolveCache();
         }
 
@@ -47,14 +38,21 @@ namespace RazorSharp.Services
                     //_ = pre.Save(Query);
                     var boringException = new Exception(pre.Title) { Source = pre.Source };
                     boringException.Data["OriginalStack"] = pre.Body;
-                    Manager?.SetError(boringException);
+                    Errors?.SetError(boringException);
                 }
                 PreLog.Clear();
             }
         }
 
 
-        public object? WrappedLogger { get; set; }
+        static ILog? _current = null;
+        static public ILog Current { 
+            get
+            {
+                return _current ?? throw new InvalidOperationException("Log wrapper not set.");
+            }
+            set => _current = value; 
+        }
 
 
         internal static ConcurrentStack<Message> PreLog { get; set; } = [];
@@ -75,7 +73,8 @@ namespace RazorSharp.Services
                 Filepath = filePath,
                 Category = category
             });
-            levelsLogger.WrappedLogger = replacement ?? levelsLogger;
+            if(replacement != null && replacement is ILog wrapperLogger)
+                SimpleLogger.Current = wrapperLogger;
 
             var levelFunctions = levels.GetMethods(null)
                 .Select(m => new Tuple<MethodInfo, ParameterInfo[]>(m, m.GetParameters()))
@@ -135,12 +134,12 @@ namespace RazorSharp.Services
         ) {
             if (Manager?.IsReady == true)
             {
-                if (exception != null) Manager?.SetError(exception);
+                if (exception != null) Errors?.SetError(exception);
                 else
                 {
                     var reportEx = exception ?? new Exception(Title) { Source = Source };
                     reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
-                    Manager?.SetError(reportEx);
+                    Errors?.SetError(reportEx);
                 }
             }
 
@@ -247,22 +246,22 @@ namespace RazorSharp.Services
 
         private void InvokeWrappedLogger(MethodInfo levelDelegate, /* string level, */ object message, Exception? ex)
         {
-            if (WrappedLogger != this && levelDelegate != null)
+            if (_current != this && levelDelegate != null)
             {
                 var parameters = levelDelegate?.GetParameters()
                     .Select(p => ParameterToObject(p, message, ex)).ToArray();
                 // prevent accidental recursion from implementors, the only way to arrive here is to overload the methods above
                 if (!typeof(SimpleLogger).IsAssignableFrom(levelDelegate?.DeclaringType))
                 {
-                    levelDelegate?.Invoke(WrappedLogger, parameters);
+                    levelDelegate?.Invoke(_current, parameters);
                 }
             }
             else
             {
                 Task.Run(() =>
                 {
-                    if (ex != null) Manager?.SetError(ex);
-                    else Manager?.SetError(new Exception(message.ToString()) { Source = Category });
+                    if (ex != null) Errors?.SetError(ex);
+                    else Errors?.SetError(new Exception(message.ToString()) { Source = Category });
                 });
 
                 // TODO: I don't know if this is wise, it generates loops of errors

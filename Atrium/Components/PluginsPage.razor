@@ -324,6 +324,14 @@
         //{
         //    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
         //}
+        var likelyRootAss = loader.Routable.FirstOrDefault(ass =>
+               Trust.EnabledAssemblies.Any(ass2 => ass.FullName?.Split(',')[0] == ass2.Key))
+               ?? loader.Routable.FirstOrDefault();
+
+        if (StoredSelectedRoot == null && loader.AllRoutes.Count > 0)
+        {
+            SelectedRoot = loader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName;
+        }
         if (StoredSelectedRoot == null && loader.Roots.Count > 0)
         {
             SelectedRoot = loader.Roots[0].AssemblyQualifiedName;
@@ -335,7 +343,7 @@
         }
         if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
         {
-            await SetSelectedAssembly(loader.Routable[0].FullName?.Split(',')[0]);
+            await SetSelectedAssembly(likelyRootAss?.FullName?.Split(',')[0]);
         }
 
         await InvokeAsync(StateHasChanged);

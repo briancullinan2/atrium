@@ -1,5 +1,6 @@
 #if !BROWSER
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Maui.ApplicationModel;
@@ -14,7 +15,7 @@ namespace Hosting.Services;
 
 // TODO: designed to shut down both services at the same time
 
-public abstract class BaseFormFactor(NavigationManager? nav = null) 
+public abstract class BaseFormFactor(IServiceProvider Service, NavigationManager? nav = null) 
     : IFormFactor, ITitleService
 {
     public virtual NavigationManager? Navigation { get; } = nav;
@@ -56,6 +57,14 @@ public abstract class BaseFormFactor(NavigationManager? nav = null)
         return _title;
     }
 
+
+    public async ValueTask Clipboard(string text)
+    {
+        var Rendered = Service.GetService<IRenderState>();
+        if (Rendered == null) return;
+        await Rendered.EnsureInitialized();
+        await (Rendered.Runtime as IJSRuntime)!.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
 
 
     public virtual async Task SetSessionCookie(string name, string value, int days)
@@ -103,7 +112,7 @@ public partial class FormFactor : BaseFormFactor
         JS = js;
         Page.Subscribe((PageAction.Upload, "window"), SwapFileListasync);
     }
-
+    
 
     protected async Task SwapFileListasync(InputFileChangeEventArgs args)
     {
@@ -141,13 +150,14 @@ public partial class FormFactor : BaseFormFactor
 #else
 
 public partial class FormFactor(
+    IServiceProvider service,
     NavigationManager nav,
     HttpContext? Context = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
 
-) : BaseFormFactor(nav)
+) : BaseFormFactor(service, nav)
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Context != null;

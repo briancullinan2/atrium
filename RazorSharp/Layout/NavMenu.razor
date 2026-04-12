@@ -3,12 +3,13 @@
 
 @implements IHasMenu
 @inject NavigationManager Nav
-@inject IPageManager PageManager
+@inject IPageEvents PageManager
 @inject IServiceProvider Service
 @inject IMenuService Menu
+@inject IHasClass Classy
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-logo" @onclick="PageManager.ToggleStudyMode">
+    <div class="container-logo" @onclick="@(() => PageManager.ToggleStudyMode(!Classy.ClassNames.Contains("study-mode")))">
         <!--<img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />-->
         <a class="navbar-brand">Atrium</a>
     </div>

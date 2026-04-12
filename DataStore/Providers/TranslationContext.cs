@@ -47,54 +47,62 @@ public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbCont
         }
     }
 
-    public abstract Task InitializeIfNeeded();
+    public abstract bool IsReady { get; protected set; }
+
+    public abstract ValueTask EnsureInitialized();
 }
 
 public abstract class SemaphoreTranslationContext<TEntity>(DbContextOptions ctx) : TranslationContext<TEntity>(ctx)
 {
-    private Task? _initializeTask;
+    private ValueTask? _initializeTask;
     private readonly SemaphoreSlim _initLock = new(1, 1);
+    public bool ModelCreated { get; private set; } = false;
+    public override bool IsReady { get; protected set; } = false;
 
-    public bool NeedsInitialize { get; protected set; } = true;
-
-    public override Task InitializeIfNeeded()
+    public override ValueTask EnsureInitialized()
     {
         // 1. Fast path: if already done, return completed task
-        if (!NeedsInitialize && _initializeTask?.IsCompletedSuccessfully == true)
+        if (!IsReady && _initializeTask?.IsCompletedSuccessfully == true)
         {
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
         // 2. Lock to ensure only one thread creates the task
         lock (_initLock)
         {
-            if (_initializeTask == null || _initializeTask.IsFaulted)
+            if (_initializeTask == null)
             {
                 // Use the Semaphore to ensure even with the lock above, 
                 // the actual async work is serialized.
-                _initializeTask = _initLock.WaitAsync().Then(async (_) =>
-                {
-                    NeedsInitialize = false;
-                    try
-                    {
-                        await PerformInitialization();
-                        NeedsInitialize = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Reset the task so a retry can occur later
-                        _initializeTask = null;
-                        throw new InvalidOperationException("Database creation failed.", ex);
-                    }
-                    finally
-                    {
-                        _initLock.Release();
-                    }
-                });
+                _initializeTask = InitializeInitialize();
                 
             }
-            return _initializeTask;
+            return _initializeTask!.Value;
         }
+    }
+
+
+    protected async ValueTask InitializeInitialize()
+    {
+        await _initLock.WaitAsync();
+
+        ModelCreated = false;
+        try
+        {
+            await PerformInitialization();
+            IsReady = true;
+        }
+        catch (Exception ex)
+        {
+            // Reset the task so a retry can occur later
+            _initializeTask = null;
+            throw new InvalidOperationException("Database creation failed.", ex);
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+
     }
 
 
@@ -102,7 +110,7 @@ public abstract class SemaphoreTranslationContext<TEntity>(DbContextOptions ctx)
     {
         base.OnModelCreating(modelBuilder);
 
-        NeedsInitialize = true;
+        ModelCreated = true;
     }
 
 
@@ -145,7 +153,7 @@ public class SqliteTranslationContext<TEntity>(IQueryManager query, DbContextOpt
 
         // Re-check inside the lock
         using var transaction = Database.BeginTransaction();
-        if (!NeedsInitialize) return;
+        if (!ModelCreated) return;
 
         await Database.EnsureCreatedAsync();
         await EnsureGlobalIdentityStart();
@@ -272,9 +280,9 @@ public class RemoteStorage(HttpClient client, IQueryManager service, DbContextOp
 
     protected override async Task PerformInitialization()
     {
-        if (NeedsInitialize)
+        if (!IsReady)
         {
-            NeedsInitialize = false;
+            IsReady = true;
             //await Database.EnsureCreatedAsync();
         }
     }

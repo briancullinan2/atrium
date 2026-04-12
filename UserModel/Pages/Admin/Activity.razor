@@ -1,7 +1,8 @@
 @page "/activity"
 @inject IMenuService MenuService
 @inject IQueryManager QueryManager
-@inject IPageManager PageManager
+@inject IPageEvents PageEvents
+@inject IPageState Page
 @attribute [Display(Name = "Usage Activity", ShortName = "Activity", GroupName = "Admin", Prompt = "bi-activity")]
 
 
@@ -52,7 +53,7 @@
                             @foreach (var ev in events)
                             {
                                 <div data-hour="@(ev.Created.Hour)" class="event-pill"
-                                     style="@(GetYPosition(ev.Created.AddMinutes(-PageManager.OffsetInMinutes)))"
+                                     style="@(GetYPosition(ev.Created.AddMinutes(-Page.OffsetInMinutes)))"
                                     @onclick="() => NavigateToEvent(ev)">@ev?.Path</div>
                             }
                         }
@@ -88,7 +89,7 @@
     {
         // Define the contextual menu for THIS page
         _ = PopulatorLoop();
-        PageManager.OnResizeAsync += OnWindowResize;
+        PageEvents.OnResizeAsync += OnWindowResize;
     }
     // This is the key: How many pixels away is this date from the "Zero Point"?
     private double CalculateXPosition(DateTime day)
@@ -112,7 +113,7 @@
     {
         _width = width;
         _height = height;
-        CalculatedHeight = await PageManager.GetLineHeightIntAsync();
+        CalculatedHeight = await PageEvents.GetLineHeightIntAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -164,7 +165,7 @@
 
         // BUCKETIZE: Only keep events that land on THIS local day after offset
         var localEvents = results
-            .Where(v => v.Created.AddMinutes(-PageManager.OffsetInMinutes).Date == day.Date)
+            .Where(v => v.Created.AddMinutes(-Page.OffsetInMinutes).Date == day.Date)
             .ToList();
 
         DayBuckets[day.Date] = localEvents;
@@ -218,7 +219,7 @@
         foreach (var ev in allEvents)
         {
             // Adjust to browser local time before bucketing
-            var localTime = ev.Created.AddMinutes(-PageManager.OffsetInMinutes);
+            var localTime = ev.Created.AddMinutes(-Page.OffsetInMinutes);
             var dateKey = localTime.Date;
 
             if (!DayBuckets.ContainsKey(dateKey)) DayBuckets[dateKey] = new();

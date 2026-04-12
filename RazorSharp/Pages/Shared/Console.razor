@@ -3,14 +3,16 @@
 @attribute [AllowAnonymous]
 
 @implements IDisposable
-@inject IPageManager PageManager
+@inject IPageEvents PageManager
+@inject IRenderState Rendered
 @inject IFormFactor Form
+@inject IHasErrors Errors
 @inject ICircuitProvider Connection
 
 <div class="flash-card dev-console @(Embedded == true ? "embedded" : "") animate-in @(_isExpanded ? "expanded" : "collapsed")">
     <div class="console-header" @onclick="Toggle">
         <span>
-            Dev Console (@Services.PageManager.Immediate.Count @(Services.PageManager.Immediate.Count == 1 ? "message" : "messages"))
+            Dev Console (@ErrorPage.Immediate.Count @(ErrorPage.Immediate.Count == 1 ? "message" : "messages"))
             <br />@(Form.GetFormFactor())
             <br />(@((Connection.IsConnected ? "Connected" : "Offline") + (Connection.ClientCount > 1 ? (" " + Connection.ClientCount + " clients") : "")))
         </span>
@@ -22,7 +24,7 @@
     </div>
 
         <div class="console-body">
-            @foreach (var error in /*Logger.Errors.OrderByDescending(e => e.Timestamp)*/ Services.PageManager.Immediate.TakeLast(3))
+        @foreach (var error in /*Logger.Errors.OrderByDescending(e => e.Timestamp)*/ ErrorPage.Immediate.TakeLast(3))
             {
                 <div class="error-entry">
                     <div class="entry-header">
@@ -65,7 +67,7 @@
     protected override void OnInitialized()
     {
         //Logger.OnErrorAdded += Refresh;
-        PageManager.OnErrorChanged += SetError;
+        Errors.OnErrorChanged += SetError;
         Connection.OnConnectionUp += NotifyUp;
         Connection.OnConnectionDown += NotifyDown;
 
@@ -79,6 +81,8 @@
     public void Dispose()
     {
         //Logger.OnErrorAdded -= Refresh;
-        PageManager.OnErrorChanged -= SetError;
+        Errors.OnErrorChanged -= SetError;
     }
+
+
 }

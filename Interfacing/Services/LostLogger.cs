@@ -2,7 +2,7 @@
 
 namespace Interfacing.Services;
 
-public class Log : Log.ILog
+public class LostLogger : ILog
 {
 
     // demonstration for implementors to inject themselves
@@ -12,27 +12,18 @@ public class Log : Log.ILog
     public string? Category { get; set; }
 
 
-    public interface ILog
-    {
-        //static abstract Log GetLogger(string filePath, Type levels, object? replacement = null);
-        static abstract Log GetLogger(string filePath);
-        Action<object, Exception?> this[string level] { get; set; }
-        string? Filepath { get; set; }
-        string? Category { get; set; }
 
-    }
-
-    static Log()
+    static LostLogger()
     {
-        WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
+        WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log4NetLogger")?.GetMethod(nameof(GetLogger));
         if (WrappedLogger == null)
         {
             var flashCard = Assembly.GetEntryAssembly()?.GetReferencedAssemblies()
-                .FirstOrDefault(a => a.FullName.Contains("FlashCard"));
+                .FirstOrDefault(a => a.FullName.Contains("RazorSharp"));
             Console.WriteLine("Loading assembly: " + flashCard);
             if (flashCard != null)
             {
-                var logger = Assembly.Load(flashCard.FullName).GetType("FlashCard.Services.SimpleLogger");
+                var logger = Assembly.Load(flashCard.FullName).GetType("RazorSharp.Services.SimpleLogger");
                 Console.WriteLine("Using logger: " + logger);
                 WrappedLogger = logger?.GetMethod(nameof(GetLogger), [typeof(string)]);
                 Console.WriteLine("Using logger method: " + WrappedLogger);
@@ -51,40 +42,40 @@ public class Log : Log.ILog
         set => MappedLevels?.SetValue(WrappedInstance, value, [level]);
     }
 
-
-    public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    public void Info(object message, Exception? ex = null)
     {
-        GetLogger(callerPath)[nameof(Info)](message, ex);
+        this[nameof(Info)](message, ex);
     }
 
-    public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    public void Error(object message, Exception? ex = null)
     {
-        GetLogger(callerPath)[nameof(Error)](message, ex);
+        this[nameof(Error)](message, ex);
     }
 
-    public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    public void Fatal(object message, Exception? ex = null)
     {
-        GetLogger(callerPath)[nameof(Fatal)](message, ex);
+        this[nameof(Fatal)](message, ex);
     }
 
-    public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    public void Debug(object message, Exception? ex = null)
     {
-        GetLogger(callerPath)[nameof(Debug)](message, ex);
+        this[nameof(Debug)](message, ex);
     }
 
-    public static Log GetLogger(string filePath)
+
+    public static LostLogger GetLogger(string filePath)
     {
-        var parentLogger = (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType)
+        var parentLogger = (!typeof(LostLogger).IsAssignableFrom(WrappedLogger?.DeclaringType)
             ? WrappedLogger?.Invoke(null, [filePath])
             : throw new InvalidOperationException("Logger not implemented.")) ?? throw new InvalidOperationException("Logger not working.");
         return GetLogger(filePath, typeof(ILog), parentLogger);
     }
 
-    public static Log GetLogger(string filePath, Type levels, object? replacement = null)
+    public static LostLogger GetLogger(string filePath, Type levels, object? replacement = null)
     {
         // Extracts the class name from the file path to use as the category
         string category = Path.GetFileNameWithoutExtension(filePath);
-        var simpleLogger = new Log
+        var simpleLogger = new LostLogger
         {
             Category = category,
             Filepath = filePath,             // TODO: [System.Runtime.CompilerServices.IndexerName("Levels")]
@@ -97,7 +88,26 @@ public class Log : Log.ILog
 }
 
 
-public static class LoggingExtensions
+public static class Log
 {
 
+    public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    {
+        LostLogger.GetLogger(callerPath)[nameof(Info)](message, ex);
+    }
+
+    public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    {
+        LostLogger.GetLogger(callerPath)[nameof(Error)](message, ex);
+    }
+
+    public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    {
+        LostLogger.GetLogger(callerPath)[nameof(Fatal)](message, ex);
+    }
+
+    public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+    {
+        LostLogger.GetLogger(callerPath)[nameof(Debug)](message, ex);
+    }
 }

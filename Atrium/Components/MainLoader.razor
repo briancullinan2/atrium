@@ -3,7 +3,6 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.AspNetCore.Components.Routing
 @inject ITrustProvider Trust
-@implements IDisposable
 @inject NavigationManager Nav
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
@@ -21,7 +20,7 @@
     </script>
 }
 
-<div class="page @(Ready)">
+<div class="page @(Ready) @(string.Join(" ", ClassNames))">
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
         <div class="cover-container"></div>
@@ -47,6 +46,43 @@
 
 
 @code {
+    
+    private List<string> GivenClassNames { get; set; } = [];
+    public ClassNameCollection CombinedClassNames { get; } = [];
+    public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [.. value]; }
+    private List<string>? PageClasses = [];
+    public string? Theme;
+    public string? Sidebar { get; private set; }
+    public string? Background;
+    
+    // TODO: move this to mainloader classes along side SetTitle
+    public void SetPageClasses(List<string> classes)
+    {
+        PageClasses = classes;
+    }
+
+    public void SetTheme(string? classes)
+    {
+        var newClass = "theme-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Theme = newClass;
+    }
+
+    public void SetSidebar(string? classes)
+    {
+        Sidebar = classes;
+    }
+
+    public void SetBackground(string? classes)
+    {
+        var newClass = "background-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
+
+    private void SetBackground(AnimationMode? theme)
+    {
+        var newClass = "background-" + (theme?.ToString()?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
 
     private RenderFragment RenderWithLayout() => __builder =>
     {

@@ -9,8 +9,9 @@ public interface IFormFactor
     bool IsBrowser { get; }
     bool IsWebContext { get; }
     bool IsMauiContext { get; }
-    string ConnectionId { get; }
     List<IFile> Files { get; }
+
+    ValueTask Clipboard(string text);
 
     Dictionary<string, string>? QueryParameters { get; }
     Task SetSessionCookie(string name, string value, int days);

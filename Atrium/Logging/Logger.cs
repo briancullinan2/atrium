@@ -2,9 +2,10 @@
 using log4net;
 #endif
 
+
 namespace Atrium.Logging;
 
-internal class Log : Interfacing.Services.Log.ILog
+internal class Log4NetLogger : Interfacing.Services.ILog
 {
 #if WINDOWS
     // Use a ConcurrentDictionary to cache loggers for performance
@@ -27,31 +28,77 @@ internal class Log : Interfacing.Services.Log.ILog
 
     }
 
-    static Log()
+    static Log4NetLogger()
     {
         WrappedLogger = Assembly.GetEntryAssembly()?.GetType("Atrium.Logging.Log")?.GetMethod(nameof(GetLogger));
     }
 
-    Action<object, Exception?> Interfacing.Services.Log.ILog.this[string level]
+    public Action<object, Exception?> this[string level]
     {
         get => GetLogger(Filepath ?? Category ?? string.Empty)[level];
         set => GetLogger(Filepath ?? Category ?? string.Empty)[level] = value;
     }
 
 
+    public void Info(object message, Exception? ex = null)
+    {
+        this[nameof(Info)](message, ex);
+    }
+
+    public void Error(object message, Exception? ex = null)
+    {
+        this[nameof(Error)](message, ex);
+    }
+
+    public void Fatal(object message, Exception? ex = null)
+    {
+        this[nameof(Fatal)](message, ex);
+    }
+
+    public void Debug(object message, Exception? ex = null)
+    {
+        this[nameof(Debug)](message, ex);
+    }
+
+    // the main project links down, and the LostLogger links up to here
+
+    public static Interfacing.Services.LostLogger GetLogger(string filePath)
+    {
+        // Extracts the class name from the file path to use as the category
+        string category = Path.GetFileNameWithoutExtension(filePath);
+#if WINDOWS
+        var logger = _loggerCache.GetOrAdd(category, LogManager.GetLogger);
+        var simple = Interfacing.Services.LostLogger.GetLogger(filePath, typeof(log4net.ILog), logger);
+#else
+        var simple = Interfacing.Services.LostLogger.GetLogger(filePath);
+#endif
+        if (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
+        {
+            var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as ILog;
+            parentLogger?.Category = category;
+            parentLogger?.Filepath = filePath;
+        }
+        return simple!;
+    }
+}
+
+
+public static class Log
+{
+
     public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
     {
-        GetLogger(callerPath)[nameof(Info)](message, ex);
+        Log4NetLogger.GetLogger(callerPath)[nameof(Info)](message, ex);
     }
 
     public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
     {
-        GetLogger(callerPath)[nameof(Error)](message, ex);
+        Log4NetLogger.GetLogger(callerPath)[nameof(Error)](message, ex);
     }
 
     public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
     {
-        GetLogger(callerPath)[nameof(Fatal)](message, ex);
+        Log4NetLogger.GetLogger(callerPath)[nameof(Fatal)](message, ex);
         // TODO: crash the app softly like it does on web and redirect to /error after its beem inserted
 #if false
 //#if WINDOWS
@@ -76,33 +123,6 @@ internal class Log : Interfacing.Services.Log.ILog
 
     public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
     {
-        GetLogger(callerPath)[nameof(Debug)](message, ex);
+        Log4NetLogger.GetLogger(callerPath)[nameof(Debug)](message, ex);
     }
-
-    // the main project links down, and the LostLogger links up to here
-
-    public static Interfacing.Services.Log GetLogger(string filePath)
-    {
-        // Extracts the class name from the file path to use as the category
-        string category = Path.GetFileNameWithoutExtension(filePath);
-#if WINDOWS
-        var logger = _loggerCache.GetOrAdd(category, LogManager.GetLogger);
-        var simple = Interfacing.Services.Log.GetLogger(filePath, typeof(log4net.ILog), logger);
-#else
-        var simple = Interfacing.Services.Log.GetLogger(filePath);
-#endif
-        if (!typeof(Log).IsAssignableFrom(WrappedLogger?.DeclaringType))
-        {
-            var parentLogger = WrappedLogger?.Invoke(null, [filePath]) as ILog;
-            parentLogger?.Category = category;
-            parentLogger?.Filepath = filePath;
-        }
-        return simple!;
-    }
-}
-
-
-public static class LoggingExtensions
-{
-
 }

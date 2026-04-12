@@ -1,22 +1,11 @@
 ﻿
 using System.Collections;
-using System.Collections.Concurrent;
 
 namespace Interfacing.Services;
 
 
-public interface IPageManager : IAsyncDisposable
+public interface IPageEvents : IHasModule, IAsyncDisposable
 {
-    void ClearRedirect();
-
-    Task SetState(object? state);
-    Task<Dictionary<string, string?>?> RestoreState(object component);
-    Task SetError(Exception? error);
-
-    // page data handling instead of built in MS uninspectable crap
-    Dictionary<string, string?> State { get; set; }
-    event Action<object?>? OnStateChanged;
-    event Action<Exception?>? OnErrorChanged;
 
     // page events
     Task RegisterAsync(string id);
@@ -24,7 +13,6 @@ public interface IPageManager : IAsyncDisposable
     Task ScrollToBottom(string id, bool smooth = true);
     Task<Dictionary<string, bool>> GetAllStatesAsync(string[]? ids = null);
     T? GetState<T>(PageAction action, string id);
-
 
     event Action<string, bool> OnScroll;
     event Action<int, int, bool> OnResize;
@@ -41,9 +29,6 @@ public interface IPageManager : IAsyncDisposable
     Task ScrollSlightlyAsync(string id, int amount = 10);
     Task<string> GetLineHeightAsync(string? elementId = null);
     Task<int> GetLineHeightIntAsync(string? elementId = null);
-    ValueTask Clipboard(string text);
-
-    Task EnsureModuleLoaded();
 
 
     void OnFocused(bool focused);
@@ -55,20 +40,7 @@ public interface IPageManager : IAsyncDisposable
 
     ValueTask TriggerEvent(string eventName, object? detail = null);
     ValueTask TriggerEvent(PageAction id, object? detail = null);
-    bool IsReady { get; }
-    int OffsetInMinutes { get; }
-    ConcurrentDictionary<string, string?> InFlight { get; }
-    ClassNameCollection ClassNames { get; }
 
-    void SetPageClasses(List<string> classes);
-    void SetTheme(string? classes);
-    void SetSidebar(string? classes);
-    void SetBackground(string? classes);
-    string? Sidebar { get; }
-    ValueTask InitializeBackground(string mode, string canvas);
-
-
-    Task Redirect(string url);
 }
 
 public class ClassNameCollection : IEnumerable<string>

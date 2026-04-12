@@ -194,8 +194,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
             {
                 throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
             }
-            await contextFrom.InitializeIfNeeded();
-            await contextTo.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
+            await contextTo.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () =>
@@ -222,8 +222,8 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
             {
                 throw new InvalidOperationException("Database context failed in: " + nameof(Synchronize));
             }
-            await contextFrom.InitializeIfNeeded();
-            await contextTo.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
+            await contextTo.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () =>
@@ -379,14 +379,14 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return (TEntity)await Enqueue(async () =>
         {
             var context = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await context.InitializeIfNeeded();
+            await context.EnsureInitialized();
             using var transaction = context.Database.BeginTransaction();
 
             var predicate = expression.Predicate<TEntity>();
@@ -417,7 +417,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return (TEntity)await Enqueue(async () =>
@@ -439,7 +439,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () =>
@@ -614,7 +614,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
             {
                 var contextFrom = GetContext(storage)
                     ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-                await contextFrom.InitializeIfNeeded();
+                await contextFrom.EnsureInitialized();
             }, 0);
 
             // This inner block only runs ONCE for the same queryKey
@@ -858,7 +858,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
@@ -882,7 +882,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
@@ -899,7 +899,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         var UpdateGeneric = GetType().GetMethods(nameof(UpdateNow), 1, [typeof(DbContext)]).FirstOrDefault();
@@ -926,7 +926,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
         {
             var contextFrom = GetContext(storage)
                 ?? throw new InvalidOperationException("Database context failed in: " + nameof(Save));
-            await contextFrom.InitializeIfNeeded();
+            await contextFrom.EnsureInitialized();
         }, 0);
 
         return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
@@ -945,7 +945,7 @@ public class QueryManager(IServiceProvider Service) : IQueryManager
 
     {
         var context = GetContext(storage) ?? throw new InvalidOperationException("Database context failed in: " + nameof(UpdateNow));
-        await context.InitializeIfNeeded();
+        await context.EnsureInitialized();
 
         return await UpdateNow(context, entity, predicate, 3);
     }

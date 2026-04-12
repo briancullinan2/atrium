@@ -16,7 +16,7 @@
 @inject ITitleService TitleService
 @inject NavigationManager Nav
 
-<SyncedTitle Title="Courses"></SyncedTitle>
+@attribute [Display(Name = "Courses", GroupName = "Main", Prompt = "bi-mortarboard")]
 
 <div class="flash-card @GetDisplayClass(ControlMode.List)">
     <heading class="flex-row">

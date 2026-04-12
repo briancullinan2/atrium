@@ -1,4 +1,5 @@
 ﻿#if !BROWSER
+using Interfacing.Services;
 using log4net.Appender;
 using log4net.Core;
 using log4net.Util;
@@ -67,14 +68,16 @@ public class MessageLogAppender
     {
         try
         {
-            /*if (loggingEvent.ExceptionObject != null)
+            if (LostLogger.WrappedLogger is not IHasLog simpleLogger) return;
+            var DoAppendForget = simpleLogger.GetType().GetMethod(nameof(IHasLog.DoAppendForget), BindingFlags.Static);
+            if (loggingEvent.ExceptionObject != null)
             {
-                _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), loggingEvent.ExceptionObject.Message, loggingEvent.ExceptionObject);
+                _ = DoAppendForget?.Invoke(null, [loggingEvent.LoggerName ?? nameof(MessageLogAppender), loggingEvent.ExceptionObject.Message, loggingEvent.ExceptionObject]);
             }
             else
             {
-                _ = SimpleLogger.DoAppendForget(loggingEvent.LoggerName ?? nameof(MessageLogAppender), (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage) ?? string.Empty, loggingEvent.ExceptionObject);
-            }*/
+                _ = DoAppendForget?.Invoke(null, [loggingEvent.LoggerName ?? nameof(MessageLogAppender), (loggingEvent.MessageObject?.ToString() ?? loggingEvent.RenderedMessage) ?? string.Empty, loggingEvent.ExceptionObject]);
+            }
 
         }
         catch (Exception ex)

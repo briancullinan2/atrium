@@ -7,7 +7,7 @@ public interface IStudyService
     event Action<bool>? OnStudyChanged;
 }
 
-public class StudyService(IPageManager PageManager) : IStudyService
+public class StudyService(IHasClass Classy) : IStudyService
 {
     public bool Study { get; set; } = false;
 
@@ -16,8 +16,8 @@ public class StudyService(IPageManager PageManager) : IStudyService
     public async Task SetStudyMode(bool study)
     {
         Study = study;
-        if (study == true) PageManager.ClassNames.Add("study-mode");
-        else PageManager.ClassNames.Remove("study-mode");
+        if (study == true) Classy.ClassNames.Add("study-mode");
+        else Classy.ClassNames.Remove("study-mode");
         OnStudyChanged?.Invoke(study);
     }
 }

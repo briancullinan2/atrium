@@ -230,7 +230,7 @@
     public static Delegate ShowContext { get => (Type routeControl) => routeControl == typeof(Landing.Pack); }
 
 
-    public static Delegate ContextInsert => (Func<IPageManager, RenderFragment>)(
+    public static Delegate ContextInsert => (Func<IPageEvents, RenderFragment>)(
         (Page) => (__builder) =>
         {
             __builder.OpenElement(0, "button");

@@ -2,17 +2,16 @@
 using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Atrium.Components;
 
-public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDisposable
+public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDisposable, IHasClass
 {
     static MainLoader? SetCurrent = null;
     public static MainLoader Current { get => SetCurrent ?? throw new InvalidOperationException("Start the application first"); }
@@ -46,6 +45,14 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 ? RenderMode.InteractiveServer
                 : RenderMode.InteractiveWebAssembly;
         }
+
+        CombinedClassNames.AutoSources = () => [
+            Theme,
+            Sidebar,
+            Background,
+            .. (PageClasses ?? []),
+            .. GivenClassNames
+        ];
 
         Console.WriteLine($"Starting in {PreferredMode} mode");
     }
@@ -81,6 +88,12 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
 
     private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClasses = ["Home"];
+        else PageClasses = [..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ];
+
         Trust.OnSettledAsync += ProbablyUpdateTitle;
     }
 
@@ -309,3 +322,25 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     }
 }
 
+
+internal static partial class StringExtensions
+{
+    [GeneratedRegex(@"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase, "en-US")]
+    private static partial Regex SafeRegex();
+
+
+    public static string ToSafe(this string url)
+    {
+        if (string.IsNullOrEmpty(url)) return string.Empty;
+        string[] words = SafeRegex().Split(url);
+        TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
+
+        var titleCasedWords = words
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Select(w => ti.ToTitleCase(w.ToLower()));
+
+        string result = string.Join("", titleCasedWords);
+        return result[..Math.Min(result.Length, 100)];
+    }
+
+}

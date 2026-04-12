@@ -1,6 +1,6 @@
 ﻿namespace Interfacing.Services;
 
-public interface ILocalStore : IAsyncDisposable
+public interface ILocalStore : IHasModule, IAsyncDisposable
 {
     ValueTask InitializeAsync();
 
@@ -26,5 +26,4 @@ public interface ILocalStore : IAsyncDisposable
     //public IJSObjectReference? Module { get; }
     bool NeedsInitialize { get; }
 
-    bool IsReady { get; }
 }
