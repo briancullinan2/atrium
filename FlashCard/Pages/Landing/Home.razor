@@ -5,7 +5,6 @@
 @attribute [Display(Name = "Study Now", ShortName = "Home", GroupName = "Main", Prompt = "bi-house-door-fill")]
 @attribute [AllowAnonymous]
 @inject IFormFactor FormFactor
-@inject IMenuService MenuService
 @inject IQueryManager Query
 @inject ILoginService LoginService
 
@@ -73,7 +72,5 @@
             .Select(up => KeyValuePair.Create(up, up.Pack?.Cards.Count(c => Retention?.ContainsKey(c.Id) == true) ?? 0))
             .Where(up => up.Value > 0)
             .ToDictionary());
-        //MenuService.SetMenu(null);
-        //MenuService.SetHeader(false);
     }
 }

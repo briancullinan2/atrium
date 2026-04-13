@@ -24,12 +24,14 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable, IHasService
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
+    bool IsRebuilding = false;
     private event Action? InternalOnSettled;
     public event Action? OnSettled
     {
         add
         {
             InternalOnSettled += value;
+            if (IsRebuilding) return;
             _ = RebuildServiceContainer();
         }
         remove
@@ -45,6 +47,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         add
         {
             InternalOnSettledAsync += value;
+            if (IsRebuilding) return;
             _ = RebuildServiceContainer();
         }
         remove
@@ -75,21 +78,20 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         _ = RebuildServiceContainer();
     }
 
-    private CancellationTokenSource? _rebuildCancellation;
     private readonly ConcurrentDictionary<string, string> Tried = [];
 
 
     private async Task RebuildServiceContainer()
     {
-        // 1. Cancel the previous pending request
-        _rebuildCancellation?.Cancel();
-        _rebuildCancellation = new CancellationTokenSource();
-        var token = _rebuildCancellation.Token;
+
+        if (IsRebuilding) return;
+
+        IsRebuilding = true; // was trying to decide to put it here or 3 lines down
 
         try
         {
             // 2. Wait for the "silence" period
-            await Task.Delay(200, token);
+            await Task.Delay(300);
 
             // 3. The actual work
             CachedDependedAssemblies = null;
@@ -109,8 +111,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
             if(missing.Count == 0)
             {
-                InternalOnSettled?.Invoke();
-                _ = InternalOnSettledAsync?.Invoke();
+                
+
             }
             else
             {
@@ -135,16 +137,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     {
 
                     }
-                });
-                
+                }).ContinueWith(t => RebuildServiceContainer()); // make sure it fires at least once more after we quit below
+
+                IsRebuilding = false;
+
                 return; // might as well duck out now because we know more are coming
             }
 
-            InternalOnSettled?.Invoke();
-            _ = InternalOnSettledAsync?.Invoke();
-
-            InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
-            InternalOnSettledAsync = null;
             /*
             if (Plugin is PluginActivator activator2 && activator2.Services is CompositeServiceProvider composite2)
             {
@@ -187,11 +186,27 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             {
                 composite.PluginPopin = Services;
             }
+
+            var old = InternalOnSettled;
+            var oldAsync = InternalOnSettledAsync;
+            InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
+            InternalOnSettledAsync = null;
+            old?.Invoke();
+            _ = oldAsync?.Invoke();
+
+
         }
-        catch (OperationCanceledException)
+        catch (Exception ex)
         {
-            // This is expected! Another call came in and reset the timer.
+            Console.WriteLine(ex);
         }
+        finally
+        {
+            
+            IsRebuilding = false;
+
+        }
+
     }
 
 
@@ -317,9 +332,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         if (!Seen.Contains(assembly))
         {
-            Task.Run(() => TryFindingInterestingTypes(assembly));
-            _ = RebuildServiceContainer();
-
+            Task.Run(async () => {
+                await TryFindingInterestingTypes(assembly);
+                await RebuildServiceContainer();
+            });
         }
     }
 
@@ -491,7 +507,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         List<Type> enabledPlugins = [];
         foreach (var plugin in AllPlugins)
         {
-            var myDelegate = plugin.GetProperty(nameof(IHasPlugins.Installed), BindingFlags.Static)?.GetValue(null) as Delegate;
+            var myDelegate = plugin.GetProperty(nameof(IHasPlugins.Installed), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate;
             if (myDelegate == null || typeof(Task<string?>).IsAssignableFrom(Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
                 ?? myDelegate?.Method.ReturnType) != true)
                 throw new InvalidOperationException("IHasPlugins.Installed delegate must return a Task<string?> with the name of the setting it used to check if its installed or not" + myDelegate?.Method);

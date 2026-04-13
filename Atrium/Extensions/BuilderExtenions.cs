@@ -209,7 +209,7 @@ internal static class BuilderExtensions
 
         List<Type> plugins = [..asses
             .Where(t => t.IsConcrete() && t.Extends(typeof(IHasPlugins)))
-            .SelectMany(t => t.GetProperty(nameof(IHasPlugins.Plugins), BindingFlags.Static)?.GetValue(null) as List<Type> ?? [])];
+            .SelectMany(t => t.GetProperty(nameof(IHasPlugins.Plugins), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as List<Type> ?? [])];
 
         asses = [.. asses.Concat(plugins)];
 

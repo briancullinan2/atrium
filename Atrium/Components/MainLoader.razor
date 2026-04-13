@@ -6,6 +6,11 @@
 @inject NavigationManager Nav
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
+@inject CssOutlet Css
+@inject JavascriptOutlet JavaScript
+
+@((RenderFragment)Css)
+@((RenderFragment)JavaScript)
 
 @if (IsDebug)
 {

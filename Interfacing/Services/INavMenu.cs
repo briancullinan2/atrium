@@ -44,3 +44,30 @@ public interface IHasPageContext
     static abstract Delegate ShowPageContext { get; }
     static abstract Delegate PageContextInsert { get; }
 }
+
+public interface ILogoService
+{
+
+}
+
+public interface IHasAccordion
+{
+
+}
+
+
+public interface IHasCards
+{
+
+}
+
+public interface IHasTransition
+{
+
+}
+
+public interface IRenderLinks
+{
+    List<string> Registry { get; }
+}
+

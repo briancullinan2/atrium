@@ -1,19 +1,49 @@
 @inject IServiceProvider Service
 @inject IMenuService MenuService
+@inject ITitleService Title
+
 @implements IHasContext
 
-@foreach (var item in MenuService.EnabledContexts)
+<header>
+
+@if (HeaderTitle != null)
 {
-    var myDelegate = item.GetProperties(nameof(IHasContext.ContextInsert)).First().GetValue(null) as Delegate;
-    if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
-    ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
-        throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
-    var fragment = myDelegate.InvokeService(Service) as RenderFragment;
-    @fragment
+    <h2>@HeaderTitle</h2>
 }
+
+@if (MenuService.EnabledContexts.Count > 0)
+{
+    <div class="contextual-menu">
+        @foreach (var item in MenuService.EnabledContexts)
+        {
+            var myDelegate = item.GetProperties(nameof(IHasContext.ContextInsert)).First().GetValue(null) as Delegate;
+            if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+            ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+                throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
+            var fragment = myDelegate.InvokeService(Service) as RenderFragment;
+            @fragment
+        }
+    </div>
+}
+
+</header>
 
 
 @code {
+
+    protected string? HeaderTitle = null;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Title.OnTitleChanged += Title_Changed;
+    }
+
+    protected void Title_Changed(string? title)
+    {
+        HeaderTitle = title;
+    }
+
     // TODO: ask controls if their context menu is visible
     public static Delegate ShowContext
     {

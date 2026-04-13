@@ -95,7 +95,7 @@ public static partial class IEntityExtensions
     public static List<(string Name, Type EntityType)> Schemas([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] this Type contextType)
     {
         if (contextType.Extends(typeof(IHasEntityTypes)))
-            return [.. (contextType.GetProperty(nameof(IHasEntityTypes.EntityTypes), BindingFlags.Static)
+            return [.. (contextType.GetProperty(nameof(IHasEntityTypes.EntityTypes), BindingFlags.Static | BindingFlags.Public)
                 ?.GetValue(null) as List<Type>)
                 ?.Select(p => (
                     Name: p.Table() ?? p.Name,

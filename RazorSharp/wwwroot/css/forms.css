@@ -449,7 +449,7 @@ fieldset
 }
 
 /* The container/track */
-.flash-card input[type="checkbox"] {
+input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
     width: 60px;
@@ -463,10 +463,11 @@ fieldset
     box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
     align-items: center;
     display:flex;
+    padding: 0;
 }
 
 /* The sliding dot (thumb) */
-.flash-card input[type="checkbox"]::before {
+input[type="checkbox"]::before {
     content: "";
     position: absolute;
     top: 2px;
@@ -482,7 +483,7 @@ fieldset
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
 }
 
-.flash-card input[type="checkbox"]::after
+input[type="checkbox"]::after
 {
     content: "OFF";
     left: 30px;
@@ -493,25 +494,25 @@ fieldset
 }
 
 
-.flash-card input[type="checkbox"]:checked::after {
+input[type="checkbox"]:checked::after {
     content: "ON";
     left: 5px;
 }
 
 /* Active state (Background turns green) */
-.flash-card input[type="checkbox"]:checked {
+input[type="checkbox"]:checked {
     background-color: #34c759; /* iOS Green */
     border-color: #34c759;
 }
 
 /* Slide the dot over when checked */
-.flash-card input[type="checkbox"]:checked::before {
+input[type="checkbox"]:checked::before {
     transform: translateX(26px);
     transform: translateX(calc(60px - 1.6em - 2px));
 }
 
 /* Focus state for accessibility */
-.flash-card input[type="checkbox"]:focus-visible {
+input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
 }
 

@@ -52,7 +52,7 @@ public static partial class IEntityExtensions
         var type = typeof(TEntity);
 
         // 1. Find properties via Reflection that have the [Key] attribute
-        var keyProperties = typeof(TEntity).GetProperty(nameof(IEntity<>.Predicate), BindingFlags.Static)
+        var keyProperties = typeof(TEntity).GetProperty(nameof(IEntity<>.Predicate), BindingFlags.Static | BindingFlags.Public)
             ?.GetValue(null) as List<PropertyInfo>
             ?? throw new InvalidOperationException("couldn't render predicate properties on: " + typeof(TEntity));
 

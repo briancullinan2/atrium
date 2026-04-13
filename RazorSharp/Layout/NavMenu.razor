@@ -8,6 +8,8 @@
 @inject IMenuService Menu
 @inject IHasClass Classy
 
+<div class="sidebar theme-@(Classy.Sidebar?.ToLowerInvariant())">
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-logo" @onclick="@(() => PageManager.ToggleStudyMode(!Classy.ClassNames.Contains("study-mode")))">
         <!--<img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />-->
@@ -47,6 +49,7 @@
     }
 }
 
+</div>
 
 
 @code {

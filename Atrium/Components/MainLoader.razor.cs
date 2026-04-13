@@ -286,6 +286,11 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     } 
     */
 
+    public void HasChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
     protected RenderFragment BuildNotFound()
     {
         return __builder =>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using Atrium.Components;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.RenderTree;
 using System.Collections.Generic;
@@ -9,21 +10,32 @@ internal static class ComponentExtensions
 {
 
 #pragma warning disable BL0006 // Do not use RenderTree types
-    public static Renderer? Renderer(this IComponent component)
+    public static RenderHandle? Handle(this IComponent component)
     {
         FieldInfo? handleField = null;
-        if (component.GetType().IsConstructedGenericType 
+        if (component.GetType().IsConstructedGenericType
             && component.GetType().GetGenericTypeDefinition() == typeof(CascadingValue<>))
             handleField = typeof(CascadingValue<>)
+                .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        else if (typeof(RenderService).IsAssignableFrom(component.GetType()))
+            handleField = typeof(RenderService)
                 .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         else if (typeof(ComponentBase).IsAssignableFrom(component.GetType()))
             handleField = typeof(ComponentBase)
                 .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        
-        var handle = handleField?.GetValue(component);
+
+
+        if (handleField?.GetValue(component) is not RenderHandle handle) return null;
+        return handle;
+    }
+
+
+    public static Renderer? Renderer(this IComponent component)
+    {
+        var handle = component.Handle();
 
         if (handle == null) return null;
-
+        
         // 2. RenderHandle is a struct. We need to get the private _renderer field inside it.
         var rendererField = typeof(RenderHandle).GetField("_renderer", BindingFlags.NonPublic | BindingFlags.Instance);
         var renderer = rendererField?.GetValue(handle);
@@ -57,6 +69,22 @@ internal static class ComponentExtensions
         return stateMap?.Values.FirstOrDefault(state => state.Component == parent) is ComponentState state ? state : null;
     }
 
+
+
+    public static IComponent? Parent(
+        this IComponent child)
+    {
+        try
+        {
+            var myState = child.State();
+            return myState?.ParentComponentState?.Component;
+        }
+        catch
+        {
+            // Fail-safe: A.R.S. § 44-7007 Reliability Fallback
+            return null;
+        }
+    }
 
     public static List<IComponent> GetChildComponents(this IComponent parent, Dictionary<int, ComponentState>? stateMap = null)
     {

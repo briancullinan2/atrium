@@ -3,17 +3,13 @@
 @implements IDisposable
 @inject IJSRuntime JS
 @inject IMenuService MenuService
-@inject IServiceProvider Service
 @inject IPageEvents PageManager
 @inject IRenderState RenderState
-@inject ILoggerFactory LoggerFactory
+@inject IServiceProvider Service
 @inject IHasClass Classy
-@inject NavigationManager Nav
-@*@inject AuthenticationStateProvider AuthProvider*@
+@inject ILogoService Logo
 
-<div class="sidebar theme-@(Classy.Sidebar?.ToLowerInvariant())">
-    <NavMenu />
-</div>
+<NavMenu />
     
 @foreach (var item in RenderState.State)
 {
@@ -22,49 +18,18 @@
 
 @if (ShowHeader != false)
 {
-    <header class="top-row px-4">
-        @if (HeaderTitle != null)
-        {
-            <h2>@HeaderTitle</h2>            
-        }
-        @if (HeaderMenu != null)
-        {
-            <div class="contextual-menu">
-                @HeaderMenu
-            </div>
-        }
-        @if (HeaderMenu == null && HeaderTitle == null)
-        {
-            <span>&nbsp;</span>
-        }
-    </header>
+    <ContextMenu />
 }
+
 <main>
         
     <article class="content course-container">
 
         @if (Classy.ClassNames.Contains("cover-page"))
         {
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.25 3.9V12.92C11.25 13.25 11.09 13.55 10.82 13.74L3.61 18.79C3.02 19.2 2.18 18.88 2.05 18.17C1.9 17.31 2.1 16.3 2.7 15.21L5.82 9.6L8.76 4.31C8.99 3.9 9.24 3.54 9.5 3.23C10.1 2.53 11.25 2.98 11.25 3.9Z" fill="#292D32" />
-
-                <path d="M20.39 18.79L13.18 13.74C12.91 13.55 12.75 13.25 12.75 12.92V3.9C12.75 2.98 13.9 2.53 14.5 3.23C14.76 3.54 15.01 3.9 15.24 4.31L18.18 9.6L21.3 15.21C21.9 16.3 22.1 17.31 21.95 18.17C21.82 18.88 20.98 19.2 20.39 18.79Z" fill="#292D32" />
-
-                <path d="M5.26 19.14L11.41 15.04C11.74 14.82 12.28 14.82 12.61 15.04L18.76 19.14C20.39 20.23 20.12 21.12 18.16 21.12H5.85C3.9 21.11 3.63 20.22 5.26 19.14Z" fill="#292D32" />
-            </svg>
-
+            @((object)Logo as RenderFragment)
         }
-        else
-        {
-            @if (_previousBody != null)
-            {
-                <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
-                    @(_previousBody)
-                </div>
-            }
-            @_activeBody
-
-        }
+        
     </article>
 
 
@@ -95,147 +60,16 @@
 @code {
     public RenderFragment? HeaderMenu { get; private set; }
     public string? HeaderTitle { get; private set; }
-    //public object? Tag { get; set; } // for comparing states for implementers
     public bool? ShowHeader { get; set; }
-    private Dictionary<string, object> _componentInstances = new();
-
-    /*
-     * This is so fucking dumb this isn't more obvious like Nav.GetComponent(route);
-     * what the fuck is Microsoft thinking?
-    public Type? GetPageTypeFromUrl(string url)
-    {
-        // 1. Get the relative path
-        var relativeUri = Nav.ToBaseRelativePath(url);
-
-        // 2. Access the Route Options / Discovery service
-        // This is the same engine the Router uses
-        var routeOptions = ServiceProvider.GetRequiredService<IOptions<RazorPagesOptions>>();
-
-        // Note: In pure WASM, you usually have to reflect into the
-        // assembly to find the [Route] attributes yourself if you want
-        // to bypass the Router component entirely.
-        return typeof(Program).Assembly.GetTypes()
-        .FirstOrDefault(t => t.GetCustomAttributes<RouteAttribute>()
-        .Any(r => r.Template.Equals("/" + relativeUri, StringComparison.OrdinalIgnoreCase)));
-        }
-    */
-    private LinkedList<MarkupString?> _previousList = new();
-    private MarkupString? _previousBody = null;
-    private RenderFragment? _activeBody;
-    private RenderFragment? _nextBody;
-    private bool _isTransitioning;
-
-    private IDisposable? _registration;
-
-
-    private bool PageHasChanged = true;
-
-    protected async Task UnvaluedTask(CancellationToken ct = default)
-    {
-        await InvokeAsync(StateHasChanged);
-        await Task.Delay(100);
-
-
-        _isTransitioning = true;
-        ct.ThrowIfCancellationRequested();
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-
-        await Task.Delay(400);
-        RenderState.ClearRedirect();
-
-        _isTransitioning = false;
-        _previousList.Clear();
-        _previousBody = null;
-        if (_nextBody != null && !ct.IsCancellationRequested)
-        {
-            _activeBody = _nextBody;
-        }
-        _nextBody = null;
-        _cts?.Dispose();
-        _cts = null;
-        ct.ThrowIfCancellationRequested();
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-
-
-        if (!IsClosing && PageHasChanged)
-        {
-            //_activeBody.Component()?.JSInvokable();
-            await this.Mirror();
-            PageHasChanged = false;
-        }
-
-    }
-
-
-
-    private async ValueTask HandleLocationChanging(LocationChangingContext context)
-    {
-        var currentUri = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery.TrimEnd('/');
-        var targetUri = Nav.ToAbsoluteUri(context.TargetLocation).PathAndQuery.TrimEnd('/');
-
-        if (currentUri == targetUri)
-        {
-            return; // Exact same page, do nothing and let Blazor handle it
-        }
-        PageHasChanged = true;
-
-        var (targetType, targetParams) = TypeExtensions.IdentifyNavigation(targetUri);
-        var (currentType, currentParams) = TypeExtensions.IdentifyNavigation(currentUri);
-
-        if (targetType == currentType)
-        {
-            return; 
-        }
-
-        // never wrap study-now
-        if(currentType.Extends(typeof(INotHasWrapper)))
-        {
-            _previousList.AddLast((MarkupString?)null);
-            return;
-        }
-
-
-        _previousList.AddLast(await ((PageManager)PageManager).Copy(_activeBody, Service));
-    }
-
-    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
-    {
-        if (_previousBody == null)
-        {
-            _previousBody = _previousList.FirstOrDefault();
-            _previousList.Clear();
-        }
-    }
-
 
     protected override void OnInitialized()
     {
-        // Subscribe to the push event
-        _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
-        Nav.LocationChanged += OnLocationChanged;
-        // TODO: set title automatically from attribute
-        //Form.OnTitleChanged += SetTitle;
-        //ThemeService.OnApplicationChanged += SetApplication;
-        //ThemeService.OnSidebarChanged += SetSidebar;
         RenderState.NotifyEmptied();
+        // TODO: find a page animation
 
-        // TODO: add our auto class sources
-        /*
-        CombinedClassNames.AutoSources = () => [
-            Theme,
-            Sidebar,
-            Background,
-            .. (PageClasses ?? []),
-            .. GivenClassNames
-        ];
-        */
     }
 
-
+    // TODO: use INotHasWrapper somewhere
     private void SetTitle(string? title)
     {
         if (HeaderTitle != title)
@@ -245,26 +79,6 @@
         }
     }
 
-    CancellationTokenSource? _cts = null;
-
-    protected override void OnParametersSet()
-    {
-        if (!_isTransitioning)
-        {
-            _activeBody = Body;
-        }
-        // so it doesn't show right away until the previous page is gone to reduce the weird stack sliding effect
-        else
-        {
-            _nextBody = Body;
-        }
-        if(_cts != null)
-        {
-            _cts?.Cancel();
-        }
-        _cts = new CancellationTokenSource();
-        _ = UnvaluedTask(_cts.Token).Forget();
-    }
 
     public bool IsClosing = false;
 
@@ -272,18 +86,6 @@
     {
         RenderState.NotifyEmptied();
         IsClosing = true;
-        if (_cts != null)
-        {
-            _cts?.Cancel();
-        }
-
-        // Unsubscribe to prevent memory leaks
-        _registration?.Dispose();
-        Nav.LocationChanged -= OnLocationChanged;
-        //Form.OnTitleChanged -= SetTitle;
-        //ThemeService.OnApplicationChanged -= SetApplication;
-        //ThemeService.OnSidebarChanged -= SetSidebar;
-        //ThemeService.OnBackgroundChanged -= SetBackground;
     }
 
 
@@ -293,6 +95,16 @@
         {
             RenderState.NotifyRendered(JS);
         }
+
+        // TODO:
+        /*
+        if (!IsClosing && PageHasChanged)
+        {
+            //_activeBody.Component()?.JSInvokable();
+            await this.Mirror();
+            PageHasChanged = false;
+        }
+        */
     }
 
 

@@ -69,7 +69,7 @@ public class MessageLogAppender
         try
         {
             if (LostLogger.WrappedLogger is not IHasLog simpleLogger) return;
-            var DoAppendForget = simpleLogger.GetType().GetMethod(nameof(IHasLog.DoAppendForget), BindingFlags.Static);
+            var DoAppendForget = simpleLogger.GetType().GetMethod(nameof(IHasLog.DoAppendForget), BindingFlags.Static | BindingFlags.Public);
             if (loggingEvent.ExceptionObject != null)
             {
                 _ = DoAppendForget?.Invoke(null, [loggingEvent.LoggerName ?? nameof(MessageLogAppender), loggingEvent.ExceptionObject.Message, loggingEvent.ExceptionObject]);

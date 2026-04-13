@@ -39,6 +39,18 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/12/2026
+
+Commit messages are getting long. I broke everything up into separate projects so help with build time and separation of concerns. 
+Projects only have 3 or 4 dependencies. Mostly everything refers to Interfacing which just contains all the service interfaces and hardly 
+anything else. I want to get to the point where I can click enable and disable on each module, Users, flash cards, course, hosting, 
+themer, everything and it basically live updates and turns on and off. Then i want to build out hosting as a whole process server service 
+that can launch games servers as windows startup services and also has web assembly join now demo mode on the home screen and discord  
+intergration from C# side would interesting, this i thought it would cool to tack on my acquisition stuff from my old media server since 
+it's going to be so modular. I might as well as my website activity tracker and rebuild my personal home page while i'm at it.
+Anyways, it's getting big and out of scope.
+
+
 #### 4/4/2026
 
 1. Publish my own site, edit-anywhere revival? smaller life-tracker combo?

@@ -896,35 +896,35 @@ button.btn-more, .btn-primary,
     color: var(--amber-compliment);
 }
 
-.flash-card input[type="checkbox"] 
+input[type="checkbox"] 
 {
     background-color: var(--text-muted);
     border-color: var(--cyan-bolt);
     box-shadow: 1px 2px 5px rgb(from var(--slate-bg) r g b / 50%);
 }
 
-.flash-card input[type="checkbox"]::before
+input[type="checkbox"]::before
 {
     background-color: var(--amber-locus);
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
 }
 
-.flash-card input[type="checkbox"]::after
+input[type="checkbox"]::after
 {
     color: var(--slate-bg);
 }
 
-.flash-card input[type="checkbox"]:checked::after
+input[type="checkbox"]:checked::after
 {
     color: var(--text-main);
 }
 
-.flash-card input[type="checkbox"]:checked {
+input[type="checkbox"]:checked {
     background-color: var(--slate-bg); /* iOS Green */
     border-color: var(--amber-locus);
 }
 
-.flash-card input[type="checkbox"]:focus-visible {
+input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgb(from var(--emerald-glow) r g b / 50%);
 }
 

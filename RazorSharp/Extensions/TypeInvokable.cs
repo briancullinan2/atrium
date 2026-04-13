@@ -64,7 +64,14 @@ public static partial class InvokableExtensions
 #pragma warning disable BL0006 // Do not use RenderTree types
     public static Renderer? Renderer(this IComponent component)
     {
-        var handleField = component.GetType().GetFields("_renderHandle").FirstOrDefault();
+        FieldInfo? handleField = null;
+        if (component.GetType().IsConstructedGenericType
+            && component.GetType().GetGenericTypeDefinition() == typeof(CascadingValue<>))
+            handleField = typeof(CascadingValue<>)
+                .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        else if (typeof(ComponentBase).IsAssignableFrom(component.GetType()))
+            handleField = typeof(ComponentBase)
+                .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         var handle = handleField?.GetValue(component);
 
         if (handle == null) return null;
@@ -190,74 +197,58 @@ public static partial class InvokableExtensions
 
 
 
-
-
-
-    public static List<IComponent> GetChildComponents(
-        this IComponent parent, bool includeSiblings = true)
+    public static IComponent? Parent(
+        this IComponent child)
     {
         try
         {
-            var myState = parent.State();
-            var myId = myState?.ComponentId ?? -1;
-            if (myId == -1) return [];
-
-            // 1. Identify the "Search Roots"
-            // If we're a Layout, we want children of OUR parent (our siblings) too.
-            var siblingRootId = (includeSiblings && parent is LayoutComponentBase)
-                ? myState?.ParentComponentState?.ComponentId ?? -1
-                : -1;
-
-            var renderer = parent.Renderer();
-            var stateMap = renderer.State() ?? [];
-
-            List<IComponent> result = [];
-
-            foreach (var entry in stateMap.Values)
-            {
-                var entryParentId = entry.ParentComponentState?.ComponentId;
-                var comp = entry.Component;
-
-                var isDisposed = (bool?)typeof(ComponentState).GetProperties("Disposed").FirstOrDefault()?.GetValue(entry) ?? false;
-                if (isDisposed) continue;
-
-                // 2. The "Handshake" Check: Is this a child OR a valid sibling?
-                if (entryParentId == myId || (siblingRootId != -1 && entryParentId == siblingRootId))
-                {
-                    // Skip ourselves, framework noise, and the "Shared" furniture
-                    if (comp == parent)
-                        continue;
-
-                    // skip context menus and stuff
-                    if (comp.GetType().Namespace?.Contains("Shared", StringComparison.InvariantCultureIgnoreCase) == true)
-                        continue;
-
-                    // 4. Recursive Digging for Container Types
-                    var type = comp.GetType();
-                    if (comp is LayoutView or AuthorizeView or AuthorizeRouteView or AuthorizeViewCore
-                        || type.Extends(typeof(LayoutComponentBase))
-                        || type.Extends(typeof(ErrorBoundaryBase)))
-                    {
-                        // Dig deeper but DON'T look for siblings of the internal wrappers
-                        var children = comp.GetChildComponents(includeSiblings: false);
-                        result.AddRange(children);
-                    }
-                    else
-                    {
-                        if (!result.Contains(comp)) result.Add(comp);
-                    }
-                }
-            }
-
-            return result;
+            var myState = child.State();
+            return myState?.ParentComponentState?.Component;
         }
         catch
         {
             // Fail-safe: A.R.S. § 44-7007 Reliability Fallback
-            return [];
+            return null;
         }
     }
 
+
+
+    public static List<IComponent> GetChildComponents(this IComponent parent, Dictionary<int, ComponentState>? stateMap = null)
+    {
+        List<IComponent> result = [];
+        try
+        {
+            stateMap ??= parent.Renderer()?.State();
+            var myId = stateMap?.FirstOrDefault(state => state.Value.Component == parent).Value?.ComponentId
+                ?? parent.State()?.ComponentId;
+            var children = stateMap?.Values
+                .Where(state => state.ParentComponentState?.ComponentId == myId)
+                .ToList();
+
+            foreach (var entry in children ?? [])
+            {
+                var type = entry.Component.GetType();
+                if (entry.Component is LayoutView
+                        || typeof(LayoutComponentBase).IsAssignableFrom(type)
+                        || typeof(ErrorBoundaryBase).IsAssignableFrom(type)
+                        || type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(CascadingValue<>))
+                {
+
+                }
+                else
+                {
+                    result.Add(entry.Component);
+                }
+                var moreChildren = GetChildComponents(entry.Component, stateMap);
+                result.AddRange(moreChildren);
+            }
+        }
+        catch
+        {
+        }
+        return result;
+    }
 
 
 

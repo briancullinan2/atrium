@@ -5,6 +5,7 @@ using Atrium.Components;
 using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
+using System.Net.Http;
 
 namespace Atrium;
 
@@ -33,9 +34,13 @@ public class MauiProgram : IHasCurrent<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
+        builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri("https://0.0.0.1"), Timeout = TimeSpan.FromSeconds(3) });
         builder.Services.AddSingleton<TrustedLoader>();
         builder.Services.AddSingleton<ITrustProvider, TrustedLoader>(sp => sp.GetRequiredService<TrustedLoader>());
         builder.Services.AddSingleton<PluginActivator>();
+        builder.Services.AddSingleton<LogoService>();
+        builder.Services.AddSingleton<CssOutlet>();
+        builder.Services.AddSingleton<JavascriptOutlet>();
         builder.Services.AddSingleton<IServiceProvider>(sp => sp.GetRequiredService<PluginActivator>().Services);
         builder.Services.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)sp.GetRequiredService<PluginActivator>().Services);
         builder.Services.AddSingleton<IComponentActivator>(sp => sp.GetRequiredService<PluginActivator>());

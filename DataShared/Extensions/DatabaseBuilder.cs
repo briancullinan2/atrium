@@ -25,7 +25,7 @@ public class DatabaseBuilder : IHasBuilder
         {
             // 1. Find the AddDbContextFactory method via reflection
             var method = typeof(EntityFrameworkServiceCollectionExtensions)
-                .GetMethod(nameof(EntityFrameworkServiceCollectionExtensions.AddDbContextFactory), BindingFlags.Static)
+                .GetMethod(nameof(EntityFrameworkServiceCollectionExtensions.AddDbContextFactory), BindingFlags.Static | BindingFlags.Public)
                 ?? throw new InvalidOperationException("Could not render AddDbContextFactory method");
 
             // 2. Turn AddDbContextFactory<T> into AddDbContextFactory<YourDynamicType>
