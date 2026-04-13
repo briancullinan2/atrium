@@ -15,9 +15,10 @@ namespace Hosting.Services;
 
 // TODO: designed to shut down both services at the same time
 
-public abstract class BaseFormFactor(ICompositeProvider Service, NavigationManager? nav = null) 
+public abstract class BaseFormFactor(ICompositeProvider service, NavigationManager? nav = null) 
     : IFormFactor, ITitleService
 {
+    public virtual ICompositeProvider Service { get; } = service;
     public virtual NavigationManager? Navigation { get; } = nav;
     public virtual Dictionary<string, string>? QueryParameters { get => Navigation?.Uri.Query(); }
     //public IPageManager? Page { get; }
@@ -204,14 +205,12 @@ public partial class FormFactor(
     {
         if (Desktop?.Value is IHasWindow growable)
             _ = growable.ExpandWindow(true); // don't wait on animations
+
         var _title = await base.UpdateTitle(title);
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            foreach (var window in Desktop?.Value?.Windows ?? [])
-            {
-                window.Title = _title; // This is now safe
-            }
-        });
+
+        if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+            window.UpdateTitle(_title);
+
         return _title;
     }
 

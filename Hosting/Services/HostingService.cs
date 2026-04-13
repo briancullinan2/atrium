@@ -1,4 +1,6 @@
 ﻿#if !BROWSER
+using Hosting.Platforms.Windows;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 #endif
 #if WINDOWS
@@ -54,116 +56,104 @@ internal class HostingService : IHostingService
     });
     */
 
-/// <summary>
-/// One-way save: Updates local settings and persists them to the user profile.
-/// Useful for setting Cloudflare IDs from the client UI.
-/// </summary>
-public static async Task SaveSettings(HostingSettings newSettings)
-{
-    _settings = newSettings;
-    if (!Directory.Exists(CredentialsDir)) Directory.CreateDirectory(CredentialsDir);
-    await File.WriteAllTextAsync(SettingsPath, JsonSerializer.Serialize(_settings));
-}
-
-public async Task<bool?> CheckInstalled()
-{
-        return await CheckInstalled("Cloudflared");
-}
-
-
-public static async Task<bool?> CheckInstalled(string name)
-{
-#if WINDOWS
-    try
+    /// <summary>
+    /// One-way save: Updates local settings and persists them to the user profile.
+    /// Useful for setting Cloudflare IDs from the client UI.
+    /// </summary>
+    public static async Task SaveSettings(HostingSettings newSettings)
     {
-        return ServiceController.GetServices().Any(s => s.ServiceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+        _settings = newSettings;
+        if (!Directory.Exists(CredentialsDir)) Directory.CreateDirectory(CredentialsDir);
+        await File.WriteAllTextAsync(SettingsPath, JsonSerializer.Serialize(_settings));
     }
-    catch { return false; }
-#else
-return false;
+
+    public async Task<bool?> CheckInstalled()
+    {
+            return await CheckInstalled("Cloudflared");
+    }
+
+
+    public static async Task<bool?> CheckInstalled(string name)
+    {
+    #if WINDOWS
+        try
+        {
+            return ServiceController.GetServices().Any(s => s.ServiceName.Contains(name, StringComparison.OrdinalIgnoreCase));
+        }
+        catch {  }
+
+        return WindowsServiceWorkerService.DoesServiceExistNative(name);
+    #else
+    return false;
 #endif
-}
-
-
-public async Task<bool?> IsWorking()
-{
-    var host = await GetHost();
-    if (string.IsNullOrEmpty(host)) return false;
-
-    var result = await CheckStatus(host);
-    bool isWorking = result?.Error == null && result?.Tunnel == "healthy";
-
-    OnHttpWorking?.Invoke(isWorking);
-    return isWorking;
-}
-
-/// <summary>
-/// Probes a remote domain for its status.
-/// </summary>
-public async Task<StatusResponse?> CheckStatus(string? domain)
-{
-    if (string.IsNullOrEmpty(domain)) return null;
-
-    // 2-minute cache rule
-    if (_recentResult != null && _lastChecked.AddMinutes(2) > DateTime.Now && _recentResult.Host == domain)
-        return _recentResult;
-
-    var Http = new HttpClient(); // using a specific address so we don't need to inject the default
-
-    try
-    {
-        var url = $"https://{domain.Replace("https://", "")}/api/status";
-        var response = await Http.PostAsJsonAsync(url, _settings);
-        _recentResult = await response.Content.ReadFromJsonAsync<StatusResponse>();
-        _lastChecked = DateTime.Now;
-        return _recentResult;
     }
-    catch (Exception ex)
+
+
+    public async Task<bool?> IsWorking()
     {
-        return new StatusResponse { Error = ex.Message, Host = domain };
+        var host = await GetHost();
+        if (string.IsNullOrEmpty(host)) return false;
+
+        var result = await CheckStatus(host);
+        bool isWorking = result?.Error == null && result?.Tunnel == "healthy";
+
+        OnHttpWorking?.Invoke(isWorking);
+        return isWorking;
     }
-}
 
-/// <summary>
-/// Checks Cloudflare API for tunnel health.
-/// </summary>
-public async Task<string?> CheckTunnel(string? account = null, string? tunnel = null, string? api = null)
-{
-    var acc = account ?? _settings?.AccountId;
-    var tun = tunnel ?? _settings?.TunnelName;
-    var tok = api ?? _settings?.ApiToken;
-
-    if (string.IsNullOrWhiteSpace(acc) || string.IsNullOrWhiteSpace(tun) || string.IsNullOrWhiteSpace(tok))
-        return "Missing Credentials";
-
-    var Http = new HttpClient(); // using a specific address so we don't need to inject the default
-
-    try
+    /// <summary>
+    /// Probes a remote domain for its status.
+    /// </summary>
+    public async Task<StatusResponse?> CheckStatus(string? domain)
     {
-        Http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tok);
-        var url = $"https://api.cloudflare.com/client/v4/accounts/{acc}/cfd_tunnel?name={tun}&is_deleted=false";
+        if (string.IsNullOrEmpty(domain)) return null;
 
-        var cfResponse = await Http.GetFromJsonAsync<CloudflareResponse>(url);
-        return cfResponse?.Result?.FirstOrDefault()?.Status ?? "Unknown";
+        // 2-minute cache rule
+        if (_recentResult != null && _lastChecked.AddMinutes(2) > DateTime.Now && _recentResult.Host == domain)
+            return _recentResult;
+
+        var Http = new HttpClient(); // using a specific address so we don't need to inject the default
+
+        try
+        {
+            var url = $"https://{domain.Replace("https://", "")}/api/status";
+            var response = await Http.PostAsJsonAsync(url, _settings);
+            _recentResult = await response.Content.ReadFromJsonAsync<StatusResponse>();
+            _lastChecked = DateTime.Now;
+            return _recentResult;
+        }
+        catch (Exception ex)
+        {
+            return new StatusResponse { Error = ex.Message, Host = domain };
+        }
     }
-    catch (Exception ex) { return $"Error: {ex.Message}"; }
-}
 
-// TODO: check versions from clients using full circuit?
+    /// <summary>
+    /// Checks Cloudflare API for tunnel health.
+    /// </summary>
+    [AllowAnonymous]
+    public async Task<string?> CheckTunnel(string? account = null, string? tunnel = null, string? api = null)
+    {
+        var acc = account ?? _settings?.AccountId;
+        var tun = tunnel ?? _settings?.TunnelName;
+        var tok = api ?? _settings?.ApiToken;
 
-#if !BROWSER
-public static async Task OnVersionCheck(HttpContext context)
-{
-    await context.Response.WriteAsJsonAsync(_versionCache);
-}
+        if (string.IsNullOrWhiteSpace(acc) || string.IsNullOrWhiteSpace(tun) || string.IsNullOrWhiteSpace(tok))
+            return "Missing Credentials";
 
-public static async Task OnStatusCheck(HttpContext context, IHostingService service)
-{
-    var inputSettings = await context.Request.ReadFromJsonAsync<HostingSettings>();
-    var result = await service.CheckTunnel(inputSettings?.AccountId, inputSettings?.TunnelName, inputSettings?.ApiToken);
-    await context.Response.WriteAsJsonAsync(result);
-}
-#endif
+        var Http = new HttpClient(); // using a specific address so we don't need to inject the default
+
+        try
+        {
+            Http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tok);
+            var url = $"https://api.cloudflare.com/client/v4/accounts/{acc}/cfd_tunnel?name={tun}&is_deleted=false";
+
+            var cfResponse = await Http.GetFromJsonAsync<CloudflareResponse>(url);
+            return cfResponse?.Result?.FirstOrDefault()?.Status ?? "Unknown";
+        }
+        catch (Exception ex) { return $"Error: {ex.Message}"; }
+    }
+
 }
 
 

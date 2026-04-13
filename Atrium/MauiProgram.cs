@@ -2,6 +2,9 @@
 //using Microsoft.Extensions.Logging;
 //#endif
 using Atrium.Components;
+#if WINDOWS
+using Atrium.Platforms.Windows;
+#endif
 using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
@@ -72,17 +75,6 @@ public class MauiProgram : IHasCurrent<MauiApp>
 
 
         var mauiApp = builder.Build();
-
-
-
-#if WINDOWS
-
-        Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
-        {
-            (mauiApp.Services.GetService(typeof(IFileManager)) as dynamic)?.InitializeWndProc(h);
-        });
-#endif
-
 
         return mauiApp;
     }

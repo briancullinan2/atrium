@@ -182,6 +182,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             collection.AddSingleton<IComponentActivator>(sp => Service.GetRequiredService<PluginActivator>());
             collection.AddSingleton<IServiceProviderIsService>(sp => Service.GetRequiredService<PluginActivator>());
 
+            // TODO: start by rebuilding this as an injectable service from plugins when hosting is turned on and off
+            collection.AddSingleton<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
+
+            // TODO: need to check installed and get a list of IHasPlugin.Plugins.Keys would be a list of
+            //   all the additional service types and the value is its display options
+
             collection.BuildServices(mappings);
 
             // Finalize the provider

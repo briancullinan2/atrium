@@ -10,11 +10,8 @@ public record ServiceWorkerStatus(
  string? State);
 
 
-public interface IServiceWorkerService
+public interface IServiceWorkerService : IHasModule
 {
-    Task ModuleInitialize { get; }
-    bool IsReady { get; }
-    Task InitializeAsync();
     Task<ServiceWorkerStatus> GetStatusAsync();
     Task<bool> RegisterAsync(string serviceName, string? displayName = null, string? appPath = null);
 

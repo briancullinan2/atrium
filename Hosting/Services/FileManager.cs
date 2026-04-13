@@ -7,9 +7,9 @@ namespace Hosting.Services;
 
 
 public partial class FileManager(
-    IQueryManager Query
-    , ICircuitProvider Circuit
+    ICircuitProvider Circuit
     , HttpClient Http
+    , IQueryManager? Query = null
 ) : IFileManager
 {
     public event Action<object?>? OnFileUploaded;
@@ -71,7 +71,7 @@ public partial class FileManager(
         fileStream.Close();
         localStream.Close();
 
-        var task = Query.Save(new DataShared.ForeignEntity.File()
+        var task = Query?.Save(new DataShared.ForeignEntity.File()
         {
             Filename = savePath,
             Source = source // TODO: fill in from nav or parameter or something

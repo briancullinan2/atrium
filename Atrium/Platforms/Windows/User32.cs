@@ -53,10 +53,6 @@ internal static partial class User32
         _ = ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, ref cfs);
     }
 
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool SetForegroundWindow(IntPtr hWnd);
-
     // Modern LibraryImport for ShowWindow
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -74,4 +70,82 @@ internal static partial class User32
             SetForegroundWindow(handle);
         }
     }
+
+    
+    // --- User32.dll ---
+    [LibraryImport("user32.dll", EntryPoint = "DispatchMessageW")]
+    public static partial nint DispatchMessage(in MSG lpMsg);
+
+    [LibraryImport("user32.dll", EntryPoint = "TranslateMessage")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool TranslateMessage(in MSG lpMsg);
+
+
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint RegisterWindowMessage(string lpString);
+
+    [LibraryImport("user32.dll")]
+    public static partial void PostQuitMessage(int nExitCode);
+
+    [LibraryImport("user32.dll", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint CreateWindowEx(
+        uint dwExStyle,
+        string lpClassName,
+        string lpWindowName,
+        uint dwStyle,
+        int x, int y, int nWidth, int nHeight,
+        nint hWndParent,
+        nint hMenu,
+        nint hInstance,
+        nint lpParam);
+
+    [LibraryImport("user32.dll", EntryPoint = "LoadImageW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint LoadImage(
+        nint hInst,
+        string lpszName,
+        uint uType,
+        int cxDesired, int cyDesired,
+        uint fuLoad);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint CreatePopupMenu();
+
+    [LibraryImport("user32.dll", EntryPoint = "AppendMenuW", StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool AppendMenu(nint hMenu, uint uFlags, nint uIDNewItem, string lpNewItem);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint TrackPopupMenu(
+        nint hMenu,
+        uint uFlags,
+        int x, int y,
+        int nReserved,
+        nint hWnd,
+        nint prcRect);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetMessageW(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetCursorPos(out POINT lpPoint);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetForegroundWindow(nint hWnd);
+    
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT { public int X; public int Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MSG
+    {
+        public nint hwnd;
+        public uint message;
+        public nint wParam;
+        public nint lParam;
+        public uint time;
+        public POINT pt;
+    }
+
 }

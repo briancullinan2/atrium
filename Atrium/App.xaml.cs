@@ -1,4 +1,7 @@
-﻿using Interfacing.Services;
+﻿#if WINDOWS
+using Atrium.Platforms.Windows;
+#endif
+using Interfacing.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 
@@ -11,7 +14,7 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
         InitializeComponent();
     }
 
-
+    // TODO: make this an includeable module that triggers
 
     public const int SPLASH_HEIGHT = 350;
     public const int SPLASH_WIDTH = 550;
@@ -36,6 +39,57 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
     private CancellationTokenSource? _animationCts;
 
     public bool IsSplashMode { get; set; }
+
+
+    public async Task<nint> GetWindowHwnd()
+    {
+        var tcs = new TaskCompletionSource<nint>();
+#if WINDOWS
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                foreach (var window in Windows ?? [])
+                {
+                    // 1. Get the platform window (Microsoft.UI.Xaml.Window)
+                    var platformWindow = window.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+
+                    if (platformWindow != null)
+                    {
+                        // 2. Extract the HWND
+                        nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
+
+                        // 3. Hook your WndProc or Tray logic here
+                        if (hwnd != nint.Zero)
+                        {
+                            tcs.SetResult(hwnd);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+
+        });
+
+#else
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                foreach (var window in Windows ?? [])
+                {
+                }
+            } catch {}
+            tcs.SetResult(0);
+        });
+#endif
+        return await tcs.Task;
+    }
+
 
 
     private static async Task<Tuple<double, double, double, double, double>> GetWindowSizeAsync()
@@ -70,6 +124,19 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
         // The background thread pauses here until tcs.SetResult is called
         return await tcs.Task;
     }
+
+    public async Task UpdateTitle(string? title)
+    {
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            foreach (var window in Windows ?? [])
+            {
+                window.Title = title; // This is now safe
+            }
+        });
+    }
+
 
     public async Task ExpandWindow(bool expanding)
     {
@@ -132,4 +199,96 @@ public partial class App : Microsoft.Maui.Controls.Application, IHasWindow, IHas
         }
         catch (TaskCanceledException) { }
     }
+
+
+    public async Task CreateTrayIcon()
+    {
+#if WINDOWS
+        if (hwnd == 0)
+            hwnd = await GetWindowHwnd();
+
+        //UxTheme.SetPreferredAppMode(2); // Force Dark
+        UxTheme.SetWindowTheme(hwnd, "DarkMode_Explorer", null);
+        //UxTheme.FlushMenuThemes();
+
+
+        nid = TrayIcon.RunBlip(
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "triangle.ico"),
+            "Atrium", hwnd);
+        if (_wndProc == null)
+        {
+            InitializeWndProc(hwnd);
+        }
+#endif
+    }
+
+#if WINDOWS
+
+    private static nint _oldWndProc;
+    private const uint WM_CLOSE = 0x0010;
+
+    protected static unsafe nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
+    {
+        if (msg == taskbarCreatedMsg && nid.HasValue)
+        {
+            var nid = App.nid.Value;
+            // The taskbar just rebooted; re-register your icon here!
+            Shell32.Shell_NotifyIcon(0, ref nid);
+            nid.uTimeoutOrVersion = Shell32.NOTIFYICON_VERSION_4;
+            Shell32.Shell_NotifyIcon(0x00000004, ref nid);
+        }
+
+        if (msg == 0x0400 + 1 && hwnd != 0)
+        {
+            uint mouseEvent = (uint)(lParam & 0xFFFF);
+
+            if (mouseEvent == 0x0205) // WM_RBUTTONUP
+            {
+                TrayIcon.ShowMenu(hwnd);
+            }
+            else if (mouseEvent == 0x0203) // WM_LBUTTONDBLCLK (Optional 'Open')
+            {
+                // Handle double click
+            }
+        }
+        if (msg == WM_CLOSE)
+        {
+            // If the tray icon is active, we hide instead of close
+            if (TrayIcon.IsTrayIconRegisteredByGuid())
+            {
+                // Hide the window (SW_HIDE = 0)
+                User32.ShowWindow(hWnd, 0);
+
+                // Return 0 to "cancel" the close event
+                return 0;
+            }
+        }
+
+        return User32.CallWindowProc(_oldWndProc, hWnd, msg, wParam, lParam);
+
+    }
+
+    internal static User32.WndProcDelegate? _wndProc; // Keep static to prevent GC
+    internal static Shell32.NOTIFYICONDATA? nid; // TODO: more than one tray icon?
+    internal static nint hwnd = IntPtr.Zero;
+    internal static uint taskbarCreatedMsg;
+#endif
+
+    internal static void InitializeWndProc(nint h)
+    {
+#if WINDOWS
+        if (hwnd == 0) return;
+        //hwnd = WinRT.Interop.WindowNative.GetWindowHandle(h.PlatformView);
+        // 0x0233 is WM_DROPFILES
+        // 0x0049 is WM_COPYGLOBALDATA (Crucial for the "No-Drop" cursor fix)
+        User32.AllowDrops(hwnd);
+        Shell32.DragAcceptFiles(hwnd, 1);
+        _wndProc = MyWndProc; // Simplified assignment
+        _oldWndProc = User32.SetWindowLongPtr(hwnd, -4, System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
+        taskbarCreatedMsg = User32.RegisterWindowMessage("TaskbarCreated");
+#endif
+
+    }
+
+
 }

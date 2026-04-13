@@ -18,4 +18,39 @@ public static partial class Shell32
 
     [LibraryImport("shell32.dll")]
     public static partial void DragFinish(IntPtr hDrop);
+
+
+    public const uint NOTIFYICON_VERSION_4 = 4;
+
+    [LibraryImport("shell32.dll", EntryPoint = "Shell_NotifyIconW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static unsafe partial bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public unsafe struct NOTIFYICONDATA
+    {
+        public uint cbSize;
+        public nint hWnd;
+        public uint uID;
+        public uint uFlags;
+        public uint uCallbackMessage;
+        public nint hIcon;
+
+        // Use fixed buffers instead of MarshalAs
+        public fixed char szTip[128];
+
+        public uint dwState;
+        public uint dwStateMask;
+
+        public fixed char szInfo[256];
+
+        public uint uTimeoutOrVersion;
+
+        public fixed char szInfoTitle[64];
+
+        public uint dwInfoFlags;
+        public Guid guidItem;
+        public nint hBalloonIcon;
+    }
+
 }

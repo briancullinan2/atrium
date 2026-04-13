@@ -28,7 +28,6 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
     private readonly IRenderState Rendered;
 
     public event Action<object?>? OnMessageReceived;
-    public Task ModuleInitialize => _renderTcs.Task;
 
     public BrowserWorker(IJSRuntime _js, HttpClient _http, IRenderState _rendered)
     {
@@ -45,9 +44,9 @@ public class BrowserWorker : IServiceWorkerService, IAsyncDisposable
         if (_renderTcs.Task.IsCompleted)
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
-    protected void NotifyRendered() => _ = InitializeAsync();
+    protected void NotifyRendered() => _ = EnsureInitialized();
 
-    public async Task InitializeAsync()
+    public async ValueTask EnsureInitialized()
     {
         Module = await JS.InvokeAsync<IJSObjectReference>("import", "./service.js");
         _selfReference = DotNetObjectReference.Create(this);

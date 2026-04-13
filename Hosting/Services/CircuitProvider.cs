@@ -206,7 +206,7 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
 
 
 public class CircuitHandler()
-    : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler
+    : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, IHasCircuit
 {
     public event Action<bool, ConnectionMetadata>? OnConnectionDown;
     public event Action<bool, ConnectionMetadata>? OnConnectionUp;
@@ -223,6 +223,14 @@ public class CircuitHandler()
         await base.OnConnectionDownAsync(circuit, ct);
     }
 
+}
+
+public interface IHasCircuit
+{
+
+    Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct);
+
+    Task OnConnectionDownAsync(Circuit circuit, CancellationToken ct);
 }
 
 

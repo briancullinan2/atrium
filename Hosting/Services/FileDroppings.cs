@@ -1,11 +1,15 @@
 ﻿#if WINDOWS
 using Extensions.PlayfulPlatforms.Windows;
+using Hosting.Platforms.Windows;
+using Microsoft.Maui;
 using Microsoft.Maui.Devices;
 #endif
 
 
 #if !BROWSER
 using Microsoft.Maui.Storage;
+using Shell32 = Extensions.PlayfulPlatforms.Windows.Shell32;
+using User32 = Extensions.PlayfulPlatforms.Windows.User32;
 #endif
 
 namespace Hosting.Services;
@@ -16,24 +20,14 @@ public partial class FileManager
 
 #if WINDOWS
 
-    private static User32.WndProcDelegate? _wndProc; // Keep static to prevent GC
-    private static nint _oldWndProc;
-    private static bool _isFileDragging;
 
-    internal void InitializeWndProc(Microsoft.Maui.Handlers.IWindowHandler h)
+    internal static bool _isFileDragging;
+    //public static nint hwnd;
+
+    protected unsafe nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
     {
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(h.PlatformView);
-        // 0x0233 is WM_DROPFILES
-        // 0x0049 is WM_COPYGLOBALDATA (Crucial for the "No-Drop" cursor fix)
-        User32.AllowDrops(hwnd);
-        Shell32.DragAcceptFiles(hwnd, 1);
-        _wndProc = MyWndProc; // Simplified assignment
-        _oldWndProc = User32.SetWindowLongPtr(hwnd, -4, System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(_wndProc));
+       
 
-    }
-
-    private nint MyWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
-    {
         if (msg == Shell32.WM_DROPFILES) // WM_DROPFILES
         {
             _isFileDragging = false;
@@ -87,10 +81,8 @@ public partial class FileManager
             }
         }
         */
-
-        return User32.CallWindowProc(_oldWndProc, hWnd, msg, wParam, lParam);
+        return 0;
     }
-
 
     private void HandleNativeDrop(nint hDrop)
     {

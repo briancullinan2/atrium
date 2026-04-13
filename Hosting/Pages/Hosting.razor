@@ -1,4 +1,6 @@
 @page "/hosting"
+@using Microsoft.Maui
+@using Microsoft.Maui.Controls
 @implements IDisposable
 @implements IHasForms
 @inject ICompositeProvider ServiceProvider
@@ -6,19 +8,19 @@
 @attribute [Display(Name = "Hosting", GroupName = "Administration", Prompt = "bi-hdd-network")]
 
 
-<div class="form-row" onchange="@EnableHosting">
+<div class="form-row">
     <label>Enable HTTP hosting</label>
-    <input type="checkbox" />
+    <input type="checkbox" onchange="@EnableHosting"  />
 </div>
 
-<div class="form-row" onchange="@EnableService">
+<div class="form-row">
     <label>Enable as a Windows Service</label>
-    <input type="checkbox" />
+    <input type="checkbox" onchange="@EnableService" />
 </div>
 
-<div class="form-row" onchange="@EnableStartup">
+<div class="form-row">
     <label>Run this application in the tray after Windows boots</label>
-    <input type="checkbox" />
+    <input type="checkbox" onchange="@EnableStartup" />
 </div>
 
 <AccordionSection IsExpanded="IsWorking != true" Title="Become A Host">
@@ -104,14 +106,20 @@
     {
 
     }
-    
+
     protected void EnableService(ChangeEventArgs args)
     {
 
     }
-    
-    protected void EnableStartup(ChangeEventArgs args)
+
+    protected async Task EnableStartup(ChangeEventArgs args)
     {
+#if WINDOWS
+        if (ServiceProvider.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+        {
+            await window.CreateTrayIcon();
+        }
+#endif
 
     }
 

@@ -34,6 +34,9 @@ public interface IHasName
 public interface IHasWindow
 {
     Task ExpandWindow(bool expanding);
+    Task UpdateTitle(string? _title);
+    Task<nint> GetWindowHwnd();
+    Task CreateTrayIcon();
     bool IsSplashMode { get; }
 }
 

@@ -4,6 +4,8 @@ using Hosting.Services;
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
+using static Extensions.PlayfulPlatforms.Windows.AdvApi;
 
 namespace Hosting.Platforms.Windows;
 
@@ -13,20 +15,18 @@ public class WindowsServiceWorkerService : IServiceWorkerService
     private const string PipeName = "Atrium_ServiceWorker_Pipe";
     private string? _currentScheme;
 
-    public Task ModuleInitialize => _renderTcs.Task;
-
     private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
     public event Action<object?>? OnMessageReceived;
 
-    public async Task InitializeAsync()
+    public async ValueTask EnsureInitialized()
     {
         // Windows-specific init logic (e.g., verifying background process is running)
-        //if (_renderTcs.Task.IsCompleted)
-        //    _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (_renderTcs.Task.IsCompleted)
+            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         // TODO: only once
-        //_renderTcs.TrySetResult(true);
+        _renderTcs.TrySetResult(true);
 
         await Task.CompletedTask;
     }
@@ -189,6 +189,55 @@ public class WindowsServiceWorkerService : IServiceWorkerService
             return true;
         }
         catch (Exception) { return false; }
+    }
+
+    public static unsafe bool DoesServiceExistNative(string name)
+    {
+        // SC_MANAGER_ENUMERATE_SERVICE = 0x0004
+        nint scm = AdvApi.OpenSCManager(null, null, 0x0004);
+        if (scm == nint.Zero) return false;
+
+        try
+        {
+            uint resumeHandle = 0;
+
+            // First call to get buffer size
+            AdvApi.EnumServicesStatusEx(
+                scm, 0, 0x30, 0x03, nint.Zero, 0,
+                out uint bytesNeeded, out uint servicesReturned, ref resumeHandle, null);
+
+            nint buffer = Marshal.AllocHGlobal((int)bytesNeeded);
+            try
+            {
+                if (AdvApi.EnumServicesStatusEx(
+                    scm, 0, 0x30, 0x03, buffer, bytesNeeded,
+                    out bytesNeeded, out servicesReturned, ref resumeHandle, null))
+                {
+                    var step = Marshal.SizeOf<ENUM_SERVICE_STATUS_PROCESS>();
+                    for (int i = 0; i < servicesReturned; i++)
+                    {
+                        var structPtr = buffer + (i * step);
+                        var status = Marshal.PtrToStructure<ENUM_SERVICE_STATUS_PROCESS>(structPtr);
+
+                        string serviceName = Marshal.PtrToStringUni(status.lpServiceName) ?? "";
+                        if (serviceName.Contains(name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        finally
+        {
+            AdvApi.CloseServiceHandle(scm);
+        }
+
+        return false;
     }
 }
 #endif
