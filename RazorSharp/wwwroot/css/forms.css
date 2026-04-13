@@ -65,29 +65,6 @@ input.large-present {
     left: 10px;
 }
 
-.preview-response {
-    padding: 10px;
-    border-radius: 10px;
-    border: 2px solid lightgrey;
-    margin: 5px;
-}
-
-.preview-response.correct {
-    border-color: lightgreen;
-}
-
-.preview-response.wrong {
-    border-color: red;
-}
-
-.preview-prompt {
-    display: block;
-    padding: 10px;
-    background: #DDDDDD;
-    border-left: 4px solid darkorange;
-    margin: 10px 10px 20px 10px;
-}
-
 
 input.large-present + label[for] {
     padding: 10px;
@@ -155,157 +132,10 @@ heading.flex-row > * {
     max-width: 80px;
 }
 
-.Recent-form-field .flex-row > *:nth-child(4) {
-    text-align: center;
-}
-
-.Recent-form-field .flex-row > *:nth-child(5) {
-    text-align: right;
-}
-
-.Currentusers-form-field .flex-row > *:nth-child(4) {
-    text-align: center;
-}
-
-.Currentroles-form-field .flex-row .Role-form-container {
-    flex-basis: 60%;
-    display: flex;
-    flex-grow: 0;
-    padding: 0;
-}
-
-
-.cards-edit heading > *:nth-child(4) {
-    flex-basis: 15%;
-    flex-grow: 0;
-}
-
 
 fieldset
 {
     border-width: 2px;
-}
-
-
-.cards-edit .flex-row > *:nth-child(4) {
-    flex-basis: 15%;
-}
-
-.cards-edit .flex-row > *:nth-child(5) {
-    flex-basis: 20%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-}
-
-.Editcards-form-field > .flex-row {
-    flex-wrap: wrap;
-}
-
-.cards-edit .Editcards-form-field .preview {
-    flex-basis: 66%;
-    max-width: none;
-    text-align: left;
-    white-space: wrap;
-    display: inline-block;
-    overflow: visible;
-    display: flex;
-    gap: 10px;
-    margin: 0 auto;
-}
-
-.cards-edit .flex-row > *:nth-child(5) > * {
-    padding: 5px;
-}
-
-.cards-edit .flex-row > *:nth-child(3),
-.cards-edit .flex-row > *:nth-child(2) {
-    flex-grow: 0;
-}
-
-.roles-container heading > *:nth-child(2),
-.roles-container heading > *:nth-child(3) {
-    flex-basis: 30%;
-}
-
-.roles-container heading > *:nth-child(4),
-.roles-container heading > *:nth-child(5) {
-    flex-basis: 100px;
-}
-
-.Currentroles-form-field .flex-row.view > *:nth-child(2),
-.Currentroles-form-field .flex-row.view > *:nth-child(3) {
-    flex-basis: 30%;
-    flex-grow: 0;
-}
-
-.Currentroles-form-field .flex-row.edit > *:nth-child(3),
-.Currentroles-form-field .flex-row > *:nth-child(4),
-.Currentroles-form-field .flex-row > *:nth-child(5) {
-    flex-basis: 100px;
-    flex-grow: 0;
-    text-align: center;
-}
-
-.Role-form-container > .form-field {
-    padding: 0 5px;
-}
-
-.cards-edit div.flex-row.View > *:nth-last-child(2),
-.flex-row > *:last-child {
-    text-align: right;
-    max-width: 48px;
-    white-space: nowrap;
-    display: inline-block;
-    overflow: visible;
-}
-
-.Recent-form-field .flex-row > * {
-    vertical-align: middle;
-}
-
-.cards-edit .preview > .Resultcard-form-container,
-.cards-edit .preview > .Card-form-container {
-    border: 2px solid darkgrey;
-    padding: 10px;
-    border-radius: 10px;
-    pointer-events: none;
-    flex-basis: 50%;
-    flex-grow: 0;
-    overflow: auto;
-    max-height: 300px;
-}
-
-.cards-edit .flex-row.View {
-    cursor: pointer;
-}
-
-.cards-edit .flex-row > span:first-child {
-    display: flex;
-    justify-content: center;
-    vertical-align: middle;
-    align-content: center;
-    align-items: center;
-}
-
-.cards-edit .flex-row > span:first-child .bi {
-    border-radius: 0;
-    margin: auto;
-    font-size: inherit;
-    height: auto;
-    width: auto;
-    background: transparent;
-    color: grey;
-    padding: 10px;
-    border: none;
-}
-
-.cards-edit .flex-row.Edit > *:nth-child(5) > span {
-    display: flex;
 }
 
 
@@ -353,22 +183,6 @@ fieldset
     text-align: center;
     margin: 10px;
     justify-content: space-between;
-}
-
-.user-list .user-avatar > a:hover > *:not(:first-child) {
-    text-decoration: underline;
-}
-
-.user-avatar > a:first-child {
-    color: darkgrey;
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.User-form-container .user-avatar > a:first-child:hover {
-    text-decoration: underline;
 }
 
 
@@ -476,7 +290,6 @@ input[type="checkbox"]::before {
     height: 20px;
     width: calc(1.6em - 4px);
     height: calc(1.6em - 4px);
-
     background-color: white;
     border-radius: 50%;
     transition: transform 0.3s ease;

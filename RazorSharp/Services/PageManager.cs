@@ -22,14 +22,14 @@ public class PageManager : IPageEvents
     readonly IRenderState Rendered;
     //readonly ICircuitProvider? Context;
     private readonly IAuthService? Auth;
-    private readonly IServiceProvider Services;
+    private readonly ICompositeProvider Services;
     readonly NavigationManager Nav;
 
 
     public IJSRuntime? Runtime => Rendered.Runtime as IJSRuntime;
 
     public PageManager(
-        IServiceProvider _service,
+        ICompositeProvider _service,
         ILoggerFactory _logger,
         IRenderState _rendered,
         NavigationManager _nav,
@@ -135,7 +135,7 @@ public class PageManager : IPageEvents
     #region "Page State"
 
 
-    public async Task<MarkupString> Copy(RenderFragment? _activeBody, IServiceProvider Services)
+    public async Task<MarkupString> Copy(RenderFragment? _activeBody, ICompositeProvider Services)
     {
         var fragment = _activeBody;
         using var htmlRenderer = new HtmlRenderer(Services, Logger);

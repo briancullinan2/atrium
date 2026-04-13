@@ -22,7 +22,7 @@ public partial class CircuitProvider : ICircuitProvider
     public int DefaultTTL { get; set; } = 100;
     private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
 
-    public IServiceProvider Service { get; }
+    public ICompositeProvider Service { get; }
     public HttpClient? Http { get; }
 
     private HubConnection? _connection;
@@ -179,7 +179,7 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
     public Lazy<Application?>? App { get; }
 
     public CircuitProvider(
-        IServiceProvider service,
+        ICompositeProvider service,
         CircuitHandler circuit,
         Lazy<Microsoft.Maui.Controls.Application?>? app = null,
         HttpClient? http = null,

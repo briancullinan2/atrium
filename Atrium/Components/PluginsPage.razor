@@ -4,7 +4,7 @@
 @using System.ComponentModel.DataAnnotations
 @inject ITrustProvider Trust
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
-@inject IServiceProvider Service
+@inject ICompositeProvider Service
 @inject LogoService Logo
 
 @((RenderFragment)Logo)
@@ -25,7 +25,7 @@
             <tr>
                 <td colspan="3">
                     <span>Layout</span><br />
-                    <select @bind="SelectedLayout">
+                    <select>
                         <option value="">No Layout</option>
                         @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
                         {
@@ -41,7 +41,7 @@
             <tr>
                 <td colspan="3">
                     <span>Routable</span><br />
-                    <select @bind="SelectedRoute" onchange="@SetRoutable">
+                    <select  onchange="@SetRoutable">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
                         {
                             var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
@@ -57,7 +57,7 @@
             <tr>
                 <td colspan="3">
                     <span>Catch All</span><br />
-                    <select @bind="SelectedCatch">
+                    <select>
                         @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -72,7 +72,7 @@
             <tr>
                 <td colspan="3">
                     <span>Root Component</span><br />
-                    <select @bind="StoredSelectedRoot" onchange="@SetSelectedRoot">
+                    <select onchange="@SetSelectedRoot">
                         @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
                         {
                             <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
@@ -138,8 +138,6 @@
 
 @code {
     private bool _showSplash = true;
-    private string? SelectedRoute = null;
-    private string? SelectedCatch = null;
     private string? StoredSelectedRoot = null;
     private string? SelectedRoot
     {
@@ -251,7 +249,6 @@
 
     protected void TriggerExpand()
     {
-        Trust.OnSettled -= TriggerExpand;
         InvokeAsync(() =>
         {
 

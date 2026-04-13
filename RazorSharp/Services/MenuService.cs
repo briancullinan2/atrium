@@ -4,7 +4,7 @@ namespace RazorSharp.Services;
 
 
 
-public class MenuService(IServiceProvider Service) : IMenuService
+public class MenuService(ICompositeProvider Service) : IMenuService
 {
 
     // TODO: make this a static interface on IHasMenu to make it ask for types up front
@@ -42,7 +42,7 @@ public class MenuService(IServiceProvider Service) : IMenuService
 
     public List<Type> EnabledMenus { get; private set; } = GetEnabledMenus(Service);
 
-    public static List<Type> GetEnabledMenus(IServiceProvider service) => [.. Menus.Where(m =>
+    public static List<Type> GetEnabledMenus(ICompositeProvider service) => [.. Menus.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasMenu.ShowMenu)).First().GetValue(null) as Delegate;
         if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType) 
@@ -57,7 +57,7 @@ public class MenuService(IServiceProvider Service) : IMenuService
     public List<Type> EnabledLayouts { get; private set; } = GetEnabledLayouts(Service);
 
 
-    public static List<Type> GetEnabledLayouts(IServiceProvider service) => [.. Layouts.Where(m =>
+    public static List<Type> GetEnabledLayouts(ICompositeProvider service) => [.. Layouts.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasLayout.ShowLayout)).First().GetValue(null) as Delegate;
         if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
@@ -89,7 +89,7 @@ public class MenuService(IServiceProvider Service) : IMenuService
 
 
 
-    public static List<Type> GetEnabledContexts(IServiceProvider service) => [.. Contexts.Where(m =>
+    public static List<Type> GetEnabledContexts(ICompositeProvider service) => [.. Contexts.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasContext.ShowContext)).First().GetValue(null) as Delegate;
         if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)

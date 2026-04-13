@@ -67,16 +67,23 @@ public static async Task SaveSettings(HostingSettings newSettings)
 
 public async Task<bool?> CheckInstalled()
 {
+        return await CheckInstalled("Cloudflared");
+}
+
+
+public static async Task<bool?> CheckInstalled(string name)
+{
 #if WINDOWS
     try
     {
-        return ServiceController.GetServices().Any(s => s.ServiceName.Equals("Cloudflared", StringComparison.OrdinalIgnoreCase));
+        return ServiceController.GetServices().Any(s => s.ServiceName.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
     catch { return false; }
 #else
-    return false;
+return false;
 #endif
 }
+
 
 public async Task<bool?> IsWorking()
 {

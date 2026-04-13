@@ -7,13 +7,13 @@ namespace RazorSharp.Extensions;
 public static partial class InvokableExtensions
 {
 
-    public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
+    public static object? InvokeService(this Delegate? myDelegate, ICompositeProvider service, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         return myDelegate.Method.InvokeService(service, myDelegate.Target, args);
     }
 
-    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider service, object? thisObject = null, params object?[]? args)
+    public static object? InvokeService(this MethodInfo? myDelegate, ICompositeProvider service, object? thisObject = null, params object?[]? args)
     {
         if(myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
@@ -86,11 +86,11 @@ public static partial class InvokableExtensions
     }
 
 
-    public static IServiceProvider? Service(this Renderer renderer)
+    public static ICompositeProvider? Service(this Renderer renderer)
     {
         var servicesProperty = renderer.GetType().GetFields("_serviceProvider").FirstOrDefault();
 
-        return servicesProperty?.GetValue(renderer) as IServiceProvider;
+        return servicesProperty?.GetValue(renderer) as ICompositeProvider;
     }
 
 
@@ -143,7 +143,7 @@ public static partial class InvokableExtensions
     }
 
 
-    public static Dictionary<int, ComponentState>? State(this IServiceProvider? service)
+    public static Dictionary<int, ComponentState>? State(this ICompositeProvider? service)
     {
         return (service?.GetService(typeof(Renderer)) as Renderer).State();
     }
@@ -159,7 +159,7 @@ public static partial class InvokableExtensions
     }
 
 
-    public static IServiceProvider? Service(this IComponent component)
+    public static ICompositeProvider? Service(this IComponent component)
     {
         return component.Renderer()?.Service();
     }
@@ -262,7 +262,7 @@ public static partial class InvokableExtensions
     }
 
     
-    public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, IServiceProvider? Service = null)
+    public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, ICompositeProvider? Service = null)
     {
         if (component == null) return ValueTask.CompletedTask;
 
@@ -272,7 +272,7 @@ public static partial class InvokableExtensions
     }
 
 
-    public static ValueTask Invokable(this Type type, IJSRuntime? JS = null, IServiceProvider? Service = null)
+    public static ValueTask Invokable(this Type type, IJSRuntime? JS = null, ICompositeProvider? Service = null)
     {
         if (type == null) return ValueTask.CompletedTask;
 
@@ -308,7 +308,7 @@ public static partial class InvokableExtensions
     }
 
 
-    public class InterconnectSentry(object target, IServiceProvider? Service)
+    public class InterconnectSentry(object target, ICompositeProvider? Service)
     {
 
         [JSInvokable("Invokable")]

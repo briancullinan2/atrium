@@ -1,0 +1,16 @@
+﻿
+/* accordion */
+.accordion-item h4 {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.125); /* --bs-accordion-border-width / --bs-accordion-border-color */
+}
+
+.accordion-item.inactive > *:not(h4) {
+    display: none;
+}
+
+.accordion-item.header-active > p,
+.accordion-item.header-active > blockquote {
+    padding-bottom: 20px;
+}

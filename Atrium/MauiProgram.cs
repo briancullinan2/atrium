@@ -42,6 +42,7 @@ public class MauiProgram : IHasCurrent<MauiApp>
         builder.Services.AddSingleton<CssOutlet>();
         builder.Services.AddSingleton<JavascriptOutlet>();
         builder.Services.AddSingleton<IServiceProvider>(sp => sp.GetRequiredService<PluginActivator>().Services);
+        builder.Services.AddSingleton<ICompositeProvider>(sp => sp.GetRequiredService<PluginActivator>().Composite);
         builder.Services.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)sp.GetRequiredService<PluginActivator>().Services);
         builder.Services.AddSingleton<IComponentActivator>(sp => sp.GetRequiredService<PluginActivator>());
         builder.Services.AddSingleton<IServiceProviderIsService>(sp => sp.GetRequiredService<PluginActivator>());

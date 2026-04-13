@@ -17,6 +17,11 @@ public interface IHasService
     IServiceProvider Services { get; }
 }
 
+public interface ICompositeProvider : IServiceProvider
+{
+}
+
+
 public interface IHasCurrent<T>
 {
     static abstract T? Current { get; }

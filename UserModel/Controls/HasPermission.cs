@@ -8,7 +8,7 @@ namespace UserModel.Controls;
 public class HasPermission : ComponentBase, IDisposable
 {
     ILoginService? StoredLoginService { get; set; }
-    [Inject] IServiceProvider? Service { get; set; }
+    [Inject] ICompositeProvider? Service { get; set; }
     public ILoginService? LoginService
     {
         get

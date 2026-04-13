@@ -1,13 +1,23 @@
 @page "/hosting"
 @implements IDisposable
 @implements IHasForms
-@inject IServiceProvider ServiceProvider
-
+@inject ICompositeProvider ServiceProvider
+@inject ITrustProvider Trust
 @attribute [Display(Name = "Hosting", GroupName = "Administration", Prompt = "bi-hdd-network")]
 
 
-<div class="form-row">
+<div class="form-row" onchange="@EnableHosting">
     <label>Enable HTTP hosting</label>
+    <input type="checkbox" />
+</div>
+
+<div class="form-row" onchange="@EnableService">
+    <label>Enable as a Windows Service</label>
+    <input type="checkbox" />
+</div>
+
+<div class="form-row" onchange="@EnableStartup">
+    <label>Run this application in the tray after Windows boots</label>
     <input type="checkbox" />
 </div>
 
@@ -88,14 +98,30 @@
 @code
 {
 
-    protected static IServiceProvider? Services { get; set; }
+    protected static ICompositeProvider? Services { get; set; }
+
+    protected void EnableHosting(ChangeEventArgs args)
+    {
+
+    }
+    
+    protected void EnableService(ChangeEventArgs args)
+    {
+
+    }
+    
+    protected void EnableStartup(ChangeEventArgs args)
+    {
+
+    }
 
     protected override void OnInitialized()
     {
         Instance = this;
         Services = ServiceProvider;
-        _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
-        _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3 * 1000);
+        Trust.OnSettledAsync += PollTunnelStatusAsync;
+        // try to make the first one hit AFTER the dll to run it has loaded
+        //_ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
     }
 
     private static string? _apiToken;
@@ -153,6 +179,10 @@
 
     private static async Task PollTunnelStatusAsync()
     {
+        if(_timer == null)
+        {
+            _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3 * 1000);
+        }
         await CheckStatus();
         if (Instance != null) await Instance.InvokeAsync(ChangeState);
     }

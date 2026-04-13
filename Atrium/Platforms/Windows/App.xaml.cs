@@ -3,6 +3,7 @@
 
 
 using Atrium.Platforms.Windows;
+using System.Diagnostics;
 
 namespace Atrium.WinUI;
 
@@ -65,6 +66,8 @@ public partial class App : MauiWinUIApplication
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
+        EnsureSingleInstance();
+
         base.OnLaunched(args);
 
         // Get the handle from the first window in the MAUI application
@@ -91,7 +94,23 @@ public partial class App : MauiWinUIApplication
         }
     }
 
+    public static void EnsureSingleInstance()
+    {
+        Process current = Process.GetCurrentProcess();
 
+        // Find processes with the same name, excluding the current one
+        Process? other = Process.GetProcessesByName(current.ProcessName)
+            .FirstOrDefault(p => p.Id != current.Id);
+
+        if (other != null)
+        {
+            // 1. Switch to the existing window
+            User32.FocusProcess(other);
+
+            // 2. Exit the current instance
+            Environment.Exit(0);
+        }
+    }
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
     /// executed, and as such is the logical equivalent of main() or WinMain().

@@ -1,4 +1,6 @@
 ﻿
+using Interfacing.Services;
+
 namespace DataShared.ForeignEntity;
 
 public static partial class IEntityExtensions
@@ -34,7 +36,7 @@ public static partial class IEntityExtensions
     }
     */
 
-    public static async Task<T> Save<T>(this T? ent, IServiceProvider? Service = null) where T : Entity<T>, IEntity<T>, IEntity
+    public static async Task<T> Save<T>(this T? ent, ICompositeProvider? Service = null) where T : Entity<T>, IEntity<T>, IEntity
     {
         if (ent == null)
         {

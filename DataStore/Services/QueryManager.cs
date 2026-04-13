@@ -5,7 +5,7 @@ namespace DataStore.Services;
 
 
 
-public class QueryManager(IServiceProvider Service) : IQueryManager
+public class QueryManager(ICompositeProvider Service) : IQueryManager
 {
 
     // Priority 0 = High (UI updates), 10 = Low (Background sync)

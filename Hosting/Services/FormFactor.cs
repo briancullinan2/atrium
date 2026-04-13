@@ -15,7 +15,7 @@ namespace Hosting.Services;
 
 // TODO: designed to shut down both services at the same time
 
-public abstract class BaseFormFactor(IServiceProvider Service, NavigationManager? nav = null) 
+public abstract class BaseFormFactor(ICompositeProvider Service, NavigationManager? nav = null) 
     : IFormFactor, ITitleService
 {
     public virtual NavigationManager? Navigation { get; } = nav;
@@ -150,7 +150,7 @@ public partial class FormFactor : BaseFormFactor
 #else
 
 public partial class FormFactor(
-    IServiceProvider service,
+    ICompositeProvider service,
     NavigationManager nav,
     HttpContext? Context = null
     , Lazy<Application?>? Desktop = null

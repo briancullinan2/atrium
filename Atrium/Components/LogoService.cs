@@ -10,7 +10,7 @@ internal partial class LogoService : RenderService, IHasCurrent<RenderFragment>,
 {
     public static RenderFragment? Current { get; set; } = __builder => __builder.AddMarkupContent(0, svgString);
 
-    public LogoService(IServiceProvider Service, HttpClient? _client = null)
+    public LogoService(ICompositeProvider Service, HttpClient? _client = null)
         : base(Service)
     {
         Http = _client;
@@ -52,9 +52,9 @@ internal partial class LogoService : RenderService, IHasCurrent<RenderFragment>,
 }
 
 
-public partial class RenderService(IServiceProvider service) : ComponentBase, IComponent, IDisposable
+public partial class RenderService(ICompositeProvider service) : ComponentBase, IComponent, IDisposable
 {
-    protected IServiceProvider Service { get; set; } = service;
+    protected ICompositeProvider Service { get; set; } = service;
 
     protected virtual RenderFragment? ChildContent
     {

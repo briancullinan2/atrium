@@ -28,7 +28,7 @@ internal abstract partial class RenderOutlet : RenderService, IDisposable, IRend
         get => __builder => BuildRenderTree(__builder); set => base.ChildContent = value; }
 
 
-    public RenderOutlet(IServiceProvider Service, ITrustProvider _trust, Lazy<MainLoader?> _main)
+    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust, Lazy<MainLoader?> _main)
         : base(Service)
     {
         //Nav = _nav;
@@ -68,16 +68,10 @@ internal abstract partial class RenderOutlet : RenderService, IDisposable, IRend
         _ = ListenForNeeds();
     }
 
-    bool first = false;
-
     protected override void OnAfterRender(bool firstRender)
     {
         base.OnAfterRender(firstRender);
-        first = true;
-        //if(firstRender)
-        {
-            _ = ListenForNeeds();
-        }
+        _ = ListenForNeeds();
     }
 
     protected abstract List<string> TypeToIncludes(Type type);
@@ -95,19 +89,16 @@ internal abstract partial class RenderOutlet : RenderService, IDisposable, IRend
 
         var components = Main.Value?.GetChildComponents().Select(c => c.GetType()) ?? [];
 
-        foreach (var who in components)
+        foreach (var type in components)
         {
-            
+            var includes = type.GetInterfaces().Append(type).SelectMany(TypeToIncludes).ToList();
 
-            if (RealRegistry.TryGetValue(who, out var list))
-            {
-                list.AddRange(TypeToIncludes(who));
-            }
-            else
-                RealRegistry.TryAdd(who, TypeToIncludes(who));
+            if (RealRegistry.TryGetValue(type, out var list)) list.AddRange(includes);
+            else RealRegistry[type] = includes;
         }
 
-        foreach(var component in RealRegistry)
+
+        foreach (var component in RealRegistry)
         {
             if(!components.Contains(component.Key))
             {
@@ -131,13 +122,13 @@ internal abstract partial class RenderOutlet : RenderService, IDisposable, IRend
     }
 }
 
-internal partial class CssOutlet(IServiceProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) : RenderOutlet(Service, Trust, _main)
+internal partial class CssOutlet(ICompositeProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) : RenderOutlet(Service, Trust, _main)
 {
     private readonly Dictionary<string, string> _filePresence = [];
 
     protected override List<string> TypeToIncludes(Type type) => type switch
     {
-        _ when typeof(IHasForms).IsAssignableFrom(type) => ["_content/RazorSharp/css/forms.css"],
+        _ when type == typeof(IHasForms) => ["_content/RazorSharp/css/accordion.css", "_content/RazorSharp/css/forms.css"],
         _ => []
     };
 
@@ -191,7 +182,7 @@ internal partial class CssOutlet(IServiceProvider Service, ITrustProvider Trust,
     }
 }
 
-internal partial class JavascriptOutlet(IServiceProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) : RenderOutlet(Service, Trust, _main)
+internal partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) : RenderOutlet(Service, Trust, _main)
 {
     protected override List<string> TypeToIncludes(Type type) => type switch
     {

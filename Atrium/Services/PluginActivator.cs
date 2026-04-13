@@ -6,7 +6,7 @@ namespace Atrium.Services;
 public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService
 {
     private readonly IServiceProvider Main;
-    private readonly CompositeServiceProvider Composite;
+    internal readonly CompositeServiceProvider Composite;
 
     public IServiceProvider Services => Composite;
 
@@ -16,9 +16,33 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
         Composite = new(this, mainProvider);
     }
 
+
+    // TODO: replace Presentation with an extended type selected by main layout or query string
+
     public IComponent CreateInstance(Type componentType)
     {
-        return (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+        /*if (componentType.GetInterfaces().Any(inter => inter == typeof(IHasCurrent<RenderFragment>)) {
+            var frag = (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as RenderFragment)
+            return componentType.
+        }*/
+
+        var instance = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+
+        var properties = componentType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
+
+        foreach (var prop in properties)
+        {
+            var service = Composite.GetService(prop.PropertyType);
+            if (service != null)
+            {
+                prop.SetValue(instance, service);
+            }
+        }
+
+        // TODO: IHasCurrent, always use Current IComponent instead of creating a new one
+
+        return instance;
     }
 
     public bool IsService(Type serviceType)
@@ -32,7 +56,7 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
 public partial class CompositeServiceProvider(
     IServiceProviderIsService isService, 
     IServiceProvider mainProvider) : 
-    IServiceProvider, ISupportRequiredService, IHasService, IServiceScopeFactory
+    IServiceProvider, ISupportRequiredService, IHasService, IServiceScopeFactory, ICompositeProvider
 {
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy

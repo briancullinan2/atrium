@@ -8,7 +8,7 @@ public interface IComponentService
     Task<string> GetRenderedHtml<TComponent>(IDictionary<string, object?> parameters) where TComponent : IComponent;
 }
 
-public class RenderComponent(IServiceProvider sp, ILoggerFactory lf) : IComponentService
+public class RenderComponent(ICompositeProvider sp, ILoggerFactory lf) : IComponentService
 {
     public async Task<string> GetRenderedHtml<TComponent>(IDictionary<string, object?> parameters) where TComponent : IComponent
     {

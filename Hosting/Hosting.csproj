@@ -27,6 +27,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Update="Platforms\Windows\Startup.cs">
+	    <ExcludeFromCurrentConfiguration>true</ExcludeFromCurrentConfiguration>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
 	  <Content Update="wwwroot\offline.js">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>

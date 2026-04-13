@@ -1,9 +1,10 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Atrium.Platforms.Windows;
 
 
-public static partial class User32
+internal static partial class User32
 {
     public const uint WM_COPYGLOBALDATA = 0x0049;
     public const uint WM_DROPFILES = 0x0233;
@@ -52,4 +53,25 @@ public static partial class User32
         _ = ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, ref cfs);
     }
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetForegroundWindow(IntPtr hWnd);
+
+    // Modern LibraryImport for ShowWindow
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    private const int SW_RESTORE = 9;
+
+    public static void FocusProcess(Process proc)
+    {
+        IntPtr handle = proc.MainWindowHandle;
+        if (handle != IntPtr.Zero)
+        {
+            // Restore in case it's minimized, then bring to front
+            ShowWindow(handle, SW_RESTORE);
+            SetForegroundWindow(handle);
+        }
+    }
 }

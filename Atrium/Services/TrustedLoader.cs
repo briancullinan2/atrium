@@ -11,6 +11,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
+using System.Text.Json;
 
 
 
@@ -98,14 +99,19 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             CachedEnabledAssMappings = null;
             CachedDependedAssMappings = null;
 
-            var collection = new ServiceCollection();
-
-            // Filter and build your service list
             var mappings = EnabledAssMappings
                 .Concat(DependedAssMappings)
                 .Where(a => a.IsMine())
                 .ToList();
+            var keys = JsonSerializer.Serialize(mappings.Select(ass => ass.FullName));
 
+            if(keys == previousKeys)
+            {
+                return;
+            }
+            previousKeys = keys;
+
+            var collection = new ServiceCollection();
 
             // TODO: check depended assemblies is empty compared to loaded assemblies then offer an OnSettled even if its preloading is done
             var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
@@ -171,6 +177,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             collection.AddSingleton<Lazy<MainLoader?>>(sp => Service.GetRequiredService<Lazy<MainLoader?>>());
             collection.AddSingleton<Lazy<Application?>>(sp => Service.GetRequiredService<Lazy<Application?>>());
             collection.AddSingleton<IServiceProvider>(sp => Service.GetRequiredService<PluginActivator>().Services);
+            collection.AddSingleton<ICompositeProvider>(sp => Service.GetRequiredService<PluginActivator>().Composite);
             collection.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)Service.GetRequiredService<PluginActivator>().Services);
             collection.AddSingleton<IComponentActivator>(sp => Service.GetRequiredService<PluginActivator>());
             collection.AddSingleton<IServiceProviderIsService>(sp => Service.GetRequiredService<PluginActivator>());
@@ -271,6 +278,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     private static Dictionary<string, Assembly>? StoredAssemblies = null;
+    private string? previousKeys;
+
     [RequiresAssemblyFiles]
     public Dictionary<string, Assembly> LoadedAssemblies
     {

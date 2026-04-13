@@ -9,7 +9,7 @@ public class RemoteManager : QueryManager
     private readonly HttpClient _httpClient;
 
 
-    public RemoteManager(HttpClient client, IServiceProvider Service) : base(Service)
+    public RemoteManager(HttpClient client, ICompositeProvider Service) : base(Service)
     {
         PersistentStorage = StorageType.Remote; // TODO: switch these back
         EphemeralStorage = StorageType.Test;

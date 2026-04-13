@@ -14,12 +14,16 @@ public class Presentation : ComponentBase
 
     public virtual Type? DefaultWrapper { get 
             => this.Parent() is IHasAccordion 
-            ? typeof(AccordionSection) : null;
+            ? typeof(AccordionSection) : typeof(Presentation);
     }
 
     [Parameter] public Type? Wrapper { get; set; }
 
-    public void Toggle() => IsExpanded = !IsExpanded;
+    public void Toggle(MouseEventArgs mouse)
+    {
+        IsExpanded = !IsExpanded;
+        InvokeAsync(StateHasChanged);
+    }
 
     // The manual "Razor" logic
     protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -43,7 +47,7 @@ public class Presentation : ComponentBase
         __builder.OpenElement(0, "h4");
         // Using a hypothetical .ToSafe() extension as per your snippet
         __builder.AddAttribute(1, "name", Title.ToSafe()); 
-        __builder.AddAttribute(2, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, Toggle));
+        __builder.AddAttribute(2, "onclick", Toggle);
         __builder.AddAttribute(3, "style", "cursor: pointer;");
 
         // <span>@Title</span>

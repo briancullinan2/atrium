@@ -7,7 +7,7 @@ public static partial class TypeExtensions
 
     static readonly ConcurrentDictionary<MemberInfo, List<Type>> parameterCache = [];
 
-    public static List<Type> ToServices(this IEnumerable<ParameterInfo>? parameters, IServiceProvider collection)
+    public static List<Type> ToServices(this IEnumerable<ParameterInfo>? parameters, ICompositeProvider collection)
     {
         if (parameters == null || !parameters.Any()) return [];
         if (parameterCache.TryGetValue(parameters.First().Member, out var cached)) return cached;
