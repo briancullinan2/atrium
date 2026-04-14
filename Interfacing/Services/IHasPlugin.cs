@@ -84,12 +84,13 @@ public interface ITrustProvider
     bool IsBootstrapping { get; }
     List<string> RequiredAssemblies { get; }
     [RequiresAssemblyFiles]
-    Dictionary<string, Assembly> LoadedAssemblies { get; }
+    ConcurrentDictionary<string, Assembly> LoadedAssemblies { get; }
     Dictionary<string, bool> EnabledAssemblies { get; }
     void Enable(string ass);
     void Disable(string ass);
     Dictionary<string, List<string>> DependedAssemblies { get; }
     ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
+    void BuildServices(IServiceCollection collection, List<Type>? types);
 }
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.None);

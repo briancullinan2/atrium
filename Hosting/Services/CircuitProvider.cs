@@ -159,7 +159,21 @@ public partial  class CircuitProvider : IAsyncDisposable
 
 #else
 
-public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncDisposable
+public partial class CircuitHub(ICircuitProvider Circuit) : Microsoft.AspNetCore.SignalR.Hub
+{
+    // This cannot be generic. It must be a concrete method name.
+    public async Task<object?> Execute(string method, JsonElement parameters)
+    {
+        // Route this to your internal debounced logic
+        if (parameters.ValueKind == JsonValueKind.Array)
+            return await Circuit.InvokeAsync<object?>(method, [..parameters.ToArray().Cast<object?>()]);
+        else
+            return await Circuit.InvokeAsync<object?>(method, [parameters]);
+    }
+}
+
+
+public partial class CircuitProvider : IAsyncDisposable
 {
 
     public bool IsSignalCircuit => true;
@@ -181,7 +195,7 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
     public CircuitProvider(
         ICompositeProvider service,
         CircuitHandler circuit,
-        Lazy<Microsoft.Maui.Controls.Application?>? app = null,
+        Lazy<Application?>? app = null,
         HttpClient? http = null,
         HubConnection? connection = null)
     {
@@ -190,26 +204,24 @@ public partial class CircuitProvider : Microsoft.AspNetCore.SignalR.Hub, IAsyncD
         Service = service;
         Http = http;
         Circuit = circuit;
-        Circuit.OnConnectionDown += OnConnectionDown;
-        Circuit.OnConnectionUp += OnConnectionUp;
+        //Circuit.OnConnectionDown += OnConnectionDown;
+        //Circuit.OnConnectionUp += OnConnectionUp;
     }
 
     public async ValueTask DisposeAsync()
     {
-        Circuit.OnConnectionDown -= OnConnectionDown;
-        Circuit.OnConnectionUp -= OnConnectionUp;
-        base.Dispose();
+        //Circuit.OnConnectionDown -= OnConnectionDown;
+        //Circuit.OnConnectionUp -= OnConnectionUp;
+        //base.Dispose();
         GC.SuppressFinalize(this);
     }
 
 }
 
 
-public class CircuitHandler()
+public partial class CircuitProvider
     : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, IHasCircuit
 {
-    public event Action<bool, ConnectionMetadata>? OnConnectionDown;
-    public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
     public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)
     {
@@ -256,27 +268,38 @@ public static class HttpContextExtensions
 
     public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHub<CircuitProvider>(CircuitProvider.HubAddress);
+        endpoints.MapHub<CircuitHub>(CircuitProvider.HubAddress);
 
-        var services = Assembly.GetCallingAssembly().GetAssemblies().ToServices();
+        var services = Assembly.GetCallingAssembly().GetAssemblies()
+            .Where(TypeExtensions.IsMine)
+            .SelectMany(TypeExtensions.GetAssTypesSafely)
+            .GetServicable();
 
         foreach (var service in services)
         {
-            var routes = service.Routes();
-            if (routes == null || routes.Count == 0) continue;
-
-            foreach (var method in routes)
+            try
             {
-                var route = method.Route();
-                if (route == null) continue;
 
-                var routeBuilder = endpoints.MapPost(route, CircuitProvider.OnExecuteAsync);
 
-                routeBuilder.RequireAuthorization();
+                var routes = service.Routes();
+                if (routes == null || routes.Count == 0) continue;
 
-                routeBuilder.WithTags(method.Name);
+                foreach (var method in routes)
+                {
+                    var route = method.Route();
+                    if (route == null) continue;
+
+                    var routeBuilder = endpoints.MapPost(route, CircuitProvider.OnExecuteAsync);
+
+                    routeBuilder.RequireAuthorization();
+
+                    routeBuilder.WithTags(method.Name);
+                }
             }
-
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 

@@ -2,6 +2,13 @@
 
 
 
+using DataShared.Extensions;
+using Extensions.PrometheusTypes;
+using RazorSharp.Layout;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+
 internal class Program
 {
     private static WebAssemblyHost? _app;
@@ -20,7 +27,12 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        ServiceBuilder.BuildServices(builder.Services);
+        var currents = new List<Assembly>() { typeof(MainLayout).Assembly }
+            .Concat(AppDomain.CurrentDomain.GetAssemblies())
+            .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
+            .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely).GetServicable().ToList();
+
+        DatabaseBuilder.BuildServices(builder.Services, currents);
 
         builder.Services.RemoveAll<IQueryManager>();
         //builder.Services.AddSingleton<IQueryManager, RemoteManager>();

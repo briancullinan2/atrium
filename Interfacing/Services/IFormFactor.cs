@@ -31,7 +31,7 @@ public interface IHasName
 }
 
 
-public interface IHasWindow
+public interface IWindowManager
 {
     Task ExpandWindow(bool expanding);
     Task UpdateTitle(string? _title);
@@ -41,7 +41,7 @@ public interface IHasWindow
 }
 
 
-public interface IFile
+public interface IFile : IHasNoService
 {
     string FileName { get; }
     string Name { get; }
@@ -49,4 +49,9 @@ public interface IFile
     long Size { get; }
     string ContentType { get; }
     Stream OpenReadStream();
+}
+
+public interface IHasNoService
+{
+
 }

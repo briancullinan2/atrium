@@ -1,4 +1,5 @@
 @page "/hosting"
+@using Microsoft.AspNetCore.Builder
 @using Microsoft.Maui
 @using Microsoft.Maui.Controls
 @implements IDisposable
@@ -102,9 +103,12 @@
 
     protected static ICompositeProvider? Services { get; set; }
 
-    protected void EnableHosting(ChangeEventArgs args)
+    protected async Task EnableHosting(ChangeEventArgs args)
     {
-
+        if (ServiceProvider.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
+            await server.EnsureInitialized();
+        else if (ServiceProvider.GetService<Lazy<WebApplication?>>()?.Value == null)
+            WebServer.StartWebServer(Trust);
     }
 
     protected void EnableService(ChangeEventArgs args)
@@ -115,7 +119,7 @@
     protected async Task EnableStartup(ChangeEventArgs args)
     {
 #if WINDOWS
-        if (ServiceProvider.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+        if (ServiceProvider.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
         {
             await window.CreateTrayIcon();
         }

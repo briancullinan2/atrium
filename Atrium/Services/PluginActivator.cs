@@ -3,17 +3,19 @@ using Microsoft.AspNetCore.Components;
 
 namespace Atrium.Services;
 
-public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService
+public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService //, IHasCurrent<PluginActivator> // Current is null
 {
     private readonly IServiceProvider Main;
-    internal readonly CompositeServiceProvider Composite;
 
-    public IServiceProvider Services => Composite;
+    public IServiceProvider Services => CompositeServiceProvider.Current!;
+
+    public static PluginActivator? Current { get; private set; } = null;
 
     public PluginActivator(IServiceProvider mainProvider)
     {
         Main = mainProvider;
-        Composite = new(this, mainProvider);
+        new CompositeServiceProvider(this, mainProvider);
+        Current ??= this;
     }
 
 
@@ -26,14 +28,14 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
             return componentType.
         }*/
 
-        var instance = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+        var instance = (IComponent)ActivatorUtilities.CreateInstance(Services, componentType);
 
         var properties = componentType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
 
         foreach (var prop in properties)
         {
-            var service = Composite.GetService(prop.PropertyType);
+            var service = Services.GetService(prop.PropertyType);
             if (service != null)
             {
                 prop.SetValue(instance, service);
@@ -48,19 +50,36 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
     public bool IsService(Type serviceType)
     {
         return
-            Composite.PluginPopin?.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true
+            ((CompositeServiceProvider)Services).PluginPopin?.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true
             || Main.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true;
     }
 }
 
-public partial class CompositeServiceProvider(
-    IServiceProviderIsService isService, 
-    IServiceProvider mainProvider) : 
-    IServiceProvider, ISupportRequiredService, IHasService, IServiceScopeFactory, ICompositeProvider
+public partial class CompositeServiceProvider : 
+    IServiceProvider
+    , ISupportRequiredService
+    , IHasService
+    , IServiceScopeFactory
+    , ICompositeProvider
+    , IHasCurrent<ICompositeProvider>
 {
+    private readonly IServiceProviderIsService IsService;
+    private readonly IServiceProvider Provider;
+
+    public CompositeServiceProvider(
+    IServiceProviderIsService _service,
+    IServiceProvider _provider)
+    {
+        IsService = _service;
+        Provider = _provider;
+        Current = this;
+    }
+
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy
     public IServiceProvider? PluginPopin { get; set; } = null;
+
+    public static ICompositeProvider? Current { get; private set; } = null;
 
     public object GetService(Type serviceType)
     {
@@ -69,7 +88,7 @@ public partial class CompositeServiceProvider(
         if (serviceType == typeof(IServiceProvider))
             return this;
         if (serviceType == typeof(IServiceProviderIsService))
-            return isService;
+            return IsService;
         if (serviceType == typeof(IServiceScopeFactory))
             return this;
 
@@ -78,7 +97,7 @@ public partial class CompositeServiceProvider(
         {
             return
                 PluginPopin?.GetService(serviceType)
-                ?? mainProvider.GetService(serviceType)!;
+                ?? Provider.GetService(serviceType)!;
 
         }
         catch(Exception ex)
@@ -98,7 +117,7 @@ public partial class CompositeServiceProvider(
 
     public IServiceScope CreateScope()
     {
-        return new CompositeServiceScope(PluginPopin?.CreateScope(), mainProvider.CreateScope(), isService);
+        return new CompositeServiceScope(PluginPopin?.CreateScope(), Provider.CreateScope(), IsService);
     }
 }
 

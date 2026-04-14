@@ -18,6 +18,47 @@ public class DatabaseBuilder : IHasBuilder
 
     }
 
+    public static void BuildServices(IServiceCollection Services, List<Type> AllServices, string? key = null)
+    {
+
+        List<Type> AlreadyMapped = [];
+        // TODO: need to map all IHasCurrent values to their functional Current static interface value
+        //   do this before the service creator below reaches them
+        var currents = AllServices.Where(s => s.Extends(typeof(IHasCurrent<>))).ToList();
+        foreach (var cur in currents)
+        {
+            if (cur.Extends(typeof(IHasNoService))) continue;
+            var currentType = cur.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>))).GetGenericArguments()[0];
+            Services.AddCurrentAsLazy(cur, key);
+            if (cur.GetInterfaces().Length == 1)
+                AlreadyMapped.Add(cur);
+            AlreadyMapped.Add(currentType); // force lazy usage for service type
+        }
+
+
+        foreach (var service in AllServices)
+        {
+            if (service.Extends(typeof(IHasNoService))) continue;
+
+            var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+
+            // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
+            if (currentType != null)
+            {
+                Services.AddAutoSingleton(service, key);
+
+            }
+            else
+            {
+                Services.AddAutoScoped(service, key);
+
+            }
+
+        }
+
+    }
+
+
     public static void BuildServices(IServiceCollection Services, string? key = null)
     {
         var concrete = AllTranslations.Where(t => t.IsConcrete()).ToList();
@@ -96,7 +137,7 @@ public static class BuilderExtensions
     }
 
 
-    public static void AddAutoServices(this IServiceCollection Services, Type service, string? key = null)
+    public static void AddAutoScoped(this IServiceCollection Services, Type service, string? key = null)
     {
         if (key != null)
         {
@@ -121,6 +162,30 @@ public static class BuilderExtensions
     }
 
 
+    public static void AddAutoSingleton(this IServiceCollection Services, Type service, string? key = null)
+    {
+        if (key != null)
+        {
+            Services.AddKeyedSingleton(service, key, service);
+            if (service.BaseType != null && service.BaseType != typeof(object))
+                Services.AddKeyedSingleton(service.BaseType, key, service);
+            foreach (var inter in service.GetInterfaces())
+            {
+                Services.AddKeyedSingleton(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
+            }
+        }
+        else
+        {
+            Services.AddSingleton(service, service);
+            if (service.BaseType != null && service.BaseType != typeof(object))
+                Services.AddSingleton(service.BaseType, service);
+            foreach (var inter in service.GetInterfaces())
+            {
+                Services.AddSingleton(inter, sp => sp.GetRequiredService(service));
+            }
+        }
+    }
+
     // Maps IHasCurrent<T>.Current to a Lazy<T> in the DI container
     public static void AddCurrentAsLazy(this IServiceCollection services, Type typeImplementingHasCurrent, string? key = null)
     {
@@ -140,19 +205,22 @@ public static class BuilderExtensions
         // 3. Register the factory
         if (key != null)
         {
-            services.AddKeyedScoped(lazyTType, key, (sp, _) => {
-                var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
-                var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
+            var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            services.AddKeyedSingleton(lazyTType, key, (sp, _) => {
                 return Activator.CreateInstance(lazyTType, factory);
             });
+            services.AddKeyedSingleton(tType, key, (sp, _) => factory.DynamicInvoke());
         }
         else
         {
-            services.AddScoped(lazyTType, sp => {
-                var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
-                var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
+            var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            services.AddSingleton(lazyTType, sp => {
                 return Activator.CreateInstance(lazyTType, factory);
             });
+            services.AddSingleton(tType, sp => factory.DynamicInvoke());
         }
     }
 }
+

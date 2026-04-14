@@ -1,8 +1,8 @@
-﻿using Atrium.Services;
-using Interfacing.Services;
+﻿using Interfacing.Services;
 using Microsoft.AspNetCore.Components.Web;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ConstrainedExecution;
 
 namespace Atrium.Extensions;
 
@@ -13,7 +13,7 @@ internal static class BuilderExtensions
     {
         get => CachedAllServices ??= [..AppDomain.CurrentDomain
             .GetAssemblies()
-            .Where(ass => ass.IsMine())
+            .Where(MetadataReaderExtensions.IsMine)
             .SelectMany(GetAssTypesSafely)
             .GetServicable()
             ];
@@ -54,31 +54,45 @@ internal static class BuilderExtensions
 
     public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null)
     {
-        Services.AddCascadingValue(sp => new ErrorBoundary());
-
-        List<Type> AlreadyMapped = [];
+        List<Type> alreadyMapped = [];
         // TODO: need to map all IHasCurrent values to their functional Current static interface value
         //   do this before the service creator below reaches them
         var currents = AllServices.Where(s => s.Extends(typeof(IHasCurrent<>))).ToList();
         foreach (var cur in currents)
         {
-            var currentType = cur.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>))).GenericTypeArguments[0];
+            if (cur.Extends(typeof(IHasNoService))) continue;
+            var currentType = cur.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>))).GetGenericArguments()[0];
             Services.AddCurrentAsLazy(cur, key);
-            AlreadyMapped.Add(cur);
-            AlreadyMapped.Add(currentType);
+            // TODO: seeing why i didn't allow Lazy<Current> to be looked up directly
+            if(cur.GetInterfaces().Length == 1) // skip base if its only a current mapper
+                alreadyMapped.Add(cur);
+            alreadyMapped.Add(currentType); // force lazy usage for service type
         }
 
 
         foreach (var service in AllServices)
         {
-            if (AlreadyMapped.Contains(service))
-                continue;
+            if (service.Extends(typeof(IHasNoService))) continue;
 
-            Services.AddAutoServices(service, key);
+            var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+
+            //var alreadyMapped = AlreadyMapped.Contains(service);
+
+            // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
+            if (currentType != null)
+            {
+                Services.AddAutoSingleton(service, key, alreadyMapped);
+
+            }
+            else
+            {
+                Services.AddAutoScoped(service, key, alreadyMapped);
+
+            }
 
         }
 
-        var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));
+        //var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));
 
 
         // TODO: use IHasBuilder 
@@ -143,30 +157,62 @@ internal static class BuilderExtensions
     }
 
 
-    public static void AddAutoServices(this IServiceCollection Services, Type service, string? key = null)
+    public static void AddAutoScoped(this IServiceCollection Services, Type service, string? key = null, List<Type>? baseAlreadyMapped = null)
     {
         if (key != null)
         {
-            Services.AddKeyedScoped(service, (sp, key) => sp.GetRequiredKeyedService(service, key));
-            if (service.BaseType != null && service.BaseType != typeof(object))
+            if (baseAlreadyMapped?.Contains(service) != true)
+                Services.AddKeyedScoped(service, key);
+            if (service.BaseType != null && baseAlreadyMapped?.Contains(service.BaseType) != true && service.BaseType != typeof(object))
                 Services.AddKeyedScoped(service.BaseType, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
             foreach (var inter in service.GetInterfaces())
             {
+                if (baseAlreadyMapped?.Contains(inter) == true) continue;
                 Services.AddKeyedScoped(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
             }
         }
         else
         {
-            Services.AddScoped(service);
-            if (service.BaseType != null && service.BaseType != typeof(object))
+            if (baseAlreadyMapped?.Contains(service) != true)
+                Services.AddScoped(service);
+            if (service.BaseType != null && baseAlreadyMapped?.Contains(service.BaseType) != true && service.BaseType != typeof(object))
                 Services.AddScoped(service.BaseType, sp => sp.GetRequiredService(service));
             foreach (var inter in service.GetInterfaces())
             {
+                if (baseAlreadyMapped?.Contains(inter) == true) continue;
                 Services.AddScoped(inter, sp => sp.GetRequiredService(service));
             }
         }
     }
 
+
+    public static void AddAutoSingleton(this IServiceCollection Services, Type service, string? key = null, List<Type>? baseAlreadyMapped = null)
+    {
+        if (key != null)
+        {
+            if(baseAlreadyMapped?.Contains(service) != true)
+                Services.AddKeyedSingleton(service, (object?)key);
+            if (service.BaseType != null && baseAlreadyMapped?.Contains(service.BaseType) != true && service.BaseType != typeof(object))
+                Services.AddKeyedSingleton(service.BaseType, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
+            foreach (var inter in service.GetInterfaces())
+            {
+                if (baseAlreadyMapped?.Contains(inter) == true) continue;
+                Services.AddKeyedSingleton(inter, key, (sp, key) => sp.GetRequiredKeyedService(service, key));
+            }
+        }
+        else
+        {
+            if (baseAlreadyMapped?.Contains(service) != true)
+                Services.AddSingleton(service);
+            if (service.BaseType != null && baseAlreadyMapped?.Contains(service.BaseType) != true && service.BaseType != typeof(object))
+                Services.AddSingleton(service.BaseType, sp => sp.GetRequiredService(service));
+            foreach (var inter in service.GetInterfaces())
+            {
+                if (baseAlreadyMapped?.Contains(inter) == true) continue;
+                Services.AddSingleton(inter, sp => sp.GetRequiredService(service));
+            }
+        }
+    }
 
     // Maps IHasCurrent<T>.Current to a Lazy<T> in the DI container
     public static void AddCurrentAsLazy(this IServiceCollection services, Type typeImplementingHasCurrent, string? key = null)
@@ -187,19 +233,21 @@ internal static class BuilderExtensions
         // 3. Register the factory
         if (key != null)
         {
-            services.AddKeyedScoped(lazyTType, key, (sp, _) => {
-                var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
-                var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
+            var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            services.AddKeyedSingleton(lazyTType, key, (sp, _) => {
                 return Activator.CreateInstance(lazyTType, factory);
             });
+            services.AddKeyedSingleton(tType, key, (sp,_) => factory.DynamicInvoke());
         }
         else
         {
-            services.AddScoped(lazyTType, sp => {
-                var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
-                var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            var factoryDelegateType = typeof(Func<>).MakeGenericType(tType);
+            var factory = Delegate.CreateDelegate(factoryDelegateType, null, prop.GetGetMethod()!);
+            services.AddSingleton(lazyTType, sp => {
                 return Activator.CreateInstance(lazyTType, factory);
             });
+            services.AddSingleton(tType, sp => factory.DynamicInvoke());
         }
     }
 
@@ -213,7 +261,7 @@ internal static class BuilderExtensions
 
         asses = [.. asses.Concat(plugins)];
 
-        List<Type> concrete = [.. asses.Where(s => s.IsConcrete())];
+        List<Type> concrete = [.. asses.Where(s => s.IsConcrete() && !s.Extends(typeof(IHasNoService)))];
 
         List<string> interfaces = [..asses
             .Where(s => s.IsInterface)

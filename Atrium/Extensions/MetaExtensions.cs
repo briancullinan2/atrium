@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 
-namespace Atrium.Services;
+namespace Atrium.Extensions;
 
 
 internal static class MetadataReaderExtensions
@@ -137,6 +137,21 @@ internal static class MetadataReaderExtensions
 
     }
 
+
+    public static string ToName(this Assembly ass)
+    {
+        var file = Path.GetFileNameWithoutExtension(ass.Location);
+        return string.IsNullOrWhiteSpace(file) ?
+                    ass.FullName?.Split(',')[0]
+                    ?? ass.GetName().Name
+                    ?? ass.GetName().FullName.Split(',')[0]
+                    : file;
+    }
+
+    public static string ToName(this AssemblyName ass)
+    {
+        return ass.Name ?? ass.FullName.Split(',')[0];
+    }
 
     public static bool IsMine(this AssemblyInfo ass)
     {

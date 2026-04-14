@@ -12,6 +12,8 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Text.Json;
+using Microsoft.AspNetCore.Components.Web;
+
 
 
 
@@ -58,8 +60,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
 
-    public static Func<string, bool> FILTER_MICROSOFT_DLLS_BY_NAME { get; } = 
-        title => title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
+    private static readonly Func<string?, bool> FILTER_MICROSOFT_DLLS_BY_NAME;
+    static TrustedLoader()
+    {
+        FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
+    }
+        
 
 
     private IServiceProvider? StoredServices = null;
@@ -81,6 +87,74 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private readonly ConcurrentDictionary<string, string> Tried = [];
 
+#if false
+    internal static Dictionary<Type, Type?> SingleUser { get; } = new()
+    {
+        {typeof(HttpClient), null },
+        {typeof(Lazy<MainLoader?>), null  },
+        {typeof(Lazy<Application?>), null },
+        {typeof(NavigationManager), null  },
+        {typeof(IJSRuntime), null  },
+        {typeof(IConfiguration), null  },
+        {typeof(IHostEnvironment), null  },
+        {typeof(ILogger<>), typeof(Logger<>)  },
+        {typeof(ILoggerFactory), typeof(ILoggerFactory)  },
+
+    };
+
+
+    internal static Dictionary<Type, Type?> DefaultTypes { get; } = new () {
+        { typeof(TrustedLoader), null },
+        { typeof(ITrustProvider), typeof(TrustedLoader) },
+        { typeof(PluginActivator), null },
+        { typeof(LogoService), null },
+        { typeof(CssOutlet), null },
+        { typeof(JavascriptOutlet), null },
+        { typeof(WindowManager), null },
+        { typeof(IWindowManager), typeof(WindowManager) },
+        { typeof(CompositeServiceProvider), null },
+        { typeof(IServiceProvider), typeof(ICompositeProvider) },
+        { typeof(ICompositeProvider), typeof(CompositeServiceProvider) },
+        { typeof(IServiceScopeFactory), typeof(CompositeServiceProvider) },
+        { typeof(IComponentActivator), typeof(PluginActivator) },
+        { typeof(IServiceProviderIsService), typeof(PluginActivator) },
+
+
+    };
+
+    internal static void BuildBaseServices(IServiceCollection collection, IServiceProvider existing)
+    {
+
+        //var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));
+
+        //if (hasAuth)
+        //{
+        //    collection.AddAuthorizationCore();
+        //   collection.AddCascadingAuthenticationState();
+        //}
+
+        collection.BuildServices(DefaultTypes.Keys.ToList());
+    }
+
+#endif
+
+
+    public void BuildServices(IServiceCollection collection, List<Type>? types)
+    {
+        if(types == null)
+        {
+            var mappings = EnabledAssMappings
+                .Concat(DependedAssMappings)
+                .Concat(RequiredAssMappings)
+                .Where(MetadataReaderExtensions.IsMine)
+                .ToList();
+            var currents = mappings.SelectMany(BuilderExtensions.GetAssTypesSafely).GetServicable().ToList();
+            collection.BuildServices(currents);
+        }
+        else
+            collection.BuildServices(types);
+    }
+
 
     private async Task RebuildServiceContainer()
     {
@@ -92,7 +166,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         try
         {
             // 2. Wait for the "silence" period
-            await Task.Delay(300);
+            await Task.Delay(400);
 
             // 3. The actual work
             CachedDependedAssemblies = null;
@@ -101,7 +175,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var mappings = EnabledAssMappings
                 .Concat(DependedAssMappings)
-                .Where(a => a.IsMine())
+                .Concat(RequiredAssMappings)
+                .Where(MetadataReaderExtensions.IsMine)
                 .ToList();
             var keys = JsonSerializer.Serialize(mappings.Select(ass => ass.FullName));
 
@@ -150,45 +225,36 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 return; // might as well duck out now because we know more are coming
             }
 
-            /*
-            if (Plugin is PluginActivator activator2 && activator2.Services is CompositeServiceProvider composite2)
-            {
-                collection.AddSingleton<IServiceProvider>(sp => activator2.Services);
-                collection.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)activator2.Services);
-                collection.AddSingleton<IComponentActivator>(sp => activator2);
-                collection.AddSingleton<IServiceProviderIsService>(sp => activator2);
-            }
-            */
 
-            collection.AddScoped<NavigationManager>(sp => Service.GetRequiredService<NavigationManager>());
-            collection.AddScoped<IJSRuntime>(sp => Service.GetRequiredService<IJSRuntime>());
-            collection.AddSingleton<IConfiguration>(sp => Service.GetRequiredService<IConfiguration>());
-            collection.AddSingleton<IHostEnvironment>(sp => Service.GetRequiredService<IHostEnvironment>());
-            collection.AddSingleton(typeof(ILogger<>), typeof(Logger<>)); // Usually safe to let the new container own this
-            collection.AddSingleton<ILoggerFactory>(sp => Service.GetRequiredService<ILoggerFactory>());
+            var currents = mappings.SelectMany(BuilderExtensions.GetAssTypesSafely).GetServicable().ToList();
 
             //collection.AddSingleton<IHttpClientFactory>(sp => root.GetRequiredService<IHttpClientFactory>());
             //collection.AddScoped<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
             //collection.AddScoped<AuthenticationStateProvider>(sp => root.GetRequiredService<AuthenticationStateProvider>());
 
-            collection.AddSingleton<IAuthorizationService>(sp => Service.GetRequiredService<IAuthorizationService>());
-            collection.AddSingleton<ITrustProvider, TrustedLoader>(sp => Service.GetRequiredService<TrustedLoader>());
-            collection.AddSingleton<PluginActivator>(sp => Service.GetRequiredService<PluginActivator>());
-            collection.AddSingleton<Lazy<MainLoader?>>(sp => Service.GetRequiredService<Lazy<MainLoader?>>());
-            collection.AddSingleton<Lazy<Application?>>(sp => Service.GetRequiredService<Lazy<Application?>>());
-            collection.AddSingleton<IServiceProvider>(sp => Service.GetRequiredService<PluginActivator>().Services);
-            collection.AddSingleton<ICompositeProvider>(sp => Service.GetRequiredService<PluginActivator>().Composite);
-            collection.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)Service.GetRequiredService<PluginActivator>().Services);
-            collection.AddSingleton<IComponentActivator>(sp => Service.GetRequiredService<PluginActivator>());
-            collection.AddSingleton<IServiceProviderIsService>(sp => Service.GetRequiredService<PluginActivator>());
-
-            // TODO: start by rebuilding this as an injectable service from plugins when hosting is turned on and off
-            collection.AddSingleton<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
-
             // TODO: need to check installed and get a list of IHasPlugin.Plugins.Keys would be a list of
             //   all the additional service types and the value is its display options
+            List<Type> AlreadyMapped = [];
+            foreach(var ass in currents)
+            {
+                try
+                {
+                    if (Provider?.GetService(ass) != null)
+                    {
+                        collection.AddScoped(ass, sp => Provider.GetRequiredService(ass));
+                        AlreadyMapped.Add(ass);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine("Who the fuck even are you? " + ex);
+                }
 
-            collection.BuildServices(mappings);
+            }
+
+            collection.AddCascadingValue(sp => new ErrorBoundary());
+
+            collection.BuildServices(currents.Except(AlreadyMapped).ToList());
 
             // Finalize the provider
             Services = collection.BuildServiceProvider();
@@ -244,8 +310,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             parentAss.GetReferencedAssemblies()
                 .Select(refAss => new
                 {
-                    Parent = parentAss.GetName().Name ?? parentAss.GetName().FullName,
-                    Dependency = refAss.Name ?? refAss.FullName
+                    Parent = parentAss.ToName(),
+                    Dependency = refAss.ToName()
                 }))
         // Filter out null names if any
         .Where(x => x.Parent != null && x.Dependency != null)
@@ -264,8 +330,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             ??= [..EnabledAssMappings
         .SelectMany(parentAss => parentAss.GetReferencedAssemblies())
         .Select(ass => {
-            var title = ass.Name ?? ass.FullName.Split(',')[0];
-            if (LoadedAssemblies.TryGetValue(title, out var loaded) == true) return loaded;
+            if (LoadedAssemblies.TryGetValue(ass.ToName(), out var loaded) == true) return loaded;
             return null;
         })
         .OfType<Assembly>()
@@ -279,31 +344,62 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
           Assembly.GetExecutingAssembly().GetName(),
         }.Concat(Assembly.GetEntryAssembly()?.GetReferencedAssemblies() ?? [])
         .OfType<AssemblyName>()
-        .Select(n => n.Name ?? n.FullName)
+        .Select(MetadataReaderExtensions.ToName)
         ];
 
+    private List<Assembly>? CachedRequiredAssMappings { get; set; } = null;
+    public List<Assembly> RequiredAssMappings
+    {
+        get => CachedRequiredAssMappings
+            ??= [..RequiredAssemblies
+        .Select(ass => {
+            if (LoadedAssemblies.TryGetValue(ass, out var loaded) == true) return loaded;
+            return null;
+        })
+        .OfType<Assembly>()
+        .Distinct()
+        ];
+    }
 
-    private static Dictionary<string, Assembly>? StoredAssemblies = null;
+    private static ConcurrentDictionary<string, Assembly>? StoredAssemblies = null;
     private string? previousKeys;
 
     [RequiresAssemblyFiles]
-    public Dictionary<string, Assembly> LoadedAssemblies
+    public ConcurrentDictionary<string, Assembly> LoadedAssemblies
     {
-        get => StoredAssemblies ??= AppDomain.CurrentDomain
-        .GetAssemblies().ToDictionary(
-            ass => Path.GetFileNameWithoutExtension(ass.Location)
-            ?? ass.FullName?.Split(',')[0]
-            ?? ass.GetName().Name
-            ?? ass.GetName().FullName.Split(',')[0],
-            ass => ass);
+        get
+        {
+            if (StoredAssemblies != null)
+                return StoredAssemblies;
+            var asses = AppDomain.CurrentDomain.GetAssemblies();
+            var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
+            var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
+            if (collisions.Count > 0)
+            {
+                Console.WriteLine(JsonSerializer.Serialize(assNames));
+            }
+            StoredAssemblies = new();
+            lock (StoredAssemblies)
+            {
+                foreach (var ass in asses)
+                {
+                    StoredAssemblies.TryAdd(ass.ToName(), ass);
+                }
+            }
+            return StoredAssemblies;
+        }
     }
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(IComponentActivator plugin, IServiceProvider service)
+    public TrustedLoader(
+        IComponentActivator? plugin = null, 
+        ICompositeProvider? provider = null, 
+        IServiceProvider? service = null)
     {
         Plugin = plugin;
         Service = service;
+        Provider = provider;
         //StoredServices ??= _service;
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         IsBootstrapping = true;
@@ -330,9 +426,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         // Fallback: If Location is empty (Single File), use the Simple Name
         string location = assembly.Location;
-        string title = !string.IsNullOrEmpty(location)
-            ? Path.GetFileNameWithoutExtension(location)
-            : assembly.GetName().Name ?? "Unknown";
+        string title = assembly.ToName();
 
         LoadedAssemblies.TryAdd(title, assembly);
 
@@ -574,8 +668,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     //private static string MyCertificatePath => Path.Combine(HomeDir, ".credentials\\my-code-signing.pfx");
     //private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
-    private readonly IComponentActivator Plugin;
-    private readonly IServiceProvider Service;
+    private readonly IComponentActivator? Plugin;
+    private readonly IServiceProvider? Service;
+    private readonly ICompositeProvider? Provider;
 
     public event Action<PluginContract>? OnAssemblyLoaded;
 

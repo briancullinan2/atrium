@@ -10,6 +10,7 @@
   </Folder>
   <Project Path="AnkiParser/AnkiParser.csproj" Id="615d09d4-ed2f-43b8-973c-488d1c7ae695" />
   <Project Path="Atrium/Atrium.csproj">
+    <BuildDependency Project="Hosting/Hosting.csproj" />
     <Deploy Solution="Debug|*" />
   </Project>
   <Project Path="Clippy/Clippy.csproj" Id="912347ed-cf63-4994-8cfa-6769b6e2c8b7" />

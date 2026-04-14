@@ -3,6 +3,31 @@ namespace Extensions.PrometheusTypes;
 
 public static class CollectionConverter
 {
+    public static object?[] ToArray(this JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            // Wrap a single item in an array if it's not already one
+            return [ Hydrate(element) ];
+        }
+
+        // Convert the EnumerateArray iterator into a concrete object?[]
+        return [..element.EnumerateArray().Select(Hydrate)];
+    }
+
+    public static object? Hydrate(JsonElement e)
+    {
+        return e.ValueKind switch
+        {
+            JsonValueKind.String => e.GetString(),
+            JsonValueKind.Number => e.GetDouble(), // Or use a more specific numeric check
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => e // Keep Objects/Arrays as JsonElement for your "fancy mapping" to handle
+        };
+    }
+
     private static readonly MethodInfo ToListMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToList))!;
     private static readonly MethodInfo ToArrayMethod = typeof(Enumerable).GetMethod(nameof(Enumerable.ToArray))!;
     private static readonly MethodInfo ToAsyncMethod = typeof(AsyncEnumerable).GetMethods()

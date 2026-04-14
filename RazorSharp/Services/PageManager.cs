@@ -17,6 +17,8 @@ public class PageManager : IPageEvents
 
     private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+
+
     //readonly IFormFactor? Form;
     readonly ILoggerFactory Logger;
     readonly IRenderState Rendered;

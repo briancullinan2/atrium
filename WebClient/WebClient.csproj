@@ -33,7 +33,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.*-*" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*-*" />
-	<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
 	<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
   </ItemGroup>
 

@@ -30,20 +30,21 @@ internal partial class LogoService : RenderService, IHasCurrent<RenderFragment>,
             }
         }
         catch
-        {
+        { }
 
-            if (await FileSystem.AppPackageFileExistsAsync("triangle.svg"))
-            {
-                using var stream = await FileSystem.OpenAppPackageFileAsync("triangle.svg");
-                using var reader = new StreamReader(stream);
-                svgString ??= await reader.ReadToEndAsync();
-            }
-            else if (await FileSystem.AppPackageFileExistsAsync("wwwroot/triangle.svg"))
-            {
-                using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/triangle.svg");
-                using var reader = new StreamReader(stream);
-                svgString ??= await reader.ReadToEndAsync();
-            }
+        if (svgString != null) return;
+
+        if (await FileSystem.AppPackageFileExistsAsync("triangle.svg"))
+        {
+            using var stream = await FileSystem.OpenAppPackageFileAsync("triangle.svg");
+            using var reader = new StreamReader(stream);
+            svgString ??= await reader.ReadToEndAsync();
+        }
+        else if (await FileSystem.AppPackageFileExistsAsync("wwwroot/triangle.svg"))
+        {
+            using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/triangle.svg");
+            using var reader = new StreamReader(stream);
+            svgString ??= await reader.ReadToEndAsync();
         }
     }
     

@@ -1,4 +1,5 @@
 ﻿
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Globalization;
@@ -80,7 +81,7 @@ public interface IPageState
 
 // TODO: add component state saving stuff here because its also agnostic and small
 
-public class RenderStateProvider(IPageState Page) : IRenderState
+public class RenderStateProvider(ICompositeProvider Provider) : IRenderState
 {
 
     private object? _runtime = null;
@@ -156,6 +157,7 @@ public class RenderStateProvider(IPageState Page) : IRenderState
 
     public void ClearRedirect()
     {
+        var Page = Provider.GetRequiredService<IPageState>();
         if (InFlight.ContainsKey(Page.ConnectionId))
             InFlight.Remove(Page.ConnectionId, out _);
     }
@@ -164,16 +166,12 @@ public class RenderStateProvider(IPageState Page) : IRenderState
     // prevent redirect loops
     public async Task<string?> FilterRedirect(string loginUri)
     {
+        var Page = Provider.GetRequiredService<IPageState>();
 
-        // 2. Logic to prevent redirect loops or "double stacking"
         InFlight.TryGetValue(Page.ConnectionId, out var existing);
 
-        //var loginUri = TypeExtensions.GetUri<ILogin>(l => l.ReturnUrl == url);
-
-        // Update the InFlight status
         InFlight[Page.ConnectionId] = loginUri;
 
-        // 3. Perform the navigation only if we aren't already heading to login
         if (existing?.Contains("login", StringComparison.OrdinalIgnoreCase) == true)
         {
             return null;
@@ -207,6 +205,7 @@ public class RenderStateProvider(IPageState Page) : IRenderState
             throw new InvalidOperationException("This probably wont work from server.");
         }
         await EnsureInitialized();
+        var Page = Provider.GetRequiredService<IPageState>();
         var state = await Page.RestoreState();
         if (state?.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState) == true)
         {

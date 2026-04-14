@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Atrium.Services;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -203,7 +204,7 @@ internal static class TrayIcon
 
             if (other != null)
             {
-                User32.ShowWindow(App.hwnd, 1);
+                User32.ShowWindow(WindowManager.hwnd, 1);
 
                 User32.FocusProcess(other);
             }

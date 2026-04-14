@@ -15,10 +15,12 @@ namespace Hosting.Services;
 
 // TODO: designed to shut down both services at the same time
 
-public abstract class BaseFormFactor(ICompositeProvider service, NavigationManager? nav = null) 
-    : IFormFactor, ITitleService
+public abstract class BaseFormFactor(
+    ICompositeProvider _service, 
+    NavigationManager? nav = null) 
+    : IFormFactor, ITitleService, IPageState
 {
-    public virtual ICompositeProvider Service { get; } = service;
+    public virtual ICompositeProvider Service { get; } = _service;
     public virtual NavigationManager? Navigation { get; } = nav;
     public virtual Dictionary<string, string>? QueryParameters { get => Navigation?.Uri.Query(); }
     //public IPageManager? Page { get; }
@@ -40,6 +42,7 @@ public abstract class BaseFormFactor(ICompositeProvider service, NavigationManag
             .GetCustomAttributes<AssemblyProductAttribute>().FirstOrDefault()
             ?.Product;
     }
+    public int OffsetInMinutes { get; private set; }
 
     internal static string? _title;
 
@@ -65,6 +68,26 @@ public abstract class BaseFormFactor(ICompositeProvider service, NavigationManag
         if (Rendered == null) return;
         await Rendered.EnsureInitialized();
         await (Rendered.Runtime as IJSRuntime)!.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+
+    public async Task<int> GetTimezoneOffset()
+    {
+        var Rendered = Service.GetService<IRenderState>();
+        if (Rendered == null) return 0;
+        await Rendered.EnsureInitialized();
+        OffsetInMinutes = await (Rendered.Runtime as IJSRuntime)!.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+        return OffsetInMinutes;
+    }
+
+    public virtual async Task<Dictionary<string, string?>?> RestoreState()
+    {
+        var Manager = Service.GetService<PageManager>();
+        if (Manager == null) return null;
+        await Manager.EnsureInitialized();
+        var Module = Manager.Module as IJSObjectReference;
+        if(Module == null) return null;
+        var state = await Module.InvokeAsync<Dictionary<string, string?>>("restoreState");
+        return state;
     }
 
 
@@ -154,6 +177,7 @@ public partial class FormFactor(
     ICompositeProvider service,
     NavigationManager nav,
     HttpContext? Context = null
+    , IWindowManager? Windows = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
@@ -162,7 +186,7 @@ public partial class FormFactor(
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Context != null;
-    public override bool IsMauiContext => (Context == null || App == null) && (Maui != null || Desktop != null);
+    public override bool IsMauiContext => (Context == null || App == null) && (Maui != null || Windows != null);
     public override string GetPlatform() => DeviceInfo.Platform.ToString() + " - " + DeviceInfo.VersionString;
     public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
@@ -203,13 +227,13 @@ public partial class FormFactor(
 
     public override async Task<string?> UpdateTitle(string? title)
     {
-        if (Desktop?.Value is IHasWindow growable)
-            _ = growable.ExpandWindow(true); // don't wait on animations
+        if (Windows != null)
+            _ = Windows.ExpandWindow(true); // don't wait on animations
 
         var _title = await base.UpdateTitle(title);
 
-        if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
-            window.UpdateTitle(_title);
+        if (Service.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
+            await window.UpdateTitle(_title);
 
         return _title;
     }
@@ -233,7 +257,7 @@ public partial class FormFactor(
 #endif
 
 #if !BROWSER
-public class FormFile(IFormFile File) : IFile
+public class FormFile(IFormFile File) : IFile, IHasNoService
 {
     public string FileName => File.FileName;
 
@@ -247,7 +271,7 @@ public class FormFile(IFormFile File) : IFile
        => File.OpenReadStream();
 }
 
-public class BodyBag(HttpRequest? Request) : IFile
+public class BodyBag(HttpRequest? Request) : IFile, IHasNoService
 {
     public string FileName => Request?.Path ?? "";
 
@@ -264,7 +288,7 @@ public class BodyBag(HttpRequest? Request) : IFile
 
 #endif
 
-public class BrowserFile(IBrowserFile File) : IFile
+public class BrowserFile(IBrowserFile File) : IFile, IHasNoService
 {
     public string FileName => File.Name;
 

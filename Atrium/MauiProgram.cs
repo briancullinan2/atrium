@@ -2,12 +2,14 @@
 //using Microsoft.Extensions.Logging;
 //#endif
 using Atrium.Components;
+using Atrium.Extensions;
+
 #if WINDOWS
 using Atrium.Platforms.Windows;
 #endif
-using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace Atrium;
@@ -37,20 +39,17 @@ public class MauiProgram : IHasCurrent<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-        builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri("https://0.0.0.1"), Timeout = TimeSpan.FromSeconds(3) });
-        builder.Services.AddSingleton<TrustedLoader>();
-        builder.Services.AddSingleton<ITrustProvider, TrustedLoader>(sp => sp.GetRequiredService<TrustedLoader>());
-        builder.Services.AddSingleton<PluginActivator>();
-        builder.Services.AddSingleton<LogoService>();
-        builder.Services.AddSingleton<CssOutlet>();
-        builder.Services.AddSingleton<JavascriptOutlet>();
-        builder.Services.AddSingleton<IServiceProvider>(sp => sp.GetRequiredService<PluginActivator>().Services);
-        builder.Services.AddSingleton<ICompositeProvider>(sp => sp.GetRequiredService<PluginActivator>().Composite);
-        builder.Services.AddSingleton<IServiceScopeFactory>(sp => (CompositeServiceProvider)sp.GetRequiredService<PluginActivator>().Services);
-        builder.Services.AddSingleton<IComponentActivator>(sp => sp.GetRequiredService<PluginActivator>());
-        builder.Services.AddSingleton<IServiceProviderIsService>(sp => sp.GetRequiredService<PluginActivator>());
+        var currents = new List<Assembly>() { typeof(PluginsPage).Assembly }
+            .Concat(AppDomain.CurrentDomain.GetAssemblies())
+            .Where(MetadataReaderExtensions.IsMine)
+            .SelectMany(BuilderExtensions.GetAssTypesSafely)
+            .GetServicable()
+            .ToList();
+
+        BuilderExtensions.BuildServices(builder.Services, currents);
         builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
+
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG

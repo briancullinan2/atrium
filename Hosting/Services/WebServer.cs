@@ -1,37 +1,47 @@
 ﻿#if !BROWSER
-using Hosting.Services;
+using DataShared.Extensions;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.WebAssembly.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Hosting;
 #endif
 
 namespace Hosting.Services;
 
-public class WebServer
+public class WebServer(ITrustProvider trust)
 #if !BROWSER
-    : IHasCurrent<WebApplication>
+    : IHasCurrent<WebApplication>, IHasModule
 #endif
 {
 
 #if !BROWSER
-    private static readonly WebApplication _private = StartWebServer([]);
-    public static WebApplication Current => _private;
+    private static WebApplication? _private;
+    internal static bool IsStarting;
+    private static TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
+    public static WebApplication? Current => _private;
     //public static IServiceProvider Services => _private.Services;
+    public async ValueTask EnsureInitialized()
+    {
+        if (IsStarting) await _renderTcs.Task;
+        if (_renderTcs.Task.IsCompleted)
+            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        StartWebServer(trust);
+    }
 
-
-    public static WebApplication StartWebServer(string[] args)
+    public static WebApplication? StartWebServer(ITrustProvider Trust)
     {
         try
         {
+            if (Current != null || IsStarting)
+                return null;
+
+            IsStarting = true;
             // TODO: get logging working
             Console.WriteLine("Starting web server.");
             var webBuilder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
-                Args = args,
+                Args = [],
                 // Ensure the server looks in the actual folder where the assets live
                 ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
                 ApplicationName = "Atrium"
@@ -64,7 +74,13 @@ public class WebServer
             // Inject the server instance into MAUI's DI
             //ServerAuthService.BuildAuthentication(webBuilder.Services);
 #endif
-            ServiceBuilder.BuildServices(webBuilder.Services);
+
+            // TODO: try to get every service from the existing container instead of building a new one:
+            // TODO: this disctinction will become the multi-tenant feature
+
+            Trust.BuildServices(webBuilder.Services, null);
+
+            DatabaseBuilder.BuildServices(webBuilder.Services);
 
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
@@ -119,7 +135,7 @@ public class WebServer
             });
 
 
-            var webApp = webBuilder.Build();
+            var webApp = _private = webBuilder.Build();
 
             //var options = new DefaultFilesOptions();
             //options.DefaultFileNames.Clear(); // Remove index.html from the search list
@@ -189,21 +205,35 @@ public class WebServer
                 //typeof(FlashCard._Imports).Assembly,
                 //typeof(Merchantry._Imports).Assembly,
                 //typeof(UserModel._Imports).Assembly,
-                typeof(WebClient._Imports).Assembly)
+                typeof(RazorSharp._Imports).Assembly
+                )
                 .DisableAntiforgery();
 
 
             // Run the Web Server in the background
-            _ = webApp.RunAsync().Forget();
+            _ = webApp.RunAsync()
+                .Catch(ex => {
+                    IsStarting = false;
+                    _renderTcs.SetException(ex);
+                })
+                .Then(_ => {
+                    IsStarting = false;
+                    _renderTcs.SetResult(true);
+                }).Forget();
             // don't do this here because we're hijacking mains
             //_ = webApp.Services.GetRequiredService<SimpleLogger>();
-
+            ;
             return webApp;
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Web server failed to start: " + ex.Message, ex);
-            throw new Exception("bs", ex);
+            Console.WriteLine("Web server failed to start: " + ex);
+            _renderTcs.SetException(ex);
+            return null;
+        }
+        finally
+        {
+            IsStarting = false;
         }
     }
 

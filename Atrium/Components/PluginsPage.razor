@@ -252,7 +252,7 @@
         InvokeAsync(() =>
         {
 
-            if (Service.GetService<Lazy<Application?>>()?.Value is IHasWindow window && !window.IsSplashMode)
+            if (Service.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
             {
                 if (Trust.EnabledAssemblies.Count == 0)
                     _ = window.ExpandWindow(false);

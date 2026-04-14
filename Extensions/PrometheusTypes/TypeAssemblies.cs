@@ -132,7 +132,10 @@ public static partial class TypeExtensions
 
     public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
     {
-        return asses.ToServices().GetServicable();
+        return asses
+            .Where(IsMine)
+            .SelectMany(GetAssTypesSafely)
+            .GetServicable();
     }
 
 
@@ -145,7 +148,7 @@ public static partial class TypeExtensions
 
         asses = [..asses.Concat(plugins)];
 
-        List<Type> concrete = [..asses.Where(s => s.IsConcrete())];
+        List<Type> concrete = [..asses.Where(s => s.IsConcrete() && !s.Extends(typeof(IHasNoService)))];
 
         List<string> interfaces = [..asses
             .Where(s => s.IsInterface)
@@ -181,23 +184,6 @@ public static partial class TypeExtensions
     }
 
 
-    public static List<Type> ToServices(this IEnumerable<Assembly?>? ass)
-    {
-        if (ass == null) return [];
-        return [.. ass.SelectMany(a => a?.ToServices() ?? []).Where(t => t != null)];
-    }
-
-
-
-    static readonly ConcurrentDictionary<Assembly, List<Type>> _serviceCache = [];
-    public static List<Type> ToServices(this Assembly ass)
-    {
-        if (_serviceCache.TryGetValue(ass, out var services)) return services;
-        List<Type> interfaces = [..ass.GetTypes().Where(IsService)];
-        List<Type> servicesToCache = [.. interfaces.Concat(ass.GetTypes().Where(interfaces.AnyExtendsAny)).Distinct()];
-        _serviceCache.TryAdd(ass, servicesToCache);
-        return servicesToCache;
-    }
 
     public static List<Type> ToEntities<TEntity>()
     {
@@ -275,12 +261,31 @@ public static partial class TypeExtensions
             {
                 if (_loadedAssemblies.Add(name))
                 {
-                    foreach (var type in assembly.GetTypes())
+                    var types = assembly.GetAssTypesSafely();
+                    foreach (var type in types)
                     {
                         _allKnownTypes.Add(type);
                     }
                 }
             }
+        }
+    }
+
+
+    public static List<Type> GetAssTypesSafely(this Assembly ass)
+    {
+        try
+        {
+            return [.. ass.GetTypes()];
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            // Return only the types that were successfully loaded
+            return [.. e.Types.OfType<Type>()];
+        }
+        catch (Exception)
+        {
+            return [];
         }
     }
 
