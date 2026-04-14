@@ -60,7 +60,7 @@
     public bool menuMode { get; set; }
     public int CurrentMenu = 0;
     private Dictionary<string, object> _componentInstances = new();
-    [CascadingParameter] public Type? PermissionType { get; set; }
+    [CascadingParameter(Name = nameof(PermissionType))] public Type? PermissionType { get; set; }
 
 
     private void HandleClick(INavMenuItem item)

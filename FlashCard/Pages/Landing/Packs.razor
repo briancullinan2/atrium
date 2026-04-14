@@ -42,7 +42,7 @@
 
     public static Delegate ContextInsert => RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add });
 
-    [CascadingParameter] public bool IsStaticRender { get; set; }
+    [CascadingParameter(Name = nameof(IsStaticRender))] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
     public List<FlashData.Entities.Pack> Recent { get; set; } = new();

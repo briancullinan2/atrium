@@ -5,34 +5,7 @@
 
 @if (!String.IsNullOrWhiteSpace(notFound))
 {
-    if(DefaultRoot != null)
-    {
-        __builder.OpenComponent(0, DefaultRoot);
-        __builder.CloseComponent();
-    } 
-    else if (Roots.Count > 0)
-    {
-        __builder.OpenComponent(0, Roots.First());
-        __builder.CloseComponent();
-    }
-    else if (CatchAll.Count > 0)
-    {
-        __builder.OpenComponent(0, Roots.First());
-        __builder.CloseComponent();
-    }
-    else
-    {
-        lock(AllRoutes)
-        if (AllRoutes
-        .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
-        .FirstOrDefault() is Type any)
-        {
-            __builder.OpenComponent(0, any);
-            __builder.CloseComponent();
-        }
-        <NotFoundControl />
-        return;
-    }
+    <NotFoundControl />
 }
 else
 {
@@ -61,30 +34,54 @@ else
                 __builder.OpenComponent(0, any);
                 __builder.CloseComponent();
             }
-
-        <div class="flash-card animate-in">
-            TODO: Find a home page.
-        </div>
+            else
+            {
+                <div class="flash-card animate-in">
+                    TODO: Find a home page.
+                </div>
+            }
     }
 }
 
 @code
 {
     // TODO: find the best home page based on the plugins loaded.
-    [CascadingParameter] public Type? DefaultRoot { get; set; }
+    [CascadingParameter(Name = nameof(DefaultRoot))] public Type? DefaultRoot { get; set; }
     [Parameter] public string? notFound { get; set; }
-    [CascadingParameter] public bool FirstTimeLoad { get; set; }
+    [CascadingParameter(Name = nameof(FirstTimeLoad))] public bool FirstTimeLoad { get; set; }
 
     protected override void OnInitialized()
     {
         // TODO: find a page animation
-        var asses = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+    }
+
+
+    protected async Task TryLoading()
+    {
+        var asses = (Assembly.GetEntryAssembly() 
+            ?? Assembly.GetExecutingAssembly())
             .GetAssemblies().GetMine().ToList();
-        Parallel.ForEachAsync(asses, async (s, _) => {
+        await Parallel.ForEachAsync(asses, async (s, _) =>
+        {
             await TryFindingInterestingTypes(s);
         });
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        if(AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
+            await TryLoading();
+        await base.OnInitializedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
+            _ = TryLoading();
+        else if (DefaultRoot == null && AllRoutes.Count > 0)
+            StateHasChanged();
+    }
 
     public readonly List<Type> Layouts = [];
     readonly List<Assembly> Seen = [];
@@ -145,7 +142,7 @@ else
 
         if (DefaultRoot == null && (Roots.Count > 0 || CatchAll.Count > 0))
             await InvokeAsync(StateHasChanged);
-        else if(FirstTimeLoad && AllRoutes.Count > 0)
+        else if (FirstTimeLoad && AllRoutes.Count > 0)
             await InvokeAsync(StateHasChanged);
     }
 }

@@ -34,8 +34,15 @@
     }
      
     <div class="page @(Ready) @(string.Join(" ", ClassNames))">
-        <WebClient.Components.Routes @rendermode="PreferredMode" />
+        <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+            <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+                <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                    <WebClient.Components.Routes @rendermode="PreferredMode" />
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
     </div>
+
     <script src="/_content/RazorSharp/main.js"></script>
     <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
 
@@ -75,6 +82,14 @@
 
     private bool IsDebug = false;
     protected string Ready = "loading";
+    private bool FirstTimeLoad = true;
+    static Type? PermissionType = null;
+    static Type? StoredDefaultRoot = null;
+    public Type? DefaultRoot
+    {
+        get => StoredDefaultRoot;
+        set => StoredDefaultRoot = value;
+    }
 
     public void HasChanged()
     {
@@ -202,7 +217,8 @@
     
     private async Task ProbablyUpdateTitle()
     {
-        var components = this.GetChildComponents().OrderBy(comp => comp.GetType() != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0);
+        var components = this.GetChildComponents()
+            .OrderBy(comp => comp.GetType() != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0);
         var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
             .FirstOrDefault();
         if (title is DisplayAttribute attr)
