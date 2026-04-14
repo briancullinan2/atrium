@@ -735,7 +735,7 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-L5Yq+wwhGtgUir5jApuzkMPmN8QNJltXyeKeZv2pBlE=",
-      "url": "appsettings.Development.json"
+      "url": "appsettings.Production.json"
     },
     {
       "hash": "sha256-L5Yq+wwhGtgUir5jApuzkMPmN8QNJltXyeKeZv2pBlE=",

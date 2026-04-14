@@ -46,11 +46,12 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
                 ContentRootPath = AppDomain.CurrentDomain.BaseDirectory,
                 ApplicationName = "Atrium"
             });
-#if DEBUG
-            webBuilder.Environment.EnvironmentName = Environments.Development;
-#else
+
+//#if DEBUG
+//            webBuilder.Environment.EnvironmentName = Environments.Development;
+//#else
             webBuilder.Environment.EnvironmentName = Environments.Production;
-#endif
+//#endif
 
             webBuilder.Services.AddDirectoryBrowser();
             webBuilder.Services.AddRazorComponents()

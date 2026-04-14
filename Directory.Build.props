@@ -1,6 +1,6 @@
 <Project>
 	<ItemGroup Condition="'$(MSBuildProjectName)' != 'Interfacing'">
-		<ProjectReference Private="false" Include="$(SolutionDir)Interfacing\Interfacing.csproj" />
+		<ProjectReference Include="$(SolutionDir)Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup>
@@ -9,6 +9,8 @@
 		<WasmFingerprintAssets>false</WasmFingerprintAssets>
 		<BlazorHotReloadEnabled>false</BlazorHotReloadEnabled>
 		<DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+	    <IncludeHotReloadInvocationCode>false</IncludeHotReloadInvocationCode>
+		<WasmEnableHotReload>false</WasmEnableHotReload>
 	</PropertyGroup>
 	
 	<PropertyGroup>

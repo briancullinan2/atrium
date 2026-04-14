@@ -14,6 +14,7 @@
 @inject NavigationManager Nav
 @inject ICompositeProvider Service
 
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -24,7 +25,6 @@
     <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
     <link rel="icon" type="image/png" href="favicon.ico" />
     <AntiforgeryToken />
-    <HeadOutlet @rendermode="PreferredMode" />
 </head>
 
 <body>
@@ -32,22 +32,17 @@
         Css.ChildContent(__builder);
         JavaScript.ChildContent(__builder);
     }
-
-    <div id="app">
-        Loading...
-    </div>
-
+     
     <div class="page @(Ready) @(string.Join(" ", ClassNames))">
         <WebClient.Components.Routes @rendermode="PreferredMode" />
     </div>
-
     <script src="/_content/RazorSharp/main.js"></script>
-    <script src="/_framework/blazor.webassembly.js"></script>
+    <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
 
     <script>
-        //document.addEventListener("DOMContentLoaded", startBlazor);
+        document.addEventListener("DOMContentLoaded", startBlazor);
         
-        //manageServiceWorker();
+        manageServiceWorker();
 
     </script>
 
@@ -68,9 +63,6 @@
 </body>
 
 </html>
-
-
-@inject NavigationManager Navigation
 
 @code {
 
@@ -97,8 +89,8 @@
 #if DEBUG
         IsDebug = true;
 #endif
-        var Query = App.Query(Navigation.Uri);
-        if(Navigation?.Uri.Contains("#mode=server") == true)
+        var Query = App.Query(Nav.Uri);
+        if (Nav.Uri.Contains("#mode=server") == true)
         {
             PreferredMode = InteractiveServer;
         }

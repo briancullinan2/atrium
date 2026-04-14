@@ -20,14 +20,16 @@
         __builder.OpenComponent(0, Roots.First());
         __builder.CloseComponent();
     }
-    else if (AllRoutes.OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
-        .FirstOrDefault() is Type any)
-    {
-        __builder.OpenComponent(0, any);
-        __builder.CloseComponent();
-    }
     else
     {
+        lock(AllRoutes)
+        if (AllRoutes
+        .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+        .FirstOrDefault() is Type any)
+        {
+            __builder.OpenComponent(0, any);
+            __builder.CloseComponent();
+        }
         <NotFoundControl />
         return;
     }
@@ -49,14 +51,17 @@ else
         __builder.OpenComponent(0, Roots.First());
         __builder.CloseComponent();
     }
-    else if (AllRoutes.OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
-    .FirstOrDefault() is Type any)
-    {
-        __builder.OpenComponent(0, any);
-        __builder.CloseComponent();
-    }
     else
     {
+        lock (AllRoutes)
+            if (AllRoutes
+            .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+            .FirstOrDefault() is Type any)
+            {
+                __builder.OpenComponent(0, any);
+                __builder.CloseComponent();
+            }
+
         <div class="flash-card animate-in">
             TODO: Find a home page.
         </div>
@@ -125,7 +130,8 @@ else
                     if (attr.Template == "/")
                         Roots.Add(type);
 
-                    AllRoutes.Add(type);
+                    lock (AllRoutes)
+                        AllRoutes.Add(type);
                 }
             }
             catch (Exception ex)

@@ -236,7 +236,7 @@ window.startBlazor = function (type = "server") {
             webAssembly: {
                 // If you want to load custom DLLs or change the environment 
                 // without relying on the HTML comments:
-                environment: "Development",
+                environment: "Production",
                 loadBootResource: function(type, name, defaultUri, integrity) {
                     // Manual intervention on the file loading
                     return defaultUri;
