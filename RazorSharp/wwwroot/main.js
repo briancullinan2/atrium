@@ -194,8 +194,8 @@ window.startBlazor = function (type = "server") {
             },
             sequence: startParameters?.sequence,
             descriptor: startParameters?.descriptor,
-            assembly: "FlashCard",
-            typeName: "FlashCard.Routes",
+            assembly: "RazorSharp",
+            typeName: "WebClient.Components.App",
             parameterDefinitions: "[]",
             parameterValues: "[]",
             start: startParameters?.start,
@@ -215,9 +215,9 @@ window.startBlazor = function (type = "server") {
         ssr: { disableStreamingContent: true },
 
 
-        geminiSaidICouldnt: {
+        geminiSaidICouldnt: geminiSaidICouldnt.auto.start != null ? {
             server: [...Blazor.parse(document, { geminiSaidICouldnt })][0]
-        },
+        } : {},
 
 
 

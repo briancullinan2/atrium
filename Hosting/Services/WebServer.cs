@@ -49,7 +49,7 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 #if DEBUG
             webBuilder.Environment.EnvironmentName = Environments.Development;
 #else
-        webBuilder.Environment.EnvironmentName = Environments.Production;
+            webBuilder.Environment.EnvironmentName = Environments.Production;
 #endif
 
             webBuilder.Services.AddDirectoryBrowser();
@@ -82,6 +82,7 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 
             DatabaseBuilder.BuildServices(webBuilder.Services);
 
+            //webBuilder.Services.AddScoped<IPersistentComponentStateStore, PrerenderComponentStateStore>();
             // always have to use the apps browser instance for the local store
             //   TODO: web server should be using SQLite anyways
             //webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
@@ -105,11 +106,12 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             {
                 options.ListenAnyIP(8080); // Open for business on port 8080
             });
+            webBuilder.WebHost.UseSetting("Microsoft.AspNetCore.Hosting.HotReload.Enabled", "false");
 
-            webBuilder.WebHost.UseStaticWebAssets();
-            Microsoft.AspNetCore.Hosting.StaticWebAssets.StaticWebAssetsLoader.UseStaticWebAssets(
-                webBuilder.Environment,
-                webBuilder.Configuration);
+            //webBuilder.WebHost.UseStaticWebAssets();
+            //Microsoft.AspNetCore.Hosting.StaticWebAssets.StaticWebAssetsLoader.UseStaticWebAssets(
+            //    webBuilder.Environment,
+            //    webBuilder.Configuration);
 
 
             string myAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -144,8 +146,8 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             //webApp.UseDefaultFiles(options);
             //webApp.MapFallbackToFile("app.html");
 
-            webApp.UseStaticFiles();
             webApp.UseBlazorFrameworkFiles();
+            webApp.UseStaticFiles();
 
             // 2. Security & Routing
             webApp.UseRouting();

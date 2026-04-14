@@ -1,5 +1,6 @@
 #if !BROWSER
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -35,6 +36,10 @@ public abstract class BaseFormFactor(
     public abstract string ConnectionId { get; }
     public abstract List<IFile> Files { get; }
 
+    public virtual async Task SetState()
+    {
+
+    }
 
     public static string? AppName
     {
@@ -200,6 +205,18 @@ public partial class FormFactor(
     public override List<IFile> Files => [
         ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
         new BodyBag(Context?.Request) ];
+
+
+    public override async Task SetState()
+    {
+        var context = Service.GetRequiredService<IHttpContextAccessor>();
+        var http = context.HttpContext;
+        var store = http?.RequestServices.GetService<IPersistentComponentStateStore>();
+        var manager = Service.GetRequiredService<ComponentStatePersistenceManager>();
+        var renderer = Service.GetRequiredService<Renderer>();
+        if(store != null)
+            _ = manager.PersistStateAsync(store, renderer);
+    }
 
 
     public override async Task SetSessionCookie(string name, string value, int days)

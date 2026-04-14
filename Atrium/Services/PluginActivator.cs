@@ -8,15 +8,15 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
     private readonly IServiceProvider Main;
     private readonly IServiceScope Scope;
 
-    public IServiceProvider Services => CompositeServiceProvider.Current!;
+    public IServiceProvider Services { get; private set; }
 
     public static PluginActivator? Current { get; private set; } = null;
 
     public PluginActivator(IServiceProvider mainProvider)
     {
         Main = mainProvider;
-        new CompositeServiceProvider(this, mainProvider);
         Current ??= this;
+        Services = new CompositeServiceProvider(this, mainProvider);
         Scope = Services.CreateScope();
     }
 

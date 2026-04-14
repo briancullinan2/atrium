@@ -1,5 +1,7 @@
 ﻿@using Extensions.PrometheusTypes
 @using Interfacing.Services
+@using Microsoft.AspNetCore.Components.Infrastructure
+@using Microsoft.AspNetCore.Components.RenderTree
 @using RazorSharp.Controls
 @using RazorSharp.Extensions
 @using System.ComponentModel.DataAnnotations
@@ -36,26 +38,14 @@
     </div>
 
     <div class="page @(Ready) @(string.Join(" ", ClassNames))">
-
-    <Router @rendermode="PreferredMode" AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
-        <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="@typeof(RazorSharp.Layout.MainLayout)" />
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-        </Found>
-        <NotFound>
-            <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
-                <NotFoundControl></NotFoundControl>
-            </LayoutView>
-        </NotFound>
-    </Router>
-
+        <WebClient.Components.Routes @rendermode="PreferredMode" />
     </div>
 
     <script src="/_content/RazorSharp/main.js"></script>
-    <script src="/_content/WebClient/blazor.web.js"></script>
+    <script src="/_framework/blazor.webassembly.js"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", startBlazor);
+        //document.addEventListener("DOMContentLoaded", startBlazor);
         
         //manageServiceWorker();
 
@@ -73,6 +63,7 @@
             })();
         </script>
     }
+
 
 </body>
 
@@ -92,7 +83,7 @@
 
     private bool IsDebug = false;
     protected string Ready = "loading";
-    
+
     public void HasChanged()
     {
         InvokeAsync(StateHasChanged);
@@ -124,7 +115,33 @@
 
     }
 
-   
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        //var context = Service.GetRequiredService<HttpContext>();
+        //var store = context.RequestServices.GetService<IPersistentComponentStateStore>();
+        //var manager = Service.GetRequiredService<ComponentStatePersistenceManager>();
+        //var store = Service.GetRequiredService<IPersistentComponentStateStore>();
+        //var renderer = Service.GetRequiredService<Renderer>();
+        //await manager.PersistStateAsync(store, renderer);
+
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        var Page = Service.GetRequiredService<IRenderState>();
+        await Page.SetState(this);
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+
+    }
+
     public static Dictionary<string, string> Query(string uri)
     {
         // Use a simple split/regex to avoid heavy libraries

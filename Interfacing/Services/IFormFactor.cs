@@ -10,6 +10,7 @@ public interface IFormFactor
     bool IsWebContext { get; }
     bool IsMauiContext { get; }
     List<IFile> Files { get; }
+    Task SetState();
 
     ValueTask Clipboard(string text);
 

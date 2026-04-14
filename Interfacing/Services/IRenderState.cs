@@ -197,6 +197,8 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState
         }
         State[state.GetType().Name.ToSafe()] = state.ToSerialized();
         OnStateChanged?.Invoke(state);
+        //var Form = Provider.GetRequiredService<IFormFactor>();
+        //await Form.SetState();
     }
 
     public virtual async Task<Dictionary<string, string?>?> RestoreState(object component)

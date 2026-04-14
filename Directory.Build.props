@@ -6,6 +6,9 @@
 	<PropertyGroup>
 		<SelfContained>true</SelfContained>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<WasmFingerprintAssets>false</WasmFingerprintAssets>
+		<BlazorHotReloadEnabled>false</BlazorHotReloadEnabled>
+		<DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
 	</PropertyGroup>
 	
 	<PropertyGroup>
@@ -42,9 +45,9 @@
 		<Copy SourceFiles="@(PluginJsons)"
 			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
 			  SkipUnchangedFiles="true" />
-		
+
 		<Copy SourceFiles="@(PluginRootAssets)"
-			  DestinationFolder="$(HostBinPath)wwwroot\"
+			  DestinationFolder="$(HostBinPath)wwwroot\%(RecursiveDir)"
 			  SkipUnchangedFiles="true" />
 
 		<Copy SourceFiles="@(BaseProjectAssets)"
