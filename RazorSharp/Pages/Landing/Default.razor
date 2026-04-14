@@ -9,6 +9,22 @@
     {
         __builder.OpenComponent(0, DefaultRoot);
         __builder.CloseComponent();
+    } 
+    else if (Roots.Count > 0)
+    {
+        __builder.OpenComponent(0, Roots.First());
+        __builder.CloseComponent();
+    }
+    else if (CatchAll.Count > 0)
+    {
+        __builder.OpenComponent(0, Roots.First());
+        __builder.CloseComponent();
+    }
+    else if (AllRoutes.OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+        .FirstOrDefault() is Type any)
+    {
+        __builder.OpenComponent(0, any);
+        __builder.CloseComponent();
     }
     else
     {
@@ -21,6 +37,22 @@ else
     if (DefaultRoot != null)
     {
         __builder.OpenComponent(0, DefaultRoot);
+        __builder.CloseComponent();
+    }
+    else if (Roots.Count > 0)
+    {
+        __builder.OpenComponent(0, Roots.First());
+        __builder.CloseComponent();
+    }
+    else if (CatchAll.Count > 0)
+    {
+        __builder.OpenComponent(0, Roots.First());
+        __builder.CloseComponent();
+    }
+    else if (AllRoutes.OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+    .FirstOrDefault() is Type any)
+    {
+        __builder.OpenComponent(0, any);
         __builder.CloseComponent();
     }
     else
@@ -36,5 +68,78 @@ else
     // TODO: find the best home page based on the plugins loaded.
     [CascadingParameter] public Type? DefaultRoot { get; set; }
     [Parameter] public string? notFound { get; set; }
+    [CascadingParameter] public bool FirstTimeLoad { get; set; }
 
+    protected override void OnInitialized()
+    {
+        // TODO: find a page animation
+        var asses = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies().GetMine().ToList();
+        Parallel.ForEachAsync(asses, async (s, _) => {
+            await TryFindingInterestingTypes(s);
+        });
+    }
+
+
+    public readonly List<Type> Layouts = [];
+    readonly List<Assembly> Seen = [];
+    public readonly List<Assembly> Routable = [];
+    public readonly List<Type> CatchAll = [];
+    public readonly List<Type> Roots = [];
+    public readonly List<Type> AllRoutes = [];
+
+    private async Task TryFindingInterestingTypes(Assembly ass)
+    {
+        lock (Seen) {
+
+            if (Seen.Contains(ass))
+                return;
+
+            Seen.Add(ass);
+
+        }
+
+        var allTypes = ass.GetAssTypesSafely();
+
+        var routable = false;
+
+        foreach (var type in allTypes)
+        {
+            try
+            {
+                if (typeof(LayoutComponentBase).IsAssignableFrom(type)
+                    && type != typeof(LayoutComponentBase)
+                    && type != typeof(MainLayout)
+                    && type != typeof(Default))
+                    Layouts.Add(type);
+
+                if (type != typeof(Default)
+                    && type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr)
+                {
+                    routable = true;
+                    if (attr.Template.StartsWith("/*")
+                        || attr.Template.StartsWith("/{*")
+                        || attr.Template.StartsWith('*'))
+                        CatchAll.Add(type);
+
+                    if (attr.Template == "/")
+                        Roots.Add(type);
+
+                    AllRoutes.Add(type);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine(ex);
+            }
+        }
+
+        if (routable)
+            Routable.Add(ass);
+
+        if (DefaultRoot == null && (Roots.Count > 0 || CatchAll.Count > 0))
+            await InvokeAsync(StateHasChanged);
+        else if(FirstTimeLoad && AllRoutes.Count > 0)
+            await InvokeAsync(StateHasChanged);
+    }
 }

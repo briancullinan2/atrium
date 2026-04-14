@@ -22,7 +22,8 @@
 }
 
 <main>
-        
+    
+
     <article class="content course-container">
 
         @if (Classy.ClassNames.Contains("cover-page"))
@@ -32,6 +33,9 @@
         
     </article>
 
+
+    @*TODO: check for layout animation*@
+    @Body
 
 </main>
 
@@ -66,7 +70,10 @@
     {
         RenderState.NotifyEmptied();
         // TODO: find a page animation
-
+        //var asses = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies();
+        //Parallel.ForEachAsync(asses, async (s, _) => {
+        //    await TryFindingInterestingTypes(s);
+        //});
     }
 
     // TODO: use INotHasWrapper somewhere
@@ -107,5 +114,6 @@
         */
     }
 
+    
 
 }

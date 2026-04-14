@@ -47,6 +47,10 @@ internal class Program
         });
 
         builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
+
+
+        builder.RootComponents.Add<WebClient.Components.App>("#app");
+
         _app = builder.Build();
         // FUCK DI
         _ = _app.Services.GetRequiredService<SimpleLogger>();

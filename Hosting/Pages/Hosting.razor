@@ -105,10 +105,20 @@
 
     protected async Task EnableHosting(ChangeEventArgs args)
     {
-        if (ServiceProvider.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
-            await server.EnsureInitialized();
-        else if (ServiceProvider.GetService<Lazy<WebApplication?>>()?.Value == null)
-            WebServer.StartWebServer(Trust);
+        var enable = (bool)(args.Value ?? false);
+        if(enable)
+        {
+            if (ServiceProvider.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
+                await server.EnsureInitialized();
+            else if (ServiceProvider.GetService<Lazy<WebApplication?>>()?.Value == null)
+                WebServer.StartWebServer(Trust);
+
+        }
+        else
+        {
+            if (WebServer.Current != null)
+                await WebServer.Current.StopAsync();
+        }
     }
 
     protected void EnableService(ChangeEventArgs args)

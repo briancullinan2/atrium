@@ -24,14 +24,17 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
         if (_renderTcs.Task.IsCompleted)
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         StartWebServer(trust);
+        await _renderTcs.Task;
     }
 
     public static WebApplication? StartWebServer(ITrustProvider Trust)
     {
         try
         {
-            if (Current != null || IsStarting)
-                return null;
+            if (Current != null || IsStarting || 
+                (_private?.Lifetime.ApplicationStarted.IsCancellationRequested == true
+                && _private?.Lifetime.ApplicationStopped.IsCancellationRequested != true))
+                return _private;
 
             IsStarting = true;
             // TODO: get logging working
@@ -207,20 +210,10 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
                 .DisableAntiforgery();
 
 
-            // Run the Web Server in the background
-            _ = webApp.RunAsync()
-                .Catch(ex => {
-                    IsStarting = false;
-                    _renderTcs.SetException(ex);
-                })
-                .Then(_ => {
-                    IsStarting = false;
-                    _renderTcs.SetResult(true);
-                }).Forget();
+            _ = TryRunning();
             // don't do this here because we're hijacking mains
             //_ = webApp.Services.GetRequiredService<SimpleLogger>();
-            ;
-            return webApp;
+            return _private;
         }
         catch (Exception ex)
         {
@@ -231,6 +224,25 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
         finally
         {
             IsStarting = false;
+        }
+    }
+
+
+    protected static async Task TryRunning()
+    {
+        if (_private == null) return;
+        // Run the Web Server in the background
+        try
+        {
+            IsStarting = false;
+            _renderTcs.SetResult(true);
+            await _private.RunAsync();
+
+        }
+        catch (Exception ex)
+        {
+            IsStarting = false;
+            _renderTcs.SetException(ex);
         }
     }
 

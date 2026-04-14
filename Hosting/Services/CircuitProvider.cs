@@ -22,10 +22,10 @@ public partial class CircuitProvider : ICircuitProvider
     public int DefaultTTL { get; set; } = 100;
     private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
 
-    public ICompositeProvider Service { get; }
-    public HttpClient? Http { get; }
+    public ICompositeProvider Service { get; } = service;
+    public HttpClient? Http { get; } = http;
 
-    private HubConnection? _connection;
+    private HubConnection? _connection = connection;
     private HubConnection Connection
     {
         get
@@ -173,7 +173,11 @@ public partial class CircuitHub(ICircuitProvider Circuit) : Microsoft.AspNetCore
 }
 
 
-public partial class CircuitProvider : IAsyncDisposable
+public partial class CircuitProvider(
+    ICompositeProvider service,
+    Lazy<Application?>? app = null,
+    HttpClient? http = null,
+    HubConnection? connection = null) : IAsyncDisposable
 {
 
     public bool IsSignalCircuit => true;
@@ -188,25 +192,7 @@ public partial class CircuitProvider : IAsyncDisposable
 
     public int ClientCount => _activeCircuits.Count;
 
-    public CircuitHandler Circuit { get; }
-
-    public Lazy<Application?>? App { get; }
-
-    public CircuitProvider(
-        ICompositeProvider service,
-        CircuitHandler circuit,
-        Lazy<Application?>? app = null,
-        HttpClient? http = null,
-        HubConnection? connection = null)
-    {
-        _connection = connection;
-        App = app;
-        Service = service;
-        Http = http;
-        Circuit = circuit;
-        //Circuit.OnConnectionDown += OnConnectionDown;
-        //Circuit.OnConnectionUp += OnConnectionUp;
-    }
+    public Lazy<Application?>? App { get; } = app;
 
     public async ValueTask DisposeAsync()
     {
