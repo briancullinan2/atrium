@@ -11,115 +11,115 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-WR/elDWwNQ2Mohaj6z+kICwZMJ6dOOBtWrf30CDxlKc=",
-      "url": "_content/FlashCard/FlashCard.3x4jx8azwu.bundle.scp.css"
+      "url": "_content/RazorSharp/RazorSharp.3x4jx8azwu.bundle.scp.css"
     },
     {
       "hash": "sha256-W1Kzkhr9vTB0XAvfOLo3WBvqj7+U8P/r0GZKCgEF+LM=",
-      "url": "_content/FlashCard/Study_Sauce_Logo.png"
+      "url": "_content/RazorSharp/Study_Sauce_Logo.png"
     },
     {
       "hash": "sha256-d2FKmAI7A0HD20xSRHX53SEorsXq1NUBFKUZf7L0u+s=",
-      "url": "_content/FlashCard/Study_Sauce_Logo_Gray.png"
+      "url": "_content/RazorSharp/Study_Sauce_Logo_Gray.png"
     },
     {
       "hash": "sha256-fCQtsNJxk7PmPUpM2Hsw1ZHQ+mx54VirjeuezhH+xg0=",
-      "url": "_content/FlashCard/Study_Sauce_Logo_Sketch.png"
+      "url": "_content/RazorSharp/Study_Sauce_Logo_Sketch.png"
     },
     {
       "hash": "sha256-LQwJoav+azb/iZjs441fgHFKms5QbYTQTCWJlxtJm/g=",
-      "url": "_content/FlashCard/atrium8.svg"
+      "url": "_content/RazorSharp/atrium8.svg"
     },
     {
       "hash": "sha256-iDR+rODwD99PpGoGZkfgejcbAZdQCsMhAJ2jMxtOiTg=",
-      "url": "_content/FlashCard/awards.png"
+      "url": "_content/RazorSharp/awards.png"
     },
     {
       "hash": "sha256-eW6oB0cbJWfTOXH+mJkhJDzIerBt0fwuzXnLinFznSA=",
-      "url": "_content/FlashCard/awards_compressed.png"
+      "url": "_content/RazorSharp/awards_compressed.png"
     },
     {
       "hash": "sha256-hK2Mmrj9KZCuDPqFJkJckqPgoA16DKe9F/FIR9WsAOw=",
-      "url": "_content/FlashCard/awards_compressed_small.png"
+      "url": "_content/RazorSharp/awards_compressed_small.png"
     },
     {
       "hash": "sha256-TF89Q8Dd8UuwoLhgXIJvSLqDYIErpe3boGqyT0lnINo=",
-      "url": "_content/FlashCard/awards_shadowed.png"
+      "url": "_content/RazorSharp/awards_shadowed.png"
     },
     {
       "hash": "sha256-jzxxdNFVj7xv8cPleWcRzD/tVeWx2uN+SRKkoRArMSs=",
-      "url": "_content/FlashCard/background2.png"
+      "url": "_content/RazorSharp/background2.png"
     },
     {
       "hash": "sha256-h4voGlqVuVUp6ym7H8B34l26Rqqfvei3pxzgF3QLyLc=",
-      "url": "_content/FlashCard/blazor.web.js"
+      "url": "_content/RazorSharp/blazor.web.js"
     },
     {
       "hash": "sha256-NBK2sJm5bI5rYMeJbNN0xaX8MMdhYR4VrGUoECXQhWs=",
-      "url": "_content/FlashCard/blazor.web.js.map"
+      "url": "_content/RazorSharp/blazor.web.js.map"
     },
     {
       "hash": "sha256-JBR8uI7KyePcKf3CdJz6RrlBp//JPhiYQz1/IGLVo2c=",
-      "url": "_content/FlashCard/css/app.css"
+      "url": "_content/RazorSharp/css/app.css"
     },
     {
       "hash": "sha256-dSBOOLXiZTP0dSE7p6YaRzNRME6QSvd9u5zImUwOUqA=",
-      "url": "_content/FlashCard/css/awards.css"
+      "url": "_content/RazorSharp/css/awards.css"
     },
     {
       "hash": "sha256-GmJ3kJpy/mArKoKg6eVd1ME17Hk1TxDKMCqkwt7EmGM=",
-      "url": "_content/FlashCard/css/bootstrap-icons/bootstrap-icons.min.css"
+      "url": "_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css"
     },
     {
       "hash": "sha256-9VUTt7WRy4SjuH/w406iTUgx1v7cIuVLkRymS1tUShU=",
-      "url": "_content/FlashCard/css/bootstrap-icons/fonts/bootstrap-icons.woff"
+      "url": "_content/RazorSharp/css/bootstrap-icons/fonts/bootstrap-icons.woff"
     },
     {
       "hash": "sha256-bHVxA2ShylYEJncW9tKJl7JjGf2weM8R4LQqtm/y6mE=",
-      "url": "_content/FlashCard/css/bootstrap-icons/fonts/bootstrap-icons.woff2"
+      "url": "_content/RazorSharp/css/bootstrap-icons/fonts/bootstrap-icons.woff2"
     },
     {
       "hash": "sha256-HU7bh2SG8clwXgozPyNcjEXZB2RsRgsAcOusTirYAOk=",
-      "url": "_content/FlashCard/css/console.css"
+      "url": "_content/RazorSharp/css/console.css"
     },
     {
       "hash": "sha256-+hbOPrPzyKzbFR8fmCjg2LmQWOzns066ShSB9d5jeOM=",
-      "url": "_content/FlashCard/css/course.css"
+      "url": "_content/RazorSharp/css/course.css"
     },
     {
       "hash": "sha256-sk5GsK+0ajWPAh9UVP9XsDS0yIdn13TuLnxz07nqgmU=",
-      "url": "_content/FlashCard/css/forms.css"
+      "url": "_content/RazorSharp/css/forms.css"
     },
     {
       "hash": "sha256-RaLMLZI1DLBXof43fAPMFSF7FDHe7iEvFi+nkMeMXCc=",
-      "url": "_content/FlashCard/css/layout.css"
+      "url": "_content/RazorSharp/css/layout.css"
     },
     {
       "hash": "sha256-T/HEXgPI6jkIxMRq2xQa0vN0VPcyGjHKSaSgh9wI2SA=",
-      "url": "_content/FlashCard/css/menu.css"
+      "url": "_content/RazorSharp/css/menu.css"
     },
     {
       "hash": "sha256-laLQY/DRQ+BuSmwlgZpJFAWlwGjOxXX+g3nbEU3QoYI=",
-      "url": "_content/FlashCard/css/nav.css"
+      "url": "_content/RazorSharp/css/nav.css"
     },
     {
       "hash": "sha256-+/2AFXQLaiXIAL0uP+ZlQMaXLH7EQGGqJw1Ib9cRV2E=",
-      "url": "_content/FlashCard/css/study.css"
+      "url": "_content/RazorSharp/css/study.css"
     },
     {
       "hash": "sha256-m0jhl8dhScAky2xO8zLRM2KLqi8KL1MqSxm6HhHSu6Y=",
-      "url": "_content/FlashCard/css/style.css"
+      "url": "_content/RazorSharp/css/style.css"
     },
     {
       "hash": "sha256-nLnCPML85HzucatG+xUT6mzuHdZrsyB+HG/36dnEEwE=",
-      "url": "_content/FlashCard/css/tabs.css"
+      "url": "_content/RazorSharp/css/tabs.css"
     },
     {
       "hash": "sha256-dtCHrGZQsoGcRPrYku6h3kwZy+YXB9/0rsf1ZlhRc58=",
-      "url": "_content/FlashCard/css/theme.css"
+      "url": "_content/RazorSharp/css/theme.css"
     },
     {
       "hash": "sha256-HwkSwjGQzKMqgfxbWoJBb9Uq8XVGrzVQTywVs38DG9Y=",
-      "url": "_content/FlashCard/css/timeline.css"
+      "url": "_content/RazorSharp/css/timeline.css"
     },
     {
       "hash": "sha256-Pr60TUOQE3eT3HInVQHlT8hQlZ5zKqPR4SLxqxr2SCQ=",
@@ -127,63 +127,63 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-4mWsDy3aHl36ZbGt8zByK7Pvd4kRUoNgTYzRnwmPHwg=",
-      "url": "_content/FlashCard/favicon.png"
+      "url": "_content/RazorSharp/favicon.png"
     },
     {
       "hash": "sha256-QHmL423+qgn8fqkPD2Hb/blzaK8A4ALJRal/4lVYPMs=",
-      "url": "_content/FlashCard/lib/bootstrap/dist/css/bootstrap.min.css"
+      "url": "_content/RazorSharp/lib/bootstrap/dist/css/bootstrap.min.css"
     },
     {
       "hash": "sha256-dLjmWc4YRAp7XkxEmYm7/xV1ebW+YQ0LrlrrKVB8kXY=",
-      "url": "_content/FlashCard/lib/bootstrap/dist/css/bootstrap.min.css.map"
+      "url": "_content/RazorSharp/lib/bootstrap/dist/css/bootstrap.min.css.map"
     },
     {
       "hash": "sha256-/QcoMGkIFpdi693hKCZ4M2o6JFYazGHlymIBHDAd4Pw=",
-      "url": "_content/FlashCard/lichtenatrium.js"
+      "url": "_content/RazorSharp/lichtenatrium.js"
     },
     {
       "hash": "sha256-4UqdNUJTSMV2YAMvNIurxhMTX5NyxF90tY3GY+DO6p8=",
-      "url": "_content/FlashCard/lichtenberg.js"
+      "url": "_content/RazorSharp/lichtenberg.js"
     },
     {
       "hash": "sha256-teyFaJXbAUIAMpIEZHVd2X2VMBciNsT9qak1Zmh1ow8=",
-      "url": "_content/FlashCard/lichtenbird.js"
+      "url": "_content/RazorSharp/lichtenbird.js"
     },
     {
       "hash": "sha256-4QogQMLZaHzdVOtar+9S1xsY6Wg1C9aoQrCGSBW08KA=",
-      "url": "_content/FlashCard/lichtenlight.js"
+      "url": "_content/RazorSharp/lichtenlight.js"
     },
     {
       "hash": "sha256-wkQahEGMXOO4w0h0ms2cuYEf2wmOF0a7n7A2nTU81fE=",
-      "url": "_content/FlashCard/logo_4_trans_2.png"
+      "url": "_content/RazorSharp/logo_4_trans_2.png"
     },
     {
       "hash": "sha256-YrbaEmwXmMV1fHXC+zu77qYwf0KLV1+JHBlm2ubbRxk=",
-      "url": "_content/FlashCard/main.js"
+      "url": "_content/RazorSharp/main.js"
     },
     {
       "hash": "sha256-6xdZRpKoeB/kKypNVnyyL1XFi5ovo19V8sG5+CI4vAw=",
-      "url": "_content/FlashCard/page.js"
+      "url": "_content/RazorSharp/page.js"
     },
     {
       "hash": "sha256-t1/4Fz9dT1lUNdSZ6ZXFZ9awUCnJej5QOg+6gcBU3TA=",
-      "url": "_content/FlashCard/squirrel.svg"
+      "url": "_content/RazorSharp/squirrel.svg"
     },
     {
       "hash": "sha256-ChXyQXNiRONpi6DYM5HmQn0cD7DP7HQ5cVDs1NE2PcE=",
-      "url": "_content/FlashCard/studysauce-google-page-transparent.png"
+      "url": "_content/RazorSharp/studysauce-google-page-transparent.png"
     },
     {
       "hash": "sha256-UNdsftSQCdDDRv4QbuJIx2GxW3d8TONtA1Km7S3izRU=",
-      "url": "_content/FlashCard/studysauce-google-page.png"
+      "url": "_content/RazorSharp/studysauce-google-page.png"
     },
     {
       "hash": "sha256-wbMVw2kMY0BEz54xEUHbef+rNZGEHqirkdNWVQ5UzPI=",
-      "url": "_content/FlashCard/studysauce-icon-300x300.png"
+      "url": "_content/RazorSharp/studysauce-icon-300x300.png"
     },
     {
       "hash": "sha256-igXVeWFB68SHUYgBk3gJcXFd9Bm2pcuErY7FV8DUxG8=",
-      "url": "_content/FlashCard/studysauce-icon-76x76.png"
+      "url": "_content/RazorSharp/studysauce-icon-76x76.png"
     },
     {
       "hash": "sha256-XAhmLJUAT+rAvtOns9ZvlLdy8VBY4BHm9HV8IhSPuZM=",
@@ -199,7 +199,7 @@ self.assetsManifest = {
     },
     {
       "hash": "sha256-KLGauUobEiV+W1IEOjrK4kY0pN3b3auTMW4+WFHblyk=",
-      "url": "_framework/FlashCard.wasm"
+      "url": "_framework/RazorSharp.wasm"
     },
     {
       "hash": "sha256-gWgZzn2RZck/jkkXKCltjOiPV9o2nqoo+CBWbyPwKKs=",

@@ -8,10 +8,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Hosting.Services;
 
-public class WebServer(ITrustProvider trust)
-#if !BROWSER
-    : IHasCurrent<WebApplication>, IHasModule
-#endif
+public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApplication>
 {
 
 #if !BROWSER
@@ -65,7 +62,7 @@ public class WebServer(ITrustProvider trust)
 
             webBuilder.Services.AddSingleton(sp => new HttpClient
             {
-                BaseAddress = new Uri("https://0.0.0.1")
+                BaseAddress = new Uri("https://127.0.0.1")
             });
 
 
@@ -166,7 +163,7 @@ public class WebServer(ITrustProvider trust)
 
             if (webApp.Environment.IsDevelopment())
             {
-                //webApp.UseWebAssemblyDebugging();
+                webApp.UseWebAssemblyDebugging();
             }
             else
             {

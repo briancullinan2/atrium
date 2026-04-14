@@ -41,9 +41,10 @@ public class DatabaseBuilder : IHasBuilder
             if (service.Extends(typeof(IHasNoService))) continue;
 
             var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+            var iHasService = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasService)));
 
             // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
-            if (currentType != null)
+            if (currentType != null || iHasService != null)
             {
                 Services.AddAutoSingleton(service, key);
 

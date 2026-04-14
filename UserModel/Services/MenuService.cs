@@ -14,10 +14,10 @@ public class MenuService : IHasContext
 
 
     // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
-    public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
-        (routeControl, Nav) => (__builder) =>
+    public static Delegate ContextInsert => (Func<Type?, RenderFragment>)(
+        (routeControl) => (__builder) =>
         {
-            if (Nav.Uri.Contains("/status", StringComparison.InvariantCultureIgnoreCase))
+            if (routeControl?.GetType().Name.Contains("/status", StringComparison.InvariantCultureIgnoreCase) == true)
             {
                 RenderExtensions.ToNavLink<Pages.Admin.Activity>()(__builder);
                 return;

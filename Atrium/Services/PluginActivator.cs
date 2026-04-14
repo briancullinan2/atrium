@@ -6,6 +6,7 @@ namespace Atrium.Services;
 public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService //, IHasCurrent<PluginActivator> // Current is null
 {
     private readonly IServiceProvider Main;
+    private readonly IServiceScope Scope;
 
     public IServiceProvider Services => CompositeServiceProvider.Current!;
 
@@ -16,6 +17,7 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
         Main = mainProvider;
         new CompositeServiceProvider(this, mainProvider);
         Current ??= this;
+        Scope = Services.CreateScope();
     }
 
 
@@ -35,7 +37,7 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
 
         foreach (var prop in properties)
         {
-            var service = Services.GetService(prop.PropertyType);
+            var service = Scope.ServiceProvider.GetService(prop.PropertyType);
             if (service != null)
             {
                 prop.SetValue(instance, service);

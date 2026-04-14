@@ -18,7 +18,8 @@
 	  <UseMauiAssets>true</UseMauiAssets>
 	  <UseMauiEssentials>true</UseMauiEssentials>
 	  <SingleProject>true</SingleProject>
-    
+	  <WindowsPackageType>None</WindowsPackageType>
+	  <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>

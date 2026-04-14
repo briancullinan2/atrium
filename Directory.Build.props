@@ -16,7 +16,7 @@
 
 	
 	
-	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' or '$(TargetFramework)' == 'net10.0') and '$(MSBuildProjectName)' != 'WebClient' and '$(MSBuildProjectName)' != 'Atrium'">
+	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' or '$(TargetFramework)' == 'net10.0') and '$(MSBuildProjectName)' != 'Atrium'">
 		<PropertyGroup>
 			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
 

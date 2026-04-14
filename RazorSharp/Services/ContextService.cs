@@ -14,15 +14,15 @@ internal class ContextService : IHasContext
 
 
     // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
-    public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
-        (routeControl, Nav) => (__builder) =>
+    public static Delegate ContextInsert => (Func<Type?, RenderFragment>)(
+        (routeControl) => (__builder) =>
         {
             if (!routeControl.Extends(typeof(INotHasWrapper))
-                && !Nav.Uri.Contains("/login", StringComparison.InvariantCultureIgnoreCase))
+                && routeControl?.GetType().FullName?.Contains("login", StringComparison.InvariantCultureIgnoreCase)  == true)
             {
                 RenderExtensions.ToNavLink<Pages.Landing.Search>()(__builder);
             }
-            if (Nav.Uri.Contains("/admin", StringComparison.InvariantCultureIgnoreCase))
+            if (routeControl?.GetType().Namespace?.Contains("admin", StringComparison.InvariantCultureIgnoreCase) == true)
             {
                 RenderExtensions.ToNavLink<Pages.Admin.Status>()(__builder);
             }

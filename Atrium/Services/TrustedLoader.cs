@@ -87,7 +87,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private readonly ConcurrentDictionary<string, string> Tried = [];
 
-#if false
     internal static Dictionary<Type, Type?> SingleUser { get; } = new()
     {
         {typeof(HttpClient), null },
@@ -97,10 +96,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         {typeof(IJSRuntime), null  },
         {typeof(IConfiguration), null  },
         {typeof(IHostEnvironment), null  },
-        {typeof(ILogger<>), typeof(Logger<>)  },
-        {typeof(ILoggerFactory), typeof(ILoggerFactory)  },
+        //{typeof(ILogger<>), typeof(Logger<>)  },
+        {typeof(ILoggerFactory), null },
 
     };
+#if false
 
 
     internal static Dictionary<Type, Type?> DefaultTypes { get; } = new () {
@@ -226,7 +226,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             }
 
 
-            var currents = mappings.SelectMany(BuilderExtensions.GetAssTypesSafely).GetServicable().ToList();
+            var currents = mappings
+                .SelectMany(BuilderExtensions.GetAssTypesSafely)
+                .GetServicable()
+                .ToList();
 
             //collection.AddSingleton<IHttpClientFactory>(sp => root.GetRequiredService<IHttpClientFactory>());
             //collection.AddScoped<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
@@ -235,13 +238,17 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             // TODO: need to check installed and get a list of IHasPlugin.Plugins.Keys would be a list of
             //   all the additional service types and the value is its display options
             List<Type> AlreadyMapped = [];
-            foreach(var ass in currents)
+            var checkExisting = currents.Concat(SingleUser.Keys).ToList(); // add this here so it can be checked below
+            foreach (var ass in checkExisting)
             {
                 try
                 {
-                    if (Provider?.GetService(ass) != null)
+                    if (Provider?.GetService(ass) is object serve)
                     {
-                        collection.AddScoped(ass, sp => Provider.GetRequiredService(ass));
+                        if(ass.Extends(typeof(IHasService)))
+                            collection.AddSingleton(ass, sp => serve);
+                        else
+                            collection.AddScoped(ass, sp => serve);
                         AlreadyMapped.Add(ass);
                     }
                 }
@@ -254,7 +261,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             collection.AddCascadingValue(sp => new ErrorBoundary());
 
-            collection.BuildServices(currents.Except(AlreadyMapped).ToList());
+            collection.BuildServices(currents, null, AlreadyMapped);
 
             // Finalize the provider
             Services = collection.BuildServiceProvider();

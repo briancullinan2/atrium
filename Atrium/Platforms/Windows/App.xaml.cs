@@ -32,8 +32,15 @@ public partial class App : MauiWinUIApplication
         // TODO: insert webserver activation here if running in windows service mode
         System.AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
         {
+
             var name = (new AssemblyName(args.Name).Name
                 ?? args.Name.Split(',')[0]) + ".dll";
+            
+            if (name.Contains(".WebAssembly") || name.Contains(".Browser"))
+            {
+                return null;
+            }
+
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name);
             if (File.Exists(path))
             {
@@ -51,7 +58,8 @@ public partial class App : MauiWinUIApplication
             return null;
         };
 
-        // 2. Start the WinUI/MAUI Application
+        //Bootstrap.Initialize(0x00010004);
+
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
         Start((p) =>

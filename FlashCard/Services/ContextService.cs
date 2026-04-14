@@ -14,14 +14,14 @@ internal class ContextService : IHasContext
 
 
     // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative
-    public static Delegate ContextInsert => (Func<Type, NavigationManager, RenderFragment>)(
-        (routeControl, Nav) => (__builder) =>
+    public static Delegate ContextInsert => (Func<Type?, RenderFragment>)(
+        (routeControl) => (__builder) =>
         {
             //if (Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
             {
                 RenderExtensions.ToNavLink<Pages.Landing.EditPack>(p => new() { Mode = ControlMode.Edit }, "Create Pack", "bi-file-earmark-plus");
             }
-            if (!Nav.Uri.Contains("/upload", StringComparison.InvariantCultureIgnoreCase))
+            if (routeControl?.GetType().Name.Contains("upload", StringComparison.InvariantCultureIgnoreCase) == true)
             {
                 RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Owner }, "My Packs", "bi-file-earmark-text");
                 RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Filter = "Purchased" }, "Purchases", "bi-shield-lock");

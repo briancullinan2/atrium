@@ -1,4 +1,5 @@
-﻿using Interfacing.Services;
+﻿using Atrium.Services;
+using Interfacing.Services;
 using Microsoft.AspNetCore.Components.Web;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -52,9 +53,9 @@ internal static class BuilderExtensions
     }
 
 
-    public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null)
+    public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null, List<Type>? alreadyMapped = null)
     {
-        List<Type> alreadyMapped = [];
+        alreadyMapped ??= [];
         // TODO: need to map all IHasCurrent values to their functional Current static interface value
         //   do this before the service creator below reaches them
         var currents = AllServices.Where(s => s.Extends(typeof(IHasCurrent<>))).ToList();
@@ -75,11 +76,17 @@ internal static class BuilderExtensions
             if (service.Extends(typeof(IHasNoService))) continue;
 
             var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+            var iHasService = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasService)));
 
             //var alreadyMapped = AlreadyMapped.Contains(service);
-
+            if(service == typeof(TrustedLoader))
+            {
+                Console.WriteLine("here");
+            }
             // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
-            if (currentType != null)
+            // static Current {get;} are inherently singletons
+            // IHasService service containers are inherently singletons
+            if (currentType != null || iHasService != null)
             {
                 Services.AddAutoSingleton(service, key, alreadyMapped);
 

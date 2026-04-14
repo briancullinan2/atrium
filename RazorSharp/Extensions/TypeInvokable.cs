@@ -19,6 +19,7 @@ public static partial class InvokableExtensions
         var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
         var parameters = myDelegate.GetParameters();
         var parameterValues = new object?[parameters.Length];
+        var rendered = service.GetRequiredService<IRenderState>();
 
         for (int i = 0; i < parameters.Length; i++)
         {
@@ -26,8 +27,11 @@ public static partial class InvokableExtensions
             // TODO: add more special service injection handlers
             if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
             {
-                var nav = service.GetRequiredService<NavigationManager>();
-                parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
+                if (rendered.IsReady)
+                {
+                    var nav = service.GetRequiredService<NavigationManager>();
+                    parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
+                }
             }
             else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
             {
@@ -44,6 +48,7 @@ public static partial class InvokableExtensions
                 parameterValues[i] = Convert.ChangeType(obj2, realType);
             }
             else if (!string.IsNullOrEmpty(parameters[i].Name)
+                && rendered.IsReady // don't touch NavigationManager until its ready or it will complain
                 && formFactor?.QueryParameters?.ContainsKey(parameters[i].Name!) is object queryParameter)
             {
                 parameterValues[i] = Convert.ChangeType(queryParameter, realType);
