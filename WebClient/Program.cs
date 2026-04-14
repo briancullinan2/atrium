@@ -4,10 +4,12 @@
 
 using DataShared.Extensions;
 using Extensions.PrometheusTypes;
+using Interfacing.Services;
 using RazorSharp.Layout;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 
 internal class Program
 {
@@ -27,10 +29,12 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        var currents = new List<Assembly>() { typeof(MainLayout).Assembly }
+        var currents = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(CssOutlet).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
             .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
             .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely).GetServicable().ToList();
+
+        Console.WriteLine(JsonSerializer.Serialize(currents.Select(t => t.Name).ToList()));
 
         DatabaseBuilder.BuildServices(builder.Services, currents);
 

@@ -1,0 +1,222 @@
+﻿
+.page.login-mode {
+    padding-left: 0;
+}
+
+.page.login-mode .sidebar {
+    width: 0;
+}
+
+.page.login-mode .course-container {
+    padding-top: 30px;
+    max-height: calc(100vh - 3.5rem);
+    min-height: 0;
+}
+
+.page.login-mode .canvas-container {
+    left: 0;
+}
+
+.page.background-none .canvas-container canvas {
+    display: none;
+}
+
+.page.background-none .canvas-container {
+    animation: waveMovement 18s ease infinite;
+}
+
+
+.canvas-container {
+    z-index: -1;
+    background: #0a0514;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    transition: left ease-in-out 0.6s;
+}
+
+.canvas-container canvas {
+    height: 100%;
+    width: 100%;
+}
+
+
+main {
+    flex: 1;
+    max-width: 100%;
+    min-width: 200px;
+    padding: 0;
+    overflow: hidden;
+    min-height: 100%;
+    min-height: calc(100vh - 3.5rem);
+}
+
+
+.top-row {
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+}
+
+.sidebar .top-row {
+    justify-content: space-between;
+}
+
+
+.chat-box
+{
+    position: fixed;
+    bottom: 0;
+    height: 3rem;
+    font-size: 18px;
+    display:flex;
+    align-items: center;
+    width: 100%;
+    top: auto;
+    left:0;
+    justify-content: stretch;
+    z-index: 999;
+    padding: 10px;
+}
+
+
+.chat-box input
+{
+    flex-basis: 100%;
+    flex-grow: 1;
+    margin-right:10px;
+}
+
+.page.chatting .flash-card {
+    max-height: calc(100vh - 8.7rem);
+}
+
+.page.chatting .flash-card.animate-out
+{
+    max-height: 0;
+}
+
+
+.page.chatting .course-container {
+    min-height: calc(100vh - 6.5rem);
+}
+
+.page.login-mode .chat-box {
+    display: none;
+}
+
+.chat-message
+{
+    padding: 10px;
+    display:flex;
+    flex-direction:column;
+}
+
+.chat-message > *
+{
+    display: inline-block;
+    padding: 10px;
+}
+
+.chat-message *:nth-child(1)
+{
+    border-radius: 4px;
+}
+
+.chat-message *:nth-child(2)
+{
+    font-size: 12px;
+}
+
+.chat-message.from > *
+{
+    margin-right:auto;
+}
+
+.chat-message.to > *
+{
+    margin-left:auto;
+}
+
+
+
+@media (max-width: 640px) {
+    .top-row {
+        /* justify-content: space-between; */
+    }
+
+    header.top-row {
+        padding: 10px;
+    }
+
+    main {
+        overflow: visible;
+        min-height: calc(100vh - 7.5rem);
+    }
+
+    .top-row a, .top-row .btn-link {
+        margin-left: 0.5rem;
+    }
+
+    .page .canvas-container,
+    .page.study-mode .canvas-container {
+        left: 0;
+        transition: none;
+    }
+
+    .page {
+        transition: none;
+    }
+
+    .sidebar .top-row {
+        padding-right: 100px;
+    }
+
+}
+
+
+@media (min-width: 640px) {
+    .page {
+        padding-left: 250px;
+    }
+
+
+    .page.chatting .nav-scrollable {
+        height: calc(100vh - 6.5rem);
+    }
+
+    .page.study-mode {
+        padding-left: 80px;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 100;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .page > .top-row {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+

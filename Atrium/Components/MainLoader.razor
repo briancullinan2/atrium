@@ -9,8 +9,11 @@
 @inject CssOutlet Css
 @inject JavascriptOutlet JavaScript
 
-@((RenderFragment)Css)
-@((RenderFragment)JavaScript)
+@{
+    Css.ChildContent(__builder);
+    JavaScript.ChildContent(__builder);
+}
+
 
 @if (IsDebug)
 {

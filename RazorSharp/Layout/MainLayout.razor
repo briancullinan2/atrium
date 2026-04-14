@@ -27,7 +27,7 @@
 
         @if (Classy.ClassNames.Contains("cover-page"))
         {
-            @((object)Logo as RenderFragment)
+            Logo.ChildContent(__builder);
         }
         
     </article>

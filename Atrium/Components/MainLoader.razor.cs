@@ -57,6 +57,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         Console.WriteLine($"Starting in {PreferredMode} mode");
     }
 
+    public object[] GetChildComponents() => [..ComponentExtensions.GetChildComponents(this).Cast<object>()];
 
     public void Dispose()
     {

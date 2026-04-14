@@ -1,4 +1,5 @@
 ﻿using Atrium.Components;
+#if false
 using Atrium.Extensions;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
@@ -24,8 +25,8 @@ internal abstract partial class RenderOutlet : RenderService, IDisposable, IRend
     public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
     public event Action? OnChanged;
 
-    protected override RenderFragment? ChildContent { 
-        get => __builder => BuildRenderTree(__builder); set => base.ChildContent = value; }
+    public override Delegate ChildContent { 
+        get => (RenderFragment)(__builder => BuildRenderTree(__builder)); set => base.ChildContent = value; }
 
 
     public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust, Lazy<MainLoader?> _main)
@@ -129,6 +130,7 @@ internal partial class CssOutlet(ICompositeProvider Service, ITrustProvider Trus
     protected override List<string> TypeToIncludes(Type type) => type switch
     {
         _ when type == typeof(IHasForms) => ["_content/RazorSharp/css/accordion.css", "_content/RazorSharp/css/forms.css"],
+        _ when type.Extends(typeof(LayoutComponentBase)) => ["_content/RazorSharp/css/main.css"],
         _ => []
     };
 
@@ -182,7 +184,8 @@ internal partial class CssOutlet(ICompositeProvider Service, ITrustProvider Trus
     }
 }
 
-internal partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) : RenderOutlet(Service, Trust, _main)
+internal partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust, Lazy<MainLoader?> _main) 
+    : RenderOutlet(Service, Trust, _main), IJavascriptOutlet
 {
     protected override List<string> TypeToIncludes(Type type) => type switch
     {
@@ -201,4 +204,6 @@ internal partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvid
         }
     }
 }
+
+#endif
 

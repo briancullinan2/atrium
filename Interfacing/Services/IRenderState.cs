@@ -52,11 +52,12 @@ public interface IHasErrors<T> : IHasErrors
 public interface IHasClass
 {
     ClassNameCollection ClassNames { get; }
-
+    object[] GetChildComponents();
     void SetPageClasses(List<string> classes);
     void SetTheme(string? classes);
     void SetSidebar(string? classes);
     string? Sidebar { get; }
+    void HasChanged();
 }
 
 

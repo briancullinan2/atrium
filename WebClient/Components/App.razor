@@ -1,4 +1,11 @@
-﻿@using RazorSharp.Controls
+﻿@using Interfacing.Services
+@using RazorSharp.Controls
+@using RazorSharp.Extensions
+@implements IHasCurrent<App>
+@implements IHasClass
+@inject ICssOutlet Css
+@inject IJavascriptOutlet JavaScript
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -25,9 +32,16 @@
 </head>
 
 <body>
+    @{
+        Css.ChildContent(__builder);
+        JavaScript.ChildContent(__builder);
+    }
+
     @*@rendermode="InteractiveAuto" *@
     @*new InteractiveServerRenderMode(prerender: false)*@
     @*InteractiveWebAssembly*@
+    <div class="page @(Ready) @(string.Join(" ", ClassNames))">
+
     <Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
         <Found Context="routeData">
             <RouteView RouteData="routeData" DefaultLayout="@typeof(RazorSharp.Layout.MainLayout)" />
@@ -39,6 +53,9 @@
             </LayoutView>
         </NotFound>
     </Router>
+
+    </div>
+
     @*<FlashCard.Pages.Shared.ReconnectModal />*@
     <!--<script src="/_content/RazorSharp/main.js"></script>-->
     <script src="/_content/WebClient/blazor.web.js"></script>
@@ -76,13 +93,25 @@
 
 @code {
 
+    public static App? Current { get; private set; } = null;
+
+    public object[] GetChildComponents() => [..InvokableExtensions.GetChildComponents(this).Cast<object>()];
+
     // Default to Wasm, but allow an override
     IComponentRenderMode preferredMode = RenderMode.InteractiveServer;
 
     private bool IsDebug = false;
+    protected string Ready = "loading";
+    
+    public void HasChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     protected override void OnInitialized()
     {
+        Current = this;
+
         base.OnInitialized();
 #if DEBUG
         IsDebug = true;
@@ -114,5 +143,41 @@
 
         return parameters;
     }
+    
+    private List<string> GivenClassNames { get; set; } = [];
+    public ClassNameCollection CombinedClassNames { get; } = [];
+    public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [.. value]; }
+    private List<string>? PageClasses = [];
+    public string? Theme;
+    public string? Sidebar { get; private set; }
+    public string? Background;
+    
+    // TODO: move this to mainloader classes along side SetTitle
+    public void SetPageClasses(List<string> classes)
+    {
+        PageClasses = classes;
+    }
 
+    public void SetTheme(string? classes)
+    {
+        var newClass = "theme-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Theme = newClass;
+    }
+
+    public void SetSidebar(string? classes)
+    {
+        Sidebar = classes;
+    }
+
+    public void SetBackground(string? classes)
+    {
+        var newClass = "background-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
+
+    private void SetBackground(AnimationMode? theme)
+    {
+        var newClass = "background-" + (theme?.ToString()?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
 }

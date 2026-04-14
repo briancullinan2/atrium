@@ -168,7 +168,7 @@ public static partial class TypeExtensions
     public static List<Type> ToMetas(this IEnumerable<Assembly?>? ass)
     {
         if (ass == null) return [];
-        return [.. ass.SelectMany(a => a?.ToMenus() ?? []).Where(t => t != null)];
+        return [.. ass.SelectMany(a => a?.ToMetas() ?? []).Where(t => t != null)];
     }
 
 

@@ -1,6 +1,7 @@
 ﻿using Atrium.Extensions;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Maui.Storage;
 using System.Net.Http;
 
@@ -52,18 +53,20 @@ internal partial class LogoService : RenderService, IHasCurrent<RenderFragment>,
     private readonly HttpClient? Http;
 }
 
+#if false
 
-public partial class RenderService(ICompositeProvider service) : ComponentBase, IComponent, IDisposable
+
+public partial class RenderService(ICompositeProvider service) : ComponentBase, IRenderService, IComponent, IDisposable
 {
     protected ICompositeProvider Service { get; set; } = service;
 
-    protected virtual RenderFragment? ChildContent
+    public virtual Action<object> ChildContent
     {
         get
         {
-            return __builder => {
+            return (__builder => {
                 (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as RenderFragment)?.Invoke(__builder);
-            };
+            });
         }
         set
         { }
@@ -84,7 +87,7 @@ public partial class RenderService(ICompositeProvider service) : ComponentBase, 
     {
         if (_renderHandle?.IsInitialized == true && ChildContent != null)
         {
-            _renderHandle?.Render(ChildContent);
+            _renderHandle?.Render((RenderFragment)ChildContent);
         }
     }
 
@@ -103,7 +106,10 @@ public partial class RenderService(ICompositeProvider service) : ComponentBase, 
             //if (handle != null)
             //    service.Attach(handle.Value);
         }
-        return service.ChildContent ?? (__builder => { });
+        return service.ChildContent as RenderFragment ?? (RenderFragment)(__builder => { });
     }
 
 }
+
+#endif
+

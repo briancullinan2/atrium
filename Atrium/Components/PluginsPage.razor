@@ -7,7 +7,9 @@
 @inject ICompositeProvider Service
 @inject LogoService Logo
 
-@((RenderFragment)Logo)
+@{
+    Logo.ChildContent(__builder);
+}
 
 <table>
     <tbody>
