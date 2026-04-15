@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Text;
-
+﻿
 namespace Interfacing.Services;
 
 public interface IRenderService
@@ -63,7 +61,7 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
     //private readonly NavigationManager Nav;
     private readonly ITrustProvider Trust;
     private bool IsClosing;
-    private readonly RenderStateProvider Rendered;
+    //private readonly RenderStateProvider Rendered;
 
     public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
     public event Action? OnChanged;
@@ -86,14 +84,14 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
     }
 
 
-    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust, RenderStateProvider rendered)
+    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust)
         : base(Service)
     {
         //Nav = _nav;
         Trust = _trust;
         Trust.OnSettledAsync += ListenTrust;
-        Rendered = rendered;
-        Rendered.OnRendered += ListenRendered;
+        //Rendered = rendered;
+        //Rendered.OnRendered += ListenRendered;
         //Rendered.OnEmptied += Rendered_OnEmptied;
     }
 
@@ -101,12 +99,15 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
     protected abstract List<string> TypeToIncludes(Type type);
     protected abstract string BuildRenderTree();
 
+
+    /* Uncircular dependency
     public virtual void ListenRendered()
     {
         if (IsClosing) return;
 
         _ = ListenUp();
     }
+    */
 
 
     public virtual async Task ListenTrust()
@@ -138,8 +139,8 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         List<Type?> components = [
             previousHint,
             layout,
-            Rendered._container?.GetType(),
-            ..Rendered._container?.GetChildComponents().Select(c => c.GetType()) ?? []
+            //Rendered._container?.GetType(),
+            //..Rendered._container?.GetChildComponents().Select(c => c.GetType()) ?? []
         ];
 
         var HasChanged = false;
@@ -179,14 +180,18 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
             // don't trigger removals, just let them happen
         }
 
-        if (HasChanged && Rendered?._container?.HasChanged() is Task task) await task;
+        if (HasChanged)
+        {
+            var Container = Service.GetService<IHasChildren>();
+            if (Container?.HasChanged() is Task task) await task;
+        }
     }
 
     public void Dispose()
     {
         IsClosing = true;
         Trust.OnSettledAsync -= ListenTrust;
-        Rendered.OnRendered -= ListenRendered;
+        //Rendered.OnRendered -= ListenRendered;
         GC.SuppressFinalize(this);
     }
 }
@@ -224,8 +229,8 @@ public partial class CssOutlet
     }
 
 
-    public CssOutlet(ICompositeProvider Service, ITrustProvider Trust, RenderStateProvider rendered)
-        : base(Service, Trust, rendered)
+    public CssOutlet(ICompositeProvider Service, ITrustProvider Trust)
+        : base(Service, Trust)
     {
 
         CombinedClassNames.AutoSources = () => [
@@ -328,8 +333,8 @@ public partial class CssOutlet
 
 }
 
-public partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust, RenderStateProvider rendered)
-    : RenderOutlet(Service, Trust, rendered), IJavascriptOutlet
+public partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust)
+    : RenderOutlet(Service, Trust), IJavascriptOutlet
 {
     protected override List<string> TypeToIncludes(Type type) => type switch
     {

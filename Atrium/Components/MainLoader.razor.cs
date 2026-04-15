@@ -23,6 +23,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        Rendered.NotifyEmptied(this);
 
         var isFirstRun = true; // Use your ILocalStore service here
         FirstTimeLoad = isFirstRun;
@@ -50,14 +51,14 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         Console.WriteLine($"Starting in {PreferredMode} mode");
     }
 
-    public object[] GetChildComponents() => [..ComponentExtensions.GetChildComponents(this).Cast<object>()];
+    public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
     public async Task HasChanged() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
         Trust.OnAssemblyLoaded -= NotifyAssembly;
         Nav.LocationChanged -= Nav_LocationChanged;
-        Rendered.NotifyEmptied();
+        Rendered.NotifyEmptied(this);
         GC.SuppressFinalize(this);
     }
 
@@ -101,7 +102,8 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     public Type? AuthWrapper { get; set; } = null;
 
     static Type? StoredDefaultRoot = null;
-    public Type? DefaultRoot {
+    public Type? DefaultRoot
+    {
         get => StoredDefaultRoot;
         set
         {
@@ -116,7 +118,8 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     }
 
     static Type? StoredDefaultLayout = null;
-    public Type? DefaultLayout {
+    public Type? DefaultLayout
+    {
         get => StoredDefaultLayout;
         set
         {
@@ -287,8 +290,10 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     {
         return __builder =>
         {
+
             if (DefaultRoot != null)
             {
+                _ = Css.ListenUp(DefaultRoot);
                 __builder.OpenComponent(0, DefaultRoot);
                 __builder.CloseComponent();
                 return;

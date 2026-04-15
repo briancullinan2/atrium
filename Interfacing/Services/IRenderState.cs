@@ -39,7 +39,7 @@ public interface IRenderState : IHasModule, ISingleUser
     object Runtime { get; }
     event Action OnRendered;
     event Action OnEmptied;
-    void NotifyEmptied();
+    void NotifyEmptied(IHasChildren container);
     void NotifyRendered(object runtime, IHasChildren container);
 
 
@@ -100,7 +100,7 @@ public interface IPageState
 
 // TODO: add component state saving stuff here because its also agnostic and small
 
-public class RenderStateProvider(ICompositeProvider Provider) : IRenderState
+public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, IDisposable
 {
 
     private object? _runtime = null;
@@ -140,33 +140,48 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState
     private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal IHasChildren? _container;
 
-    public async ValueTask EnsureInitialized() => await _renderTcs.Task;
+    public async ValueTask EnsureInitialized()
+    {
+        // Capture the current task so we don't await a version that gets swapped mid-stream
+        var currentTask = _renderTcs.Task;
+        await currentTask;
+    }
 
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
     public void NotifyRendered(object runtime, IHasChildren container)
     {
         Runtime = runtime;
+        _container = container; // i think AI solved 1 bug here
         // Fulfill the promise for everyone currently waiting
         _renderTcs.TrySetResult(true);
         //OffsetInMinutes = await Page.GetTimezoneOffset();
         _onRendered?.Invoke();
-
-        _container = container;
     }
 
-    public void NotifyEmptied()
+    public void NotifyEmptied(IHasChildren container)
     {
+        if (_container != container) return;
+
         _runtime = null;
-        // Only swap for a new "Promise" if the old one was already fulfilled.
-        // If it's still pending, let the current waiters keep waiting for the NEXT render.
-        if (_renderTcs.Task.IsCompleted)
+        if (!_renderTcs.Task.IsCompleted)
         {
-            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _renderTcs.TrySetResult(false);
         }
+        //if (_renderTcs.Task.IsCompleted)
+        //{
+        _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        //}
         OnEmptied?.Invoke();
     }
 
+
+    public void Dispose()
+    {
+        _renderTcs.TrySetResult(false);
+        OnEmptied?.Invoke();
+        GC.SuppressFinalize(this);
+    }
 
 
     // TODO: move this to IRenderState to free up IPageEvents to only deal with eventing

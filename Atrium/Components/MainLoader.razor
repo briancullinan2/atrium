@@ -59,10 +59,14 @@
 
 @code {
     
+
     private RenderFragment RenderWithLayout() => __builder =>
     {
         <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
             <Found Context="routeData">
+                @{
+                    _ = Css.ListenUp(routeData.PageType, DefaultLayout);
+                }
                 @if (AuthService != null)
                 {
                     @CreatePermissionContent(routeData)
@@ -86,6 +90,9 @@
         <main>
             <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
                 <Found Context="routeData">
+                    @{
+                        _ = Css.ListenUp(routeData.PageType);
+                    }
                     @if (AuthService != null)
                     {
                         @CreatePermissionContent(routeData)

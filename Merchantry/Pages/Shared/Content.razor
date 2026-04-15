@@ -29,9 +29,9 @@
         };
     }
 
-    public static Delegate ShowContext { get => (Type routeControl, NavigationManager Nav) 
+    public static Delegate ShowContext { get => (Type routeControl) 
         => routeControl == typeof(Pages.Content.Analysis)
-        || Nav.Uri.Contains("/hosting", StringComparison.InvariantCultureIgnoreCase); }
+        || routeControl.Name.Contains("hosting", StringComparison.InvariantCultureIgnoreCase); }
         
     public static Delegate ContextInsert
     {

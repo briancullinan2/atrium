@@ -95,7 +95,9 @@ public class MenuService(ICompositeProvider Service) : IMenuService
     public static List<Type> Contexts { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
         .GetAssemblies().ToContexts().Distinct()];
 
-    public List<Type> EnabledContexts { get; private set; } = GetEnabledContexts(Service);
+
+    private List<Type>? CachedEnabledContexts = null;
+    public List<Type> EnabledContexts { get => CachedEnabledContexts ?? GetEnabledContexts(Service); private set => CachedEnabledContexts = value; }
 
 
 

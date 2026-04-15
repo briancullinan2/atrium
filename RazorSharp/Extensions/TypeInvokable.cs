@@ -1,6 +1,7 @@
 ﻿
 
 using Microsoft.AspNetCore.Components.RenderTree;
+using Microsoft.AspNetCore.Http;
 
 namespace RazorSharp.Extensions;
 
@@ -15,7 +16,7 @@ public static partial class InvokableExtensions
 
     public static object? InvokeService(this MethodInfo? myDelegate, ICompositeProvider service, object? thisObject = null, params object?[]? args)
     {
-        if(myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
+        if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
         var parameters = myDelegate.GetParameters();
         var parameterValues = new object?[parameters.Length];
@@ -27,10 +28,24 @@ public static partial class InvokableExtensions
             // TODO: add more special service injection handlers
             if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
             {
-                if (rendered.IsReady)
+                var isSet = false;
+                try
                 {
                     var nav = service.GetRequiredService<NavigationManager>();
                     parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
+                    isSet = true;
+                }
+                catch { }
+
+                if (!isSet)
+                {
+                    try
+                    {
+                        var nav = service.GetRequiredService<IHttpContextAccessor>();
+                        var uri = nav.HttpContext?.Request.Path;
+                        parameterValues[i] = TypeExtensions.IdentifyNavigation(uri).ComponentType;
+                    }
+                    catch { }
                 }
             }
             else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
@@ -59,7 +74,7 @@ public static partial class InvokableExtensions
             }
         }
 
-        if(thisObject != null && !myDelegate.IsStatic)
+        if (thisObject != null && !myDelegate.IsStatic)
         {
             return myDelegate.Invoke(thisObject, parameterValues);
         }
@@ -266,7 +281,7 @@ public static partial class InvokableExtensions
             ?.GetValue(component) as IJSRuntime;
     }
 
-    
+
     public static ValueTask Invokable(this object? component, IJSRuntime? JS = null, ICompositeProvider? Service = null)
     {
         if (component == null) return ValueTask.CompletedTask;

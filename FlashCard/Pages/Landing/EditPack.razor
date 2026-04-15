@@ -103,8 +103,10 @@
 
 @code
 {
-    public static Delegate ShowContext { get => (Type routeControl, NavigationManager Nav) => routeControl == typeof(Pages.Landing.Courses)
-        || routeControl == typeof(Pages.Landing.Packs) || Nav.Uri.Contains("upload") || Nav.Uri.Contains("store"); }
+    public static Delegate ShowContext { get => (Type routeControl) => routeControl == typeof(Pages.Landing.Courses)
+        || routeControl == typeof(Pages.Landing.Packs) 
+        || routeControl.Name.Contains("upload", StringComparison.InvariantCultureIgnoreCase) 
+        || routeControl.Name.Contains("store", StringComparison.InvariantCultureIgnoreCase) ; }
         
 
         // TODO: convert this to a utility next to GetUri(this TComponent) and automatically fill in with attributes, least repetative

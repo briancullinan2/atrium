@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
@@ -17,8 +15,8 @@ namespace Hosting.Services;
 // TODO: designed to shut down both services at the same time
 
 public abstract class BaseFormFactor(
-    ICompositeProvider _service, 
-    NavigationManager? nav = null) 
+    ICompositeProvider _service,
+    NavigationManager? nav = null)
     : IFormFactor, ITitleService, IPageState
 {
     public virtual ICompositeProvider Service { get; } = _service;
@@ -90,7 +88,7 @@ public abstract class BaseFormFactor(
         if (Manager == null) return null;
         await Manager.EnsureInitialized();
         var Module = Manager.Module as IJSObjectReference;
-        if(Module == null) return null;
+        if (Module == null) return null;
         var state = await Module.InvokeAsync<Dictionary<string, string?>>("restoreState");
         return state;
     }
@@ -186,7 +184,6 @@ public partial class FormFactor(
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
-    , IPageEvents? Page = null
 
 ) : BaseFormFactor(service, nav)
 {
@@ -198,10 +195,54 @@ public partial class FormFactor(
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Current?.HttpContext?.Connection.Id ?? "Internal";
 
-    public override Dictionary<string, string>? QueryParameters => Navigation?.Uri.Query().ToList()
-            .Concat(Current?.HttpContext?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
-            .Concat(Current?.HttpContext?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
-            .ToDictionary();
+    public override Dictionary<string, string>? QueryParameters
+    {
+        get
+        {
+            var queryParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. Prioritize NavigationManager (The Interactive Source of Truth)
+            try
+            {
+                if (Navigation != null)
+                {
+                    var uri = new Uri(Navigation.Uri);
+                    var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                    foreach (var kvp in query)
+                    {
+                        queryParams[kvp.Key] = kvp.Value.FirstOrDefault() ?? string.Empty;
+                    }
+                }
+            }
+            catch { /* Fallback to HttpContext if Nav is uninitialized during Prerender */ }
+
+            // 2. Safe-check the HttpContext (The Static/Initial Source of Truth)
+            var context = Current?.HttpContext;
+            if (context != null)
+            {
+                // Only touch Query if our dictionary is still light
+                foreach (var kvp in context.Request.Query)
+                {
+                    queryParams.TryAdd(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty);
+                }
+
+                // 3. Form is high-risk. Only check if it's a POST with the right content type.
+                if (context.Request.HasFormContentType)
+                {
+                    try
+                    {
+                        foreach (var kvp in context.Request.Form)
+                        {
+                            queryParams.TryAdd(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty);
+                        }
+                    }
+                    catch (InvalidOperationException) { /* Form may have already been disposed */ }
+                }
+            }
+
+            return queryParams.Count > 0 ? queryParams : null;
+        }
+    }
 
     public override List<IFile> Files => [
         ..Current?.HttpContext?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
@@ -215,7 +256,7 @@ public partial class FormFactor(
         var store = http?.RequestServices.GetService<IPersistentComponentStateStore>();
         var manager = Service.GetRequiredService<ComponentStatePersistenceManager>();
         var renderer = Service.GetRequiredService<Renderer>();
-        if(store != null)
+        if (store != null)
             _ = manager.PersistStateAsync(store, renderer);
     }
 
@@ -239,7 +280,7 @@ public partial class FormFactor(
     {
         if (Current?.HttpContext?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
         //if (Page == null) 
-            return null;
+        return null;
         //return await base.GetSessionCookie(name);
     }
 
@@ -247,8 +288,9 @@ public partial class FormFactor(
     {
         var _title = await base.UpdateTitle(title); // sets title bar on html page
 
+        var Page = Service.GetService<IPageEvents>();
         if (Page != null)
-            Page?.SetPageTitle(_title);
+            await Page.SetPageTitle(_title);
 
         if (IsWebContext) return _title; // dont update app container from web context... yet.
 

@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections;
 
 namespace RazorSharp.Services;
 
 
 
-public class PageManager : IPageEvents
+public class PageManager : IPageEvents, IAsyncDisposable
 {
 
     #region "Initialization"
@@ -37,7 +36,8 @@ public class PageManager : IPageEvents
         NavigationManager _nav,
         //ICircuitProvider? _context = null,
         IAuthService? _auth = null
-    ) : base() {
+    ) : base()
+    {
         Services = _service;
         Nav = _nav;
         Logger = _logger;
@@ -52,16 +52,16 @@ public class PageManager : IPageEvents
 
     private void Nav_LocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        
+
     }
 
-    protected void NotifyEmptied() 
+    protected void NotifyEmptied()
     {
         var Classy = Services.GetService<IHasClass>();
         Classy?.ClassNames.Add("cover-page");
         Classy?.ClassNames.Add("login-mode");
-        if (_restartRequired.Task.IsCompleted)
-            _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        //if (_restartRequired.Task.IsCompleted)
+        //    _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
 
@@ -70,7 +70,9 @@ public class PageManager : IPageEvents
 
     public async ValueTask DisposeAsync()
     {
-        Rendered.OnRendered -= NotifyEmptied;
+        if (_loadLock.IsLocked())
+            _loadLock.Release();
+        Rendered.OnRendered -= NotifyRendered;
         Rendered.OnEmptied -= NotifyEmptied;
         if (IsReady)
         {
@@ -82,6 +84,7 @@ public class PageManager : IPageEvents
 
 
     private IJSObjectReference? _module = null;
+    private DotNetObjectReference<PageManager>? dotNetHelper;
 
     public IJSObjectReference Module
     {
@@ -97,6 +100,7 @@ public class PageManager : IPageEvents
     }
 
 
+
     private readonly SemaphoreSlim _loadLock = new(1, 1);
 
     public async ValueTask EnsureInitialized()
@@ -105,14 +109,18 @@ public class PageManager : IPageEvents
         if (_restartRequired.Task.IsCompleted) return;
 
         // 2. Wait for the lock
-        await _loadLock.WaitAsync();
+        if (!await _loadLock.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false))
+        {
+            // If we hit this, we know we have a deadlock or a hung JS call
+            throw new TimeoutException("Initialization lock timed out. Possible deadlock in JS/Rendered.");
+        }
 
         try
         {
             if (_restartRequired.Task.IsCompleted) return;
             await Rendered.EnsureInitialized();
             _module = await ((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
-            var dotNetHelper = DotNetObjectReference.Create(this);
+            dotNetHelper = DotNetObjectReference.Create(this);
             await _module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
             var Classy = Services.GetService<IHasClass>();
             Classy?.ClassNames.Remove("cover-page");
@@ -122,8 +130,11 @@ public class PageManager : IPageEvents
 
             _restartRequired.TrySetResult(true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            dotNetHelper?.Dispose();
+            dotNetHelper = null;
+            Console.WriteLine(ex);
             throw;
         }
         finally
@@ -171,14 +182,14 @@ public class PageManager : IPageEvents
         await EnsureInitialized();
         return await Module.InvokeAsync<bool>("isAtBottom", id);
     }
-    
+
 
     public async Task ScrollSlightlyAsync(string id, int amount = 10)
     {
         await EnsureInitialized();
         await Module.InvokeVoidAsync("scrollSlightly", id, amount);
     }
-        
+
 
     public async Task<string> GetLineHeightAsync(string? elementId = null)
     {
@@ -209,7 +220,7 @@ public class PageManager : IPageEvents
 
 
 
-    public bool IsLocked(string id) => _states.TryGetValue((PageAction.Scroll, id), out var atBottom) 
+    public bool IsLocked(string id) => _states.TryGetValue((PageAction.Scroll, id), out var atBottom)
         && atBottom is bool asBool && asBool == true;
 
 
@@ -321,7 +332,7 @@ public class PageManager : IPageEvents
     //    get => _events.TryGetValue((action, id), out var del) ? del : null;
     //    set => Subscribe((action, id), value);
     //}
-    
+
 
     public void Unsubscribe((PageAction Action, string Id) key, Delegate? value)
     {
@@ -360,7 +371,7 @@ public class PageManager : IPageEvents
             _events[key] = value;
         // Combine adds 'value' to the invocation list of 'existing'
 
-            // THE AUTO-FIRE ENGINE
+        // THE AUTO-FIRE ENGINE
         TriggerState(key, value);
     }
 
@@ -401,7 +412,7 @@ public class PageManager : IPageEvents
 
                 case PageAction.Resize:
                     var lastResize = lastState as (int w, int h, bool s)?;
-                    if(lastResize.HasValue)
+                    if (lastResize.HasValue)
                     {
                         var (w, h, s) = lastResize.Value;
                         if (value is Action<int, int, bool> resizeHandler)
@@ -508,5 +519,6 @@ public static class PageFormExtensions
         await Cast.EnsureInitialized();
         await Cast.Runtime!.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(title));
     }
+
 }
 

@@ -31,7 +31,7 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
     {
         try
         {
-            if (Current != null || IsStarting || 
+            if (Current != null || IsStarting ||
                 (_private?.Lifetime.ApplicationStarted.IsCancellationRequested == true
                 && _private?.Lifetime.ApplicationStopped.IsCancellationRequested != true))
                 return _private;
@@ -47,11 +47,11 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
                 ApplicationName = "Atrium"
             });
 
-//#if DEBUG
-//            webBuilder.Environment.EnvironmentName = Environments.Development;
-//#else
+            //#if DEBUG
+            //            webBuilder.Environment.EnvironmentName = Environments.Development;
+            //#else
             webBuilder.Environment.EnvironmentName = Environments.Production;
-//#endif
+            //#endif
 
             webBuilder.Services.AddDirectoryBrowser();
             webBuilder.Services.AddRazorComponents()
@@ -148,6 +148,14 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 
             //webApp.UseDefaultFiles(options);
             //webApp.MapFallbackToFile("app.html");
+            webApp.Use((context, next) =>
+            {
+                context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                context.Response.Headers.Append("Pragma", "no-cache");
+                context.Response.Headers.Append("Expires", "0");
+
+                return next();
+            });
 
             webApp.UseBlazorFrameworkFiles();
             webApp.UseStaticFiles();
@@ -160,14 +168,6 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 
 
             //webApp.MapGet("/api/status", () => new { Status = "Online", Machine = Environment.MachineName });
-            webApp.Use((context, next) =>
-            {
-                context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-                context.Response.Headers.Append("Pragma", "no-cache");
-                context.Response.Headers.Append("Expires", "0");
-
-                return next();
-            });
 
             if (webApp.Environment.IsDevelopment())
             {

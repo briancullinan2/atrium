@@ -1,7 +1,6 @@
 @inject ICompositeProvider Service
 @inject IMenuService MenuService
-@inject ITitleService Title
-
+@implements IDisposable
 @implements IHasContext
 
 <header>
@@ -32,11 +31,18 @@
 @code {
 
     protected string? HeaderTitle = null;
-
+    ITitleService? Title = null;
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Title.OnTitleChanged += Title_Changed;
+        Title = Service.GetService<ITitleService>();
+        Title?.OnTitleChanged += Title_Changed;
+    }
+
+    public void Dispose()
+    {
+        Title?.OnTitleChanged -= Title_Changed;
+        GC.SuppressFinalize(this);
     }
 
     protected void Title_Changed(string? title)

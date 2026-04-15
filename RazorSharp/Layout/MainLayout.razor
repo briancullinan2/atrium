@@ -4,18 +4,17 @@
 @implements IHasChildren
 @inject IJSRuntime JS
 @inject IMenuService MenuService
-@inject IPageEvents PageManager
-@inject IRenderState RenderState
 @inject ICompositeProvider Service
 @inject IHasClass Classy
 @inject ILogoService Logo
 
 <NavMenu />
     
+@*TODO: using the layout injection found below that way it only happens if there is a state set 
 @foreach (var item in RenderState.State)
 {
     <input type="hidden" name="state_@item.Key" value="@item.Value" />
-}
+}*@
 
 @if (ShowHeader != false)
 {
@@ -25,14 +24,13 @@
 <main>
     
 
-    <article class="content course-container">
-
-        @if (Classy.ClassNames.Contains("cover-page"))
-        {
+    @if (Classy.ClassNames.Contains("cover-page"))
+    {
+        <article class="content course-container">
             Logo.ChildContent(__builder);
-        }
+        </article>
+    }
         
-    </article>
 
 
     @*TODO: check for layout animation*@
@@ -69,7 +67,7 @@
 
     protected override void OnInitialized()
     {
-        RenderState.NotifyEmptied();
+        //RenderState.NotifyEmptied(this);
         // TODO: find a page animation
         //var asses = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies();
         //Parallel.ForEachAsync(asses, async (s, _) => {
@@ -92,7 +90,7 @@
 
     public void Dispose()
     {
-        RenderState.NotifyEmptied();
+        //RenderState.NotifyEmptied(this);
         IsClosing = true;
     }
 
@@ -104,7 +102,7 @@
     {
         if(firstRender)
         {
-            RenderState.NotifyRendered(JS, this);
+            //RenderState.NotifyRendered(JS, this);
         }
 
         // TODO:
