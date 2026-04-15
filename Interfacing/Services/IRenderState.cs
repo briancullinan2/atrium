@@ -14,7 +14,21 @@ public interface IHasModule
 }
 
 
-public interface IRenderState : IHasModule
+// runs as singleton on desktop and scoped in web mode, IRenderState requires this, ironically, to stay decoupled
+//   mark these words, nothing other than IRenderState uses this mode
+public interface ISingleUser
+{
+
+}
+
+
+public interface ISingleton
+{
+
+}
+
+
+public interface IRenderState : IHasModule, ISingleUser
 {
     object Runtime { get; }
     event Action OnRendered;

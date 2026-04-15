@@ -77,16 +77,19 @@ internal static class BuilderExtensions
 
             var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
             var iHasService = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasService)));
+            var iHasSingleton = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleton)));
+            var iHasSingleUser = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
 
             //var alreadyMapped = AlreadyMapped.Contains(service);
-            if(service == typeof(TrustedLoader))
+            if (service == typeof(TrustedLoader))
             {
                 Console.WriteLine("here");
             }
             // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
             // static Current {get;} are inherently singletons
             // IHasService service containers are inherently singletons
-            if (currentType != null || iHasService != null)
+            if (currentType != null || iHasService != null || iHasSingleton != null
+                || (iHasSingleUser != null && alreadyMapped.Count > 0))
             {
                 Services.AddAutoSingleton(service, key, alreadyMapped);
 

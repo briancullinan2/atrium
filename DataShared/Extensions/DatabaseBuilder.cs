@@ -42,9 +42,12 @@ public class DatabaseBuilder : IHasBuilder
 
             var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
             var iHasService = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasService)));
+            var iHasSingleton = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleton)));
+            var iHasSingleUser = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
 
             // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
-            if (currentType != null || iHasService != null)
+            if (currentType != null || iHasService != null || iHasSingleton != null)
+            // ISingleUser we know were in web server mode because its not using the Trust builder
             {
                 Services.AddAutoSingleton(service, key);
 

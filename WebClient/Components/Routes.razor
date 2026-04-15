@@ -1,4 +1,16 @@
-﻿@using RazorSharp.Controls
+﻿@using Extensions.PrometheusTypes
+@using Interfacing.Services
+@using RazorSharp.Controls
+@using RazorSharp.Extensions
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@implements IDisposable
+@inject NavigationManager Nav
+@inject IHasClass Classy
+@inject ICompositeProvider Service
+@inject ITrustProvider Trust
+@inject IRenderState Rendered
+@inject IJSRuntime JS
 
 <Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
     <Found Context="routeData">
@@ -14,4 +26,65 @@
 
 @code {
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        Nav.LocationChanged += Nav_LocationChanged;
+
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _ = ProbablyUpdateTitle();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Trust.OnSettledAsync += ProbablyUpdateTitle;
+            Rendered.NotifyRendered(JS);
+        }
+    }
+
+
+    private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Classy.SetPageClasses(["Home"]);
+        else Classy.SetPageClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
+    .Split('/')
+    .Select(seg => seg.ToSafe())
+        ]);
+
+        _ = ProbablyUpdateTitle();
+    }
+
+    public void Dispose()
+    {
+        //Trust.OnAssemblyLoaded -= NotifyAssembly;
+        Rendered.NotifyEmptied();
+        Nav.LocationChanged -= Nav_LocationChanged;
+        GC.SuppressFinalize(this);
+    }
+
+    private async Task ProbablyUpdateTitle()
+    {
+        await Task.Delay(400);
+        var components = this
+            .GetChildComponents()
+            .OrderBy(comp => comp.GetType() != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
+            .ToList();
+        var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
+            .FirstOrDefault();
+        if (title is DisplayAttribute attr)
+        {
+            var Title = Service.GetService<ITitleService>();
+            Title?.UpdateTitle(attr.Name);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
 }

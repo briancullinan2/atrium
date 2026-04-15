@@ -88,6 +88,8 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             //   TODO: web server should be using SQLite anyways
             //webBuilder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(MauiProgram.Current?.Services.GetService<ILocalStore>()));
             //webBuilder.Services.AddSingleton<ILocalStore>(sp => MauiProgram.Current.Services.GetRequiredService<ILocalStore>());
+            webBuilder.Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(() => Current));
+
 
             // get a shared logger
             webBuilder.Services.AddScoped<SimpleLogger>(sp =>

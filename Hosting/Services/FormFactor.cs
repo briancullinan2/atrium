@@ -181,30 +181,31 @@ public partial class FormFactor : BaseFormFactor
 public partial class FormFactor(
     ICompositeProvider service,
     NavigationManager nav,
-    HttpContext? Context = null
+    IHttpContextAccessor? Current = null
     , IWindowManager? Windows = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
+    , IPageEvents? Page = null
 
 ) : BaseFormFactor(service, nav)
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
-    public override bool IsWebContext => Context != null;
-    public override bool IsMauiContext => (Context == null || App == null) && (Maui != null || Windows != null);
+    public override bool IsWebContext => Current?.HttpContext != null;
+    public override bool IsMauiContext => (Current?.HttpContext == null || App == null) && (Maui != null || Windows != null);
     public override string GetPlatform() => DeviceInfo.Platform.ToString() + " - " + DeviceInfo.VersionString;
     public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
-    public override string ConnectionId => Context?.Connection.Id ?? "Internal";
+    public override string ConnectionId => Current?.HttpContext?.Connection.Id ?? "Internal";
 
     public override Dictionary<string, string>? QueryParameters => Navigation?.Uri.Query().ToList()
-            .Concat(Context?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
-            .Concat(Context?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .Concat(Current?.HttpContext?.Request.Query.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
+            .Concat(Current?.HttpContext?.Request.Form.ToList().Select(kvp => new KeyValuePair<string, string>(kvp.Key, kvp.Value.FirstOrDefault() ?? string.Empty)) ?? [])
             .ToDictionary();
 
     public override List<IFile> Files => [
-        ..Context?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
-        new BodyBag(Context?.Request) ];
+        ..Current?.HttpContext?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
+        new BodyBag(Current?.HttpContext?.Request) ];
 
 
     public override async Task SetState()
@@ -221,8 +222,8 @@ public partial class FormFactor(
 
     public override async Task SetSessionCookie(string name, string value, int days)
     {
-        if (Context?.Response.HasStarted != true)
-            Context?.Response.Cookies.Append(name, value, new CookieOptions
+        if (Current?.HttpContext?.Response.HasStarted != true)
+            Current?.HttpContext?.Response.Cookies.Append(name, value, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true, // Arizona: Always use Secure in production
@@ -236,7 +237,7 @@ public partial class FormFactor(
 
     public override async Task<string?> GetSessionCookie(string name)
     {
-        if (Context?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
+        if (Current?.HttpContext?.Request.Cookies.TryGetValue(name, out var cookie) == true) return cookie;
         //if (Page == null) 
             return null;
         //return await base.GetSessionCookie(name);
@@ -244,13 +245,18 @@ public partial class FormFactor(
 
     public override async Task<string?> UpdateTitle(string? title)
     {
+        var _title = await base.UpdateTitle(title); // sets title bar on html page
+
+        if (Page != null)
+            Page?.SetPageTitle(_title);
+
+        if (IsWebContext) return _title; // dont update app container from web context... yet.
+
         if (Windows != null)
             _ = Windows.ExpandWindow(true); // don't wait on animations
 
-        var _title = await base.UpdateTitle(title);
-
-        if (Service.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
-            await window.UpdateTitle(_title);
+        if (Windows != null && Windows.IsSplashMode != true)
+            await Windows.UpdateTitle(_title);
 
         return _title;
     }

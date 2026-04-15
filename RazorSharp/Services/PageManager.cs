@@ -110,15 +110,17 @@ public class PageManager : IPageEvents
         try
         {
             if (_restartRequired.Task.IsCompleted) return;
-            Module = await (Rendered.Runtime as IJSRuntime)!.InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
+            await Rendered.EnsureInitialized();
+            _module = await ((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/_content/RazorSharp/page.js");
             var dotNetHelper = DotNetObjectReference.Create(this);
-            _restartRequired.TrySetResult(true);
-            await Module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
+            await _module.InvokeVoidAsync("subscribePageEvents", dotNetHelper);
             var Classy = Services.GetService<IHasClass>();
             Classy?.ClassNames.Remove("cover-page");
             // let login manager remove login mode?
             if (Auth == null)
                 Classy?.ClassNames.Remove("login-mode");
+
+            _restartRequired.TrySetResult(true);
         }
         catch (Exception)
         {

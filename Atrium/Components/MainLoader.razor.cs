@@ -63,13 +63,17 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     {
         Trust.OnAssemblyLoaded -= NotifyAssembly;
         Nav.LocationChanged -= Nav_LocationChanged;
+        Rendered.NotifyEmptied();
         GC.SuppressFinalize(this);
     }
 
     private async Task ProbablyUpdateTitle()
     {
         await Task.Delay(400); // more than MainLayout card animations to insert the page
-        var components = this.GetChildComponents().OrderBy(comp => comp.GetType() != typeof(PluginsPage) ? -1 : 0);
+        var components = this
+            .GetChildComponents()
+            .OrderBy(comp => comp.GetType() != typeof(PluginsPage) ? -1 : 0)
+            .ToList();
         var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
             .FirstOrDefault();
         if (title is DisplayAttribute attr)
@@ -84,6 +88,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         if (firstRender)
         {
             Trust.OnSettledAsync += ProbablyUpdateTitle;
+            Rendered.NotifyRendered(JS);
         }
     }
 

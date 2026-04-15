@@ -6,7 +6,6 @@
 @using RazorSharp.Extensions
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
-@implements IDisposable
 @implements IHasCurrent<App>
 @implements IHasClass
 @inject ICssOutlet Css
@@ -118,8 +117,6 @@
 
         Console.WriteLine($"Starting in {PreferredMode.ToString()} mode");
 
-        Nav.LocationChanged += Nav_LocationChanged;
-
     }
 
     protected override async Task OnInitializedAsync()
@@ -140,13 +137,6 @@
         await base.OnParametersSetAsync();
         var Page = Service.GetRequiredService<IRenderState>();
         await Page.SetState(this);
-    }
-
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-        
-
     }
 
     public static Dictionary<string, string> Query(string uri)
@@ -197,34 +187,4 @@
         Background = newClass;
     }
     
-    private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClasses = ["Home"];
-        else PageClasses = [..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
-            .Split('/')
-            .Select(seg => seg.ToSafe())
-        ];
-
-        _ = ProbablyUpdateTitle();
-    }
-
-    public void Dispose()
-    {
-        //Trust.OnAssemblyLoaded -= NotifyAssembly;
-        Nav.LocationChanged -= Nav_LocationChanged;
-        GC.SuppressFinalize(this);
-    }
-    
-    private async Task ProbablyUpdateTitle()
-    {
-        var components = this.GetChildComponents()
-            .OrderBy(comp => comp.GetType() != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0);
-        var title = components.SelectMany(comp => comp.GetType().GetCustomAttributes<DisplayAttribute>())
-            .FirstOrDefault();
-        if (title is DisplayAttribute attr)
-        {
-            var Title = Service.GetService<ITitleService>();
-            Title?.UpdateTitle(attr.Name);
-        }
-    }
 }
