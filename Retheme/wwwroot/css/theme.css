@@ -896,35 +896,34 @@ button.btn-more, .btn-primary,
     color: var(--amber-compliment);
 }
 
-input[type="checkbox"] 
-{
+main input[type="checkbox"] {
     background-color: var(--text-muted);
     border-color: var(--cyan-bolt);
     box-shadow: 1px 2px 5px rgb(from var(--slate-bg) r g b / 50%);
 }
 
-input[type="checkbox"]::before
+main input[type="checkbox"]::before
 {
     background-color: var(--amber-locus);
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
 }
 
-input[type="checkbox"]::after
+main input[type="checkbox"]::after
 {
     color: var(--slate-bg);
 }
 
-input[type="checkbox"]:checked::after
+main input[type="checkbox"]:checked::after
 {
     color: var(--text-main);
 }
 
-input[type="checkbox"]:checked {
+main input[type="checkbox"]:checked {
     background-color: var(--slate-bg); /* iOS Green */
     border-color: var(--amber-locus);
 }
 
-input[type="checkbox"]:focus-visible {
+main input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgb(from var(--emerald-glow) r g b / 50%);
 }
 

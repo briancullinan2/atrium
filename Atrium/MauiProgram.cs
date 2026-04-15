@@ -46,7 +46,7 @@ public class MauiProgram : IHasCurrent<MauiApp>
             .GetServicable()
             .ToList();
 
-        BuilderExtensions.BuildServices(builder.Services, currents);
+        BuilderExtensions.BuildServices(builder.Services, currents, null, null, true);
         builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
 

@@ -5,12 +5,19 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
 @implements IDisposable
+@implements IHasChildren
 @inject NavigationManager Nav
 @inject IHasClass Classy
 @inject ICompositeProvider Service
 @inject ITrustProvider Trust
 @inject IRenderState Rendered
 @inject IJSRuntime JS
+@inject ICssOutlet Css
+@inject IJavascriptOutlet JavaScript
+@{
+    Css.ChildContent(__builder);
+    JavaScript.ChildContent(__builder);
+}
 
 <Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
     <Found Context="routeData">
@@ -41,13 +48,13 @@
 
         _ = ProbablyUpdateTitle();
     }
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             Trust.OnSettledAsync += ProbablyUpdateTitle;
-            Rendered.NotifyRendered(JS);
+            Rendered.NotifyRendered(JS, this);
         }
     }
 
@@ -63,6 +70,9 @@
         _ = ProbablyUpdateTitle();
     }
 
+    public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
+    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
         //Trust.OnAssemblyLoaded -= NotifyAssembly;
@@ -74,6 +84,8 @@
     private async Task ProbablyUpdateTitle()
     {
         await Task.Delay(400);
+        await Css.ListenUp();
+        await JavaScript.ListenUp();
         var components = this
             .GetChildComponents()
             .OrderBy(comp => comp.GetType() != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)

@@ -28,13 +28,19 @@ public interface ISingleton
 }
 
 
+public interface IHasChildren
+{
+    object[] GetChildComponents();
+    Task HasChanged();
+}
+
 public interface IRenderState : IHasModule, ISingleUser
 {
     object Runtime { get; }
     event Action OnRendered;
     event Action OnEmptied;
     void NotifyEmptied();
-    void NotifyRendered(object Runtime);
+    void NotifyRendered(object runtime, IHasChildren container);
 
 
 
@@ -66,12 +72,10 @@ public interface IHasErrors<T> : IHasErrors
 public interface IHasClass
 {
     ClassNameCollection ClassNames { get; }
-    object[] GetChildComponents();
     void SetPageClasses(List<string> classes);
     void SetTheme(string? classes);
     void SetSidebar(string? classes);
     string? Sidebar { get; }
-    void HasChanged();
 }
 
 
@@ -134,17 +138,21 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState
 
 
     private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal IHasChildren? _container;
+
     public async ValueTask EnsureInitialized() => await _renderTcs.Task;
 
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
-    public void NotifyRendered(object runtime)
+    public void NotifyRendered(object runtime, IHasChildren container)
     {
         Runtime = runtime;
         // Fulfill the promise for everyone currently waiting
         _renderTcs.TrySetResult(true);
         //OffsetInMinutes = await Page.GetTimezoneOffset();
         _onRendered?.Invoke();
+
+        _container = container;
     }
 
     public void NotifyEmptied()

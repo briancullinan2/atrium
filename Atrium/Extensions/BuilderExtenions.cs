@@ -53,7 +53,7 @@ internal static class BuilderExtensions
     }
 
 
-    public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null, List<Type>? alreadyMapped = null)
+    public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null, List<Type>? alreadyMapped = null, bool isSingleUser = false)
     {
         alreadyMapped ??= [];
         // TODO: need to map all IHasCurrent values to their functional Current static interface value
@@ -85,11 +85,15 @@ internal static class BuilderExtensions
             {
                 Console.WriteLine("here");
             }
+            if(service.Name.Contains("Render"))
+            {
+                Console.WriteLine("singleton?");
+            }
             // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
             // static Current {get;} are inherently singletons
             // IHasService service containers are inherently singletons
             if (currentType != null || iHasService != null || iHasSingleton != null
-                || (iHasSingleUser != null && alreadyMapped.Count > 0))
+                || (iHasSingleUser != null && isSingleUser))
             {
                 Services.AddAutoSingleton(service, key, alreadyMapped);
 

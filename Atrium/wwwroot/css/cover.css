@@ -123,10 +123,10 @@ main.cover-page {
     border: 1px solid lightgray;
 }
 
-    .cover-page input[type="checkbox"][disabled]:checked {
-        background-color: gray; /* iOS Green */
-        border-color: darkgray;
-    }
+.cover-page input[type="checkbox"][disabled]:checked {
+    background-color: gray; /* iOS Green */
+    border-color: darkgray;
+}
 
 .cover-page input[type="checkbox"] {
     appearance: none;

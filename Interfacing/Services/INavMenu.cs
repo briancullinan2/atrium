@@ -81,6 +81,7 @@ public interface IHasTransition
 public interface IRenderLinks : IRenderService
 {
     void Register(Type who, string path);
+    Task ListenUp();
     List<string> Registry { get; }
 }
 
@@ -103,7 +104,8 @@ public partial class RenderService(ICompositeProvider service) : IRenderService
     {
         get
         {
-            return ((object __builder) => {
+            return (__builder =>
+            {
                 (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate)?.DynamicInvoke(__builder);
             });
         }
@@ -122,18 +124,18 @@ public partial class RenderService(ICompositeProvider service) : IRenderService
 public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDisposable
 {
     protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
-    private IHasClass? Main;
 
     //private readonly NavigationManager Nav;
     private readonly ITrustProvider Trust;
     private bool IsClosing;
+    private readonly RenderStateProvider Rendered;
 
     public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
     public event Action? OnChanged;
 
     public override Action<object> ChildContent
     {
-        get => ((object __builder) => (__builder as dynamic).AddMarkupContent(0, BuildRenderTree())); set => base.ChildContent = value;
+        get => __builder => (__builder as dynamic).AddMarkupContent(0, BuildRenderTree()); set => base.ChildContent = value;
     }
 
 
@@ -149,34 +151,55 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
     }
 
 
-    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust)
+    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust, RenderStateProvider rendered)
         : base(Service)
     {
         //Nav = _nav;
         Trust = _trust;
-        Trust.OnSettledAsync += ListenForNeeds;
+        Trust.OnSettledAsync += ListenTrust;
+        Rendered = rendered;
+        Rendered.OnRendered += ListenRendered;
     }
 
 
     protected abstract List<string> TypeToIncludes(Type type);
     protected abstract string BuildRenderTree();
 
-    protected virtual async Task ListenForNeeds()
+    public virtual void ListenRendered()
     {
         if (IsClosing) return;
 
-        Trust.OnSettledAsync += ListenForNeeds; // resubscribe for the next lazy event
+        _ = ListenUp();
+    }
 
-        await Task.Delay(1000); // wait for layout to insert the component
+
+    public virtual async Task ListenTrust()
+    {
+        if (IsClosing) return;
+
+        Trust.OnSettledAsync += ListenTrust; // resubscribe for the next lazy event
+
+        await ListenUp();
+    }
+
+    public virtual async Task ListenUp()
+    {
+        if (IsClosing) return;
+
+        await Task.Delay(800); // wait for layout to insert the component
 
         if (IsClosing) return;
 
-        Main ??= Service.GetService<IHasClass>();
-        var components = Main?.GetChildComponents().Select(c => c.GetType()) ?? [];
+        var components = Rendered._container?.GetChildComponents()
+            .Select(c => c.GetType()).Concat([Rendered._container.GetType()]) ?? [];
 
         foreach (var type in components)
         {
-            var includes = type.GetInterfaces().Append(type).SelectMany(TypeToIncludes).ToList();
+
+            var includes = type.GetInterfaces()
+                .Concat(type.BaseType != null ? [type, type.BaseType] : [type])
+                .SelectMany(TypeToIncludes)
+                .ToList();
 
             if (RealRegistry.TryGetValue(type, out var list)) list.AddRange(includes);
             else RealRegistry[type] = includes;
@@ -191,35 +214,63 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
             }
         }
 
-        Main?.HasChanged();
+        if(Rendered?._container?.HasChanged() is Task task) await task;
     }
 
     public void Dispose()
     {
         IsClosing = true;
+        Trust.OnSettledAsync -= ListenTrust;
+        Rendered.OnRendered -= ListenRendered;
         GC.SuppressFinalize(this);
     }
 }
 
-public partial class CssOutlet(ICompositeProvider Service, ITrustProvider Trust) 
-    : RenderOutlet(Service, Trust), ICssOutlet
+
+public partial class CssOutlet 
+    : RenderOutlet, ICssOutlet, IHasClass
 {
     private readonly Dictionary<string, string> _filePresence = [];
 
     protected override List<string> TypeToIncludes(Type type) => type switch
     {
-        _ when type == typeof(IHasForms) => ["_content/RazorSharp/css/accordion.css", "_content/RazorSharp/css/forms.css"],
-        _ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => ["_content/RazorSharp/css/main.css"],
+        _ when type == typeof(IHasForms) => ["/_content/RazorSharp/css/accordion.css", "/_content/RazorSharp/css/forms.css"],
+        _ when type == typeof(IHasCover) => ["/css/cover.css"],
+        _ when type.Name.Contains("LayoutComponentBase") => ["/_content/RazorSharp/css/layout.css"],
+        _ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => ["/_content/RazorSharp/css/main.css"],
         _ => []
     };
 
 
-
-    protected override async Task ListenForNeeds()
+    public void SetUri(string uri)
     {
-        await base.ListenForNeeds();
+        if (string.IsNullOrWhiteSpace(uri.Trim('/'))) PageClasses = ["Home"];
+        else PageClasses = [..uri.Split('?')[0]
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ];
+    }
 
 
+    public CssOutlet(ICompositeProvider Service, ITrustProvider Trust, RenderStateProvider rendered)
+        : base(Service, Trust, rendered)
+    {
+
+        CombinedClassNames.AutoSources = () => [
+            Theme,
+            Sidebar,
+            Background,
+            .. (PageClasses ?? []),
+            .. GivenClassNames
+        ];
+    }
+
+
+    public override async Task ListenUp()
+    {
+        await base.ListenUp();
+
+        // try to inject css directly instead of loading it remotely
         foreach (var style in RealRegistry)
         {
             var names = style.Key.Assembly.GetManifestResourceNames();
@@ -261,10 +312,49 @@ public partial class CssOutlet(ICompositeProvider Service, ITrustProvider Trust)
 
         return sb.ToString();
     }
+
+
+    private List<string> GivenClassNames { get; set; } = [];
+    public ClassNameCollection CombinedClassNames { get; } = [];
+    public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [.. value]; }
+    private List<string>? PageClasses = [];
+    public string? Theme;
+    public string? Sidebar { get; private set; }
+    public string? Background;
+
+    // TODO: move this to mainloader classes along side SetTitle
+    public void SetPageClasses(List<string> classes)
+    {
+        PageClasses = classes;
+    }
+
+    public void SetTheme(string? classes)
+    {
+        var newClass = "theme-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Theme = newClass;
+    }
+
+    public void SetSidebar(string? classes)
+    {
+        Sidebar = classes;
+    }
+
+    public void SetBackground(string? classes)
+    {
+        var newClass = "background-" + (classes?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
+
+    private void SetBackground(AnimationMode? theme)
+    {
+        var newClass = "background-" + (theme?.ToString()?.ToLowerInvariant() ?? string.Empty);
+        Background = newClass;
+    }
+
 }
 
-public partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust)
-    : RenderOutlet(Service, Trust), IJavascriptOutlet
+public partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust, RenderStateProvider rendered)
+    : RenderOutlet(Service, Trust, rendered), IJavascriptOutlet
 {
     protected override List<string> TypeToIncludes(Type type) => type switch
     {

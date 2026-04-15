@@ -1,4 +1,9 @@
 ﻿
+*, ::before, ::after, *:focus, *:active {
+    box-sizing: border-box;
+    outline: none;
+}
+
 
 button {
 }
@@ -263,7 +268,7 @@ fieldset
 }
 
 /* The container/track */
-input[type="checkbox"] {
+main input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
     width: 60px;
@@ -281,7 +286,7 @@ input[type="checkbox"] {
 }
 
 /* The sliding dot (thumb) */
-input[type="checkbox"]::before {
+main input[type="checkbox"]::before {
     content: "";
     position: absolute;
     top: 2px;
@@ -296,7 +301,7 @@ input[type="checkbox"]::before {
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
 }
 
-input[type="checkbox"]::after
+main input[type="checkbox"]::after
 {
     content: "OFF";
     left: 30px;
@@ -307,25 +312,25 @@ input[type="checkbox"]::after
 }
 
 
-input[type="checkbox"]:checked::after {
+main input[type="checkbox"]:checked::after {
     content: "ON";
     left: 5px;
 }
 
 /* Active state (Background turns green) */
-input[type="checkbox"]:checked {
+main input[type="checkbox"]:checked {
     background-color: #34c759; /* iOS Green */
     border-color: #34c759;
 }
 
 /* Slide the dot over when checked */
-input[type="checkbox"]:checked::before {
+main input[type="checkbox"]:checked::before {
     transform: translateX(26px);
     transform: translateX(calc(60px - 1.6em - 2px));
 }
 
 /* Focus state for accessibility */
-input[type="checkbox"]:focus-visible {
+main input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
 }
 

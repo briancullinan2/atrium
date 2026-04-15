@@ -17,7 +17,7 @@ public interface IHasService
     IServiceProvider Services { get; }
 }
 
-public interface ICompositeProvider : IServiceProvider
+public interface ICompositeProvider : IServiceProvider, IHasService
 {
 }
 
@@ -113,4 +113,8 @@ public interface IHasForms
 
 }
 
+public interface IHasCover
+{
+
+}
 

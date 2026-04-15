@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace Atrium.Components;
 
-public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDisposable, IHasClass
+public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDisposable, IHasChildren
 {
     static MainLoader? SetCurrent = null;
     public static MainLoader Current { get => SetCurrent ?? throw new InvalidOperationException("Start the application first"); }
@@ -46,18 +46,12 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 : RenderMode.InteractiveWebAssembly;
         }
 
-        CombinedClassNames.AutoSources = () => [
-            Theme,
-            Sidebar,
-            Background,
-            .. (PageClasses ?? []),
-            .. GivenClassNames
-        ];
 
         Console.WriteLine($"Starting in {PreferredMode} mode");
     }
 
     public object[] GetChildComponents() => [..ComponentExtensions.GetChildComponents(this).Cast<object>()];
+    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
@@ -88,17 +82,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         if (firstRender)
         {
             Trust.OnSettledAsync += ProbablyUpdateTitle;
-            Rendered.NotifyRendered(JS);
+            Rendered.NotifyRendered(JS, this);
         }
     }
 
     private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) PageClasses = ["Home"];
-        else PageClasses = [..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
-            .Split('/')
-            .Select(seg => seg.ToSafe())
-        ];
+        Css.SetUri(Nav.ToBaseRelativePath(Nav.Uri));
 
         Trust.OnSettledAsync += ProbablyUpdateTitle;
     }
@@ -292,10 +282,6 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     } 
     */
 
-    public void HasChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
 
     protected RenderFragment BuildNotFound()
     {

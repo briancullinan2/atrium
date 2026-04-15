@@ -1,6 +1,7 @@
 ﻿
 @inherits LayoutComponentBase
 @implements IDisposable
+@implements IHasChildren
 @inject IJSRuntime JS
 @inject IMenuService MenuService
 @inject IPageEvents PageManager
@@ -95,12 +96,15 @@
         IsClosing = true;
     }
 
+    public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
+
+    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender)
         {
-            RenderState.NotifyRendered(JS);
+            RenderState.NotifyRendered(JS, this);
         }
 
         // TODO:

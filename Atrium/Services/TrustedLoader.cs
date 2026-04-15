@@ -261,7 +261,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             collection.AddCascadingValue(sp => new ErrorBoundary());
 
-            collection.BuildServices(currents, null, AlreadyMapped);
+            collection.BuildServices(currents, null, AlreadyMapped, true);
 
             // Finalize the provider
             Services = collection.BuildServiceProvider();
