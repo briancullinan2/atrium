@@ -55,45 +55,6 @@
 
 
 
-.container-logo {
-/*    display: flex;*/
-    vertical-align: middle;
-    justify-content: flex-start;
-    height: 50px;
-    align-items: center;
-    display:flex;
-    padding-left: 50px;
-    background-image: url(/_content/RazorSharp/triangle.svg);
-    background-size: 40px 40px;
-    background-repeat: no-repeat;
-    background-position: 5px 50%;
-    cursor: pointer;
-}
-
-.container-logo > * {
-    vertical-align: middle;
-    margin: auto 0;
-}
-
-.container-logo > img {
-    margin: auto 15px;
-    cursor: pointer;
-    display:none;
-}
-
-.navbar-brand {
-    font-size: 1.1rem;
-    transition: color ease-in-out 0.6s;
-    color: white;
-    font-weight: bolder;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.navbar-brand:hover {
-    text-decoration: none;
-}
-
 @media (max-width: 640px) {
 
     h2 a {

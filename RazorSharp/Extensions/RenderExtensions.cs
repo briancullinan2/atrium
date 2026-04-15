@@ -87,7 +87,7 @@ namespace RazorSharp.Extensions
                 {
                     // 1. The <i> icon tag
                     __builder2.OpenElement(0, "i");
-                    __builder2.AddAttribute(1, "class", $"bi ${overrideIcon}");
+                    __builder2.AddAttribute(1, "class", $"bi {overrideIcon}");
                     __builder2.AddAttribute(2, "aria-hidden", "true");
                     __builder2.CloseElement();
 
