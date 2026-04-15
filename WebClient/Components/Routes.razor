@@ -12,12 +12,13 @@
 @inject ITrustProvider Trust
 @inject IRenderState Rendered
 @inject IJSRuntime JS
-@inject ICssOutlet Css
+@inject CssOutlet Css
 @inject IJavascriptOutlet JavaScript
 @{
     Css.ChildContent(__builder);
     JavaScript.ChildContent(__builder);
 }
+<div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
 
 <Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
     <Found Context="routeData">
@@ -31,7 +32,10 @@
     </NotFound>
 </Router>
 
+</div>
+
 @code {
+    protected string Ready = "loading";
 
     protected override void OnInitialized()
     {

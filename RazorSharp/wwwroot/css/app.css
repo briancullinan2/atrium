@@ -1,42 +1,8 @@
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    padding: 0;
-    margin: 0;
-    max-width: 100%;
-    /* TODO: look up cross platform system backups font-family: Verdana, Geneva, Tahoma, sans-serif; */
-    drag-drop-zone: none; /* Non-standard, but some engines respect it */
-    -webkit-user-drag: none;
-    height: 100%;
-    line-height: 1.6em;
-}
-
-
-#app
-{
-    height: 100%;
-    width: 100%;
-}
-
-h1, h2, h3, h4, h5 {
-    outline: none;
-}
-
-*, ::before, ::after, *:focus, *:active {
-    box-sizing: border-box;
-    outline: none; /* TODO: override this on specific elements for screen readers */
-}
-
-a, .btn-link {
-    color: #006bb7;
-}
 
 .content {
     padding-top: 1.1rem;
 }
 
-h1:focus {
-    outline: none;
-}
 
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;

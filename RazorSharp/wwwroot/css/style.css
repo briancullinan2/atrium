@@ -13,20 +13,6 @@
 .page .bi-chevron-right {
 }
 
-#components-reconnect-modal
-{
-    display:none!important;
-}
-
-a.deemphasize,
-button.deemphasize {
-    background: none;
-    border: none;
-    color: lightgrey;
-    text-decoration: none;
-    cursor: pointer;
-    padding: 0;
-}
 
 .drop-shader {
     position: absolute;
@@ -50,16 +36,6 @@ button.deemphasize {
 }
 
 
-h2 a
-{
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-
-h2 a:hover {
-    text-decoration: underline;
-}
 
 .cards-edit h2 {
     display: flex;
@@ -77,55 +53,6 @@ h2 a:hover {
 
 
 
-
-
-.btn-primary,
-a.cta,
-button.cta {
-    padding: 4px;
-    background: darkorange;
-    color: black;
-    margin: 5px 5px 5px auto;
-    cursor: pointer;
-    border-radius: 5px;
-    border: 2px solid lightgrey;
-    line-height: 1.5rem;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus,
-button.cta:hover {
-    text-decoration: underline;
-    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-
-button.deemphasize:hover {
-    text-decoration: underline;
-}
-
-/* blazor error */
-
-
-#blazor-error-ui {
-    color-scheme: light only;
-    background: lightyellow;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
-    display: none;
-    left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-
-#blazor-error-ui .dismiss {
-    cursor: pointer;
-    position: absolute;
-    right: 0.75rem;
-    top: 0.5rem;
-}
 
 
 .container-logo {

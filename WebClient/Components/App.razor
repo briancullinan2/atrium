@@ -9,7 +9,6 @@
 @implements IHasCurrent<App>
 @inject NavigationManager Nav
 @inject ICompositeProvider Service
-@inject CssOutlet Css
 
 <!DOCTYPE html>
 <html lang="en">
@@ -19,21 +18,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/app.css" />
     <link rel="icon" type="image/png" href="favicon.ico" />
     <AntiforgeryToken />
 </head>
 
 <body>
      
-    <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
-        <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
-            <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
-                <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
-                    <WebClient.Components.Routes @rendermode="PreferredMode" />
-                </CascadingValue>
+    <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+        <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+            <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                <WebClient.Components.Routes @rendermode="PreferredMode" />
             </CascadingValue>
         </CascadingValue>
-    </div>
+    </CascadingValue>
 
     <script src="/_content/RazorSharp/main.js"></script>
     <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
@@ -71,7 +69,6 @@
     IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
 
     private bool IsDebug = false;
-    protected string Ready = "loading";
     private bool FirstTimeLoad = true;
     static Type? PermissionType = null;
     static Type? StoredDefaultRoot = null;

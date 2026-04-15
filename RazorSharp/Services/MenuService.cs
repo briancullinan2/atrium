@@ -14,11 +14,20 @@ public class MenuService(ICompositeProvider Service) : IMenuService
         .Distinct()];
 
 
-
-    public static Dictionary<Type, DisplayAttribute> PotentialRoutes { get; } = TypeExtensions.AllRoutable
-        .Where(r => r?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault() is DisplayAttribute attr
-            && !string.IsNullOrWhiteSpace(attr.GroupName))
-        .ToDictionary(r => r!, r => r!.GetCustomAttributes<DisplayAttribute>().First());
+    static Dictionary<Type, DisplayAttribute>? CachedPotentialRoutes { get; set; } = null;
+    public static Dictionary<Type, DisplayAttribute> PotentialRoutes
+    {
+        get => CachedPotentialRoutes 
+            ??= (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies()
+            .GetMine()
+            .SelectMany(TypeExtensions.GetAssTypesSafely)
+            .Where(t => t.GetCustomAttributes() is IEnumerable<Attribute> attrs
+                && attrs.Any(TypeExtensions.StaticMatchRouteAttribute)
+                && attrs.Any(attr => attr is DisplayAttribute display
+                    && !string.IsNullOrWhiteSpace(display.GroupName)))
+            .ToDictionary(r => r!, r => r!.GetCustomAttributes<DisplayAttribute>().First());
+    }
 
 
     public static List<KeyValuePair<string, string>> Categories { get; } = [.. PotentialRoutes
