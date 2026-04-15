@@ -1,8 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Routing;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace RazorSharp.Extensions
 {
@@ -58,26 +55,29 @@ namespace RazorSharp.Extensions
         }
 
         public static RenderFragment ToNavLink(
-            string uri
+            this string uri
             , string? overrideTitle = null
             , string? overrideIcon = null
             , Type? type = null)
         {
-            var display = type?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
-            return ToNavLink(uri, overrideTitle ?? display?.ShortName ?? display?.Name, overrideIcon ?? display?.Prompt);
+            var display = type?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()
+                ?? TypeExtensions.IdentifyNavigation(uri).ComponentType
+                .GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+            return ToNavLink(uri, overrideTitle ?? display?.ShortName ?? display?.Name ?? string.Empty, overrideIcon ?? display?.Prompt ?? string.Empty, (bool?)null);
         }
 
         public static RenderFragment ToNavLink(
-            string uri
-            , string? overrideTitle = null
-            , string? overrideIcon = null)
+            this string uri
+            , string overrideTitle
+            , string overrideIcon
+            , bool? collapsible = null)
         {
             return (__builder) =>
             {
                 __builder.OpenComponent<NavLink>(0);
                 __builder.AddAttribute(1, "class", "header-link");
                 __builder.AddAttribute(2, "href", uri);
-                if(string.IsNullOrWhiteSpace(uri))
+                if (string.IsNullOrWhiteSpace(uri))
                     __builder.AddAttribute(3, "Match", NavLinkMatch.All);
                 else
                     __builder.AddAttribute(3, "Match", NavLinkMatch.Prefix);
@@ -96,6 +96,15 @@ namespace RazorSharp.Extensions
                     __builder2.AddAttribute(4, "class", "header-text");
                     __builder2.AddContent(5, overrideTitle);
                     __builder2.CloseElement();
+
+                    if (collapsible != null)
+                    {
+                        __builder2.OpenElement(3, "span");
+                        __builder2.AddAttribute(4, "class", "bi" + (collapsible == true ? "bi-chevron-right" : "bi-chevron-down"));
+                        __builder2.AddContent(5, overrideTitle);
+                        __builder2.CloseElement();
+
+                    }
                 }));
 
                 __builder.CloseComponent();

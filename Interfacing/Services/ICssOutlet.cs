@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Text;
 
 namespace Interfacing.Services;
@@ -18,7 +16,7 @@ public interface ILogoService : IRenderService
 public interface IRenderLinks : IRenderService
 {
     void Register(Type who, string path);
-    Task ListenUp();
+    Task ListenUp(Type? typeHint = null);
     List<string> Registry { get; }
 }
 
@@ -119,7 +117,9 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         await ListenUp();
     }
 
-    public virtual async Task ListenUp()
+    Type? previousHint = null;
+
+    public virtual async Task ListenUp(Type? typeHint = null)
     {
         if (IsClosing) return;
 
@@ -127,8 +127,10 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
 
         if (IsClosing) return;
 
+        if (typeHint != null)
+            previousHint = typeHint;
         var components = Rendered._container?.GetChildComponents()
-            .Select(c => c.GetType()).Concat([Rendered._container.GetType()]) ?? [];
+            .Select(c => c.GetType()).Concat(previousHint != null ? [previousHint, Rendered._container.GetType()] : [Rendered._container.GetType()]) ?? [];
 
         foreach (var type in components)
         {
@@ -172,7 +174,7 @@ public partial class CssOutlet
     protected override List<string> TypeToIncludes(Type type) => type switch
     {
         _ when type == typeof(IHasForms) => [
-            "/_content/RazorSharp/css/accordion.css", 
+            "/_content/RazorSharp/css/accordion.css",
             "/_content/RazorSharp/css/forms.css"],
         _ when type == typeof(IHasAccordion) => [
             "/_content/RazorSharp/css/accordion.css"],
@@ -210,9 +212,9 @@ public partial class CssOutlet
     }
 
 
-    public override async Task ListenUp()
+    public override async Task ListenUp(Type? typeHint = null)
     {
-        await base.ListenUp();
+        await base.ListenUp(typeHint);
 
         // try to inject css directly instead of loading it remotely
         foreach (var style in RealRegistry)

@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace Interfacing.Services;
 
@@ -93,11 +90,11 @@ public interface ITrustProvider
     void BuildServices(IServiceCollection collection, List<Type>? types);
 }
 
-public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.None);
+public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.Untrusted);
 
 public enum LevelOfTrust : int
 {
-    None = 0,
+    Untrusted = 0,
     Meta = 1, // title from a known publisher
     Required = 2,
     Published = 3, // strongly named

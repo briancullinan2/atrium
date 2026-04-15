@@ -1,8 +1,8 @@
 ﻿using Atrium.Components;
 using Atrium.Extensions;
 using Interfacing.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Text.Json;
-using Microsoft.AspNetCore.Components.Web;
 
 
 
@@ -65,13 +64,15 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
     }
-        
+
 
 
     private IServiceProvider? StoredServices = null;
-    public IServiceProvider Services {
+    public IServiceProvider Services
+    {
         get => StoredServices ?? throw new InvalidOperationException("Services aren't ready yet, load a plugin first.");
-        set => StoredServices = value; }
+        set => StoredServices = value;
+    }
 
     public void Enable(string ass)
     {
@@ -141,7 +142,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public void BuildServices(IServiceCollection collection, List<Type>? types)
     {
-        if(types == null)
+        if (types == null)
         {
             var mappings = EnabledAssMappings
                 .Concat(DependedAssMappings)
@@ -180,7 +181,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 .ToList();
             var keys = JsonSerializer.Serialize(mappings.Select(ass => ass.FullName));
 
-            if(keys == previousKeys)
+            if (keys == previousKeys)
             {
                 return;
             }
@@ -190,9 +191,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             // TODO: check depended assemblies is empty compared to loaded assemblies then offer an OnSettled even if its preloading is done
             var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
-            if(missing.Count == 0)
+            if (missing.Count == 0)
             {
-                
+
 
             }
             else
@@ -205,7 +206,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     MaxDegreeOfParallelism = Math.Max(1, parallel)
                 };
 
-                foreach( var ass in missing) // prevent recursion
+                foreach (var ass in missing) // prevent recursion
                     Tried.TryAdd(ass.Key, ass.Key);
 
                 _ = Parallel.ForEachAsync(missing, options, async (ass, ct) =>
@@ -245,14 +246,14 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 {
                     if (Provider?.GetService(ass) is object serve)
                     {
-                        if(ass.Extends(typeof(IHasService)))
+                        if (ass.Extends(typeof(IHasService)))
                             collection.AddSingleton(ass, sp => serve);
                         else
                             collection.AddScoped(ass, sp => serve);
                         AlreadyMapped.Add(ass);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Console.WriteLine("Who the fuck even are you? " + ex);
                 }
@@ -288,7 +289,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         }
         finally
         {
-            
+
             IsRebuilding = false;
 
         }
@@ -301,7 +302,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     private List<Assembly>? CachedEnabledAssMappings { get; set; } = null;
     internal List<Assembly> EnabledAssMappings
     {
-        get => CachedEnabledAssMappings 
+        get => CachedEnabledAssMappings
             ??= [..EnabledAssemblies.Keys
         .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
         .OfType<Assembly>()];
@@ -400,8 +401,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     [RequiresAssemblyFiles]
     public TrustedLoader(
-        IComponentActivator? plugin = null, 
-        ICompositeProvider? provider = null, 
+        IComponentActivator? plugin = null,
+        ICompositeProvider? provider = null,
         IServiceProvider? service = null)
     {
         Plugin = plugin;
@@ -448,7 +449,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         if (!Seen.Contains(assembly))
         {
-            Task.Run(async () => {
+            Task.Run(async () =>
+            {
                 await TryFindingInterestingTypes(assembly);
                 await RebuildServiceContainer();
             });
@@ -471,7 +473,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         Seen.Add(ass);
 
         var allTypes = ass.GetAssTypesSafely();
-        
+
         var routable = false;
 
         foreach (var type in allTypes)
@@ -538,19 +540,26 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var title = Path.GetFileNameWithoutExtension(file);
 
+            if (counter <= 1) // notify UX
+                IsBootstrapping = false;
+
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
             OnAssemblyLoaded?.Invoke(new PluginContract(
                 Title: title,
                 InstallPath: file,
                 IsTrusted: false,
-                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.None)
+                Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.Untrusted)
             ));
 
-            await Task.Delay((counter % parallel) * 100, ct);
+            await Task.Delay((counter % parallel) * 100, ct); // burst mode
 
             var trust = await GetTrustedAsync(file);
+
             if (trust == null) return;
+
+            if ((int)trust < (int)LevelOfTrust.Meta)
+                return;
 
             var contract = new PluginContract(
                 Title: title,
@@ -561,9 +570,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             // Thread-safe update to the UI list
             DiscoveredStatus.TryAdd(file, contract);
-
-            if(counter <= 1) // notify UX
-                IsBootstrapping = false;
 
             // Tell the UI to refresh as each item arrives
             OnAssemblyLoaded?.Invoke(contract);
@@ -594,7 +600,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
 
-    
+
 
     /*
 
@@ -681,39 +687,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public event Action<PluginContract>? OnAssemblyLoaded;
 
-    public static AssemblyName? VerifyStrongName(string filePath, string? thumbprint = null)
-    {
-        if (!File.Exists(filePath)) return null;
-
-        thumbprint ??= Whitelist[0];
-
-        try
-        {
-            var name = AssemblyName.GetAssemblyName(filePath);
-
-            var token = name.GetPublicKeyToken();
-
-            if (token == null || token.Length == 0) return null;
-
-            if(thumbprint != null
-                && string.Equals(Convert.ToHexString(token), thumbprint, StringComparison.InvariantCultureIgnoreCase))
-                return name;
-
-            return null;
-        }
-        catch
-        {
-            // Likely a native DLL or corrupt file
-            return null;
-        }
-    }
-
     /*
     public static bool VerifyCertificate(string filePath, string? thumbprint = null)
     {
         try
         {
-            
+            // TODO: make sure chain is trusted
         }
         catch
         {
@@ -726,15 +705,18 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public async Task<LevelOfTrust?> GetTrustedAsync(string filePath, string? expectedPublicKeyToken = null)
     {
-        LevelOfTrust? level = null;
+        LevelOfTrust? level = LevelOfTrust.Untrusted;
 
         if (RequiredAssemblies.Contains(Path.GetFileNameWithoutExtension(filePath)))
             level = LevelOfTrust.Required;
 
-        if (VerifyStrongName(filePath, expectedPublicKeyToken) is AssemblyName name)
+        var name = AssemblyName.GetAssemblyName(filePath);
+        if (name != null)
+            level = LevelOfTrust.Meta;
+
+        var token = name?.GetPublicKeyToken();
+        if (token != null)
             level = LevelOfTrust.Published;
-        else
-            return level;
 
         // TODO: fix flow for this
 
@@ -765,7 +747,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 null,
                 null,
                 title,
-                LevelOfTrust.None
+                LevelOfTrust.Untrusted
             );
 
         if (level < LevelOfTrust.Published)

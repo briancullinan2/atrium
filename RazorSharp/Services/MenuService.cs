@@ -17,7 +17,7 @@ public class MenuService(ICompositeProvider Service) : IMenuService
     static Dictionary<Type, DisplayAttribute>? CachedPotentialRoutes { get; set; } = null;
     public static Dictionary<Type, DisplayAttribute> PotentialRoutes
     {
-        get => CachedPotentialRoutes 
+        get => CachedPotentialRoutes
             ??= (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
             .GetAssemblies()
             .GetMine()
@@ -45,7 +45,7 @@ public class MenuService(ICompositeProvider Service) : IMenuService
             if (r.Value.Name != null)
                 navItem.Children = GetMenuItems(r.Value.Name);
             if (r.Value.ShortName != null && r.Value.ShortName != r.Value.Name)
-                navItem.Children = [..navItem.Children.Concat(GetMenuItems(r.Value.ShortName))];
+                navItem.Children = [..navItem.Children, ..GetMenuItems(r.Value.ShortName)];
             return navItem;
         })
         .OfType<INavMenuItem>()];
@@ -55,7 +55,7 @@ public class MenuService(ICompositeProvider Service) : IMenuService
     public static List<Type> GetEnabledMenus(ICompositeProvider service) => [.. Menus.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasMenu.ShowMenu)).First().GetValue(null) as Delegate;
-        if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType) 
+        if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
             ?? myDelegate?.Method.ReturnType)?.Extends(typeof(bool)) != true)
             throw new InvalidOperationException("IHasMenu.ShowMenu delegate must return a bool" + myDelegate?.Method);
         return (bool?)myDelegate.InvokeService(service) == true;
