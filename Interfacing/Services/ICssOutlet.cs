@@ -16,7 +16,7 @@ public interface ILogoService : IRenderService
 public interface IRenderLinks : IRenderService
 {
     void Register(Type who, string path);
-    Task ListenUp(Type? typeHint = null);
+    Task ListenUp(Type? typeHint = null, Type? layout = null);
     List<string> Registry { get; }
 }
 
@@ -94,6 +94,7 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         Trust.OnSettledAsync += ListenTrust;
         Rendered = rendered;
         Rendered.OnRendered += ListenRendered;
+        //Rendered.OnEmptied += Rendered_OnEmptied;
     }
 
 
@@ -117,31 +118,55 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         await ListenUp();
     }
 
-    Type? previousHint = null;
+    protected Type? previousHint = null;
+    private Type? layout = null;
 
-    public virtual async Task ListenUp(Type? typeHint = null)
+    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null)
     {
+        if (typeHint != null)
+            previousHint = typeHint;
+        if (_layout != null)
+            layout = _layout;
+
+
         if (IsClosing) return;
 
         await Task.Delay(800); // wait for layout to insert the component
 
         if (IsClosing) return;
 
-        if (typeHint != null)
-            previousHint = typeHint;
-        var components = Rendered._container?.GetChildComponents()
-            .Select(c => c.GetType()).Concat(previousHint != null ? [previousHint, Rendered._container.GetType()] : [Rendered._container.GetType()]) ?? [];
+        List<Type?> components = [
+            previousHint,
+            layout,
+            Rendered._container?.GetType(),
+            ..Rendered._container?.GetChildComponents().Select(c => c.GetType()) ?? []
+        ];
 
-        foreach (var type in components)
+        var HasChanged = false;
+
+        foreach (var type in components.OfType<Type>())
         {
+            if (type == null) continue;
 
             var includes = type.GetInterfaces()
                 .Concat(type.BaseType != null ? [type, type.BaseType] : [type])
                 .SelectMany(TypeToIncludes)
                 .ToList();
 
-            if (RealRegistry.TryGetValue(type, out var list)) list.AddRange(includes);
-            else RealRegistry[type] = includes;
+            if (RealRegistry.TryGetValue(type, out var list))
+            {
+                foreach (var inc in includes)
+                    if (!list.Contains(inc))
+                    {
+                        list.Add(inc);
+                        HasChanged = true;
+                    }
+            }
+            else
+            {
+                RealRegistry[type] = includes;
+                HasChanged = true;
+            }
         }
 
 
@@ -151,9 +176,10 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
             {
                 RealRegistry.TryRemove(component);
             }
+            // don't trigger removals, just let them happen
         }
 
-        if (Rendered?._container?.HasChanged() is Task task) await task;
+        if (HasChanged && Rendered?._container?.HasChanged() is Task task) await task;
     }
 
     public void Dispose()
@@ -212,9 +238,9 @@ public partial class CssOutlet
     }
 
 
-    public override async Task ListenUp(Type? typeHint = null)
+    public override async Task ListenUp(Type? typeHint = null, Type? layout = null)
     {
-        await base.ListenUp(typeHint);
+        await base.ListenUp(typeHint, layout);
 
         // try to inject css directly instead of loading it remotely
         foreach (var style in RealRegistry)
@@ -269,9 +295,12 @@ public partial class CssOutlet
     public string? Background;
 
     // TODO: move this to mainloader classes along side SetTitle
-    public void SetPageClasses(List<string> classes)
+    public void SetPageClasses(List<string> classes, Type? typeHint = null)
     {
         PageClasses = classes;
+        if (typeHint != null)
+            previousHint = typeHint;
+
     }
 
     public void SetTheme(string? classes)

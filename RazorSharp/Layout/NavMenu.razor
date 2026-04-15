@@ -95,7 +95,7 @@
         // always navigate
         Nav.NavigateTo(item.Href);
         menuMode = false;
-
+        InvokeAsync(StateHasChanged);
     }
 
 
@@ -133,7 +133,7 @@
                 }
                 else
                 {
-                    @RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon);
+                    @RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon, item.Children?.Count > 0 ? item.IsCollapsed ? true : false : null);
                 }
             </div>
 
@@ -153,59 +153,61 @@
 
 
     // This is your Iterator/List
-        //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
+    //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
     /*
     new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "" },
-        new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
-        new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "" },
-        new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
-        
-        new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "" },
+            new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
+            new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "" },
+            new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
 
-        // administration
-        new NavMenuItem<Pages.Admin.Landing>() { Title = "Administration", Icon = "", Children = [
-            new NavMenuItem<Pages.Admin.Users>() { Title = "Users", Icon = "bi-people" },
-            new NavMenuItem<Pages.Admin.Groups>() { Title = "Groups", Icon = "bi-collection" },
-            new NavMenuItem<Pages.Admin.Import>() { Title = "User Import", Icon = "bi-file-earmark-arrow-up" },
-            new NavMenuItem<Pages.Admin.Emails>() { Title = "Emails", Icon = "bi-envelope-paper" },
-            new NavMenuItem<Pages.Admin.Activity>() { Title = "Recent Activity", Icon = "bi-activity" },
-            new NavMenuItem<Pages.Admin.Hosting>() { Title = "Hosting", Icon = "" },
-            new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "" },
-            new NavMenuItem<Pages.Admin.Settings>() { Title = "Settings", Icon = "bi-gear" },
-            // TODO: debug build only
-            new NavMenuItem<Pages.Admin.Validation>() { Title = "Validation", Icon = "bi-check-circle" }
-        ] },
+            new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "" },
+
+            // administration
+            new NavMenuItem<Pages.Admin.Landing>() { Title = "Administration", Icon = "", Children = [
+                new NavMenuItem<Pages.Admin.Users>() { Title = "Users", Icon = "bi-people" },
+                new NavMenuItem<Pages.Admin.Groups>() { Title = "Groups", Icon = "bi-collection" },
+                new NavMenuItem<Pages.Admin.Import>() { Title = "User Import", Icon = "bi-file-earmark-arrow-up" },
+                new NavMenuItem<Pages.Admin.Emails>() { Title = "Emails", Icon = "bi-envelope-paper" },
+                new NavMenuItem<Pages.Admin.Activity>() { Title = "Recent Activity", Icon = "bi-activity" },
+                new NavMenuItem<Pages.Admin.Hosting>() { Title = "Hosting", Icon = "" },
+                new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "" },
+                new NavMenuItem<Pages.Admin.Settings>() { Title = "Settings", Icon = "bi-gear" },
+                // TODO: debug build only
+                new NavMenuItem<Pages.Admin.Validation>() { Title = "Validation", Icon = "bi-check-circle" }
+            ] },
 
 
-        // going to add management stuff here
-        new NavMenuItem<Pages.Content.Landing>() { Title = "Content", Icon = "bi-database-gear", Children = [
-            new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
-            new NavMenuItem<Pages.Content.Upload>() { Title = "Pack Import", Icon = "" },
-            new NavMenuItem<Pages.Content.Analysis>() { Title = "Content Analysis", Icon = "bi-search-heart" },
-            new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
-            new NavMenuItem<Pages.Content.Billing>() { Title = "Billing", Icon = "bi-receipt" },
-            new NavMenuItem<Pages.Content.Payments>() { Title = "Payments", Icon = "bi-credit-card" },
-            new NavMenuItem<Pages.Content.Merchant>() { Title = "Merchant Tools", Icon = "bi-shop" },
-            new NavMenuItem<Pages.Content.Recovery>() { Title = "Recovery", Icon = "bi-life-preserver" },
-            new NavMenuItem<Pages.Content.Encryption>() { Title = "Encryption", Icon = "bi-incognito" },
-            new NavMenuItem<Pages.Content.Marshal>() { Title = "Marshalling", Icon = "bi-database-lock" },
-            new NavMenuItem<Pages.Content.Tokens>() { Title = "Download Tokens", Icon = "bi-coin" },
-            new NavMenuItem<Pages.Content.Install>() { Title = "Install AI", Icon = "bi-robot" },
-            new NavMenuItem<Pages.Content.Export>() { Title = "Export", Icon = "bi-file-earmark-arrow-down" },
-            new NavMenuItem<Pages.Content.Trash>() { Title = "Trash", Icon = "bi-trash3" }
-        ] },
+            // going to add management stuff here
+            new NavMenuItem<Pages.Content.Landing>() { Title = "Content", Icon = "bi-database-gear", Children = [
+                new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
+                new NavMenuItem<Pages.Content.Upload>() { Title = "Pack Import", Icon = "" },
+                new NavMenuItem<Pages.Content.Analysis>() { Title = "Content Analysis", Icon = "bi-search-heart" },
+                new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
+                new NavMenuItem<Pages.Content.Billing>() { Title = "Billing", Icon = "bi-receipt" },
+                new NavMenuItem<Pages.Content.Payments>() { Title = "Payments", Icon = "bi-credit-card" },
+                new NavMenuItem<Pages.Content.Merchant>() { Title = "Merchant Tools", Icon = "bi-shop" },
+                new NavMenuItem<Pages.Content.Recovery>() { Title = "Recovery", Icon = "bi-life-preserver" },
+                new NavMenuItem<Pages.Content.Encryption>() { Title = "Encryption", Icon = "bi-incognito" },
+                new NavMenuItem<Pages.Content.Marshal>() { Title = "Marshalling", Icon = "bi-database-lock" },
+                new NavMenuItem<Pages.Content.Tokens>() { Title = "Download Tokens", Icon = "bi-coin" },
+                new NavMenuItem<Pages.Content.Install>() { Title = "Install AI", Icon = "bi-robot" },
+                new NavMenuItem<Pages.Content.Export>() { Title = "Export", Icon = "bi-file-earmark-arrow-down" },
+                new NavMenuItem<Pages.Content.Trash>() { Title = "Trash", Icon = "bi-trash3" }
+            ] },
 
-        .. CourseMenu.MenuStructure.OfType<INavMenuItem>(),
+            .. CourseMenu.MenuStructure.OfType<INavMenuItem>(),
 
-        new NavMenuItem<Pages.Landing.Login>() { Title = "Switch Users", Icon = "" },
-        new NavMenuItem<Pages.Landing.Terms>() { Title = "Terms of Service", Icon = "bi-file-earmark-text" },
+            new NavMenuItem<Pages.Landing.Login>() { Title = "Switch Users", Icon = "" },
+            new NavMenuItem<Pages.Landing.Terms>() { Title = "Terms of Service", Icon = "bi-file-earmark-text" },
 
-    ];
-    */
+        ];
+        */
+
+    public List<INavMenuItem>? MenuStructure = null;
 
     private List<INavMenuItem> GetVisibleItems()
     {
-        var MenuStructure = MenuService.GetMenuItems("Main");
+        MenuStructure ??= MenuService.GetMenuItems("Main");
         // Filter out items the user shouldn't see
         // For example: hide Premium link if they already paid
         return [..MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid)];

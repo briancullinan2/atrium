@@ -538,10 +538,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         {
             --counter;
 
-            var title = Path.GetFileNameWithoutExtension(file);
-
             if (counter <= 1) // notify UX
                 IsBootstrapping = false;
+
+            var title = Path.GetFileNameWithoutExtension(file);
 
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
@@ -556,9 +556,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var trust = await GetTrustedAsync(file);
 
-            if (trust == null) return;
 
-            if ((int)trust < (int)LevelOfTrust.Meta)
+            if (trust == null || (int)trust < (int)LevelOfTrust.Meta)
                 return;
 
             var contract = new PluginContract(
@@ -706,29 +705,37 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public async Task<LevelOfTrust?> GetTrustedAsync(string filePath, string? expectedPublicKeyToken = null)
     {
         LevelOfTrust? level = LevelOfTrust.Untrusted;
+        try
+        {
+            if (RequiredAssemblies.Contains(Path.GetFileNameWithoutExtension(filePath)))
+                level = LevelOfTrust.Required;
 
-        if (RequiredAssemblies.Contains(Path.GetFileNameWithoutExtension(filePath)))
-            level = LevelOfTrust.Required;
+            var name = AssemblyName.GetAssemblyName(filePath);
+            if (name != null)
+                level = LevelOfTrust.Meta;
+            else
+                return null;
 
-        var name = AssemblyName.GetAssemblyName(filePath);
-        if (name != null)
-            level = LevelOfTrust.Meta;
+            var token = name?.GetPublicKeyToken();
+            if (token != null)
+                level = LevelOfTrust.Published;
 
-        var token = name?.GetPublicKeyToken();
-        if (token != null)
-            level = LevelOfTrust.Published;
+            // TODO: fix flow for this
 
-        // TODO: fix flow for this
-
-        if (Whitelist.Contains(Convert.ToHexString(name.GetPublicKeyToken()!)))
-            level = LevelOfTrust.Mine;
+            if (Whitelist.Contains(Convert.ToHexString(name?.GetPublicKeyToken()!)))
+                level = LevelOfTrust.Mine;
 
 #if WINDOWS
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             if (VerifyWindowsSignature(filePath, expectedPublicKeyToken))
                 level = LevelOfTrust.Verified;
 #endif
-
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            return null;
+        }
 
         //if (VerifyCertificate(filePath, expectedPublicKeyToken))
         //    level = LevelOfTrust.Signed;

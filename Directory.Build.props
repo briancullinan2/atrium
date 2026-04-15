@@ -13,11 +13,11 @@
 		<WasmEnableHotReload>false</WasmEnableHotReload>
 	</PropertyGroup>
 	
-	<PropertyGroup>
+	<!--<PropertyGroup>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
 		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
-	</PropertyGroup>
+	</PropertyGroup>-->
 
 	
 	

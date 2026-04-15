@@ -20,7 +20,7 @@
 }
 <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
 
-<Router AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly">
+<Router OnNavigateAsync="HandleNavigation" AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly" AdditionalAssemblies="[Assembly.GetEntryAssembly()]">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="@typeof(RazorSharp.Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
@@ -65,11 +65,17 @@
 
     private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Classy.SetPageClasses(["Home"]);
+        Type? controlType = null;
+        try
+        {
+            controlType = TypeExtensions.IdentifyNavigation(Nav.Uri).ComponentType;
+        } catch {}
+
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Classy.SetPageClasses(["Home"], controlType);
         else Classy.SetPageClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
-    .Split('/')
-    .Select(seg => seg.ToSafe())
-        ]);
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ], controlType);
 
         _ = ProbablyUpdateTitle();
     }
@@ -102,5 +108,14 @@
             Title?.UpdateTitle(attr.Name);
             await InvokeAsync(StateHasChanged);
         }
+    }
+    private async Task HandleNavigation(NavigationContext args)
+    {
+        try
+        {
+            var controlType = TypeExtensions.IdentifyNavigation(args.Path).ComponentType;
+
+            await Css.ListenUp(controlType, typeof(RazorSharp.Layout.MainLayout));
+        } catch {}
     }
 }

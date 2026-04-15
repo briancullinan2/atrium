@@ -1,8 +1,4 @@
-﻿
-
-using System.Diagnostics.Metrics;
-
-[assembly: SuppressMessage("This call site is reachable on all platforms.", "IL2026", Justification = "I hope it does, save me some damn time")]
+﻿[assembly: SuppressMessage("This call site is reachable on all platforms.", "IL2026", Justification = "I hope it does, save me some damn time")]
 
 namespace Extensions.PrometheusTypes;
 
@@ -112,7 +108,7 @@ public static partial class TypeExtensions
         List<string>? routes = null;
         if (componentType.IsInterface)
         {
-            foreach (var inter in AllRoutableInterfaces)
+            foreach (var inter in MyRoutableInterfaces)
             {
                 if (inter.IsInterface) continue;
                 if (!componentType.Interfaces(inter)) continue;
@@ -231,6 +227,8 @@ public static partial class TypeExtensions
         var urlParts = uri.Split('?');
         var path = urlParts[0].Trim('/');
         var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (pathSegments.FirstOrDefault()?.Contains(':') == true)
+            pathSegments = pathSegments[2..];
 
         var candidates = new List<(Type Type, ParsedRoute Route, Dictionary<string, object?> Params, int LiteralMatches)>();
 

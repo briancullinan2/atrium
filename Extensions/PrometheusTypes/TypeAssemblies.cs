@@ -11,16 +11,17 @@ public static partial class TypeExtensions
 
 
     private static readonly ConcurrentBag<Type> _allKnownTypes = [];
+    private static readonly ConcurrentBag<Type> _allMineTypes = [];
     private static readonly HashSet<string> _loadedAssemblies = [];
     private static readonly Lock _loaderLock = new();
 
     public static List<Type> AllRegisteredTypes { get => [.. _allKnownTypes]; }
 
-    public static List<Type> AllRoutableInterfaces { get; }
+    public static List<Type> MyRoutableInterfaces { get; private set; }
 
-    public static List<Type> AllRoutable { get; }
+    public static List<Type> MyRoutable { get; private set; }
 
-    public static List<MethodInfo> AllRoutes { get; }
+    public static List<MethodInfo> MyRoutes { get; private set; }
 
     public static bool MineOnly { get; } = true;
 
@@ -49,7 +50,7 @@ public static partial class TypeExtensions
         foreach (var ass in asses)
         {
             if (!ass.IsMine()) continue;
-        
+
             yield return ass;
         }
     }
@@ -116,7 +117,7 @@ public static partial class TypeExtensions
 
     public static AssemblyInfo GetAssemblyInfo(this Assembly? entry)
     {
-        if(entry == null) return new AssemblyInfo(null, null, null, null);
+        if (entry == null) return new AssemblyInfo(null, null, null, null);
         var product = GetProduct(entry);
         var package = GetPackage(entry);
         var publisher = GetPublisher(entry);
@@ -146,9 +147,9 @@ public static partial class TypeExtensions
             .Where(t => t.IsConcrete() && t.Extends(typeof(IHasPlugins)))
             .SelectMany(t => t.GetProperty(nameof(IHasPlugins.Plugins), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as List<Type> ?? [])];
 
-        asses = [..asses.Concat(plugins)];
+        asses = [.. asses.Concat(plugins)];
 
-        List<Type> concrete = [..asses.Where(s => s.IsConcrete() && !s.Extends(typeof(IHasNoService)))];
+        List<Type> concrete = [.. asses.Where(s => s.IsConcrete() && !s.Extends(typeof(IHasNoService)))];
 
         List<string> interfaces = [..asses
             .Where(s => s.IsInterface)
@@ -169,7 +170,7 @@ public static partial class TypeExtensions
                 return interf.GetGenericArguments().First();
             })];
 
-        return [..servicable.Concat(currents).Distinct()];
+        return [.. servicable.Concat(currents).Distinct()];
     }
 
 
@@ -194,7 +195,7 @@ public static partial class TypeExtensions
     public static List<Type> ToEntities<TEntity>(this IEnumerable<Assembly?>? ass)
     {
         RegisterAssembly([.. ass ?? []]);
-        return [.._allKnownTypes.Where(t => t.IsClass && !t.IsAbstract
+        return [.._allMineTypes.Where(t => t.IsClass && !t.IsAbstract
             && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))
             ];
     }
@@ -203,12 +204,6 @@ public static partial class TypeExtensions
 
     static TypeExtensions()
     {
-        RegisterAssembly([
-            Assembly.GetCallingAssembly(), 
-            ..Assembly.GetCallingAssembly().GetAssemblies(), 
-            Assembly.GetEntryAssembly(), 
-            ..Assembly.GetEntryAssembly()?.GetAssemblies() ?? [], 
-            Assembly.GetExecutingAssembly()]);
 
         entry ??= Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
         entryDirectory ??= Path.GetDirectoryName(entry.Location);
@@ -217,32 +212,59 @@ public static partial class TypeExtensions
         publisher ??= GetPublisher(entry);
         company ??= GetCompany(entry);
 
+        // needed for IsMine function to work
+        RegisterAssembly([
+            Assembly.GetCallingAssembly(),
+            ..Assembly.GetCallingAssembly().GetAssemblies(),
+            Assembly.GetEntryAssembly(),
+            ..Assembly.GetEntryAssembly()?.GetAssemblies() ?? [],
+            Assembly.GetExecutingAssembly()]);
 
-        AllRoutableInterfaces = [.._allKnownTypes
-            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.IsInterface)
+        AppDomain.CurrentDomain.AssemblyLoad += CurrentDomain_AssemblyLoad;
+
+        TryLoadAllTypes();
+    }
+
+    private static void CurrentDomain_AssemblyLoad(object? sender, AssemblyLoadEventArgs args)
+    {
+        if (args.LoadedAssembly.IsMine())
+        {
+            RegisterAssembly(args.LoadedAssembly);
+
+            TryLoadAllTypes();
+        }
+    }
+
+
+    private static void TryLoadAllTypes()
+    {
+
+        MyRoutableInterfaces = [typeof(ILogin)];
+
+        List<Type> components = [.._allMineTypes
+            .Where(t => t.BaseType?.Name == "ComponentBase") // TODO: fix this for inherited components like accordion? no
             ];
 
-        AllRoutable = [.._allKnownTypes
-            .Where(t => typeof(IComponent).IsAssignableFrom(t) && t.GetCustomAttributes().Any(StaticMatchRouteAttribute))
+        MyRoutable = [..components
+            .Where(t => t.GetCustomAttributes().Any(StaticMatchRouteAttribute))
             ];
 
-        AllRoutes = [.._registeredAssemblies
-            .Routes()
+        MyRoutes = [.._allMineTypes
+            .SelectMany(TypeExtensions.Routes)
             .Distinct()
             ];
 
-        foreach (var type in AllRoutable)
+        foreach (var type in MyRoutable)
         {
             // This triggers your existing GetRoutes logic to fill the _routeCache
             _ = GetRoutes(type);
         }
-
     }
 
 
     public static void RegisterAssembly(params Assembly?[]? assemblies)
     {
-        assemblies = [..(assemblies??[]).Concat(AppDomain.CurrentDomain.GetAssemblies())];
+        assemblies = [.. (assemblies ?? []).Concat(AppDomain.CurrentDomain.GetAssemblies())];
 
         if (assemblies == null) return;
 
@@ -261,10 +283,15 @@ public static partial class TypeExtensions
             {
                 if (_loadedAssemblies.Add(name))
                 {
+                    var mine = assembly.IsMine();
                     var types = assembly.GetAssTypesSafely();
                     foreach (var type in types)
                     {
                         _allKnownTypes.Add(type);
+                        if (mine)
+                        {
+                            _allMineTypes.Add(type);
+                        }
                     }
                 }
             }

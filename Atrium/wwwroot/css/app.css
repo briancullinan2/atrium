@@ -51,3 +51,27 @@ a, .btn-link {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+
+.bi {
+    display: inline-block;
+    position: relative;
+    /*width: 1.25rem;
+    height: 1.25rem; TODO: theme.css */
+    margin-right: 0.5rem;
+    margin-left: 0.5rem;
+    top: 0;
+    background-size: cover;
+    text-decoration:none;
+}
+
+a:hover .bi,
+a:hover .bi:before, a:hover .bi:after,
+.bi:before, .bi:after {
+    text-decoration:none;
+}
+
+a .bi {
+    cursor: pointer;
+}
+

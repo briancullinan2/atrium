@@ -60,9 +60,16 @@ namespace RazorSharp.Extensions
             , string? overrideIcon = null
             , Type? type = null)
         {
-            var display = type?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()
-                ?? TypeExtensions.IdentifyNavigation(uri).ComponentType
-                .GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+            var display = type?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+            if (display == null)
+            {
+                try
+                {
+                    display = TypeExtensions.IdentifyNavigation(uri).ComponentType
+                        .GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+                }
+                catch { }
+            }
             return ToNavLink(uri, overrideTitle ?? display?.ShortName ?? display?.Name ?? string.Empty, overrideIcon ?? display?.Prompt ?? string.Empty, (bool?)null);
         }
 
@@ -100,8 +107,7 @@ namespace RazorSharp.Extensions
                     if (collapsible != null)
                     {
                         __builder2.OpenElement(3, "span");
-                        __builder2.AddAttribute(4, "class", "bi" + (collapsible == true ? "bi-chevron-right" : "bi-chevron-down"));
-                        __builder2.AddContent(5, overrideTitle);
+                        __builder2.AddAttribute(4, "class", "bi " + (collapsible == true ? "bi-chevron-right" : "bi-chevron-down"));
                         __builder2.CloseElement();
 
                     }

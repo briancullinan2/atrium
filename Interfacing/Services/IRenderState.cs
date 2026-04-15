@@ -72,7 +72,7 @@ public interface IHasErrors<T> : IHasErrors
 public interface IHasClass
 {
     ClassNameCollection ClassNames { get; }
-    void SetPageClasses(List<string> classes);
+    void SetPageClasses(List<string> classes, Type? typeHint = null);
     void SetTheme(string? classes);
     void SetSidebar(string? classes);
     string? Sidebar { get; }

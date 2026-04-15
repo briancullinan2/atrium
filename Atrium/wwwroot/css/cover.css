@@ -59,6 +59,7 @@ main.cover-page {
 .cover-page .status-container {
     padding-bottom: 8rem;
     position: relative;
+    text-align:center;
 }
 
 .cover-page .box-status {

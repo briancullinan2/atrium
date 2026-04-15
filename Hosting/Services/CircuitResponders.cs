@@ -165,8 +165,8 @@ public partial class CircuitProvider : ICircuitProvider
         try
         {
             var method = Nav.Uri;
-            var potentialType = TypeExtensions.AllRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
-            var methodInfo = TypeExtensions.AllRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
+            var potentialType = TypeExtensions.MyRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
+            var methodInfo = TypeExtensions.MyRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
                 ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
             var type = methodInfo.DeclaringType ?? throw new InvalidOperationException("Method has no declaring type: " + method);
 
@@ -236,9 +236,9 @@ public partial class CircuitProvider : ICircuitProvider
             throw new InvalidOperationException("Method cannot be null");
 
         // TODO: look up type based on method string input
-        var potentialType = TypeExtensions.AllRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
+        var potentialType = TypeExtensions.MyRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
 
-        var methodInfo = TypeExtensions.AllRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
+        var methodInfo = TypeExtensions.MyRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
             ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
 
         var type = methodInfo.DeclaringType ?? throw new InvalidOperationException("Method has no declaring type: " + method);

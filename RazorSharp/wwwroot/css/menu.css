@@ -99,6 +99,7 @@ header.top-row a:first-child {
 
 .header-text {
     font-size: 0.9rem;
+    flex-basis:100%;
 }
 
 

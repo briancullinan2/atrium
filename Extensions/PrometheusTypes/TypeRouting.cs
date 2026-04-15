@@ -24,17 +24,12 @@ public static partial class TypeExtensions
     }
 
 
-    public static string? Route<T>(this T _) where T : class
-    {
-        return Route(typeof(T));
-    }
-
 
     public static string? Route(this Type? type)
     {
-        if(type == null) return null;
+        if (type == null) return null;
         if (_cachedRouteTypes.TryGetValue(type, out var route)) return route;
-        if(type.GetCustomAttributes().FirstOrDefault(StaticMatchRouteAttribute) is Attribute attr)
+        if (type.GetCustomAttributes().FirstOrDefault(StaticMatchRouteAttribute) is Attribute attr)
         {
             _cachedRouteTypes.TryAdd(type, (attr as dynamic).Template);
             return (attr as dynamic).Template;
@@ -61,12 +56,12 @@ public static partial class TypeExtensions
         if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route;
         var type = sharing.DeclaringType;
         if (!sharing.HasAuthorization()
-//#if !BROWSER
-//                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
-//#endif
+        //#if !BROWSER
+        //                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
+        //#endif
         )
             return null;
-        
+
         var ns = (type?.Namespace ?? "Global").Split('.').ToList();
         if (!string.IsNullOrWhiteSpace(type?.Name))
             ns.Add(type.Name);
@@ -178,9 +173,6 @@ public static partial class TypeExtensions
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         Type any) => interfaces.Any(any.Extends);
 
-
-    public static List<MethodInfo> Routes<T>(this T _) where T : class
-        => [.. typeof(T).Routes()];
 
     public static List<MethodInfo> Routes(this Type sharing)
         => [.. sharing.GetMethods(null).Where(m => ((MemberInfo)m).IsRoutable())];
