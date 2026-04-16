@@ -97,7 +97,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
                 if (loaded == null) return;
                 // temporary whatever
-                LoadedAssemblies.TryAdd(ass, loaded);
+                StoredAssemblies.TryAdd(ass, loaded);
+                _ = TryFindingInterestingTypes(loaded);
             }
             catch (Exception ex)
             {
@@ -406,7 +407,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         ];
     }
 
-    private static ConcurrentDictionary<string, Assembly>? StoredAssemblies = null;
+    private static readonly ConcurrentDictionary<string, Assembly> StoredAssemblies = [];
     private string? previousKeys;
 
     [RequiresAssemblyFiles]
@@ -414,23 +415,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         get
         {
-            if (StoredAssemblies != null)
-                return StoredAssemblies;
-            var asses = AppDomain.CurrentDomain.GetAssemblies();
-            var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
-            var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
-            if (collisions.Count > 0)
-            {
-                Console.WriteLine(JsonSerializer.Serialize(assNames));
-            }
-            StoredAssemblies = new();
-            lock (StoredAssemblies)
-            {
-                foreach (var ass in asses)
-                {
-                    StoredAssemblies.TryAdd(ass.ToName(), ass);
-                }
-            }
             return StoredAssemblies;
         }
     }
@@ -446,6 +430,33 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         Service = service;
         Provider = provider;
         //StoredServices ??= _service;
+        var asses = AppDomain.CurrentDomain.GetAssemblies();
+        var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
+        var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
+        if (collisions.Count > 0)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(assNames));
+        }
+        lock (StoredAssemblies)
+        {
+            foreach (var ass in asses)
+            {
+                StoredAssemblies.TryAdd(ass.ToName(), ass);
+            }
+        }
+        var parallel = Environment.ProcessorCount - 4;
+
+        var options = new ParallelOptions
+        {
+            // Leave at least one or two cores for the UI thread
+            MaxDegreeOfParallelism = Math.Max(1, parallel)
+        };
+
+        // this is why i put the Seen gate on this and the file scan
+        _ = Parallel.ForEachAsync(asses, options, async (ass, ct) =>
+        {
+            await TryFindingInterestingTypes(ass);
+        });
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
         IsBootstrapping = true;
         Task.Run(RunFullScan);
@@ -473,7 +484,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         string location = assembly.Location;
         string title = assembly.ToName();
 
-        LoadedAssemblies.TryAdd(title, assembly);
+        StoredAssemblies.TryAdd(title, assembly);
 
         if (Preferences.Default.Get("PluginEnabled" + title, false))
             Enable(title, true);

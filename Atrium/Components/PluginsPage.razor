@@ -10,6 +10,7 @@
 @inject ICompositeProvider Service
 @inject IHasClass Logo
 
+<article class="content course-container">
 
 @{
     Logo.LogoContent(__builder);
@@ -136,6 +137,7 @@
     </tbody>
 </table>
 
+</article>
 
 @code {
     private bool _showSplash = true;
@@ -272,8 +274,17 @@
         StateHasChanged();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        base.OnParametersSet();
+        await TryLoading();
+
+    }
+
     private string? Scanning = null;
     private DateTime _lastUiUpdate = DateTime.MinValue;
+    // static because i want it to be the same across browser and desktop
+    //   multitenant would be a container inside this state
     List<PluginContract> MyList = [];
 
     protected void NotifyAssembly(PluginContract file)
