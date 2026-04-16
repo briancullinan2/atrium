@@ -1,126 +1,122 @@
 ﻿
+using Microsoft.Win32;
+using System.Net.Http;
+
 namespace Interfacing.Services;
 
-public interface IRenderService
+
+
+public partial class ClassyService : IHasClass, IDisposable
 {
-    Action<object> ChildContent { get; }
-}
+    protected ICompositeProvider Service { get; }
 
-
-public interface ILogoService : IRenderService
-{
-}
-
-public interface IRenderLinks : IRenderService
-{
-    void Register(Type who, string path);
-    Task ListenUp(Type? typeHint = null, Type? layout = null);
-    List<string> Registry { get; }
-}
-
-public interface IJavascriptOutlet : IRenderLinks
-{
-
-}
-
-public interface ICssOutlet : IRenderLinks
-{
-
-}
-
-
-public partial class RenderService(ICompositeProvider service) : IRenderService
-{
-    protected ICompositeProvider Service { get; set; } = service;
-
-    public virtual Action<object> ChildContent
+#if false
+    protected string BuildRenderTree()
     {
-        get
+        var sb = new StringBuilder();
+
+        foreach (var style in Registry)
         {
-            return (__builder =>
+            if (_filePresence.TryGetValue(style, out var cssString))
             {
-                (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate)?.DynamicInvoke(__builder);
-            });
+                sb.Append("<style>")
+                  .Append(cssString)
+                  .AppendLine("</style>");
+            }
+            else
+            {
+                // Using an interpolated string for the link tag
+                sb.AppendLine($"<link rel=\"stylesheet\" href=\"{style}\" />");
+            }
         }
-        set
-        { }
+
+        return sb.ToString();
     }
+#endif
 
-    public static implicit operator Delegate(RenderService service)
+
+    public void SetUri(string uri)
     {
-        return service.ChildContent ?? (Delegate)((object __builder) => { });
-    }
-
-}
-
-
-public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDisposable
-{
-    protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
-
-    //private readonly NavigationManager Nav;
-    private readonly ITrustProvider Trust;
-    private bool IsClosing;
-    //private readonly RenderStateProvider Rendered;
-
-    public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
-    public event Action? OnChanged;
-
-    public override Action<object> ChildContent
-    {
-        get => __builder => (__builder as dynamic).AddMarkupContent(0, BuildRenderTree()); set => base.ChildContent = value;
+        if (string.IsNullOrWhiteSpace(uri.Trim('/'))) PageClasses = ["Home"];
+        else PageClasses = [..uri.Split('?')[0]
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ];
     }
 
 
-    public void Register(Type who, string path)
+    public ClassyService(ICompositeProvider service, HttpClient? _client = null)
     {
-        if (RealRegistry.TryGetValue(who, out var list))
+        Service = service;
+        Http = _client;
+        _ = LoadSvg();
+
+        CombinedClassNames.AutoSources = () => [
+            Theme,
+            Sidebar,
+            Background,
+            .. (PageClasses ?? []),
+            .. GivenClassNames
+        ];
+    }
+
+    public async Task LoadSvg()
+    {
+        if (SvgString != null) return;
+
+        try
         {
-            list.Add(path);
+            if (Http?.GetStringAsync("triangle.svg") is Task<string> task
+                && await task is string icon)
+            {
+                SvgString ??= icon;
+            }
         }
-        else
-            RealRegistry.TryAdd(who.GetType(), [path]);
-        OnChanged?.Invoke();
+        catch
+        { }
+
+        if (SvgString != null) return;
+
+        var root = AppContext.BaseDirectory;
+        if (File.Exists(Path.Combine(root, "triangle.svg")))
+        {
+            SvgString ??= File.ReadAllText(Path.Combine(root, "triangle.svg"));
+        }
+        else if (File.Exists(Path.Combine(root, "wwwroot/triangle.svg")))
+        {
+            SvgString ??= File.ReadAllText(Path.Combine(root, "wwwroot/triangle.svg"));
+        }
     }
 
+    public static string? SvgString { get; private set; } = null;
+    private readonly HttpClient? Http;
 
-    public RenderOutlet(ICompositeProvider Service, ITrustProvider _trust)
-        : base(Service)
+    public Action<object> LogoContent => __builder => (__builder as dynamic).AddMarkupContent(0, SvgString);
+
+
+    protected static List<string> TypeToIncludes(Type type) => type switch
     {
-        //Nav = _nav;
-        Trust = _trust;
-        Trust.OnSettledAsync += ListenTrust;
-        //Rendered = rendered;
-        //Rendered.OnRendered += ListenRendered;
-        //Rendered.OnEmptied += Rendered_OnEmptied;
-    }
-
-
-    protected abstract List<string> TypeToIncludes(Type type);
-    protected abstract string BuildRenderTree();
-
-
-    /* Uncircular dependency
-    public virtual void ListenRendered()
-    {
-        if (IsClosing) return;
-
-        _ = ListenUp();
-    }
-    */
-
-
-    public virtual async Task ListenTrust()
-    {
-        if (IsClosing) return;
-
-        Trust.OnSettledAsync += ListenTrust; // resubscribe for the next lazy event
-
-        await ListenUp();
-    }
+        _ when type == typeof(IHasForms) => [
+            "/_content/RazorSharp/css/accordion.css",
+            "/_content/RazorSharp/css/forms.css"],
+        _ when type == typeof(IHasAccordion) => [
+            "/_content/RazorSharp/css/accordion.css"],
+        _ when type == typeof(IHasCover) => ["/css/cover.css"],
+        _ when type.Name.Contains("LayoutComponentBase") => [
+            "/_content/RazorSharp/css/layout.css",
+            "/_content/RazorSharp/css/menu.css",
+            "/_content/RazorSharp/css/nav.css"],
+        _ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => [
+            "/_content/RazorSharp/css/main.css"],
+        _ => []
+    };
 
     protected Type? previousHint = null;
     private Type? layout = null;
+    private bool IsClosing = false;
+    public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
+    protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
+    private readonly Dictionary<string, string> _filePresence = [];
 
     public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null)
     {
@@ -183,75 +179,6 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
             // don't trigger removals, just let them happen
         }
 
-        var Ending = Registry.ToList();
-        if (HasChanged && Ending.Except(Starting).Any())
-        {
-            var Container = Service.GetService<IHasChildren>();
-            if (Container?.HasChanged() is Task task) await task;
-        }
-    }
-
-    public void Dispose()
-    {
-        IsClosing = true;
-        Trust.OnSettledAsync -= ListenTrust;
-        //Rendered.OnRendered -= ListenRendered;
-        GC.SuppressFinalize(this);
-    }
-}
-
-
-public partial class CssOutlet
-    : RenderOutlet, ICssOutlet, IHasClass
-{
-    private readonly Dictionary<string, string> _filePresence = [];
-
-    protected override List<string> TypeToIncludes(Type type) => type switch
-    {
-        _ when type == typeof(IHasForms) => [
-            "/_content/RazorSharp/css/accordion.css",
-            "/_content/RazorSharp/css/forms.css"],
-        _ when type == typeof(IHasAccordion) => [
-            "/_content/RazorSharp/css/accordion.css"],
-        _ when type == typeof(IHasCover) => ["/css/cover.css"],
-        _ when type.Name.Contains("LayoutComponentBase") => [
-            "/_content/RazorSharp/css/layout.css",
-            "/_content/RazorSharp/css/menu.css",
-            "/_content/RazorSharp/css/nav.css"],
-        _ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => ["/_content/RazorSharp/css/main.css"],
-        _ => []
-    };
-
-
-    public void SetUri(string uri)
-    {
-        if (string.IsNullOrWhiteSpace(uri.Trim('/'))) PageClasses = ["Home"];
-        else PageClasses = [..uri.Split('?')[0]
-            .Split('/')
-            .Select(seg => seg.ToSafe())
-        ];
-    }
-
-
-    public CssOutlet(ICompositeProvider Service, ITrustProvider Trust)
-        : base(Service, Trust)
-    {
-
-        CombinedClassNames.AutoSources = () => [
-            Theme,
-            Sidebar,
-            Background,
-            .. (PageClasses ?? []),
-            .. GivenClassNames
-        ];
-    }
-
-
-    public override async Task ListenUp(Type? typeHint = null, Type? layout = null)
-    {
-        await base.ListenUp(typeHint, layout);
-
-        // try to inject css directly instead of loading it remotely
         foreach (var style in RealRegistry)
         {
             var names = style.Key.Assembly.GetManifestResourceNames();
@@ -270,30 +197,20 @@ public partial class CssOutlet
 
         }
 
-    }
 
-    protected override string BuildRenderTree()
-    {
-        var sb = new StringBuilder();
-
-        foreach (var style in Registry)
+        var Ending = Registry.ToList();
+        if (HasChanged && Ending.Except(Starting).Any())
         {
-            if (_filePresence.TryGetValue(style, out var cssString))
-            {
-                sb.Append("<style>")
-                  .Append(cssString)
-                  .AppendLine("</style>");
-            }
-            else
-            {
-                // Using an interpolated string for the link tag
-                sb.AppendLine($"<link rel=\"stylesheet\" href=\"{style}\" />");
-            }
+            var Container = Service.GetService<IHasChildren>();
+            if (Container?.HasChanged() is Task task) await task;
         }
-
-        return sb.ToString();
     }
 
+    public void Dispose()
+    {
+        IsClosing = true;
+        GC.SuppressFinalize(this);
+    }
 
     private List<string> GivenClassNames { get; set; } = [];
     public ClassNameCollection CombinedClassNames { get; } = [];
@@ -333,29 +250,6 @@ public partial class CssOutlet
     {
         var newClass = "background-" + (theme?.ToString()?.ToLowerInvariant() ?? string.Empty);
         Background = newClass;
-    }
-
-}
-
-public partial class JavascriptOutlet(ICompositeProvider Service, ITrustProvider Trust)
-    : RenderOutlet(Service, Trust), IJavascriptOutlet
-{
-    protected override List<string> TypeToIncludes(Type type) => type switch
-    {
-        //    _ when type is IHasForms => ["_content/RazorSharp/css/forms.css"],
-        _ => []
-    };
-
-    protected override string BuildRenderTree()
-    {
-        var sb = new StringBuilder();
-
-        foreach (var style in Registry)
-        {
-            sb.AppendLine($"<script type=\"application/javascript\" src=\"{style}\" />");
-        }
-
-        return sb.ToString();
     }
 
 }

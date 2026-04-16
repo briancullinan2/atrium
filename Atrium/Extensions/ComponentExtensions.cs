@@ -18,9 +18,6 @@ internal static class ComponentExtensions
             && component.GetType().GetGenericTypeDefinition() == typeof(CascadingValue<>))
             handleField = typeof(CascadingValue<>)
                 .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        else if (typeof(RenderService).IsAssignableFrom(component.GetType()))
-            handleField = typeof(RenderService)
-                .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
         else if (typeof(ComponentBase).IsAssignableFrom(component.GetType()))
             handleField = typeof(ComponentBase)
                 .GetField("_renderHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);

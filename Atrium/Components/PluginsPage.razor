@@ -7,11 +7,11 @@
 @inject ITrustProvider Trust
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
 @inject ICompositeProvider Service
-@inject LogoService Logo
+@inject IHasClass Logo
 
 
 @{
-    Logo.ChildContent(__builder);
+    Logo.LogoContent(__builder);
 }
 
 <table>

@@ -75,7 +75,14 @@ public interface IHasClass
     void SetPageClasses(List<string> classes, Type? typeHint = null);
     void SetTheme(string? classes);
     void SetSidebar(string? classes);
+    void SetUri(string uri);
     string? Sidebar { get; }
+    Action<object> LogoContent { get; }
+
+    Task ListenUp(Type? typeHint, Type? layout);
+
+    List<string> Registry { get; }
+
 }
 
 

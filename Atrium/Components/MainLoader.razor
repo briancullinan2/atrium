@@ -9,15 +9,13 @@
 @inject ICompositeProvider Service
 @inject ITrustProvider Trust
 @inject IRenderState Rendered
-@inject CssOutlet Css
-@inject JavascriptOutlet JavaScript
+@inject IHasClass Css
 @inject IJSRuntime JS
 
-@{
-    Css.ChildContent(__builder);
-    JavaScript.ChildContent(__builder);
+@foreach (var cssUrl in Css.Registry)
+{
+    <link rel="stylesheet" href="@cssUrl" />
 }
-
 
 @if (IsDebug)
 {
@@ -91,7 +89,7 @@
             <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
                 <Found Context="routeData">
                     @{
-                        _ = Css.ListenUp(routeData.PageType);
+                        _ = Css.ListenUp(routeData.PageType, null);
                     }
                     @if (AuthService != null)
                     {

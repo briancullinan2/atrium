@@ -29,7 +29,7 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        var currents = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(CssOutlet).Assembly }
+        var currents = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
             .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
             .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely).GetServicable().ToList();
