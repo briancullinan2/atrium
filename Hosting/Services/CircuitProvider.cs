@@ -234,7 +234,7 @@ public interface IHasCircuit
 
 public static class HttpContextExtensions
 {
-
+    public static Dictionary<string, MethodInfo>? Services { get; private set; }
 
     public static bool IsSignalCircuit(this HttpContext? context)
     {
@@ -254,41 +254,32 @@ public static class HttpContextExtensions
 
     public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHub<CircuitHub>(CircuitProvider.HubAddress);
-
-        var services = Assembly.GetCallingAssembly().GetAssemblies()
-            .Where(TypeExtensions.IsMine)
-            .SelectMany(TypeExtensions.GetAssTypesSafely)
-            .GetServicable();
-
-        foreach (var service in services)
+        try
         {
-            try
+            endpoints.MapHub<CircuitHub>(CircuitProvider.HubAddress);
+
+            var serviceable = Assembly.GetCallingAssembly().GetAssemblies()
+                .Where(TypeExtensions.IsMine)
+                .SelectMany(TypeExtensions.GetAssTypesSafely)
+                .GetServicable();
+
+            Services = serviceable
+                .SelectMany(TypeExtensions.Routes)
+                .ToDictionary(r => r.Route()!, r => r);
+
+            foreach (var service in Services)
             {
+                var routeBuilder = endpoints.Map(service.Key, CircuitProvider.OnExecuteAsync);
 
+                //routeBuilder.RequireAuthorization();
 
-                var routes = service.Routes();
-                if (routes == null || routes.Count == 0) continue;
-
-                foreach (var method in routes)
-                {
-                    var route = method.Route();
-                    if (route == null) continue;
-
-                    var routeBuilder = endpoints.MapPost(route, CircuitProvider.OnExecuteAsync);
-
-                    routeBuilder.RequireAuthorization();
-
-                    routeBuilder.WithTags(method.Name);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
+                //routeBuilder.WithTags(service.Value.Name);
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
-
-
 }
 #endif

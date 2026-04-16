@@ -1,13 +1,20 @@
 ﻿
+using System.Xml.Linq;
+
 namespace Extensions.PrometheusTypes;
 
 public static partial class TypeExtensions
 {
-    public static Func<Attribute, bool> StaticMatchRouteAttribute { get; } = a => a.GetType().Name.Contains("Route");
-    public static Func<Attribute, bool> StaticMatchQueryAttribute { get; } = a => a.GetType().Name.Contains("ParameterFromQuery");
-    public static Func<Attribute, bool> StaticMatchAnonymousAttribute { get; } = a => a.GetType().Name.Contains("AllowAnonymous");
-    public static Func<Attribute, bool> StaticMatchAuthorizeAttribute { get; } = a => a.GetType().Name.Contains("AuthorizeAttribute");
-    public static Func<Attribute, bool> StaticMatchParameterAttribute { get; } = a => a.GetType().Name.Contains("ParameterAttribute");
+    public static bool StaticMatchRouteAttribute (Attribute a) => a.GetType().Name.Contains("Route");
+    public static bool StaticMatchQueryAttribute(Attribute a) => a.GetType().Name.Contains("ParameterFromQuery");
+    public static bool StaticMatchAnonymousAttribute (Attribute a) => a.GetType().Name.Contains("AllowAnonymous");
+    public static bool StaticMatchAuthorizeAttribute (Attribute a) => a.GetType().Name.Contains("AuthorizeAttribute");
+    public static bool StaticMatchParameterAttribute (Attribute a) => a.GetType().Name.Contains("ParameterAttribute");
+    public static bool StaticMatchRouteAttribute (CustomAttributeData a) => a.AttributeType.Name.Contains("Route");
+    public static bool StaticMatchQueryAttribute (CustomAttributeData a) => a.AttributeType.Name.Contains("ParameterFromQuery");
+    public static bool StaticMatchAnonymousAttribute (CustomAttributeData a) => a.AttributeType.Name.Contains("AllowAnonymous");
+    public static bool StaticMatchAuthorizeAttribute (CustomAttributeData a) => a.AttributeType.Name.Contains("AuthorizeAttribute");
+    public static bool StaticMatchParameterAttribute (CustomAttributeData a) => a.AttributeType.Name.Contains("ParameterAttribute");
 
 
     private static readonly ConcurrentBag<Type> _allKnownTypes = [];
@@ -17,11 +24,11 @@ public static partial class TypeExtensions
 
     public static List<Type> AllRegisteredTypes { get => [.. _allKnownTypes]; }
 
-    public static List<Type> MyRoutableInterfaces { get; private set; }
+    public static List<Type> MyRoutableInterfaces { get; private set; } = [];
 
-    public static List<Type> MyRoutable { get; private set; }
+    public static List<Type> MyRoutable { get; private set; } = [];
 
-    public static List<MethodInfo> MyRoutes { get; private set; }
+    public static List<MethodInfo> MyRoutes { get; private set; } = [];
 
     public static bool MineOnly { get; } = true;
 
@@ -239,25 +246,37 @@ public static partial class TypeExtensions
     private static void TryLoadAllTypes()
     {
 
-        MyRoutableInterfaces = [typeof(ILogin)];
+        try
+        {
+            MyRoutableInterfaces = [typeof(ILogin)];
 
-        List<Type> components = [.._allMineTypes
+            List<Type> components = [.._allMineTypes
             .Where(t => t.BaseType?.Name == "ComponentBase") // TODO: fix this for inherited components like accordion? no
-            ];
+                ];
 
-        MyRoutable = [..components
+            MyRoutable = [..components
             .Where(t => t.GetCustomAttributes().Any(StaticMatchRouteAttribute))
-            ];
+                ];
 
-        MyRoutes = [.._allMineTypes
+        }
+        catch { }
+
+        try
+        {
+
+            MyRoutes = [.._allMineTypes
             .SelectMany(TypeExtensions.Routes)
             .Distinct()
-            ];
+                ];
+        } catch { }
 
         foreach (var type in MyRoutable)
         {
             // This triggers your existing GetRoutes logic to fill the _routeCache
-            _ = GetRoutes(type);
+            try
+            {
+                _ = GetRoutes(type);
+            } catch { }
         }
     }
 
@@ -284,8 +303,8 @@ public static partial class TypeExtensions
                 if (_loadedAssemblies.Add(name))
                 {
                     var mine = assembly.IsMine();
-                    var types = assembly.GetAssTypesSafely();
-                    foreach (var type in types)
+                    types[assembly] = assembly.GetAssTypesSafely();
+                    foreach (var type in types[assembly])
                     {
                         _allKnownTypes.Add(type);
                         if (mine)
@@ -298,17 +317,19 @@ public static partial class TypeExtensions
         }
     }
 
+    private static readonly Dictionary<Assembly,List<Type>> types = [];
+
 
     public static List<Type> GetAssTypesSafely(this Assembly ass)
     {
         try
         {
-            return [.. ass.GetTypes()];
+            return types.TryGetValue(ass, out var assTypes) ? assTypes : types[ass] = [.. ass.GetTypes()];
         }
         catch (ReflectionTypeLoadException e)
         {
             // Return only the types that were successfully loaded
-            return [.. e.Types.OfType<Type>()];
+            return types.TryGetValue(ass, out var assTypes) ? assTypes : types[ass] = [.. e.Types.OfType<Type>()];
         }
         catch (Exception)
         {

@@ -55,10 +55,10 @@ public static partial class TypeExtensions
         if (sharing == null) return null;
         if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route;
         var type = sharing.DeclaringType;
-        if (!sharing.HasAuthorization()
-        //#if !BROWSER
-        //                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
-        //#endif
+        if (sharing is not MethodInfo method || !method.HasAuthorization()
+//#if !BROWSER
+//                && !sharing.GetParameters().Any(typeof(HttpContext).TypeExtendsAny)
+//#endif
         )
             return null;
 
@@ -183,32 +183,40 @@ public static partial class TypeExtensions
     private static readonly ConcurrentDictionary<MemberInfo, string?> _cachedRouteMethods = [];
 
 
-    public static bool HasAuthorization<T>(this T _) where T : class
-    {
-        var type = typeof(T);
-        return HasAuthorization(type);
-    }
-
     public static bool HasAuthorization(this Type type)
     {
-        if (_cachedRouteTypes.TryGetValue(type, out var route)) return route != null;
-        bool hasAnonymous = type.GetCustomAttributes().Any(StaticMatchAnonymousAttribute);
-        bool hasAuthorize = type.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute);
-        return hasAnonymous || hasAuthorize;
-
+        try
+        {
+            if (_cachedRouteTypes.TryGetValue(type, out var route)) return route != null;
+            bool hasAnonymous = type.CustomAttributes.Any(StaticMatchAnonymousAttribute);
+            bool hasAuthorize = type.CustomAttributes.Any(StaticMatchAuthorizeAttribute);
+            return hasAnonymous || hasAuthorize;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return false;
     }
 
 
     public static bool HasAuthorization(this MethodInfo sharing)
     {
-        if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route != null;
-        var type = sharing.DeclaringType;
-        bool hasAnonymous = sharing.GetCustomAttributes().Any(StaticMatchAnonymousAttribute)
-            || type?.GetCustomAttributes().Any(StaticMatchAnonymousAttribute) == true;
-        bool hasAuthorize = sharing.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute)
-            || type?.GetCustomAttributes().Any(StaticMatchAuthorizeAttribute) == true;
-        return hasAnonymous || hasAuthorize;
-
+        try
+        {
+            if (_cachedRouteMethods.TryGetValue(sharing, out var route)) return route != null;
+            var type = sharing.DeclaringType;
+            bool hasAnonymous = sharing.CustomAttributes.Any(StaticMatchAnonymousAttribute)
+                || type?.CustomAttributes.Any(StaticMatchAnonymousAttribute) == true;
+            bool hasAuthorize = sharing.CustomAttributes.Any(StaticMatchAuthorizeAttribute)
+                || type?.CustomAttributes.Any(StaticMatchAuthorizeAttribute) == true;
+            return hasAnonymous || hasAuthorize;
+        } 
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return false;
     }
 
 }

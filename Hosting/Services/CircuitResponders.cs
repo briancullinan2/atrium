@@ -156,15 +156,14 @@ public partial class CircuitProvider : ICircuitProvider
 
 #if !BROWSER
     public static async Task OnExecuteAsync(
-        HttpContext Context,
-        NavigationManager Nav,
+        IHttpContextAccessor Context,
         IFileManager FileManager,
         ICircuitProvider Circuit,
         IFormFactor Form)
     {
         try
         {
-            var method = Nav.Uri;
+            var method = Context.HttpContext?.Request.Path.Value;
             var potentialType = TypeExtensions.MyRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
             var methodInfo = TypeExtensions.MyRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
                 ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);

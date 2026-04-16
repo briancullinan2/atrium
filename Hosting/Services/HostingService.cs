@@ -104,6 +104,7 @@ internal class HostingService : IHostingService
     /// <summary>
     /// Probes a remote domain for its status.
     /// </summary>
+    [AllowAnonymous]
     public async Task<StatusResponse?> CheckStatus(string? domain)
     {
         if (string.IsNullOrEmpty(domain)) return null;
@@ -116,7 +117,7 @@ internal class HostingService : IHostingService
 
         try
         {
-            var url = $"https://{domain.Replace("https://", "")}/api/status";
+            var url = $"https://{domain.Replace("https://", "")}" + typeof(HostingService).GetMethod(nameof(CheckStatus))?.Route();
             var response = await Http.PostAsJsonAsync(url, _settings);
             _recentResult = await response.Content.ReadFromJsonAsync<StatusResponse>();
             _lastChecked = DateTime.Now;
