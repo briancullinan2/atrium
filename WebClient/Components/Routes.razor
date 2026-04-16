@@ -23,12 +23,12 @@
             AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
                     AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
-                    <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
                 <FocusOnNavigate RouteData="routeData" Selector="h1" />
             </Found>
             <NotFound>
                 <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
-                    <NotFoundControl></NotFoundControl>
+                    <NotFoundControl />
                 </LayoutView>
             </NotFound>
         </Router>
@@ -38,8 +38,13 @@
 @code {
     public Type? DefaultLayout { get; set; } = typeof(RazorSharp.Layout.MainLayout);
 
-    List<Assembly> EntryAsses = [.. (Assembly.GetEntryAssembly() 
-        ?? Assembly.GetExecutingAssembly()).GetAssemblies().GetMine().Except([typeof(RazorSharp.Pages.Landing.Default).Assembly])];
+    List<Assembly> EntryAsses {
+        get => [.. (Assembly.GetEntryAssembly()
+            ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies().GetMine()
+            .Except([typeof(RazorSharp.Pages.Landing.Default).Assembly])
+        ];
+    }
     protected string Ready = "loading";
 
     protected override void OnInitialized()

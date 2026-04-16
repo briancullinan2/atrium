@@ -68,8 +68,11 @@
 
     // Default to Wasm, but allow an override
     IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
-
+#if DEBUG
+    private bool IsDebug = true;
+#else
     private bool IsDebug = false;
+#endif
     private bool FirstTimeLoad = true;
     static Type? PermissionType = null;
     static Type? StoredDefaultRoot = null;

@@ -114,7 +114,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 InvokeAsync(StateHasChanged);
                 _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
+            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
         }
     }
 
@@ -131,7 +131,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 InvokeAsync(StateHasChanged);
                 _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
+            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
         }
     }
 

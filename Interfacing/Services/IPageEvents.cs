@@ -67,7 +67,7 @@ public class ClassNameCollection : IEnumerable<string>
         {
             foreach (var c in AutoSources().Where(s => !string.IsNullOrWhiteSpace(s)))
             {
-                yield return c!;
+                yield return c?.ToLowerInvariant() ?? string.Empty;
             }
         }
     }
