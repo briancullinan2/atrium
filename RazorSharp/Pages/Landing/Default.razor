@@ -2,6 +2,7 @@
 @page "/index.html"
 @page "/app.html"
 @page "/{*notFound}"
+@inject IHasClass Classy
 
 @if (!String.IsNullOrWhiteSpace(notFound))
 {
@@ -14,39 +15,39 @@ else
         __builder.OpenComponent(0, DefaultRoot);
         __builder.CloseComponent();
     }
-    else if (Roots.Count > 0)
-    {
-        __builder.OpenComponent(0, Roots.First());
-        __builder.CloseComponent();
-    }
-    else if (CatchAll.Count > 0)
-    {
-        __builder.OpenComponent(0, Roots.First());
-        __builder.CloseComponent();
-    }
     else
     {
-        lock (AllRoutes)
-            if (AllRoutes
-            .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
-            .FirstOrDefault() is Type any)
-            {
-                __builder.OpenComponent(0, any);
-                __builder.CloseComponent();
-            }
-            else
-            {
-                <div class="flash-card animate-in">
-                    TODO: Find a home page.
-                </div>
-            }
+        
+        <div class="flash-card animate-in">
+            TODO: Find a home page.
+        </div>
     }
 }
 
 @code
 {
     // TODO: find the best home page based on the plugins loaded.
-    [CascadingParameter(Name = nameof(DefaultRoot))] public Type? DefaultRoot { get; set; }
+    [CascadingParameter(Name = "Loader")] public IHasChildren? Loader { get; set; }
+    [CascadingParameter(Name = nameof(DefaultRoot))]
+    public Type? SetRoot { get; set; } = null;
+    public Type? DefaultRoot { 
+        get
+        {
+            if (SetRoot != null) return SetRoot;
+            if (Roots.Count > 0) return Roots.First();
+            if (CatchAll.Count > 0) return CatchAll.First();
+            lock (AllRoutes)
+                if (AllRoutes
+                .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+                .FirstOrDefault() is Type any)
+                    return any;
+            return null;
+        }
+        set
+        {
+            SetRoot = value;
+        }
+    }
     [Parameter] public string? notFound { get; set; }
     [CascadingParameter(Name = nameof(FirstTimeLoad))] public bool FirstTimeLoad { get; set; }
 
@@ -71,6 +72,7 @@ else
     {
         if(AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             await TryLoading();
+        await Classy.ListenUp(DefaultRoot, typeof(MainLayout), Loader);
         await base.OnInitializedAsync();
     }
 

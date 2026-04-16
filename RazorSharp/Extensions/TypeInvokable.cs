@@ -64,9 +64,9 @@ public static partial class InvokableExtensions
             }
             else if (!string.IsNullOrEmpty(parameters[i].Name)
                 && rendered.IsReady // don't touch NavigationManager until its ready or it will complain
-                && formFactor?.QueryParameters?.ContainsKey(parameters[i].Name!) is object queryParameter)
+                && formFactor?.QueryParameters?.TryGetValue(parameters[i].Name!, out var param) == true)
             {
-                parameterValues[i] = Convert.ChangeType(queryParameter, realType);
+                parameterValues[i] = Convert.ChangeType(param, realType);
             }
             else
             {

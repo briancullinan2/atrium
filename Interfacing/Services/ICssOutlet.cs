@@ -118,7 +118,7 @@ public partial class ClassyService : IHasClass, IDisposable
     protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
     private readonly Dictionary<string, string> _filePresence = [];
 
-    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null)
+    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null, IHasChildren? loader = null)
     {
         if (typeHint != null)
             previousHint = typeHint;
@@ -201,7 +201,7 @@ public partial class ClassyService : IHasClass, IDisposable
         var Ending = Registry.ToList();
         if (HasChanged && Ending.Except(Starting).Any())
         {
-            var Container = Service.GetService<IHasChildren>();
+            Container ??= loader ?? Service.GetService<IHasChildren>();
             if (Container?.HasChanged() is Task task) await task;
         }
     }
@@ -219,6 +219,7 @@ public partial class ClassyService : IHasClass, IDisposable
     public string? Theme;
     public string? Sidebar { get; private set; }
     public string? Background;
+    private IHasChildren? Container;
 
     // TODO: move this to mainloader classes along side SetTitle
     public void SetPageClasses(List<string> classes, Type? typeHint = null)

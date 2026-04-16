@@ -18,24 +18,26 @@
 }
 
 <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
-
-<Router OnNavigateAsync="HandleNavigation" 
-    AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
-            AdditionalAssemblies="@EntryAsses">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="@typeof(RazorSharp.Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
-            <NotFoundControl></NotFoundControl>
-        </LayoutView>
-    </NotFound>
-</Router>
-
+    <CascadingValue Name="Loader" Value="@this">
+        <Router OnNavigateAsync="HandleNavigation" 
+            AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
+                    AdditionalAssemblies="@EntryAsses">
+            <Found Context="routeData">
+                    <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
+                    <NotFoundControl></NotFoundControl>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingValue>
 </div>
 
 @code {
+    public Type? DefaultLayout { get; set; } = typeof(RazorSharp.Layout.MainLayout);
+
     List<Assembly> EntryAsses = [.. (Assembly.GetEntryAssembly() 
         ?? Assembly.GetExecutingAssembly()).GetAssemblies().GetMine().Except([typeof(RazorSharp.Pages.Landing.Default).Assembly])];
     protected string Ready = "loading";
@@ -128,7 +130,7 @@
 
             if (controlType == typeof(RazorSharp.Pages.Landing.Default)) return;
 
-            await Css.ListenUp(controlType, typeof(RazorSharp.Layout.MainLayout));
+            await Css.ListenUp(controlType, DefaultLayout, this);
 
             _ = ProbablyUpdateTitle(controlType);
         } catch {}

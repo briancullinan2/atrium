@@ -1,3 +1,4 @@
+@using Atrium.Extensions
 @using Atrium.Services
 @using Interfacing.Services
 @using Microsoft.AspNetCore.Components.Rendering
@@ -44,10 +45,12 @@
 
     @if (StoredAppAssembly != null)
     {
-        <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
-            <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
-                <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
-                    @RenderWithPermission()
+        <CascadingValue Name="Loader" Value="@this">
+            <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+                <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+                    <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                        @RenderWithPermission()
+                    </CascadingValue>
                 </CascadingValue>
             </CascadingValue>
         </CascadingValue>
@@ -63,7 +66,7 @@
         <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
             <Found Context="routeData">
                 @{
-                    _ = Css.ListenUp(routeData.PageType, DefaultLayout);
+                    _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
                 }
                 @if (AuthService != null)
                 {
@@ -83,13 +86,15 @@
         </Router>
     };
 
+
+
     private RenderFragment RenderWithoutLayout() => __builder =>
     {
         <main>
             <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
                 <Found Context="routeData">
                     @{
-                        _ = Css.ListenUp(routeData.PageType, null);
+                        _ = Css.ListenUp(routeData.PageType, null, this);
                     }
                     @if (AuthService != null)
                     {

@@ -79,7 +79,7 @@ public interface IHasClass
     string? Sidebar { get; }
     Action<object> LogoContent { get; }
 
-    Task ListenUp(Type? typeHint, Type? layout);
+    Task ListenUp(Type? typeHint, Type? layout, IHasChildren? loader);
 
     List<string> Registry { get; }
 

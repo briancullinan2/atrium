@@ -114,7 +114,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 InvokeAsync(StateHasChanged);
                 _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout);
+            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
         }
     }
 
@@ -131,7 +131,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
                 InvokeAsync(StateHasChanged);
                 _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout);
+            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
         }
     }
 
@@ -144,7 +144,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
             Ready = "layout"; // Explicitly move to layout
             await InvokeAsync(StateHasChanged);
             _ = ProbablyUpdateTitle();
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout);
+            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
         }
     }
 

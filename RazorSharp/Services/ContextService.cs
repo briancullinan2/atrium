@@ -8,8 +8,7 @@ internal class ContextService : IHasContext
 {
     public static Delegate ShowContext
     {
-        get => (Type routeControl, NavigationManager Nav)
-            => true; //Nav.Uri.Contains("/admin", StringComparison.InvariantCultureIgnoreCase);
+        get => (Type routeControl) => true; //Nav.Uri.Contains("/admin", StringComparison.InvariantCultureIgnoreCase);
     }
 
 
