@@ -1,139 +1,81 @@
-﻿#if WINDOWS
-#if DEBUG
-using Microsoft.Extensions.Logging;
-#endif
-#endif
-using Atrium.Services;
-using DataLayer.Entities;
-using FlashCard.Services;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using DataLayer.Utilities;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using DataLayer;
-using Microsoft.AspNetCore.Builder;
-using Antlr4.Runtime.Misc;
+﻿//#if DEBUG
+//using Microsoft.Extensions.Logging;
+//#endif
+using Atrium.Components;
+using Atrium.Extensions;
 
-namespace Atrium
+#if WINDOWS
+using Atrium.Platforms.Windows;
+#endif
+using Interfacing.Services;
+using Microsoft.AspNetCore.Components;
+using System.Collections.Generic;
+using System.Net.Http;
+
+namespace Atrium;
+
+
+public class MauiProgram : IHasCurrent<MauiApp>
 {
 
-    public static class MauiProgram
+    private static readonly MauiApp _myApp = CreateMauiApp();
+    public static MauiApp Current => _myApp;
+
+    private static MauiApp CreateMauiApp()
     {
-
-        private static readonly MauiApp _myApp = CreateMauiApp();
-        public static MauiApp Current
+        var builder = MauiApp.CreateBuilder();
+        
+        var args = Environment.GetCommandLineArgs();
+        if (args.Any(a => a.StartsWith("app://")))
         {
-            get => _myApp;
+            string protocolData = args.First(a => a.StartsWith("app://"));
+            // TODO: Handle deep link / configuration inject here
         }
 
-
-
-        public static void BuildSharedServiceList(IServiceCollection Services)
-        {
-
-            SharedRegistry.BuildSharedServiceList(Services);
-
-            // add ourselves
-            Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(App.Current));
-
-            Services.AddSingleton<Lazy<MauiApp?>>(sp => new Lazy<MauiApp?>(Current));
-            
-            // TODO: make this optional for server only service mode
-            Services.AddSingleton<MauiApp>(sp => sp.GetRequiredService<Lazy<MauiApp>>().Value);
-#if WINDOWS
-            Services.AddSingleton<Lazy<WebApplication?>>(sp => new Lazy<WebApplication?>(AtriumWebServer.Current));
-#endif
-
-            // Add device-specific services used by the FlashCard project
-            Services.AddSingleton<IConnectionStateProvider, CircuitHandler>(sp => sp.GetRequiredService<CircuitHandler>());
-
-            Services.AddSingleton<IFormFactor, FormFactor>();
-            Services.AddSingleton<IFileManager, FileManager>();
-            Services.AddSingleton<IAnkiService, AnkiService>();
-            Services.AddSingleton<IHostingService, HostingService>();
-            Services.AddSingleton<IChatService, ChatService>();
-
-
-            Services.AddScoped<IAuthService, Services.AuthService>();
-            Services.AddScoped(sp => (Services.AuthService)sp.GetRequiredService<IAuthService>());
-            Services.AddScoped(sp => (FlashCard.Services.AuthService)sp.GetRequiredService<IAuthService>());
-
-            Services.AddSingleton(sp => new HttpClient
+        builder
+            .UseMauiApp<App>()
+            .ConfigureFonts(fonts =>
             {
-                BaseAddress = new Uri("https://0.0.0.1")
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
-            Services.AddDbContextFactory<DataLayer.EphemeralStorage>();
-            Services.AddDbContextFactory<DataLayer.PersistentStorage>(options =>
-                options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db")));
+        var currents = new List<Assembly>() { typeof(PluginsPage).Assembly }
+            .Concat(AppDomain.CurrentDomain.GetAssemblies())
+            .Where(MetadataReaderExtensions.IsMine)
+            .SelectMany(BuilderExtensions.GetAssTypesSafely)
+            .GetServicable()
+            .ToList();
 
+        BuilderExtensions.BuildServices(builder.Services, currents, null, null, true);
+        builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
+        builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
+
+        //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
+        builder.Services.AddMauiBlazorWebView();
 #if DEBUG
-            Services.AddBlazorWebViewDeveloperTools();
-#endif
-            // Inject the server instance into MAUI's DI
-#if WINDOWS
-            Atrium.Services.AuthService.BuildAuthentication(Services);
+        builder.Services.AddBlazorWebViewDeveloperTools();
+        //builder.Logging.AddDebug();
+        //builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
-        }
-
-
-
-        private static MauiApp CreateMauiApp()
-        {
-            var builder = MauiApp.CreateBuilder();
-
-            builder
-                .UseMauiApp<App>()
-                .ConfigureFonts(fonts =>
-                {
-                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                });
-
-
-            BuildSharedServiceList(builder.Services);
-
-            builder.Services.AddSingleton<ILocalStore, LocalStore>();
-            builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
-            builder.Services.AddSingleton<ITitleService, Services.TitleService>();
-            builder.Services.AddMauiBlazorWebView();
-#if DEBUG
-            builder.Services.AddBlazorWebViewDeveloperTools();
-            builder.Logging.AddDebug();
+        // TODO: replace these with registering themselves
+#if !BROWSER
+        // Inject the server instance into MAUI's DI
+        //ServerAuthService.BuildAuthentication(builder.Services);
 #endif
+        //SharedRegistry.BuildSharedServiceList(builder.Services);
 
 #if WINDOWS
-            // start the web server
-            builder.Services.AddSingleton<WebApplication>(sp => AtriumWebServer.Current);
-            // get shared circuit state from web server
-            builder.Services.AddSingleton<CircuitHandler>(sp => AtriumWebServer.Current.Services.GetRequiredService<CircuitHandler>());
-            // get a shared logger
-            builder.Services.AddSingleton<SimpleLogger>();
+        // get shared circuit state from web server
+        //builder.Services.AddSingleton<CircuitHandler>(sp => AtriumWebServer.Current.Services.GetRequiredService<CircuitHandler>());
+        // get a shared logger
+        //builder.Services.AddSingleton<SimpleLogger>();
 #endif
 
 
-            var mauiApp = builder.Build();
+        var mauiApp = builder.Build();
 
-
-
-#if WINDOWS
-
-            Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping("FileDrop", (h, v) =>
-            {
-                (mauiApp.Services.GetService(typeof(IFileManager)) as FileManager)?.InitializeWndProc(h);
-            });
-            // start the web server
-            _ = mauiApp.Services.GetRequiredService<WebApplication>();
-#endif
-            _ = mauiApp.Services.GetRequiredService<SimpleLogger>();
-
-
-
-            return mauiApp;
-        }
-
-
+        return mauiApp;
     }
 
 

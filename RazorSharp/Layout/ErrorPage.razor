@@ -1,0 +1,67 @@
+@implements IDisposable
+@implements IHasErrors<ErrorPage>
+@inject IRenderState Rendered
+
+<ErrorBoundary @ref="_errorBoundary">
+    <ChildContent>
+                
+    </ChildContent>
+    <ErrorContent>
+        <article class="content course-container">
+            <div class="flash-card hip-error-trace">
+                <h3>Something went sideways.</h3>
+                <p>the Task failed successfully.</p>
+                <button @onclick="() => _errorBoundary?.Recover()">Try Again</button>
+                    
+                <pre>@_lastException?.StackTrace</pre>
+            </div>
+        </article>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code
+{
+
+    [CascadingParameter] private ErrorBoundary? _errorBoundary { get; set; }
+    private Exception? _lastException;
+    
+    public event Action<Exception?>? OnErrorChanged;
+
+    public static ConcurrentQueue<(DateTime Created, Exception Exception)> Immediate { get; private set; } = [];
+
+    public async Task SetError(Exception? error)
+    {
+        _lastException = error;
+        if (error == null)
+        {
+            Immediate.Clear();
+            return;
+        }
+        Immediate.Enqueue((DateTime.Now, error));
+        if (Immediate.Count > 10
+            // start deleting old records
+            || !Immediate.IsEmpty && Immediate.First().Created.AddMinutes(3) < DateTime.Now)
+        {
+            Immediate.TryDequeue(out _);
+        }
+        OnErrorChanged?.Invoke(error);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        //Rendered.OnErrorChanged += SetError;
+    }
+    
+    protected override void OnParametersSet()
+    {
+        _errorBoundary?.Recover();
+
+    }
+    public void Dispose()
+    {
+        //Rendered.OnErrorChanged -= SetError;
+    }
+
+}
+

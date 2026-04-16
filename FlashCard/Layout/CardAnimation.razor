@@ -1,0 +1,156 @@
+@using System.Threading
+@using FlashCard
+@using FlashCard.Controls
+@using FlashCard.Layout
+@using FlashCard.Pages.Course
+@using FlashCard.Services
+@inject NavigationManager Nav
+@inject IRenderState RenderState
+@inject ICompositeProvider Service
+@inject IPageState PageManager
+@implements IHasTransition
+
+@if (_previousBody != null)
+{
+    <div class="flash-card @(_isTransitioning ? "animate-out" : "")">
+        @(_previousBody)
+    </div>
+}
+@_activeBody
+
+
+@code
+{
+    private LinkedList<MarkupString?> _previousList = new();
+    private MarkupString? _previousBody = null;
+    private RenderFragment? _activeBody;
+    private RenderFragment? _nextBody;
+    private bool _isTransitioning;
+    private bool IsClosing = false;
+    private IDisposable? _registration;
+
+    CancellationTokenSource? _cts = null;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        _registration = Nav.RegisterLocationChangingHandler(HandleLocationChanging);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsClosing) return;
+        if (!_isTransitioning)
+        {
+            _activeBody = ChildContent;
+        }
+        // so it doesn't show right away until the previous page is gone to reduce the weird stack sliding effect
+        else
+        {
+            _nextBody = ChildContent;
+        }
+        if (_cts != null)
+        {
+            _cts?.Cancel();
+        }
+        _cts = new CancellationTokenSource();
+        _ = UnvaluedTask(_cts.Token).Forget();
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (IsClosing) return;
+        if (_previousBody == null)
+        {
+            _previousBody = _previousList.FirstOrDefault();
+            _previousList.Clear();
+        }
+    }
+
+
+    protected async Task UnvaluedTask(CancellationToken ct = default)
+    {
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(100);
+
+
+        _isTransitioning = true;
+        ct.ThrowIfCancellationRequested();
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+
+        await Task.Delay(400);
+        RenderState.ClearRedirect();
+
+        _isTransitioning = false;
+        _previousList.Clear();
+        _previousBody = null;
+        if (_nextBody != null && !ct.IsCancellationRequested)
+        {
+            _activeBody = _nextBody;
+        }
+        _nextBody = null;
+        _cts?.Dispose();
+        _cts = null;
+        ct.ThrowIfCancellationRequested();
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+
+
+    }
+    
+    // TODO: move these to like FlashAnimation.razor in the flash card project as a part of layout
+    //  then this page searches for all the support components like the IHasLayout.LayoutInsert above
+
+    private async ValueTask HandleLocationChanging(LocationChangingContext context)
+    {
+        var currentUri = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery.TrimEnd('/');
+        var targetUri = Nav.ToAbsoluteUri(context.TargetLocation).PathAndQuery.TrimEnd('/');
+
+        if (currentUri == targetUri)
+        {
+            return; // Exact same page, do nothing and let Blazor handle it
+        }
+
+        var (targetType, targetParams) = TypeExtensions.IdentifyNavigation(targetUri);
+        var (currentType, currentParams) = TypeExtensions.IdentifyNavigation(currentUri);
+
+        if (targetType == currentType)
+        {
+            return;
+        }
+
+        // never wrap study-now
+        if (currentType.Extends(typeof(INotHasWrapper)))
+        {
+            _previousList.AddLast((MarkupString?)null);
+            return;
+        }
+
+
+        _previousList.AddLast(await ((PageManager)PageManager).Copy(_activeBody, Service));
+    }
+    
+    public void Dispose()
+    {
+        IsClosing = true;
+        if (_cts != null)
+        {
+            _cts?.Cancel();
+        }
+
+        // Unsubscribe to prevent memory leaks
+        _registration?.Dispose();
+        Nav.LocationChanged -= OnLocationChanged;
+        //Form.OnTitleChanged -= SetTitle;
+        //ThemeService.OnApplicationChanged -= SetApplication;
+        //ThemeService.OnSidebarChanged -= SetSidebar;
+        //ThemeService.OnBackgroundChanged -= SetBackground;
+    }
+
+
+}

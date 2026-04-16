@@ -1,0 +1,14 @@
+﻿global using Extensions.PrometheusTypes;
+global using FlashCard.Layout;
+global using FlashData;
+global using Microsoft.AspNetCore.Components;
+global using System;
+global using System.Threading.Tasks;
+global using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
+global using System.Collections.Generic;
+global using FlashData.Entities;
+global using DataShared.ForeignEntity;
+global using Interfacing.Services;
+global using RazorSharp.Layout;
+global using System.Linq;
+global using RazorSharp.Extensions;

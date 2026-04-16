@@ -1,16 +1,26 @@
-﻿namespace Atrium
-{
-    public partial class App : Application
-    {
-        public App()
-        {
-            InitializeComponent();
-        }
+﻿#if WINDOWS
+using Atrium.Platforms.Windows;
 
-        protected override Window CreateWindow(IActivationState? activationState)
-        {
-            return new Window(new MainPage()) { Title = "Atrium" };
-        }
+#endif
+using Atrium.Services;
+using Interfacing.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
+
+namespace Atrium;
+
+public partial class App : Microsoft.Maui.Controls.Application //, IHasCurrent<Application>
+{
+    public App()
+    {
+        InitializeComponent();
     }
+
+    // TODO: WINDOWS ONLY?
+    protected override Microsoft.Maui.Controls.Window CreateWindow(IActivationState? activationState)
+    {
+        return WindowManager.CreateWindow();
+    }
+
 
 }

@@ -1,7 +1,7 @@
-@using System.Timers
-@using System.ComponentModel
-@using System.ComponentModel.DataAnnotations
-@using System.Text.Json.Serialization
+@attribute [SupportsType(typeof(ResultCard))]
+@attribute [SupportsType(typeof(IEnumerable<ResultCard>))]
+@implements IHasMeta
+
 @code
 {
 
@@ -9,7 +9,7 @@
     {
         [Category("Content")]
         [Display(Name = "Cards", GroupName = "Display", Description = "Card currently being viewed by the user")]
-        public DataLayer.Entities.Card? Card { get; set; }
+        public Card? Card { get; set; }
         [Category("Answers")]
         [JsonIgnore]
         public ICollection<Answer>? Answers { get => Card?.Answers; }
@@ -18,10 +18,11 @@
         public Response? Response { get; set; }
     }
 
-    [Parameter] public IEnumerable<ResultCard>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
 
+    public IEnumerable<ResultCard> Results { get => Data?.Cast<ResultCard>() ?? []; }
     //private IEnumerable<PropertyMetadata>? AnswerLayout;
     //private IEnumerable<PropertyMetadata>? CardLayout;
 
@@ -34,15 +35,15 @@
 }
 
 
-@foreach (ResultCard result in Data ?? [])
+@foreach (ResultCard result in Results)
 {
     <div class="card-back">
         <div class="preview-inner">
-            @if (result.Card?.ContentType == DataLayer.DisplayType.Image)
+            @if (result.Card?.ContentType == DisplayType.Image)
             {
                 <img src="@result.Card?.Content" />
             }
-            else if (result.Card?.ContentType == DataLayer.DisplayType.Audio)
+            else if (result.Card?.ContentType == DisplayType.Audio)
             {
                 <audio controls src="@result.Card?.Content"></audio>
             }
@@ -76,11 +77,11 @@
             </div>
         }
         <div class="preview-prompt">
-            @if (result.Card?.ContentType == DataLayer.DisplayType.Image)
+            @if (result.Card?.ContentType == DisplayType.Image)
             {
                 <img src="@result.Card?.ResponseContent" />
             }
-            else if (result.Card?.ContentType == DataLayer.DisplayType.Audio)
+            else if (result.Card?.ContentType == DisplayType.Audio)
             {
                 <audio controls src="@result.Card?.ResponseContent"></audio>
             }

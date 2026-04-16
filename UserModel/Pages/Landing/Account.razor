@@ -1,0 +1,144 @@
+@page "/account"
+@page "/account/edit"
+@page "/account/list"
+@page "/account/delete"
+@implements IDisposable
+@attribute [Authorize(Roles = "!Guest")]
+@attribute [Display(Name = "Account Settings", ShortName = "Account", GroupName = "Main", Prompt = "bi-person-gear")]
+
+@inject IMenuService MenuService
+@inject ILoginService LoginService
+@inject NavigationManager Nav
+
+
+
+<div class="user-account flash-card  @GetDisplayClass(ControlMode.Edit)">
+    <div>
+        <fieldset>
+            <legend>Login Info</legend>
+            <MetadataControl TModel="User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
+        </fieldset>
+    </div>
+    <div>
+        <fieldset>
+            <legend>General Info</legend>
+            <MetadataControl TModel="User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
+        </fieldset>
+    </div>
+    <div class="highlighted-link">
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(acc => new() { Mode = ControlMode.Add, ParentUser = LoginService.User as User }))"><span class="bi bi-link-45deg"></span>Create User</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.List }))"><span class="bi bi-link-45deg"></span>Connected Accounts</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Landing.Account>(acc => new() { Mode = ControlMode.Delete }))"><span class="bi bi-trash"></span>Close Account</a>
+        <button class="cta" @onclick="() => UpdateUser()">Save</button>
+    </div>
+
+</div>
+
+<div class="flash-card  @GetDisplayClass(ControlMode.List)">
+</div>
+
+<div class="flash-card  @GetDisplayClass(ControlMode.Delete)">
+</div>
+
+@code
+{
+    public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
+    public User? CurrentUser { get; set; }
+    public ControlMode? Mode { get; set; } = ControlMode.Edit;
+    public ControlMode? PreviousMode { get; set; }
+
+    protected void UpdateUser()
+    {
+
+    }
+
+
+    protected string? GetDisplayClass(ControlMode mode)
+    {
+        if (Mode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        GeneralLayout = User.Metadata.Groups["General Info"]?.ToList();
+        LoginLayout = User.Metadata.Groups["Login Info"]?.ToList();
+
+        if (IsStaticRender) return;
+
+        Nav.LocationChanged += OnLocationChanged;
+    }
+   
+    /*
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        // always redirect guests no matter what
+        if (LoginService.User == null
+            || LoginService.User.Roles.Any(r => r.Name == nameof(DefaultRoles.Guest)))
+        {
+            if (IsStaticRender) return;
+            Nav.NavigateTo(TypeExtensions.GetUri<Pages.Landing.Login>());
+        }
+    }
+    */
+
+
+    protected bool IsClosing = false;
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (IsClosing) return;
+        SetControlMode();
+    }
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        ControlMode? newStep = ControlMode.Edit;
+
+        if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.Edit;
+        }
+
+        if (newStep != Mode)
+        {
+            PreviousMode = Mode;
+            Mode = newStep;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsClosing) return;
+        if (LoginService.User == null)
+        {
+            IsClosing = true;
+            return;
+        }
+        if(CurrentUser == null)
+        {
+            CurrentUser = LoginService.User as User;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    public void Dispose()
+    {
+        IsClosing = true;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

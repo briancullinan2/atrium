@@ -1,0 +1,103 @@
+﻿
+.page.login-mode {
+    padding-left: 0;
+}
+
+.page.login-mode .sidebar {
+    width: 0;
+}
+
+.page.login-mode .course-container {
+    padding-top: 30px;
+    max-height: calc(100vh - 3.5rem);
+    min-height: 0;
+}
+
+.page.login-mode .canvas-container {
+    left: 0;
+}
+
+.page.background-none .canvas-container canvas {
+    display: none;
+}
+
+.page.background-none .canvas-container {
+    animation: waveMovement 18s ease infinite;
+}
+
+.chat-box
+{
+    position: fixed;
+    bottom: 0;
+    height: 3rem;
+    font-size: 18px;
+    display:flex;
+    align-items: center;
+    width: 100%;
+    top: auto;
+    left:0;
+    justify-content: stretch;
+    z-index: 999;
+    padding: 10px;
+}
+
+
+.chat-box input
+{
+    flex-basis: 100%;
+    flex-grow: 1;
+    margin-right:10px;
+}
+
+.page.chatting .flash-card {
+    max-height: calc(100vh - 8.7rem);
+}
+
+.page.chatting .flash-card.animate-out
+{
+    max-height: 0;
+}
+
+
+.page.chatting .course-container {
+    min-height: calc(100vh - 6.5rem);
+}
+
+.page.login-mode .chat-box {
+    display: none;
+}
+
+.chat-message
+{
+    padding: 10px;
+    display:flex;
+    flex-direction:column;
+}
+
+.chat-message > *
+{
+    display: inline-block;
+    padding: 10px;
+}
+
+.chat-message *:nth-child(1)
+{
+    border-radius: 4px;
+}
+
+.chat-message *:nth-child(2)
+{
+    font-size: 12px;
+}
+
+.chat-message.from > *
+{
+    margin-right:auto;
+}
+
+.chat-message.to > *
+{
+    margin-left:auto;
+}
+
+

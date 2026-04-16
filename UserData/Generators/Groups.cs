@@ -1,0 +1,15 @@
+﻿
+
+namespace UserData.Generators;
+
+public class Groups : IGenerator<Group>
+{
+    public static IEnumerable<Group> Generate()
+    {
+        return [
+            new Group() { Name = "Real Estate" },
+            new Group() { Name = "Immigration" },
+            new Group() { Name = "Atrium" },
+        ];
+    }
+}

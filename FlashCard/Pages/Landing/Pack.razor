@@ -4,20 +4,15 @@
 @page "/card/{Id:int}"
 @page "/demo/{Id:int}"
 @inject NavigationManager Nav
+@inject IFormFactor Form
 @inject ILoginService LoginService
 @inject ITitleService TitleService
 @inject IMenuService MenuService
 @inject IStudyService StudyService
 @inject IQueryManager Query
-@using DataLayer.Utilities
-@using DataLayer.Utilities.Extensions
-@using FlashCard.Services
-@using FlashCard.Controls
-@using System.ComponentModel
-@using System.Reflection
-@using FlashCard.Utilities.Extensions
-@using DataLayer
-@using System.Text.Json.Serialization
+@implements IHasContext
+
+@using FlashData.Extensions
 
 @if (Mode == null)
 {
@@ -37,7 +32,8 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, OnQuizAnswered))" TModel="DataLayer.Entities.Card" Model="@CardLayout" Data="[card]"></MetadataControl>
+        <MetadataControl ValueChanged="OnQuizAnswered"
+            TModel="Card" Model="@CardLayout" Data="[card]"></MetadataControl>
         <div class="highlighted-link">
             @if (QuizStep > 0)
             {
@@ -63,7 +59,7 @@
          @onmousedown="DragStart"
          @onmouseup="DragStop"
          @onmousemove="HandleMove">
-        <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
+        <MetadataControl TModel="Controls.ResultsCardControl.ResultCard" Model="@ResultLayout" Data="[new Controls.ResultsCardControl.ResultCard() { Card = card, Response = Responses?.FirstOrDefault(r => r.Card == card) }]"></MetadataControl>
         <div class="link-list">
             @if (QuizStep > 0)
             {
@@ -97,7 +93,7 @@
     [Parameter] public int? Id { get; set; }
     [JsonPropertyName("quiz")]
     [Category("Display")]
-    public IEnumerable<DataLayer.Entities.Card>? CurrentQuiz { get; set; }
+    public IEnumerable<Card>? CurrentQuiz { get; set; }
     [JsonIgnore]
     [Category("Results")]
     public IEnumerable<Controls.ResultsCardControl.ResultCard>? Results { get; set; }
@@ -123,7 +119,7 @@
 
 
     public PackMode? Mode { get; set; }
-    private List<DataLayer.Entities.Response> Responses = new();
+
     private IEnumerable<PropertyMetadata>? CardLayout;
     private IEnumerable<PropertyMetadata>? ResultLayout;
     public int? PreviousStep { get; set; }
@@ -133,6 +129,8 @@
     private double CumulativeX = 0;
     private double CumulativeY = 0;
 
+    public List<UserPack>? UserPacks { get; set; }
+    public List<Response>? Responses { get; set; }
 
 
     private string CurrentManualTransform = "";
@@ -222,8 +220,33 @@
         base.OnInitialized();
         CardLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Display"]?.ToList();
         ResultLayout = typeof(Pages.Landing.Pack).Metadata().Categories["Results"]?.ToList();
-        MenuService.SetMenu(@<a @onclick="() => { StudyService.SetStudyMode(true); }"><span class="bi bi-pinpoint"></span>Study Mode</a>);
+        Query.Query<UserPack>(up => up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => UserPacks = await list);
+        Query.Query<Response>(up => up.Created > DateTime.Now.AddDays(-32) && up.UserId == LoginService.UserId).ToListAsync()
+        .Then(async list => Responses = await list);
     }
+
+
+    public static Delegate ShowContext { get => (Type routeControl) => routeControl == typeof(Landing.Pack); }
+
+
+    public static Delegate ContextInsert => (Func<IPageEvents, RenderFragment>)(
+        (Page) => (__builder) =>
+        {
+            __builder.OpenElement(0, "button");
+            __builder.AddAttribute(1, "onclick", Page.ToggleStudyMode);
+            __builder.AddContent(2, "Start Study");
+            __builder.CloseElement();
+        }
+    );
+
+    /*
+    public Delegate ContextInsert => (Func<IStudyService, RenderFragment>)(
+    (service) => @<a @onclick="() => service.SetStudyMode(true)">
+         <span class="bi bi-pinpoint"></span>Study Mode
+    </a>
+    );
+    */
 
     protected string? GetDisplayClass(int? step)
     {
@@ -249,10 +272,12 @@
         {
             // TODO: if user hasn't logged in, shuffle 5 built in study sauce and then ask for sign up like demo sequence
 
-            List<DataLayer.Entities.Card> results = [];
-            foreach (var up in LoginService.User?.UserPacks ?? [])
+            List<Card> results = [];
+            foreach (var up in UserPacks ?? [])
             {
-                var due = (await up.Update())?.GetRetention().Where(r => r.Value.IsDue).Select(r => r.Key);
+                await up.Update();
+                var retention = Responses?.Where(r => r.Card?.PackId == up.PackId).ToList().GetRetention();
+                var due = retention?.Where(r => r.Value.IsDue).Select(r => r.Key);
                 results.AddRange(up.Pack?.Cards.Where(c => due?.Contains(c.Id) == true) ?? []);
             }
             CurrentQuiz = results.Shuffle().ToList();
@@ -261,17 +286,19 @@
         else if (Id != null)
         {
             // only show one id quiz
-            var up = LoginService.User?.UserPacks.FirstOrDefault(up => up.Pack?.Id == Id);
-            if (up?.Update() is Task<UserPack> task)
+            if (UserPacks?.FirstOrDefault(up => up.Pack?.Id == Id)
+                ?.Update<UserPack>() is Task<UserPack> task
+                && await task is UserPack up)
             {
-                up = await task;
-                var retention = up.GetRetention();
-                var due = retention.Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
+                var retention = Responses?.Where(r => r.Card?.PackId == up.PackId).ToList().GetRetention();
+                var due = retention?.Where(r => r.Value.IsDue).Select(r => r.Key).ToList() ?? [];
                 var cards = up.Pack?.Cards.Where(c => due.Contains(c.Id) == true).ToList() ?? [];
                 var result = new List<Card>();
                 foreach(var card in cards)
                 {
-                    result.Add(await card.Update());
+                    var updated = await card.Update<Card>();
+                    if (updated == null) return;
+                    result.Add(updated);
                 }
                 CurrentQuiz = result;
                 await InvokeAsync(StateHasChanged);
@@ -286,29 +313,29 @@
 
 
     /*
-    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<Pack>? packs = generator?.Invoke(null, []) as IEnumerable<Pack>;
         return packs?.ToList();
         }
     */
 
-    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> valueChanged)
+    protected async Task OnQuizAnswered(Tuple<PropertyMetadata, Card, object?> valueChanged)
     {
-        var answer = valueChanged.Item3 as DataLayer.Entities.Answer;
+        var answer = valueChanged.Item3 as Answer;
         if (answer == null)
         {
             return;
         }
-        var response = new DataLayer.Entities.Response()
+        var response = new Response()
         {
             Answer = answer,
             Value = answer.Content ?? answer.Value ?? "",
             IsCorrect = answer.IsCorrect,
             Card = valueChanged.Item2
         };
-        Responses.Add(response);
+        Responses?.Add(response);
         NextStep();
     }
 

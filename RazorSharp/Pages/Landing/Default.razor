@@ -1,0 +1,158 @@
+@page "/"
+@page "/index.html"
+@page "/app.html"
+@page "/{*notFound}"
+@inject IHasClass Classy
+
+
+@if (DefaultRoot != null)
+{
+    __builder.OpenComponent(0, DefaultRoot);
+    __builder.CloseComponent();
+}
+else if (!String.IsNullOrWhiteSpace(notFound))
+{
+    <NotFoundControl />
+}
+else
+{
+        
+    <div class="flash-card animate-in">
+        TODO: Find a home page.
+    </div>
+}
+
+
+@code
+{
+    // TODO: find the best home page based on the plugins loaded.
+    [CascadingParameter(Name = "Loader")] public IHasChildren? Loader { get; set; }
+    [CascadingParameter(Name = nameof(DefaultRoot))]
+    public Type? SetRoot { get; set; } = null;
+    public Type? DefaultRoot { 
+        get
+        {
+            // TODO: don't lose track of this bullshit again
+            if(!string.IsNullOrWhiteSpace(notFound))
+            {
+                try
+                {
+                    var controlType = TypeExtensions.IdentifyNavigation(notFound).ComponentType;
+                    return controlType;
+                } catch {}
+            }
+            if (SetRoot != null) return SetRoot;
+            if (Roots.Count > 0) return Roots.First();
+            if (CatchAll.Count > 0) return CatchAll.First();
+            lock (AllRoutes)
+                if (AllRoutes
+                .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
+                .FirstOrDefault() is Type any)
+                    return any;
+            return null;
+        }
+        set
+        {
+            SetRoot = value;
+        }
+    }
+    [Parameter] public string? notFound { get; set; }
+    [CascadingParameter(Name = nameof(FirstTimeLoad))] public bool FirstTimeLoad { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // TODO: find a page animation
+    }
+
+
+    protected async Task TryLoading()
+    {
+        var asses = (Assembly.GetEntryAssembly() 
+            ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies().GetMine().ToList();
+        await Parallel.ForEachAsync(asses, async (s, _) =>
+        {
+            await TryFindingInterestingTypes(s);
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
+            await TryLoading();
+        await Classy.ListenUp(DefaultRoot, typeof(MainLayout), Loader);
+        await base.OnInitializedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
+            _ = TryLoading();
+        else if (DefaultRoot == null && AllRoutes.Count > 0)
+            StateHasChanged();
+    }
+
+    public readonly List<Type> Layouts = [];
+    readonly List<Assembly> Seen = [];
+    public readonly List<Assembly> Routable = [];
+    public readonly List<Type> CatchAll = [];
+    public readonly List<Type> Roots = [];
+    public readonly List<Type> AllRoutes = [];
+
+    private async Task TryFindingInterestingTypes(Assembly ass)
+    {
+        lock (Seen) {
+
+            if (Seen.Contains(ass))
+                return;
+
+            Seen.Add(ass);
+
+        }
+
+        var allTypes = ass.GetAssTypesSafely();
+
+        var routable = false;
+
+        foreach (var type in allTypes)
+        {
+            try
+            {
+                if (typeof(LayoutComponentBase).IsAssignableFrom(type)
+                    && type != typeof(LayoutComponentBase)
+                    && type != typeof(MainLayout)
+                    && type != typeof(Default))
+                    Layouts.Add(type);
+
+                if (type != typeof(Default)
+                    && type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr)
+                {
+                    routable = true;
+                    if (attr.Template.StartsWith("/*")
+                        || attr.Template.StartsWith("/{*")
+                        || attr.Template.StartsWith('*'))
+                        CatchAll.Add(type);
+
+                    if (attr.Template == "/")
+                        Roots.Add(type);
+
+                    lock (AllRoutes)
+                        AllRoutes.Add(type);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine(ex);
+            }
+        }
+
+        if (routable)
+            Routable.Add(ass);
+
+        if (DefaultRoot == null && (Roots.Count > 0 || CatchAll.Count > 0))
+            await InvokeAsync(StateHasChanged);
+        else if (FirstTimeLoad && AllRoutes.Count > 0)
+            await InvokeAsync(StateHasChanged);
+    }
+}

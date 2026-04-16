@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0</TargetFrameworks>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<ApplicationTitle>Atrium</ApplicationTitle>
+		<ApplicationId>com.atrium.desktop</ApplicationId>
+		<Authors>Brian Cullinan</Authors>
+		<Product>Atrium</Product>
+		<Company>Brian Cullinan</Company>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\AnkiParser\AnkiParser.csproj" />
+	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	  <ProjectReference Include="..\FlashData\FlashData.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	</ItemGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	</ItemGroup>
+
+</Project>

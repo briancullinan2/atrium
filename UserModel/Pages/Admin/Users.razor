@@ -1,0 +1,230 @@
+@implements IDisposable
+
+@page "/users"
+@page "/users/add"
+@page "/users/edit"
+@page "/users/list"
+@page "/users/{Id}"
+@page "/users/{Id}/view"
+@page "/users/{Id}/edit"
+@page "/users/{Id}/group"
+@page "/users/{Id}/owner"
+
+@inject IMenuService MenuService
+@inject ITitleService TitleService
+@inject IQueryManager QueryManager
+@inject ILoginService LoginService
+@inject IPageEvents Page
+@inject NavigationManager Nav
+
+@attribute [Display(Name = "Users Management", ShortName = "Users", GroupName = "Admin", Prompt = "bi-person-circle")]
+
+<div class="flash-card @GetDisplayClass(ControlMode.List)">
+    <heading class="flex-row">
+        <label></label>
+        <label>User Name</label>
+        <label>Groups</label>
+        <label>Cards Completed</label>
+        <label>Last Login</label>
+        <label>Actions</label>
+    </heading>
+    
+    <MetadataControl TModel="User" Model="@UserLayout" Data="@CurrentUsers"></MetadataControl>
+
+    <h2>User Controls</h2>
+    <div class="link-list">
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Users>(u => new() { Mode = ControlMode.Add }))"><i class="bi bi-person-plus"></i>Add User</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Activity>())"><i class="bi bi-activity"></i>User Activity</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Roles>())"><i class="bi bi-person-badge"></i>Manage Roles</a>
+        <a href="@(TypeExtensions.GetUri<Pages.Admin.Permissions>())"><i class="bi bi-lock"></i>Manage Permissions</a>
+    </div>
+</div>
+
+@if(CurrentUser != null)
+{
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Edit)">
+        <div>
+            <fieldset>
+                <legend>Login Info</legend>
+                <MetadataControl TModel="User" Model="@LoginLayout" Data="[CurrentUser]"></MetadataControl>
+            </fieldset>
+        </div>
+        <div>
+            <fieldset>
+                <legend>General Info</legend>
+                <MetadataControl TModel="User" Model="@GeneralLayout" Data="[CurrentUser]"></MetadataControl>
+            </fieldset>
+        </div>
+
+        <div class="highlighted-link">
+            <button class="deemphasize back" @onclick="(() => RenderExtensions.NavigateTo<Pages.Admin.Users>(Nav, u => new() { Mode = ControlMode.List }))">
+                <span class="bi bi-chevron-left"></span>Back</button>
+            @if(CurrentUser.CanonicalFingerprint != null)
+            {
+                <a href="">User Membership</a>
+                <a href="">User Packs</a>
+            }
+            <button class="cta" @onclick="Page.TriggerSave">Save</button>
+        </div>
+    </div>
+
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Group)">
+    </div>
+
+    <div class="user-edit flash-card @GetDisplayClass(ControlMode.Owner)">
+    </div>
+}
+
+
+@code {
+
+    public bool FilterChanged { get; set; }
+    [Category("Display")] public static IEnumerable<User>? CurrentUsers { get; set; }
+    public IEnumerable<PropertyMetadata>? UserLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? GeneralLayout { get; set; }
+    public IEnumerable<PropertyMetadata>? LoginLayout { get; set; }
+    public ControlMode? Mode { get; set; }
+    public ControlMode? PreviousMode { get; set; }
+    [Parameter] public string? Id { get; set; }
+    public User? CurrentUser { get; set; }
+    public User? ParentUser { get; set; }
+
+    protected string? GetDisplayClass(ControlMode mode)
+    {
+        if (Mode == mode) return "animate-in";
+        // TODO: check what happens when switching from new mode to edit mode
+        if (mode == ControlMode.Edit && Mode == ControlMode.Add) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        if (mode == ControlMode.Edit && PreviousMode == ControlMode.Add) return "animate-out";
+        return "hidden";
+    }
+
+    protected bool IsClosing = false;
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        UserLayout = typeof(Pages.Admin.Users).Metadata().Categories["Display"]?.ToList();
+        GeneralLayout = User.Metadata.Groups["General Info"]?.ToList();
+        LoginLayout = User.Metadata.Groups["Login Info"]?.ToList();
+        
+        if (IsStaticRender) return;
+
+        Nav.LocationChanged += OnLocationChanged;
+        _ = GetCurrentUsers();
+    }
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (IsClosing) return;
+        SetControlMode();
+    }
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        ControlMode? newStep = ControlMode.List;
+        if(segments.Count() == 2 && Id != null)
+        {
+            newStep = ControlMode.View;
+        }
+        else if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.List;
+        }
+
+
+        if (newStep == ControlMode.List)
+        {
+            if (CurrentUsers == null || FilterChanged)
+            {
+                _ = GetCurrentUsers();
+            }
+
+            TitleService?.UpdateTitle("Manage Users");
+        }
+        else if (newStep == ControlMode.Add)
+        {
+            if (CurrentUser == null || CurrentUser.CanonicalFingerprint != null)
+            {
+                CurrentUser = new User();
+            }
+            TitleService?.UpdateTitle("New User");
+        }
+        else if (newStep == ControlMode.Edit)
+        {
+            TitleService?.UpdateTitle("Edit User");
+            if (Id != null)
+            {
+                if (CurrentUser == null || CurrentUser.Guid != Id)
+                {
+                    _ = SetCurrentUser();
+                }
+            }
+        }
+
+        
+        if (newStep != Mode)
+        {
+            PreviousMode = Mode;
+            Mode = newStep;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+
+    protected async Task GetCurrentUsers()
+    {
+        var users = await QueryManager.Query<User>().ToListAsync();
+
+        if(LoginService.Roles?.Contains(nameof(DefaultRoles.Admin)) == true
+            || LoginService.Permissions?.Any(s => string.Equals(s, nameof(DefaultPermissions.CanModifyDefaultUsers))) == true)
+        {
+            var defaultUsers = UserData.Generators.Users.Generate().ToList();
+            var fresh = defaultUsers.Where(d => {
+                var roleAlreadyExists = users.Any(u => u.Roles.Any(r => r.DefaultRole == d.Roles.First().DefaultRole));
+                return !roleAlreadyExists;
+            });
+            CurrentUsers = users.Concat(fresh).ToList();
+        }
+        else
+        {
+            CurrentUsers = users.ToList();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected async Task SetCurrentUser()
+    {
+        CurrentUser = await QueryManager.Query<User>(u => u.Guid == Id).FirstOrDefaultAsync();
+        TitleService?.UpdateTitle("Edit User - " + CurrentUser?.Username);
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // TODO: whats the holdup, merge any missing default users with database results, but only for admin view
+        //   so many splits in reality, i can save settings, get an oauth flow working, store the setting for
+        //   default guest user, start loading settings/config with "auto login" on desktop, store theme settings
+        //   for user accounts, and finally and most importantly, build the firewall for query manager to only show 
+        //   the default users to admin, this involved the ILoginService and IAuthService to work together
+        SetControlMode();
+        InvokeAsync(StateHasChanged);
+    }
+
+    
+    public void Dispose()
+    {
+        IsClosing = true;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

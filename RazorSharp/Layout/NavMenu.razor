@@ -1,0 +1,223 @@
+﻿@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
+
+@implements IHasMenu
+@inject NavigationManager Nav
+@inject ICompositeProvider Service
+@inject IMenuService Menu
+@inject IHasClass Classy
+
+<div class="sidebar theme-@(Classy.Sidebar?.ToLowerInvariant())">
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-logo" @onclick="ToggleStudy">
+        <!--<img width="48" height="48" src="_content/FlashCard/logo_4_trans_2.png" alt="LOGO" />-->
+        <a class="navbar-brand">Atrium</a>
+    </div>
+    @if (Menu.EnabledMenus.Count > 1)
+    {
+        var nextMenu = Menu.EnabledMenus.ElementAt((CurrentMenu + 1) % Menu.EnabledMenus.Count);
+        var nextIcon = nextMenu.GetProperties(nameof(IHasMenu.Icon)).First().GetValue(null) as string;
+        <a @onclick="() => ToggleMenus()"><span class="bi @(nextIcon)"></span></a>
+    }
+</div>
+
+<input type="checkbox" @bind="menuMode" title="Navigation menu" class="navbar-toggler" />
+
+@{
+    var currentMenu = Menu.EnabledMenus.ElementAt(CurrentMenu % Menu.EnabledMenus.Count);
+    if(currentMenu == typeof(Layout.NavMenu))
+    {
+        <div id="Navlist" class="nav-scrollable menu">
+            @foreach (var item in GetVisibleItems())
+            {
+                @RenderNavItem(item)
+            }
+        </div>
+    }
+    else
+    {
+        __builder.OpenComponent(0, currentMenu);
+        __builder.AddComponentReferenceCapture(1, inst => {
+            _componentInstances[currentMenu.Name] = inst;
+            var menu = inst as IHasMenu;
+            if (menu == null) return;
+            menu.SetMenuActivated(true);
+        });
+        __builder.CloseComponent();
+    }
+}
+
+</div>
+
+
+@code {
+
+    public async Task SetMenuActivated(bool show) => await InvokeAsync(StateHasChanged);
+    public static Delegate ShowMenu { get => () => true; }
+    public static string Icon { get => "bi-list"; }
+    public bool menuMode { get; set; }
+    public int CurrentMenu = 0;
+    private Dictionary<string, object> _componentInstances = new();
+    [CascadingParameter(Name = nameof(PermissionType))] public Type? PermissionType { get; set; }
+
+
+    private void ToggleStudy()
+    {
+        var Page = Service.GetService<IPageEvents>();
+        _ = Page?.ToggleStudyMode(!Classy.ClassNames.Contains("study-mode"));
+    }
+
+    private void HandleClick(INavMenuItem item)
+    {
+        var currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        bool isOnTargetPage = string.Equals(currentUrl, item.Href.Trim('/'), StringComparison.InvariantCultureIgnoreCase);
+
+        //if(item.Children.Count() == 0 || PageManager.ClassNames.Contains("study-mode"))
+        //{
+        //    Nav.NavigateTo(item.Href);
+        //    menuMode = false;
+        //}
+        //else 
+        if (!item.IsCollapsed)
+        {
+            if (isOnTargetPage)
+            {
+                // Rule: Only collapse if they are already on that page
+                item.IsCollapsed = true;
+            }
+            //else 
+            //{
+            // Rule: Only connect to href if it is already expanded
+            //}
+        }
+        else
+        {
+            // If it's currently collapsed, just expand it
+            item.IsCollapsed = false;
+        }
+
+        // always navigate
+        Nav.NavigateTo(item.Href);
+        menuMode = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+
+    protected void ToggleMenus()
+    {
+        var currentMenu = Menu.EnabledMenus.ElementAt(CurrentMenu % Menu.EnabledMenus.Count);
+        if (_componentInstances.TryGetValue(currentMenu.Name, out var current) && current is IHasMenu menu) menu.SetMenuActivated(false);
+        CurrentMenu = (CurrentMenu + 1) % Menu.EnabledMenus.Count;
+        InvokeAsync(StateHasChanged);
+
+    }
+
+
+
+    protected RenderFragment RenderNavItem(INavMenuItem item) => __builder =>
+    {
+        var hasChildren = item.Children != null && item.Children.Any();
+
+        <div class="nav-item">
+            <div @onclick="() => HandleClick(item)"
+                 @onclick:stopPropagation="true"
+                 data-href="@item.Href">
+                @if(PermissionType != null)
+                {
+                    __builder.OpenComponent(0, PermissionType);
+                    __builder.AddAttribute(1, "Permission", item.RequiredPermission);
+    
+                    __builder.AddAttribute(2, "ChildContent", (RenderFragment)((__builder2) =>
+                    {
+                        // ToNavLink returns a RenderFragment, invoke it with the current builder
+                        RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon, item.Children?.Count > 0 ? item.IsCollapsed ? true : false : null)(__builder2);
+                    }));
+    
+                    __builder.CloseComponent(); // Closes HasPermission
+                }
+                else
+                {
+                    @RenderExtensions.ToNavLink(item.Href, item.Title, item.Icon, item.Children?.Count > 0 ? item.IsCollapsed ? true : false : null);
+                }
+            </div>
+
+            @if (hasChildren && !item.IsCollapsed)
+            {
+                <div class="nav-children">
+                    @foreach (var child in item.Children!)
+                    {
+                        @RenderNavItem(child)
+                    }
+                </div>
+            }
+        </div>
+    };
+
+
+
+
+    // This is your Iterator/List
+    //.Concat(Categories.SelectMany(c => GetMenuItems(c.Key)));
+    /*
+    new NavMenuItem<Pages.Landing.Packs>() { Title = "Packs", Icon = "" },
+            new NavMenuItem<Pages.Landing.Courses>() { Title = "Courses", Icon = "bi-mortarboard" },
+            new NavMenuItem<Pages.Landing.Store>() { Title = "Store", Icon = "" },
+            new NavMenuItem<Pages.Landing.Results>() { Title = "Results", Icon = "bi-clipboard-data" },
+
+            new NavMenuItem<Pages.Landing.Account>() { Title = "Account settings", Icon = "" },
+
+            // administration
+            new NavMenuItem<Pages.Admin.Landing>() { Title = "Administration", Icon = "", Children = [
+                new NavMenuItem<Pages.Admin.Users>() { Title = "Users", Icon = "bi-people" },
+                new NavMenuItem<Pages.Admin.Groups>() { Title = "Groups", Icon = "bi-collection" },
+                new NavMenuItem<Pages.Admin.Import>() { Title = "User Import", Icon = "bi-file-earmark-arrow-up" },
+                new NavMenuItem<Pages.Admin.Emails>() { Title = "Emails", Icon = "bi-envelope-paper" },
+                new NavMenuItem<Pages.Admin.Activity>() { Title = "Recent Activity", Icon = "bi-activity" },
+                new NavMenuItem<Pages.Admin.Hosting>() { Title = "Hosting", Icon = "" },
+                new NavMenuItem<Pages.Admin.Status>() { Title = "Status", Icon = "" },
+                new NavMenuItem<Pages.Admin.Settings>() { Title = "Settings", Icon = "bi-gear" },
+                // TODO: debug build only
+                new NavMenuItem<Pages.Admin.Validation>() { Title = "Validation", Icon = "bi-check-circle" }
+            ] },
+
+
+            // going to add management stuff here
+            new NavMenuItem<Pages.Content.Landing>() { Title = "Content", Icon = "bi-database-gear", Children = [
+                new NavMenuItem<Pages.Content.Analytics>() { Title = "Analytics", Icon = "bi-graph-up-arrow" },
+                new NavMenuItem<Pages.Content.Upload>() { Title = "Pack Import", Icon = "" },
+                new NavMenuItem<Pages.Content.Analysis>() { Title = "Content Analysis", Icon = "bi-search-heart" },
+                new NavMenuItem<Pages.Content.Backups>() { Title = "Backups", Icon = "bi-device-hdd" },
+                new NavMenuItem<Pages.Content.Billing>() { Title = "Billing", Icon = "bi-receipt" },
+                new NavMenuItem<Pages.Content.Payments>() { Title = "Payments", Icon = "bi-credit-card" },
+                new NavMenuItem<Pages.Content.Merchant>() { Title = "Merchant Tools", Icon = "bi-shop" },
+                new NavMenuItem<Pages.Content.Recovery>() { Title = "Recovery", Icon = "bi-life-preserver" },
+                new NavMenuItem<Pages.Content.Encryption>() { Title = "Encryption", Icon = "bi-incognito" },
+                new NavMenuItem<Pages.Content.Marshal>() { Title = "Marshalling", Icon = "bi-database-lock" },
+                new NavMenuItem<Pages.Content.Tokens>() { Title = "Download Tokens", Icon = "bi-coin" },
+                new NavMenuItem<Pages.Content.Install>() { Title = "Install AI", Icon = "bi-robot" },
+                new NavMenuItem<Pages.Content.Export>() { Title = "Export", Icon = "bi-file-earmark-arrow-down" },
+                new NavMenuItem<Pages.Content.Trash>() { Title = "Trash", Icon = "bi-trash3" }
+            ] },
+
+            .. CourseMenu.MenuStructure.OfType<INavMenuItem>(),
+
+            new NavMenuItem<Pages.Landing.Login>() { Title = "Switch Users", Icon = "" },
+            new NavMenuItem<Pages.Landing.Terms>() { Title = "Terms of Service", Icon = "bi-file-earmark-text" },
+
+        ];
+        */
+
+    public List<INavMenuItem>? MenuStructure = null;
+
+    private List<INavMenuItem> GetVisibleItems()
+    {
+        MenuStructure ??= MenuService.GetMenuItems("Main");
+        // Filter out items the user shouldn't see
+        // For example: hide Premium link if they already paid
+        return [..MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid)];
+    }
+    
+
+    private bool UserHasPaid => true; // Logic to check user role
+}

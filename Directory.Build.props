@@ -1,0 +1,65 @@
+<Project>
+	<ItemGroup Condition="'$(MSBuildProjectName)' != 'Interfacing'">
+		<ProjectReference Include="$(SolutionDir)Interfacing\Interfacing.csproj" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<SelfContained>true</SelfContained>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<WasmFingerprintAssets>false</WasmFingerprintAssets>
+		<BlazorHotReloadEnabled>false</BlazorHotReloadEnabled>
+		<DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+	    <IncludeHotReloadInvocationCode>false</IncludeHotReloadInvocationCode>
+		<WasmEnableHotReload>false</WasmEnableHotReload>
+	</PropertyGroup>
+	
+	<!--<PropertyGroup>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyPassword>YourSecurePassword</AssemblyOriginatorKeyPassword>
+		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
+	</PropertyGroup>-->
+
+	
+	
+	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' or '$(TargetFramework)' == 'net10.0') and '$(MSBuildProjectName)' != 'Atrium'">
+		<PropertyGroup>
+			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
+
+			<ContentPath>$(HostBinPath)wwwroot\_content\$(MSBuildProjectName)\</ContentPath>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<PluginBinaries Include="$(TargetDir)**\*.dll" Exclude="$(TargetDir)wwwroot\**\*.*" />
+			
+			<PluginJsons Include="$(TargetDir)**\*.json" Exclude="$(TargetDir)wwwroot\**\*.*" />
+
+			<BaseProjectAssets Include="$(ProjectDir)wwwroot\**\*.*" />
+
+			<PluginRootAssets Include="$(TargetDir)wwwroot\**\*.*" />
+
+			<ProjectAssets Include="$(TargetDir)$(MSBuildProjectName)\wwwroot\**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(PluginBinaries)"
+			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(PluginJsons)"
+			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(PluginRootAssets)"
+			  DestinationFolder="$(HostBinPath)wwwroot\%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(BaseProjectAssets)"
+			  DestinationFiles="@(BaseProjectAssets->'$(ContentPath)%(RecursiveDir)%(Filename)%(Extension)')"
+			  SkipUnchangedFiles="true" />
+		
+		<Copy SourceFiles="@(ProjectAssets)"
+			  DestinationFiles="@(ProjectAssets->'$(ContentPath)%(RecursiveDir)%(Filename)%(Extension)')"
+			  SkipUnchangedFiles="true" />
+	</Target>
+
+
+</Project>

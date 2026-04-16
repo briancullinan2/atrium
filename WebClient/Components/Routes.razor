@@ -1,0 +1,143 @@
+﻿@using Extensions.PrometheusTypes
+@using Interfacing.Services
+@using RazorSharp.Controls
+@using RazorSharp.Extensions
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@implements IDisposable
+@implements IHasChildren
+@inject NavigationManager Nav
+@inject ICompositeProvider Service
+@inject ITrustProvider Trust
+@inject IJSRuntime JS
+@inject IHasClass Css
+
+@foreach (var cssUrl in Css.Registry)
+{
+    <link rel="stylesheet" href="@cssUrl" />
+}
+
+<div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
+    <CascadingValue Name="Loader" Value="@this">
+        <Router OnNavigateAsync="HandleNavigation" 
+            AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
+                    AdditionalAssemblies="@EntryAsses">
+            <Found Context="routeData">
+                <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
+                    <NotFoundControl />
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingValue>
+</div>
+
+@code {
+    public Type? DefaultLayout { get; set; } = typeof(RazorSharp.Layout.MainLayout);
+
+    List<Assembly> EntryAsses {
+        get => [.. (Assembly.GetEntryAssembly()
+            ?? Assembly.GetExecutingAssembly())
+            .GetAssemblies().GetMine()
+            .Except([typeof(RazorSharp.Pages.Landing.Default).Assembly])
+        ];
+    }
+    protected string Ready = "loading";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        Nav.LocationChanged += Nav_LocationChanged;
+
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _ = ProbablyUpdateTitle();
+    }
+
+    IRenderState? Rendered = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Trust.OnSettledAsync += () => ProbablyUpdateTitle();
+            Rendered = Service.GetService<IRenderState>();
+            Rendered?.NotifyRendered(JS, this);
+        }
+    }
+
+
+    private void Nav_LocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (IsClosing) return;
+        Type? controlType = null;
+        try
+        {
+            controlType = TypeExtensions.IdentifyNavigation(Nav.Uri).ComponentType;
+        } catch {}
+
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Css.SetPageClasses(["Home"], controlType);
+        else Css.SetPageClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ], controlType);
+
+        _ = ProbablyUpdateTitle();
+    }
+
+    public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
+    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
+
+    bool IsClosing = false;
+
+    public void Dispose()
+    {
+        IsClosing = true;
+        //Trust.OnAssemblyLoaded -= NotifyAssembly;
+        Rendered?.NotifyEmptied(this);
+        Nav.LocationChanged -= Nav_LocationChanged;
+        GC.SuppressFinalize(this);
+    }
+
+    private async Task ProbablyUpdateTitle(Type? controlType = null)
+    {
+        //await Css.ListenUp();
+        if (IsClosing) return;
+        var components = this
+            .GetChildComponents()
+            .Select(comp => comp.GetType())
+            .OrderBy(type => type != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
+            .ToList();
+        var title = components.SelectMany(comp => comp.GetCustomAttributes<DisplayAttribute>())
+            .FirstOrDefault() ?? controlType?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+        if (title is DisplayAttribute attr)
+        {
+            var Title = Service.GetService<ITitleService>();
+            Title?.UpdateTitle(attr.Name);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    private async Task HandleNavigation(NavigationContext args)
+    {
+        if (IsClosing) return;
+        try
+        {
+            var controlType = TypeExtensions.IdentifyNavigation(args.Path).ComponentType;
+
+            if (controlType == typeof(RazorSharp.Pages.Landing.Default)) return;
+
+            await Css.ListenUp(controlType, DefaultLayout, this);
+
+            _ = ProbablyUpdateTitle(controlType);
+        } catch {}
+    }
+}

@@ -1,0 +1,408 @@
+﻿
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
+namespace DataStore.Providers;
+
+
+// This context never connects to a DB; it just holds your Entity mappings
+public abstract class TranslationContext<TEntity, TAssembly>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext, IHasEntityTypes
+{
+
+    private static List<Type>? CachedEntities { get; set; }
+
+    public static List<Type> EntityTypes => CachedEntities ??= TypeExtensions.ToEntities<TEntity, TAssembly>();
+
+    //public List<Type> EntityTypes => TranslationContext<TEntity>.EntityTypes;
+
+    public abstract IQueryManager Query { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        _ = modelBuilder.Ignore<System.Text.RegularExpressions.Capture>();
+        _ = modelBuilder.Ignore<System.Text.RegularExpressions.Match>();
+        _ = modelBuilder.Ignore<System.Text.RegularExpressions.Group>();
+
+        foreach (var type in EntityTypes)
+        {
+            modelBuilder.Entity(type).ToTable(type.Table());
+
+        }
+
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+
+        foreach (var type in EntityTypes ?? [])
+        {
+            var props = type.Database().Where(p => p.PropertyType.Extends(typeof(Enum)));
+
+            foreach (var prop in props)
+            {
+                _ = configurationBuilder.Properties(prop.PropertyType).HaveConversion<int>();
+
+            }
+        }
+    }
+
+    public abstract bool IsReady { get; protected set; }
+
+    public abstract ValueTask EnsureInitialized();
+}
+
+public abstract class SemaphoreTranslationContext<TEntity, TAssembly>(DbContextOptions ctx) : TranslationContext<TEntity, TAssembly>(ctx)
+{
+    private ValueTask? _initializeTask;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    public bool ModelCreated { get; private set; } = false;
+    public override bool IsReady { get; protected set; } = false;
+
+    public override ValueTask EnsureInitialized()
+    {
+        // 1. Fast path: if already done, return completed task
+        if (!IsReady && _initializeTask?.IsCompletedSuccessfully == true)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        // 2. Lock to ensure only one thread creates the task
+        lock (_initLock)
+        {
+            if (_initializeTask == null)
+            {
+                // Use the Semaphore to ensure even with the lock above, 
+                // the actual async work is serialized.
+                _initializeTask = InitializeInitialize();
+                
+            }
+            return _initializeTask!.Value;
+        }
+    }
+
+
+    protected async ValueTask InitializeInitialize()
+    {
+        await _initLock.WaitAsync();
+
+        ModelCreated = false;
+        try
+        {
+            await PerformInitialization();
+            IsReady = true;
+        }
+        catch (Exception ex)
+        {
+            // Reset the task so a retry can occur later
+            _initializeTask = null;
+            throw new InvalidOperationException("Database creation failed.", ex);
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+
+    }
+
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        ModelCreated = true;
+    }
+
+
+    protected abstract Task PerformInitialization();
+
+
+}
+
+
+// needed one to hold the ID initialization stuff
+public class SqliteTranslationContext<TEntity, TAssembly>(IQueryManager query, DbContextOptions ctx) : SemaphoreTranslationContext<TEntity, TAssembly>(ctx)
+{
+
+    public override IQueryManager Query { get; set; } = query;
+
+
+    public string ConnectString
+    {
+        get
+        {
+            if (!Database.IsRelational()) return "RemoteShell";
+            return Database.GetDbConnection().ConnectionString;
+        }
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        base.OnConfiguring(options);
+        options.AddInterceptors(WrapperInterceptor.Instance);
+    }
+
+
+    protected override async Task PerformInitialization()
+    {
+
+        var conn = Database.GetDbConnection();
+        //await conn.CloseAsync(); // This clears the internal transaction state
+
+        if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+        // Re-check inside the lock
+        using var transaction = Database.BeginTransaction();
+        if (!ModelCreated) return;
+
+        await Database.EnsureCreatedAsync();
+        await EnsureGlobalIdentityStart();
+        await SaveChangesAsync();
+
+        await transaction.CommitAsync();
+            
+    }
+
+
+    // this is so we can use 0 id as new records
+    protected virtual async Task EnsureGlobalIdentityStart()
+    {
+        Console.WriteLine("Inserting 0 IDs.");
+
+        // 1. Get all entities defined in your DbContext
+        var entityTypes = Model.GetEntityTypes();
+
+        foreach (var entityType in entityTypes)
+        {
+            // 2. Find the Primary Key
+            var primaryKey = entityType.FindPrimaryKey();
+            if (primaryKey == null) continue;
+
+            // 3. Check if any part of the PK is Identity/AutoIncrement
+            var hasIdentity = primaryKey.Properties.Any(p =>
+                p.ValueGenerated == ValueGenerated.OnAdd);
+
+            if (hasIdentity)
+            {
+                // 4. Get the actual Table Name (handling schema if necessary)
+                var tableName = entityType.GetTableName();
+                if (string.IsNullOrEmpty(tableName)) continue;
+
+                // 5. Update the SQLite sequence table
+                // We use INSERT OR IGNORE first to ensure the row exists, 
+                // then we don't accidentally overwrite a high sequence with 0 
+                // if there is already data (Safety First).
+                Database.ExecuteSql(
+                    $"INSERT OR IGNORE INTO sqlite_sequence (name, seq) VALUES ('{tableName}', 0);");
+            }
+        }
+    }
+}
+
+
+
+// needed one to hold the reference to IEntity for all the others to inherit from for the automatic database
+public abstract class TranslationContext<TAssembly>(IQueryManager query, DbContextOptions ctx)
+    // TODO: change this to SqliteTranslationContext or do all the others override something else ??
+    : TranslationContext<IEntity, TAssembly>(ctx)
+{
+    public override IQueryManager Query { get; set; } = query;
+
+}
+
+public class WrapperInterceptor : IMaterializationInterceptor
+{
+    public static readonly WrapperInterceptor Instance = new();
+    private WrapperInterceptor() { }
+    public object InitializedInstance(MaterializationInterceptionData materializationData, object instance)
+    {
+        if (instance is IEntity entity && materializationData.Context is ITranslationContext transCtx)
+        {
+            // Pull the Query manager directly from the context instance 
+            // that is currently doing the materializing.
+            entity.QueryManager = transCtx.Query;
+            entity.ContextType = transCtx.GetType();
+            return entity;
+        }
+        return instance;
+    }
+}
+
+
+
+// expected to reset only the first time the application runs and be persistent on disk
+public class PersistentStorage<TAssembly>(IQueryManager service, DbContextOptions<PersistentStorage<TAssembly>> ctx) : SqliteTranslationContext<IEntity, TAssembly>(service, ctx)
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        base.OnConfiguring(options);
+        options.UseSqlite("Data Source=" + Path.Combine(AppContext.BaseDirectory, "Atrium.sqlite.db"));
+    }
+}
+
+
+// expected to reset once at the beginning of application load
+public class EphemeralStorage<TAssembly>(IQueryManager service, DbContextOptions<EphemeralStorage<TAssembly>> ctx) : SqliteTranslationContext<IEntity, TAssembly>(service, ctx)
+{
+    private static KeepAlive? _keepAliveConnection;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        base.OnConfiguring(options);
+        if (_keepAliveConnection == null)
+        {
+            _keepAliveConnection = new KeepAlive("Data Source=:memory:");
+            _keepAliveConnection.Open(); // The DB is born
+        }
+        options.UseSqlite(_keepAliveConnection);
+    }
+}
+
+
+public interface IHasRemote : ITranslationContext
+{
+    string? BaseAddress
+    {
+        get;
+    }
+    HttpClient Client
+    {
+        get;
+    }
+}
+public interface IHasStore : ITranslationContext
+{
+    ILocalStore Store { get; }
+}
+
+
+// default interface between web client and http host server
+public class RemoteStorage<TAssembly>(HttpClient client, IQueryManager service, DbContextOptions<RemoteStorage<TAssembly>> ctx) 
+        : SemaphoreTranslationContext<IEntity, TAssembly>(ctx), IHasRemote
+{
+    public HttpClient Client { get; set; } = client;
+    public string? BaseAddress { get; set; } = client.BaseAddress?.ToString();
+    public override IQueryManager Query { get; set; } = service;
+
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        base.OnConfiguring(options);
+
+        _ = options.UseInMemoryDatabase("RemoteShell");
+        _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+        _ = options.ReplaceService<IQueryProvider, RemoteQueryProvider>();
+        _ = options.ReplaceService<IAsyncQueryProvider, RemoteQueryProvider>();
+    }
+
+
+    protected override async Task PerformInitialization()
+    {
+        if (!IsReady)
+        {
+            IsReady = true;
+            //await Database.EnsureCreatedAsync();
+        }
+    }
+    public async Task EnsureGlobalIdentityStart()
+    {
+    }
+}
+
+
+// expected to reset multiple times per instance run
+public class TestStorage<TAssembly>(ILocalStore _store, IQueryManager service, DbContextOptions<TestStorage<TAssembly>> ctx) 
+    : SemaphoreTranslationContext<IEntity, TAssembly>(ctx), IHasStore
+{
+    public ILocalStore Store { get; } = _store;
+    public override IQueryManager Query { get; set; } = service;
+
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        base.OnConfiguring(options);
+
+        _ = options.UseInMemoryDatabase("TestShell");
+        _ = options.ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+        _ = options.ReplaceService<IQueryProvider, LocalQueryProvider>();
+        _ = options.ReplaceService<IAsyncQueryProvider, LocalQueryProvider>();
+
+    }
+
+    public async Task EnsureGlobalIdentityStart()
+    {
+        // TODO: save IDs in the settings database
+
+    }
+
+
+    protected override async Task PerformInitialization()
+    {
+
+        if (!Store.NeedsInitialize) return;
+
+        // TODO: check actual store for initialization needs
+        var tables = IEntityExtensions.Schemas(this).Select(kvp => kvp.Name);
+        var schema = IEntityExtensions.Schemas(this).ToDictionary(kvp => kvp.Name, kvp =>
+        {
+            var predicate = IEntityExtensions.Predicate(kvp.EntityType)
+                .Select(p => p.Name)
+                .ToList();
+            var columns = IEntityExtensions.Database(kvp.EntityType, true /* list all database properties including keys */ )
+                .ToDictionary<PropertyInfo, string, List<string>>(p => p.Name, p => [p.Name]);
+            var indexes = IEntityExtensions.Indexes(kvp.EntityType, true /* include primary key as a natural index */ )
+                .ToDictionary<KeyValuePair<string, List<PropertyInfo>>, string, List<string>>(p =>
+                    string.Join("", p.Value.Select(p => p.Name)) /* p.Key */, p => [.. p.Value.Select(p => p.Name)]);
+            var distinct = columns.Concat(indexes).DistinctBy(k => k.Key).ToList();
+            return new Tuple<List<string>, List<string>, List<KeyValuePair<string, List<string>>>>(predicate, [.. columns.Select(kvp => kvp.Key)], distinct);
+        });
+
+        // check schema integrity because IDB lets us do this
+        var needInstall = await Store.NeedsInstall(null, [.. schema.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.Item2))]);
+
+        if (!needInstall)
+        {
+            Console.WriteLine("Skipping install");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine("Creating store");
+
+            var serializedNames = schema.ToDictionary(kvp =>
+                kvp.Key, kvp => new Tuple<List<string>, List<KeyValuePair<string, List<string>>>>(
+                    [.. kvp.Value.Item1.Select(pathKey => pathKey.ToCamelCase())],
+                    [..kvp.Value.Item3.Select(indexNameAndKeys => KeyValuePair.Create<string, List<string>>(
+                        // additional index names don't matter but here I am fixing it because I was confused
+                        //   why they didn't match when looking at it in the browser
+                        indexNameAndKeys.Key.ToCamelCase() /*name must match RemoteManager.QueryNow*/,
+                        [..indexNameAndKeys.Value.Select(p => p.ToCamelCase())]))]));
+
+            await Store.SetupDatabaseAsync(null, serializedNames);
+            await EnsureGlobalIdentityStart();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+    }
+}
+
+public class KeepAlive(string conn) : Microsoft.Data.Sqlite.SqliteConnection(conn)
+{
+    public override void Close()
+    {
+        //base.Close();
+    }
+
+    public override async Task CloseAsync()
+    {
+        // return base.CloseAsync();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+
+    }
+}

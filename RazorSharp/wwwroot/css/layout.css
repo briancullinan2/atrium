@@ -1,0 +1,183 @@
+﻿.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    min-height: 100%;
+}
+
+
+a.deemphasize,
+button.deemphasize {
+    background: none;
+    border: none;
+    color: lightgrey;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+h2 a {
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+
+h2 a:hover {
+    text-decoration: underline;
+}
+
+
+.btn-primary,
+a.cta,
+button.cta {
+    padding: 4px;
+    background: darkorange;
+    color: black;
+    margin: 5px 5px 5px auto;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 2px solid lightgrey;
+    line-height: 1.5rem;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus,
+button.cta:hover {
+    text-decoration: underline;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+
+button.deemphasize:hover {
+    text-decoration: underline;
+}
+
+/* blazor error */
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+#components-reconnect-modal {
+    display: none !important;
+}
+
+
+.canvas-container {
+    z-index: -1;
+    background: #0a0514;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    transition: left ease-in-out 0.6s;
+}
+
+.canvas-container canvas {
+    height: 100%;
+    width: 100%;
+}
+
+
+main {
+    flex: 1;
+    max-width: 100%;
+    min-width: 200px;
+    padding: 0;
+    overflow: hidden;
+    min-height: 100%;
+    min-height: calc(100vh - 3.5rem);
+}
+
+
+.top-row {
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+}
+
+.sidebar .top-row {
+    justify-content: space-between;
+}
+
+
+@media (max-width: 640px) {
+    .top-row {
+        /* justify-content: space-between; */
+    }
+
+    header.top-row {
+        padding: 10px;
+    }
+
+    main {
+        overflow: visible;
+        min-height: calc(100vh - 7.5rem);
+    }
+
+    .top-row a, .top-row .btn-link {
+        margin-left: 0.5rem;
+    }
+
+    .page .canvas-container {
+        left: 0;
+        transition: none;
+    }
+
+    .page {
+        transition: none;
+    }
+
+    .sidebar .top-row {
+        padding-right: 100px;
+    }
+}
+
+
+@media (min-width: 640px) {
+    .page {
+        padding-left: 250px;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 100;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+
+    .page > .top-row {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+

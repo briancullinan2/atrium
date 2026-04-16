@@ -1,19 +1,15 @@
-using DataLayer;
-using DataLayer.Utilities;
-using FlashCard.Services;
-using FlashCard.Services.Logging;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.JSInterop;
-using WebClient.Services;
 
 
+
+
+using DataShared.Extensions;
+using Extensions.PrometheusTypes;
+using Interfacing.Services;
+using RazorSharp.Layout;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 
 internal class Program
 {
@@ -31,48 +27,30 @@ internal class Program
             e.SetObserved(); // Prevents process crash if you want, but logs it
         };
 
-
-
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        SharedRegistry.BuildSharedServiceList(builder.Services);
+        var currents = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
+            .Concat(AppDomain.CurrentDomain.GetAssemblies())
+            .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
+            .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely).GetServicable().ToList();
 
-        builder.Services.AddSingleton<ILocalStore, LocalStore>();
-        builder.Services.AddSingleton<SimpleLogger>();
-        builder.Services.AddSingleton<CircuitHandler>();
-        builder.Services.AddSingleton<IConnectionStateProvider>(sp => sp.GetRequiredService<CircuitHandler>());
+        Console.WriteLine(JsonSerializer.Serialize(currents.Select(t => t.Name).ToList()));
 
+        DatabaseBuilder.BuildServices(builder.Services, currents);
 
-        builder.Services.AddSingleton<IFormFactor, FormFactor>();
-        builder.Services.AddSingleton<ITitleService, WebClient.Services.TitleService>();
-        builder.Services.AddSingleton<IHostingService, HostingService>();
-        builder.Services.AddSingleton<IChatService, ChatService>();
-        builder.Services.AddSingleton<IFileManager, FileManager>();
-        builder.Services.AddSingleton<IAnkiService, AnkiService>();
+        builder.Services.RemoveAll<IQueryManager>();
+        //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
 
         builder.Services.AddSingleton(sp => new HttpClient
         {
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
         });
 
-
-        builder.Services.RemoveAll<IQueryManager>();
-        builder.Services.RemoveAll<IPageManager>();
-
-        builder.Services.AddSingleton<IQueryManager, RemoteManager>();
-        builder.Services.AddSingleton<IPageManager, WebClient.Services.PageManager>();
-
-        builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped(sp => (AuthService)sp.GetRequiredService<IAuthService>());
-
-        builder.Services.AddDbContextFactory<RemoteStorage>();
-        builder.Services.AddDbContextFactory<TestStorage>();
-        builder.Services.AddSingleton<ILocalStore, LocalStore>();
-
-        builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(_app?.Services.GetService<ILocalStore>()));
+        builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
 
 
-        builder.Services.AddSingleton<WebAssemblyHost>(sp => (WebAssemblyHost)_app!);
+        builder.RootComponents.Add<WebClient.Components.App>("#app");
+
         _app = builder.Build();
         // FUCK DI
         _ = _app.Services.GetRequiredService<SimpleLogger>();

@@ -1,0 +1,66 @@
+@using File = DataShared.ForeignEntity.File
+@inject IFileManager FileManager
+@attribute [SupportsType(typeof(File))]
+@attribute [SupportsType(typeof(IEnumerable<IFile>))]
+@implements IHasMeta
+@inject IAnkiService AnkiService
+
+@code
+{
+
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
+    [Parameter] public PropertyMetadata? Model { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+
+    }
+
+    public async Task Delete(File file)
+    {
+
+    }
+
+    public async Task Download(File file)
+    {
+        var ankiResults = await AnkiService.Download(file.Url);
+        if (ValueChanged == null) return;
+        ValueChanged.DynamicInvoke(ankiResults as object);
+    }
+
+    public async Task Import(File file)
+    {
+        var ankiResults = await AnkiService.InspectFile(file.Filename);
+        if (ValueChanged == null) return;
+        ValueChanged.DynamicInvoke(ankiResults as object);
+    }
+
+}
+
+
+
+@for (var i = 0; i < Data?.Count(); i++)
+{
+    var file = Data.ElementAt(i) as File;
+    if (file == null) continue;
+    <div class="flex-row ">
+        <span>@(i + 1)</span>
+        <span>@Path.GetFileName(file.Filename)</span>
+        <span>@file.Url</span>
+        <span>@file.Source</span>
+        <span>
+            @*@if (Model?.DeclaringType == typeof(Pages.Content.Upload))*@
+            @if(file.Url != null && file.Filename == null)
+            {
+                <a @onclick="() => { _ = Download(file!); }"><span class="bi bi-download"></span></a>
+            }
+            else
+            {
+                <a @onclick="() => { _ = Import(file!); }"><span class="bi bi-pencil"></span></a>
+                <a @onclick="() => { _ = Delete(file!); }"><span class="bi bi-trash"></span></a>
+            }
+        </span>
+    </div>
+}

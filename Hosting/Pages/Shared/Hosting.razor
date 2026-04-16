@@ -1,0 +1,30 @@
+@foreach (var item in HeaderLinks)
+{
+    <NavLink class="header-link" href="@item.Href" Match="NavLinkMatch.All">
+        <i class="bi @item.Icon" aria-hidden="true"></i>
+        <span class="header-text">@item.Title</span>
+    </NavLink>
+}
+
+@code {
+    private List<INavMenuItem> HeaderLinks = new()
+    {
+        new NavMenuItem<Pages.Hosting>() { Title = "Hosting", Icon = "bi-hdd-network" },
+    };
+    
+    public static Delegate ShowContext
+    {
+        get => (Type routeControl) => routeControl == typeof(Pages.Hosting);
+    }
+
+    public static Delegate ContextInsert
+    {
+        get => (Func<RenderFragment>)(() => __builder =>
+        {
+            __builder.OpenComponent<Pages.Shared.Hosting>(0);
+            __builder.CloseComponent();
+        });
+    }
+
+}
+

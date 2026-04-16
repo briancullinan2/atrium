@@ -1,0 +1,366 @@
+@page "/plugins"
+@using Atrium.Services
+@using Interfacing.Services
+@using System.ComponentModel.DataAnnotations
+@implements IHasForms
+@implements IHasCover
+@inject ITrustProvider Trust
+@attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
+@inject ICompositeProvider Service
+@inject IHasClass Logo
+
+
+@{
+    Logo.LogoContent(__builder);
+}
+
+<table>
+    <tbody>
+        <tr>
+            <td colspan="3" class="status-container">
+                <button class="cta">Save and Continue</button><br />
+                <span class="box-status">@(Error != null 
+                    ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
+                </span>
+            </td>
+        </tr>
+
+        @if(((TrustedLoader)Trust).Layouts.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <span>Layout</span><br />
+                    <select>
+                        <option value="">No Layout</option>
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).Routable.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <span>Routable</span><br />
+                    <select  onchange="@SetRoutable">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
+                        {
+                            var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
+                            <option value="@name">@name</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).CatchAll.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <span>Catch All</span><br />
+                    <select>
+                        @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        @if (((TrustedLoader)Trust).Roots.Count > 0)
+        {
+            <tr>
+                <td colspan="3">
+                    <span>Root Component</span><br />
+                    <select onchange="@SetSelectedRoot">
+                        @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                        @foreach (var layoutType in ((TrustedLoader)Trust).AllRoutes)
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">
+                                @(layoutType.FullName?.Split(',')[0] ?? layoutType.Name ?? layoutType.FullName)
+                            </option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        }
+        
+        
+        @foreach (var plugin in MyList)
+        {
+            <tr>
+                <td class="name-col">
+                    <strong>@plugin.Title</strong><br />
+                    <span class="product-tag">@plugin.Metadata.Product</span>
+                </td>
+
+                <td class="meta-col">
+                    <small>Pkg: @plugin.Metadata.Package</small><br />
+                    <small>Pub: @plugin.Metadata.Company @plugin.Metadata.Publisher</small>
+                </td>
+                    
+                <td class="enable-col">
+                    @if (plugin.Metadata.TrustLevel == LevelOfTrust.Required)
+                    {
+                        <span>Required</span>
+                    }
+                    else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    {
+                        <label class="switch" aria-disabled="true">
+                            <input type="checkbox" disabled="disabled" checked="checked" />
+                        </label>
+                        <span>Required By:</span><br />
+                        @foreach (var required in requirees)
+                        {
+                            <span>@required</span><br />
+                        }
+                    }
+                    else
+                    {
+                        <label class="switch">
+                            <input type="checkbox" onchange="@((ChangeEventArgs args) => OnEnabled(plugin, args))" checked="@(GetActive(plugin))" />
+                        </label>
+                    }
+                </td>
+            </tr>
+            @*@if (Trust.LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
+            {
+                
+            }*@
+        }
+    </tbody>
+</table>
+
+
+@code {
+    private bool _showSplash = true;
+    private string? StoredSelectedRoot = null;
+    private string? SelectedRoot
+    {
+        get => StoredSelectedRoot;
+        set => StoredSelectedRoot = (Main?.DefaultRoot = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
+    private MainLoader? Main {
+        get => Service.GetService<Lazy<MainLoader?>>()?.Value;
+    }
+
+    private string? StoredSelectedLayout = null;
+    private string? SelectedLayout
+    {
+        get => StoredSelectedLayout;
+        set => StoredSelectedLayout = (Main?.DefaultLayout = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
+    private string? StoredSelectedPermission  = null;
+    private string? SelectedPermission
+    {
+        get => StoredSelectedPermission;
+        set => StoredSelectedPermission = (Main?.PermissionType = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
+    private string? StoredSelectedNotFound = null;
+    private string? SelectedNotFound
+    {
+        get => StoredSelectedNotFound;
+        set => StoredSelectedNotFound = (Main?.NotFoundControl = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
+    private string? StoredSelectedAuth = null;
+    private string? SelectedAuth
+    {
+        get => StoredSelectedAuth;
+        set => StoredSelectedAuth = (Main?.AuthWrapper = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+    }
+
+    private string? StoredSelectedAssembly = null;
+    private async Task SetSelectedAssembly(string? value)
+    {
+        var main = Main;
+        if ((Path.GetFileNameWithoutExtension(value) is string path
+        && Trust.LoadedAssemblies.TryGetValue(path, out var ass))
+        && main != null)
+        {
+            StoredSelectedAssembly = ass.FullName?.Split(',')[0];
+            await main.SetAppAssembly(ass);
+        }
+    }
+
+    public void SetSelectedRoot(ChangeEventArgs item)
+    {
+        SelectedRoot = item.Value as string;
+    }
+
+
+    public void SetRoutable(ChangeEventArgs item)
+    {
+        _ = SetSelectedAssembly(item.Value as string);
+    }
+
+    private bool GetActive(PluginContract e)
+    {
+        var ass = Path.GetFileNameWithoutExtension(e.InstallPath);
+        if (Trust.EnabledAssemblies.ContainsKey(ass))
+            return true;
+        if (Trust.LoadedAssemblies.ContainsKey(ass))
+            return true;
+        return false;
+    }
+
+    protected string? Error = null;
+
+    private async Task OnEnabled(PluginContract plugin, ChangeEventArgs e)
+    {
+        Error = null;
+        var isChecked = (bool)(e.Value ?? false);
+        var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
+
+        try
+        {
+            var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
+            if (loaded == null) return;
+            // temporary whatever
+            Trust.LoadedAssemblies.TryAdd(ass, loaded);
+        }
+        catch (Exception ex)
+        {
+            // do something statusy
+            Error = ex.Message;
+        }
+
+        if (!isChecked)
+            Trust.Disable(ass);
+        else
+            Trust.Enable(ass);
+
+        // TODO: if the component has visual elements, activate window size from splash mode
+        // TODO: 
+        Trust.OnSettled += TriggerExpand;
+
+        await Task.Delay(500);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected void TriggerExpand()
+    {
+        InvokeAsync(() =>
+        {
+
+            if (Service.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
+            {
+                if (Trust.EnabledAssemblies.Count == 0)
+                    _ = window.ExpandWindow(false);
+                else
+                    _ = window.ExpandWindow(true);
+            }
+        });
+    }
+
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // Check local storage or your ILocalStore to see if this is the first run
+        // or if we should skip the splash.
+        var isFirstRun = true; // Use your ILocalStore service here
+        _showSplash = isFirstRun;
+        Trust.OnAssemblyLoaded += NotifyAssembly;
+        Trust.OnSettledAsync += TryLoading;
+    }
+
+    private void HandleOnComplete()
+    {
+        _showSplash = false;
+        StateHasChanged();
+    }
+
+    private string? Scanning = null;
+    private DateTime _lastUiUpdate = DateTime.MinValue;
+    List<PluginContract> MyList = [];
+
+    protected void NotifyAssembly(PluginContract file)
+    {
+        // 1. Immediate Throttled UI Update (Max every 200ms)
+        // This keeps the UX fluid without flooding the RenderTree
+        if ((DateTime.Now - _lastUiUpdate).TotalMilliseconds > 300)
+        {
+            Scanning = file.InstallPath;
+            _lastUiUpdate = DateTime.Now;
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        _ = TryLoading();
+    }
+
+    bool setOnce = false;
+    bool running = false;
+    public async Task TryLoading()
+    {
+        if (running) return;
+        running = true;
+
+        if (!setOnce)
+            Trust.OnSettledAsync += TryLoading; // subscribe to be a sub for next time
+        setOnce = true;
+
+        await Task.Delay(600); // wait for UX to refresh and drop something in
+
+        MyList = Trust.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
+
+        // This block only runs if no more NotifyAssembly calls happened for 1 second
+        Scanning = "";
+
+        var loader = (TrustedLoader)Trust;
+        //if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
+        //{
+        //    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
+        //}
+        var likelyRootAss = loader.Routable.FirstOrDefault(ass =>
+               Trust.EnabledAssemblies.Any(ass2 => ass.FullName?.Split(',')[0] == ass2.Key))
+               ?? loader.Routable.FirstOrDefault();
+
+        if (StoredSelectedRoot == null && loader.AllRoutes.Count > 0)
+        {
+            SelectedRoot = loader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName;
+        }
+        if (StoredSelectedRoot == null && loader.Roots.Count > 0)
+        {
+            SelectedRoot = loader.Roots[0].AssemblyQualifiedName;
+        }
+        if (StoredSelectedRoot == null && loader.Roots.Count == 0
+            && loader.AllRoutes.Count > 0)
+        {
+            SelectedRoot = loader.AllRoutes[0].AssemblyQualifiedName;
+        }
+        if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
+        {
+            await SetSelectedAssembly(likelyRootAss?.FullName?.Split(',')[0]);
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        running = false;
+    }
+
+
+
+
+
+    public void Dispose()
+    {
+        Trust.OnAssemblyLoaded -= NotifyAssembly;
+        GC.SuppressFinalize(this);
+    }
+
+}

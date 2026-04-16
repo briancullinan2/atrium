@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+	  <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
@@ -12,11 +12,17 @@
 	  <BlazorEnableCompression>false</BlazorEnableCompression>
 	  <WasmDebugLevel>1</WasmDebugLevel>
 	  <RunAOTCompilation>false</RunAOTCompilation>
+	  <ApplicationTitle>Atrium</ApplicationTitle>
+	  <ApplicationId>com.atrium.desktop</ApplicationId>
+	  <Authors>Brian Cullinan</Authors>
+	  <Product>Atrium</Product>
+	  <Company>Brian Cullinan</Company>
   </PropertyGroup>
 	
 	
 	<PropertyGroup>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+		<StartupObject>Program</StartupObject>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -25,23 +31,19 @@
 	
 	
   <ItemGroup>
-	<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.*-*" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
+	<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
   </ItemGroup>
 
+	
   <ItemGroup>
-    <ProjectReference Include="..\FlashCard\FlashCard.csproj" />
+    <ProjectReference Include="..\DataShared\DataShared.csproj" />
+    <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
   </ItemGroup>
-	
-	<ItemGroup>
-		<PackageReference Include="sqlitepclraw.lib.e_sqlite3" Version="2.1.11">
-			<ExcludeAssets>all</ExcludeAssets>
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
-	</ItemGroup>
-	
+
 	<ItemGroup>
 	  <Content Update="wwwroot\service-worker-static.js">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -50,5 +52,6 @@
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>
-	
+
+
 </Project>

@@ -1,0 +1,74 @@
+﻿
+.badge.bg-secondary {
+    background: lightgrey;
+    border: 3px solid grey;
+    border-radius: 10px;
+    padding: 5px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.page .bi-chevron-down,
+.page .bi-chevron-left,
+.page .bi-chevron-right {
+}
+
+
+.drop-shader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.75);
+    justify-content: center;
+    vertical-align: middle;
+    align-items: center;
+    text-align: center;
+    display: none;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+}
+
+.dropping .drop-shader {
+    display: flex;
+}
+
+
+
+.cards-edit h2 {
+    display: flex;
+    justify-content: space-between;
+    white-space: nowrap;
+}
+.cards-edit h2 span:nth-child(2) 
+{
+    flex-basis:100%;
+    padding: 0 20px;
+    flex-shrink: 1;
+    overflow:hidden;
+    text-overflow: ellipsis;
+}
+
+
+
+
+
+@media (max-width: 640px) {
+
+    h2 a {
+        white-space: wrap;
+    }
+
+    heading.flex-row 
+    {
+        display:none;
+    }
+
+    .flex-row {
+        flex-direction: column;
+        padding: 10px 0;
+    }
+}
+

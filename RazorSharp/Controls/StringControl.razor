@@ -1,0 +1,93 @@
+@* StringControl.razor *@
+@attribute [SupportsType(typeof(int))]
+@attribute [SupportsType(typeof(double))]
+@attribute [SupportsType(typeof(decimal))]
+@attribute [SupportsType(typeof(float))]
+@attribute [SupportsType(typeof(DateTime))]
+@attribute [SupportsType(typeof(string))]
+@implements IHasMeta
+
+<label>@Model?.DisplayName</label>
+@if (Model?.DataType == System.ComponentModel.DataAnnotations.DataType.MultilineText)
+{
+    <textarea autocomplete="@Autocomplete" maxlength="@MaxLength">
+        @ValueString
+    </textarea>
+}
+else
+{
+    <input type="@Type"
+           autocomplete="@Autocomplete"
+           value="@(Model?.DataType == System.ComponentModel.DataAnnotations.DataType.Password && !string.IsNullOrWhiteSpace(ValueString) ? "***********" : ValueString)"
+           step="@(Model?.DataType == System.ComponentModel.DataAnnotations.DataType.Currency ? "0.50" : "any")"
+           maxlength="@MaxLength" />
+}
+
+@code {
+
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
+    [Parameter] public PropertyMetadata? Model { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
+
+    private string MaxLength => (Model?.MaxLength > 0 ? Model.MaxLength.ToString() : "4096") ?? "4096";
+
+    private string ValueString => Data?.ElementAtOrDefault(0) is object obj
+                                  ? Model?.GetValue(obj)?.ToString() ?? ""
+                                  : "";
+
+    public string Autocomplete => Model?.DataType switch
+    {
+        System.ComponentModel.DataAnnotations.DataType.EmailAddress => "email",
+        System.ComponentModel.DataAnnotations.DataType.PhoneNumber => "tel",
+        System.ComponentModel.DataAnnotations.DataType.PostalCode => "postal-code",
+        System.ComponentModel.DataAnnotations.DataType.CreditCard => "cc-number",
+        System.ComponentModel.DataAnnotations.DataType.Url => "url",
+        System.ComponentModel.DataAnnotations.DataType.Password => "current-password",
+        _ => "" // Default to empty
+    };
+
+    public string Type
+    {
+        get
+        {
+            if (Model == null) return "text";
+
+            // 1. Check Explicit DataType Attribute first
+            switch (Model.DataType)
+            {
+                case System.ComponentModel.DataAnnotations.DataType.Password: return "password";
+                case System.ComponentModel.DataAnnotations.DataType.EmailAddress: return "email";
+                case System.ComponentModel.DataAnnotations.DataType.PhoneNumber: return "tel";
+                case System.ComponentModel.DataAnnotations.DataType.Url: return "url";
+                case System.ComponentModel.DataAnnotations.DataType.Date: return "date";
+                case System.ComponentModel.DataAnnotations.DataType.DateTime: return "datetime-local";
+                case System.ComponentModel.DataAnnotations.DataType.Time: return "time";
+                case System.ComponentModel.DataAnnotations.DataType.ImageUrl: return "url";
+                case System.ComponentModel.DataAnnotations.DataType.Currency: return "number"; // Use step="0.01" in HTML
+            }
+
+            // 2. Fallback to Reflection on the PropertyType
+            var underlyingType = Nullable.GetUnderlyingType(Model.PropertyType) ?? Model.PropertyType;
+
+            if (underlyingType == typeof(DateTime)) return "date";
+
+            if (new[] { typeof(int), typeof(decimal), typeof(double), typeof(float), typeof(long) }
+                .Contains(underlyingType))
+            {
+                return "number";
+            }
+
+            if (underlyingType == typeof(System.Drawing.Color)) return "color";
+
+            // 3. Last resort: Name-based guessing (optional)
+            if (Model.Name.Contains("email", StringComparison.OrdinalIgnoreCase)) return "email";
+
+            return "text";
+        }
+    }
+
+    //       @oninput="OnInput"
+
+    //private async Task OnInput(ChangeEventArgs e)
+    //    => await ValueChanged.InvokeAsync(e.Value);
+}

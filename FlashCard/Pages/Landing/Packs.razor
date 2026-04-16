@@ -1,22 +1,17 @@
 @implements IDisposable
 
+@attribute [Display(Name = "Study Packs", ShortName = "Packs", GroupName = "Main", Prompt = "bi-card-list")]
 @page "/packs"
 @page "/packs/list"
 @page "/packs/owner"
 @page "/packs/{Id:int}/add"
 @page "/packs/{Filter}"
-
-@using DataLayer.Utilities.Extensions
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Controls
-@using FlashCard.Services
-@using System.ComponentModel
+@implements IHasContext
 @inject IMenuService MenuService
-@inject ILoginService LoginService
 @inject NavigationManager Nav
-@inject IServiceProvider Services
-
-<SyncedTitle Title="Study Packs"></SyncedTitle>
+@inject ICompositeProvider Services
+@inject ILoginService LoginService
+@inject IQueryManager QueryManager
 
 <div class="flash-card animate-in">
 
@@ -30,7 +25,7 @@
         <label>Last Studied</label>
         <label>Actions</label>
     </heading>
-    <MetadataControl TModel="DataLayer.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
+    <MetadataControl TModel="FlashData.Entities.Pack" Model="@RecentLayout" Data="Recent"></MetadataControl>
 
     <h2>Packs Needing Study</h2>
 
@@ -39,18 +34,25 @@
 </div>
 
 @code {
+    public static Delegate ShowContext
+    {
+        get => (Type routeControl, NavigationManager Nav) => routeControl == typeof(Pages.Landing.Courses)
+        || routeControl == typeof(Pages.Landing.Packs) || Nav.Uri.Contains("upload") || Nav.Uri.Contains("store");
+    }
 
-    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+    public static Delegate ContextInsert => RenderExtensions.ToNavLink<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add });
+
+    [CascadingParameter(Name = nameof(IsStaticRender))] public bool IsStaticRender { get; set; }
 
     [Category("Recent")]
-    public List<DataLayer.Entities.Pack> Recent { get; set; } = new();
-    public List<DataLayer.Entities.Pack> Study { get; set; } = new();
-    public List<DataLayer.Entities.Pack> Store { get; set; } = new();
+    public List<FlashData.Entities.Pack> Recent { get; set; } = new();
+    public List<FlashData.Entities.Pack> Study { get; set; } = new();
+    public List<FlashData.Entities.Pack> Store { get; set; } = new();
 
     public IEnumerable<PropertyMetadata>? RecentLayout { get; set; }
     [Parameter] public string? Filter { get; set; } = null;
     [Parameter] public int? Id { get; set; } = null;
-    public DataLayer.ControlMode? ControlMode { get; set; } = DataLayer.ControlMode.List;
+    public ControlMode? Mode { get; set; } = ControlMode.List;
 
     protected override void OnInitialized()
     {
@@ -58,8 +60,6 @@
         RecentLayout = typeof(Pages.Landing.Packs).Metadata().Categories["Recent"]?.ToList();
 
         if (IsStaticRender) return;
-
-        MenuService?.SetMenu(@<FlashCard.Pages.Shared.Packs />);
     }
 
     protected void SetControlMode()
@@ -75,10 +75,10 @@
 
         var firstSegment = relativePath.Split('/').Last();
 
-        ControlMode = firstSegment.TryParse<DataLayer.ControlMode>();
+        Mode = firstSegment.TryParse<ControlMode>();
 
         // add/assign the pack to the users account for study
-        if(ControlMode == DataLayer.ControlMode.Add)
+        if(Mode == ControlMode.Add)
         {
             _ = SubscribePack();
         }
@@ -90,21 +90,21 @@
         if (IsStaticRender) return;
 
 
-        DataLayer.Entities.Pack? currentPack = null;
+        FlashData.Entities.Pack? currentPack = null;
         if (Id < 0 && Id >= -3)
         {
             Type[] packs = [typeof(Pages.Course.Course1), typeof(Pages.Course.Course2), typeof(Pages.Course.Course3)];
             currentPack = GetCoursePack(packs.ElementAt(Math.Abs(Id ?? 0) - 1))?.FirstOrDefault();
-            if (currentPack?.Save() is Task<DataLayer.Entities.Pack> task)
-                currentPack = await task;
+            if (currentPack?.Save() is Task<IEntity> task)
+                currentPack = await task as FlashData.Entities.Pack;
             Id = currentPack?.Id;
         }
 
-        if (LoginService.User != null && !LoginService.User.UserPacks.Any(up => up.Pack?.Id == Id))
+        if (LoginService.User != null && !QueryManager.Query<FlashData.Entities.UserPack>(up => up.UserId == LoginService.UserId).Any())
         {
-            var up = new UserPack() { User = LoginService.User, Pack = currentPack };
-            LoginService.User.UserPacks.Add(up);
-            up = await up.Save();
+            var up = new UserPack() { UserId = LoginService.UserId, Pack = currentPack };
+            //LoginService.User.UserPacks.Add(up);
+            up = await up.Save() as UserPack;
         }
         await InvokeAsync(StateHasChanged);
 
@@ -126,10 +126,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected static IEnumerable<DataLayer.Entities.Pack>? GetCoursePack(Type? lesson)
+    protected static IEnumerable<FlashData.Entities.Pack>? GetCoursePack(Type? lesson)
     {
-        var generator = lesson?.GetMethod(nameof(DataLayer.Generators.IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-        IEnumerable<DataLayer.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<DataLayer.Entities.Pack>;
+        var generator = lesson?.GetMethod(nameof(IGenerator<>.Generate), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+        IEnumerable<FlashData.Entities.Pack>? packs = generator?.Invoke(null, []) as IEnumerable<FlashData.Entities.Pack>;
         return packs;
     }
 

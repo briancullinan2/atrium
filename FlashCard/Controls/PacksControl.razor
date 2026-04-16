@@ -1,30 +1,43 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using System.Text.Json.Serialization
-@using Microsoft.EntityFrameworkCore
-@using FlashCard.Services
+@attribute [SupportsType(typeof(Pack))]
+@attribute [SupportsType(typeof(IEnumerable<Pack>))]
+@implements IHasMeta
+@inject ILoginService LoginService
+@inject IQueryManager QueryManager
+
 @code
 {
 
-    [Parameter] public IEnumerable<DataLayer.Entities.Pack>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object> ValueChanged { get; set; }
-    [Inject] public ILoginService? LoginService { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
+
+    public IEnumerable<Pack> Packs { get => Data?.Cast<Pack>() ?? []; }
+    public List<UserPack>? UserPacks { get; set; }
+    public List<Response>? Responses { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        QueryManager.Query<UserPack>(up => up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => UserPacks = await list);
+        QueryManager.Query<Response>(up => up.Created > DateTime.Now.AddDays(-32) && up.UserId == LoginService.UserId).ToListAsync()
+            .Then(async list => Responses = await list);
+    }
 }
 
 
-@foreach (var pack in Data ?? [])
+@foreach (var pack in Packs)
 {
     <div class="flex-row">
-        <span><img src="@(pack.LogoHosted ?? pack.Logo?.Url)" /></span>
+        <span><img src="@(pack.LogoHosted @*?? pack.Logo?.Url*@)" /></span>
         <span>
-            @if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) != null)
+            @if (UserPacks?.FirstOrDefault(up => up.PackId == pack.Id) != null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.PackMode.Card }))">@pack.Title</a>
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = PackMode.Card }))">@pack.Title</a>
             }
             else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = DataLayer.PackMode.Demo }))">@pack.Title</a>
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Id = pack.Id, Mode = PackMode.Demo }))">@pack.Title</a>
             }
         </span>
         <span>@pack.Category
@@ -34,25 +47,28 @@
             }
         </span>
         <span>@pack.Cards.Count()</span>
-        <span>@(LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id)?.GetResponses(out var correct)?.LastOrDefault()?.Created.ToString("MMM dd") ?? "Never studied")</span>
+        <span>@(Responses?.LastOrDefault(up => up.Card?.PackId == pack.Id)?.Created.ToString("MMM dd") ?? "Never studied")</span>
         <span>
-            <a href="@(NavigationExtensions.GetUri<Pages.Landing.EditPack>(p => new () { ControlMode = DataLayer.ControlMode.Edit, Id = pack.Id}))">
+            <a href="@(TypeExtensions.GetUri<Pages.Landing.EditPack>(p => new () { Mode = ControlMode.Edit, Id = pack.Id}))">
                 <span class="bi bi-pencil"></span>
             </a>
             @if(LoginService?.User == null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Login>())">
+            @*
+                TODO: service injection for IHasMeta???    
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Login>())">
                     <span class="bi bi-check-circle"></span>
                 </a>
+            *@
             }
-            else if (LoginService?.User?.UserPacks.FirstOrDefault(up => up.PackId == pack.Id) == null)
+            else if (UserPacks?.FirstOrDefault(up => up.PackId == pack.Id) == null)
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Packs>(p => new() { ControlMode = DataLayer.ControlMode.Add, Id = pack.Id }))">
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Packs>(p => new() { Mode = ControlMode.Add, Id = pack.Id }))">
                     <span class="bi bi-check-circle"></span>
                 </a>
             } else
             {
-                <a href="@(NavigationExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = DataLayer.PackMode.Card, Id = pack.Id }))">
+                <a href="@(TypeExtensions.GetUri<Pages.Landing.Pack>(p => new() { Mode = PackMode.Card, Id = pack.Id }))">
                     <span class="bi bi-info-circle"></span>
                 </a>
             }

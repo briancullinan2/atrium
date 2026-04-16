@@ -1,0 +1,89 @@
+
+@inject IChatService ChatService
+@inject IPageEvents PageManager
+@implements IHasMenu
+
+<div id="Navlist" class="nav-scrollable chat">
+
+    <div class="chat-message from">
+        <span>Your chat will appear here...</span>
+        <span>@(DateTime.Now.ToLongTimeString())</span>
+    </div>
+    @foreach (var item in ChatService.Recents ?? new())
+    {
+        <div class="chat-message @(item.Value.Item1 == true ? "from" : "to")">
+            <span>@(item.Value.Item2)</span>
+            <span>@(item.Key.ToLongTimeString())</span>
+        </div>
+    }
+
+</div>
+
+@code
+{
+    public bool AutoScroll = true;
+    public static Delegate ShowMenu { get => (IChatService Chat) => Chat.Chat; }
+    public static string Icon => "bi-chat";
+
+    public async Task SetMenuActivated(bool menu)
+    {
+        await ChatService.SetChatMode(menu);
+        if (ChatService.Chat)
+        {
+            _ = PageManager.ScrollToBottom("Navlist");
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ChatService.OnChatMessage += RefreshChat;
+        _ = ChatService.IsWorking();
+    }
+
+
+    public void Dispose()
+    {
+        ChatService.OnChatMessage -= RefreshChat;
+        PageManager.OnScroll -= ToggleAutoScroll;
+    }
+
+
+    protected void ToggleAutoScroll(string id, bool isBottom)
+    {
+        if(id == "Navlist")
+            AutoScroll = isBottom;
+    }
+
+    private CancellationTokenSource? _autoScrollLoopCts;
+
+    protected async Task LaunchAutoScrollLoop()
+    {
+        if (!AutoScroll) return;
+
+        _autoScrollLoopCts = TaskExtensions.Timer(async () =>
+        {
+            var isBottom = await PageManager.IsAtBottomAsync("Navlist");
+
+            if (isBottom == true)
+            {
+                _autoScrollLoopCts?.Cancel();
+            }
+
+            await PageManager.ScrollSlightlyAsync("Navlist");
+        });
+    }
+
+
+    public void RefreshChat()
+    {
+        if (ChatService.Chat)
+        {
+            InvokeAsync(StateHasChanged);
+            _ = LaunchAutoScrollLoop();
+        }
+    }
+
+}

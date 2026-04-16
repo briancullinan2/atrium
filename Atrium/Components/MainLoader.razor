@@ -1,0 +1,117 @@
+@using Atrium.Extensions
+@using Atrium.Services
+@using Interfacing.Services
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject ITrustProvider Trust
+@inject NavigationManager Nav
+@inject ICompositeProvider Service
+@inject ITrustProvider Trust
+@inject IRenderState Rendered
+@inject IHasClass Css
+@inject IJSRuntime JS
+
+@foreach (var cssUrl in Css.Registry)
+{
+    <link rel="stylesheet" href="@cssUrl" />
+}
+
+@if (IsDebug)
+{
+    <script>
+        (function() {
+        const originalInvoke = DotNet.invokeMethodAsync;
+        DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+        console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+        return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+        };
+        })();
+    </script>
+}
+
+<div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
+    @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
+    {
+        <div class="cover-container"></div>
+        <main class="cover-page">
+            <article class="content course-container">
+                @*TODO: make this a component that can inject itself into a settings page*@
+                <Atrium.Components.PluginsPage />
+            </article>
+        </main>
+    }
+
+    @if (StoredAppAssembly != null)
+    {
+        <CascadingValue Name="Loader" Value="@this">
+            <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+                <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+                    <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                        @RenderWithPermission()
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
+    }
+</div>
+
+
+@code {
+    
+
+    private RenderFragment RenderWithLayout() => __builder =>
+    {
+        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
+            <Found Context="routeData">
+                @{
+                    _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
+                }
+                @if (AuthService != null)
+                {
+                    @CreatePermissionContent(routeData)
+                }
+                else
+                {
+                    <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                    <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                }
+            </Found>
+            <NotFound>
+                <LayoutView Layout="DefaultLayout">
+                    @BuildNotFound()
+                </LayoutView>
+            </NotFound>
+        </Router>
+    };
+
+
+
+    private RenderFragment RenderWithoutLayout() => __builder =>
+    {
+        <main>
+            <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
+                <Found Context="routeData">
+                    @{
+                        _ = Css.ListenUp(routeData.PageType, null, this);
+                    }
+                    @if (AuthService != null)
+                    {
+                        @CreatePermissionContent(routeData)
+                    }
+                    else
+                    {
+                        <RouteView RouteData="routeData" />
+                        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                    }
+                </Found>
+                <NotFound>
+                    @BuildNotFound()
+                </NotFound>
+            </Router>
+        </main>
+    };
+
+
+}

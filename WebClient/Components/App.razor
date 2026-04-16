@@ -1,0 +1,146 @@
+﻿@using Extensions.PrometheusTypes
+@using Interfacing.Services
+@using Microsoft.AspNetCore.Components.Infrastructure
+@using Microsoft.AspNetCore.Components.RenderTree
+@using RazorSharp.Controls
+@using RazorSharp.Extensions
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@implements IHasCurrent<App>
+@inject NavigationManager Nav
+@inject ICompositeProvider Service
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.ico" />
+    <AntiforgeryToken />
+
+</head>
+
+<body>
+ 
+    <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
+        <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
+            <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
+                <WebClient.Components.Routes @rendermode="PreferredMode" />
+            </CascadingValue>
+        </CascadingValue>
+    </CascadingValue>
+
+    <script src="/_content/RazorSharp/main.js"></script>
+    <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", startBlazor);
+        
+        manageServiceWorker();
+
+    </script>
+
+    @if (IsDebug)
+    {
+        <script>
+            (function() {
+            const originalInvoke = DotNet.invokeMethodAsync;
+            DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+            console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+            return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+            };
+            })();
+        </script>
+    }
+
+
+</body>
+
+</html>
+
+@code {
+
+    public static App? Current { get; private set; } = null;
+
+    // Default to Wasm, but allow an override
+    IComponentRenderMode PreferredMode = RenderMode.InteractiveServer;
+#if DEBUG
+    private bool IsDebug = true;
+#else
+    private bool IsDebug = false;
+#endif
+    private bool FirstTimeLoad = true;
+    static Type? PermissionType = null;
+    static Type? StoredDefaultRoot = null;
+    public Type? DefaultRoot
+    {
+        get => StoredDefaultRoot;
+        set => StoredDefaultRoot = value;
+    }
+
+    public void HasChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        Current = this;
+
+        base.OnInitialized();
+#if DEBUG
+        IsDebug = true;
+#endif
+        var Query = App.Query(Nav.Uri);
+        if (Nav.Uri.Contains("#mode=server") == true)
+        {
+            PreferredMode = InteractiveServer;
+        }
+        else if (Query?.TryGetValue("mode", out var mode) == true)
+        {
+            PreferredMode = mode == "server"
+                ? RenderMode.InteractiveServer
+                : RenderMode.InteractiveWebAssembly;
+        }
+
+        Console.WriteLine($"Starting in {PreferredMode.ToString()} mode");
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        //var context = Service.GetRequiredService<HttpContext>();
+        //var store = context.RequestServices.GetService<IPersistentComponentStateStore>();
+        //var manager = Service.GetRequiredService<ComponentStatePersistenceManager>();
+        //var store = Service.GetRequiredService<IPersistentComponentStateStore>();
+        //var renderer = Service.GetRequiredService<Renderer>();
+        //await manager.PersistStateAsync(store, renderer);
+
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        var Page = Service.GetRequiredService<IRenderState>();
+        await Page.SetState(this);
+    }
+
+    public static Dictionary<string, string> Query(string uri)
+    {
+        // Use a simple split/regex to avoid heavy libraries
+        var query = uri.TrimStart('?');
+        var parameters = query.Split('&')
+                              .Select(p => p.Split('='))
+                              .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");
+
+        return parameters;
+    }
+    
+    
+}

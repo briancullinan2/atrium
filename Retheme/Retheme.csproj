@@ -1,37 +1,50 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+	
   <PropertyGroup>
-	  <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
-	  <ImplicitUsings>enable</ImplicitUsings>
+	  <TargetFrameworks>net10.0</TargetFrameworks>
+	  <ImplicitUsings>disable</ImplicitUsings>
       <Nullable>enable</Nullable>
+	  <ApplicationTitle>Atrium</ApplicationTitle>
+	  <ApplicationId>com.atrium.desktop</ApplicationId>
+	  <Authors>Brian Cullinan</Authors>
+	  <Product>Atrium</Product>
+	  <Company>Brian Cullinan</Company>
+	  <Publisher>Brian Cullinan</Publisher>
+	  
   </PropertyGroup>
-	<PropertyGroup>
-		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
-	</PropertyGroup>
+
 	<PropertyGroup>
 		<Antlr4GenListener>true</Antlr4GenListener>
 		<Antlr4GenVisitor>true</Antlr4GenVisitor>
 	</PropertyGroup>
-	
+
 	<ItemGroup>
-	  <PackageReference Include="Antlr4" Version="4.6.6">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	  <PackageReference Include="Antlr4.Runtime" Version="4.6.6" />
+		<PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+		<PackageReference Include="Antlr4BuildTasks" Version="12.11.*" PrivateAssets="all" />
 	</ItemGroup>
-	
+
 	<ItemGroup>
-		<Antlr4 Update="Grammars\css3Lexer.g4">
-			<Generator>MSbuild:Compile</Generator>
-			<CustomToolNamespace>Retheme.Grammars</CustomToolNamespace>
-			<TargetLanguage>CSharp</TargetLanguage>
-			<Options>-visitor -listener</Options>
-		</Antlr4>
-		<Antlr4 Update="Grammars\css3Parser.g4">
-			<Generator>MSbuild:Compile</Generator>
-			<CustomToolNamespace>Retheme.Grammars</CustomToolNamespace>
-			<TargetLanguage>CSharp</TargetLanguage>
-			<Options>-visitor -listener</Options>
+		<Antlr4 Include="Grammars\*.g4">
+			<Package>Retheme.Grammars</Package>
+
+			<Visitor>true</Visitor>
+			<Listener>true</Listener>
+
 		</Antlr4>
 	</ItemGroup>
+	
+
+	<ItemGroup>
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	  <ProjectReference Include="..\UserData\UserData.csproj" />
+	</ItemGroup>
+	
+
+	<ItemGroup>
+	  <Folder Include="Pages\Shared\" />
+	</ItemGroup>
+
+
+
 </Project>

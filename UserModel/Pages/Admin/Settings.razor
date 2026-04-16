@@ -1,0 +1,164 @@
+@page "/settings"
+@page "/settings/edit"
+@page "/settings/add"
+@page "/settings/list"
+
+@implements IDisposable
+@inject IMenuService MenuService
+@inject IThemeService ThemeService
+@inject ITitleService TitleService
+@inject IFileManager FileManager
+@inject IPageEvents PageManager
+@inject NavigationManager Nav
+@inject HttpClient Http
+
+@attribute [Display(Name = "Application Settings", ShortName = "Settings", GroupName = "Admin", Prompt = "bi-collection")]
+
+
+<div class="flash-card app-settings @GetDisplayClass(ControlMode.Edit)">
+    <h2>Login Setting</h2>
+    <div class="form-row">
+        <span>Enable the Guest account.</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Enable the Automatic Login.</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Default user account for auto login.</span>
+        @*TODO: make a user/entity select control*@
+    </div>
+
+
+    <h2>Display Settings</h2>
+    <div class="form-row">
+        <span>Show animated background from packs</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Match dark/light mode to OS</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Dark mode</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>High contrast theme</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Start when computer starts</span>
+        <input type="checkbox" />
+    </div>
+
+
+    <h2>Parental Controls</h2>
+    <div class="form-row">
+        <span>Allow child accounts to subscribe to new content</span>
+        <input type="checkbox" />
+    </div>
+
+
+    <h2>Telemetry</h2>
+    <div class="form-row">
+        <span>Enable non-specific usage statistics sharing with content creators</span>
+        <input type="checkbox" />
+    </div>
+    <div class="form-row">
+        <span>Enable non-specific usage statistics sharing with hosts</span>
+        <input type="checkbox" />
+    </div>
+
+    @*
+    TODO: this injection part of the page will be a whole thingy on its own    
+    <h2><a href="@(TypeExtensions.GetUri<Hosting.Pages.Hosting>())">Hosting</a></h2>
+    <div>
+        <span><a href="@(TypeExtensions.GetUri<Hosting.Pages.Hosting>())">Enable hosting</a> to access your own study system from the web.</span>
+    </div>*@
+</div>
+
+
+@code
+{
+    public ControlMode? Mode { get; set; } = ControlMode.Edit;
+    public ControlMode? PreviousMode { get; set; }
+
+
+
+    protected void SetControlMode()
+    {
+        var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+
+        var segments = relativePath.Split('/');
+
+        ControlMode? newStep = ControlMode.Edit;
+        if (segments.Count() >= 2)
+        {
+            newStep = segments.Last().TryParse<ControlMode>() ?? ControlMode.Edit;
+        }
+
+
+        if (newStep != Mode)
+        {
+            PreviousMode = Mode;
+            Mode = newStep;
+            InvokeAsync(StateHasChanged);
+        }
+
+        if(Mode == ControlMode.List)
+        {
+            TitleService?.UpdateTitle("Edit Theme");
+        }
+        else if (Mode == ControlMode.Edit)
+        {
+            TitleService?.UpdateTitle("Application Settings");
+        }
+
+    }
+    
+    protected string? GetDisplayClass(ControlMode mode)
+    {
+        if (Mode == mode) return "animate-in";
+        if (PreviousMode == mode) return "animate-out";
+        return "hidden";
+    }
+
+    [CascadingParameter(Name = "IsStaticRender")] public bool IsStaticRender { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+        if (IsStaticRender) return;
+        // we don't have to reinitialize theme just to get it to show up now
+        //   because it's stored in static property after the first load
+
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected bool IsClosing = false;
+
+    protected void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (IsClosing) return;
+        SetControlMode();
+    }
+
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        SetControlMode();
+    }
+    
+    public void Dispose()
+    {
+        IsClosing = true;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+
+}

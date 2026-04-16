@@ -1,12 +1,15 @@
-@using System.Timers
-@using System.ComponentModel
-@using System.Text.Json.Serialization
+@attribute [SupportsType(typeof(Card))]
+@attribute [SupportsType(typeof(IEnumerable<Card>))]
+@implements IHasMeta
+
 @code
 {
-    [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
     private IEnumerable<PropertyMetadata>? AnswerLayout;
+
+    public IEnumerable<Card> Cards { get => Data?.Cast<Card>() ?? []; }
 
     protected override void OnInitialized()
     {
@@ -16,16 +19,16 @@
 
 }
 
-@foreach (var card in Data ?? [])
+@foreach (var card in Cards)
 {
 
     <div class="card-front @card.ResponseType-card-type">
         <div class="preview-inner">
-            @if (card.ContentType == DataLayer.DisplayType.Image)
+            @if (card.ContentType == DisplayType.Image)
             {
                 <img src="@card.Content" />
             }
-            else if (card.ContentType == DataLayer.DisplayType.Audio)
+            else if (card.ContentType == DisplayType.Audio)
             {
                 <audio controls src="@card.Content"></audio>
             }
@@ -36,20 +39,20 @@
         </div>
 
         <div class="preview-footer">
-            @if (card.ResponseType == DataLayer.CardType.FlashCard) // Flashcard mode
+            @if (card.ResponseType == CardType.FlashCard) // Flashcard mode
             {
             }
-            else if (card.ResponseType == DataLayer.CardType.Short)
+            else if (card.ResponseType == CardType.Short)
             {
                 <input type="text" placeholder="Enter your best guess" />
             }
-            else if (card.ResponseType == DataLayer.CardType.TrueFalse) // True/False
+            else if (card.ResponseType == CardType.TrueFalse) // True/False
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, HandleAnswer))" TModel="DataLayer.Entities.Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="HandleAnswer" TModel="Card" Model="@AnswerLayout" Data="Cards"></MetadataControl>
             }
-            else if (card.ResponseType == DataLayer.CardType.Multiple) // Multiple Choice
+            else if (card.ResponseType == CardType.Multiple) // Multiple Choice
             {
-                <MetadataControl ValueChanged="@(EventCallback.Factory.Create<Tuple<PropertyMetadata, DataLayer.Entities.Card, object?>>(this, HandleAnswer))" TModel="DataLayer.Entities.Card" Model="@AnswerLayout" Data="Data"></MetadataControl>
+                <MetadataControl ValueChanged="HandleAnswer" TModel="Card" Model="@AnswerLayout" Data="Cards"></MetadataControl>
             }
         </div>
     </div>
@@ -58,9 +61,9 @@
 
 @code {
 
-    private async Task HandleAnswer(Tuple<PropertyMetadata, DataLayer.Entities.Card, object?> selectedValue)
+    private async Task HandleAnswer(Tuple<PropertyMetadata, Card, object?> selectedValue)
     {
-        ValueChanged?.InvokeAsync(selectedValue.Item3);
+        ValueChanged?.DynamicInvoke(selectedValue.Item3);
     }
 
 }

@@ -1,0 +1,108 @@
+@page "/settings/providers"
+
+@inject IAuthService AuthService
+@attribute [Display(Name = "Identity Providers", ShortName = "Providers", GroupName = "Admin", Prompt = "bi-person-vcard")]
+
+
+<div class="flash-card animate-in">
+    <h2>Auth Control Plane</h2>
+    <p>Manage secrets and endpoints for the identity federation.</p>
+
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Client ID</th>
+                <th>Client Secret</th>
+                <th>Type</th>
+                <th class="text-end">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in AuthenticationExtensions.Providers)
+            {
+                var isEditing = Editing.TryGetValue(p, out var value) ? value : false;
+                <tr class="@(isEditing ? "table-active" : "")">
+                    <td style="width: 200px;">
+                        <i class="bi @p.Icon me-2"></i>
+                        @if (isEditing && p.Id == null)
+                        {
+                            <input type="text" @bind="p.DisplayName" class="form-control form-control-sm d-inline-block w-75" />
+                        }
+                        else
+                        {
+                            <strong>@p.DisplayName</strong>
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="text" @bind="p.ClientId" class="form-control form-control-sm" placeholder="Paste ID..." />
+                        }
+                        else
+                        {
+                            <span class="text-truncate d-block" style="max-width: 150px;">@(string.IsNullOrEmpty(p.ClientId) ? "---" : p.ClientId)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="password" @bind="p.Secret" class="form-control form-control-sm" placeholder="Paste Secret..." />
+                        }
+                        else
+                        {
+                            <span>@(string.IsNullOrEmpty(p.Secret) ? "---" : "••••••••")</span>
+                        }
+                    </td>
+                    <td><small class="badge bg-secondary">@p.Type</small></td>
+                    <td class="text-end">
+                        @if (isEditing)
+                        {
+                            <a class="btn btn-success btn-sm me-1" @onclick="() => SaveRow(p)"><i class="bi bi-check-lg"></i></a>
+                            <a class="btn btn-outline-light btn-sm" @onclick="() => Editing[p] = false"><i class="bi bi-x-lg"></i></a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-outline-primary btn-sm" @onclick="() => Editing[p] = true">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+
+                            @if (!string.IsNullOrEmpty(p.ClientId) && !string.IsNullOrEmpty(p.Secret))
+                            {
+                                <span class="badge bg-success me-2">Online</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark me-2">Pending</span>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <button class="cta" @onclick="AddNewProvider">
+            <i class="bi bi-plus-circle me-2"></i>Add Custom Provider
+        </button>
+    </div>
+</div>
+
+@code {
+    private Dictionary<AuthProviderMetadata, bool> Editing = new();
+
+    private void AddNewProvider()
+    {
+        // Logic to push a new generic AuthProviderMetadata to your list
+        // You might need to change Providers to a List if it's currently an array
+    }
+
+    private async Task SaveRow(AuthProviderMetadata p)
+    {
+        // Persist change to DB via your QueryManager
+        Console.WriteLine($"Persisting settings for {p.DisplayName}...");
+        Editing.Clear();
+        await InvokeAsync(StateHasChanged);
+    }
+}

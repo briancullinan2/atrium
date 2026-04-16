@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0</TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<WasmFingerprintAssets>false</WasmFingerprintAssets>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<ApplicationTitle>Atrium</ApplicationTitle>
+		<ApplicationId>com.atrium.desktop</ApplicationId>
+		<Authors>Brian Cullinan</Authors>
+		<Product>Atrium</Product>
+		<Company>Brian Cullinan</Company>
+		<Publisher>Brian Cullinan</Publisher>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Content Update="wwwroot\triangle.svg">
+			<Color>transparent</Color>
+		</Content>
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
+	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	</ItemGroup>
+
+
+</Project>

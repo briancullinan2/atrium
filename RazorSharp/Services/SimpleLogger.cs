@@ -1,0 +1,331 @@
+﻿
+
+
+
+namespace RazorSharp.Services
+{
+    
+
+    public class SimpleLogger : ILog, IHasLog, IHasCurrent<ILog>
+    {
+        public static IServiceProvider? Service { get; set; }
+        private static readonly ConcurrentDictionary<string, SimpleLogger> _loggerCache = new();
+
+        private static IQueryManager? Query { get; set; }
+        private static IRenderState? Manager { get; set; }
+        private static IHasErrors? Errors { get; set; }
+        private static Lazy<ILocalStore?>? LocalStore { get; set; }
+
+        public SimpleLogger(IServiceProvider _services)
+        {
+            Service ??= _services;
+            Manager = Service.GetService<IRenderState>();
+            Query = Service.GetService<IQueryManager>();
+            Errors = Service.GetService<IHasErrors>();
+            LocalStore = Service.GetService<Lazy<ILocalStore?>>();
+            ResolveCache();
+        }
+
+
+        public static void ResolveCache()
+        {
+            if (Query != null
+                && Manager?.IsReady == true
+                && LocalStore?.Value?.IsReady == true)
+            {
+                foreach (var pre in PreLog)
+                {
+                    //_ = pre.Save(Query);
+                    var boringException = new Exception(pre.Title) { Source = pre.Source };
+                    boringException.Data["OriginalStack"] = pre.Body;
+                    Errors?.SetError(boringException);
+                }
+                PreLog.Clear();
+            }
+        }
+
+
+        static ILog? _current = null;
+        static public ILog Current { 
+            get
+            {
+                return _current ?? throw new InvalidOperationException("Log wrapper not set.");
+            }
+            set => _current = value; 
+        }
+
+
+        internal static ConcurrentStack<Message> PreLog { get; set; } = [];
+
+
+        public static SimpleLogger GetLogger(string filePath)
+        {
+            return GetLogger(filePath, typeof(SimpleLogger));
+        }
+
+        public static SimpleLogger GetLogger(string filePath, Type levels, object? replacement = null)
+        {
+            string category = System.IO.Path.GetFileNameWithoutExtension(filePath);
+            if (_loggerCache.TryGetValue(category, out var logger)) return logger;
+
+            var levelsLogger = _loggerCache.GetOrAdd(category, cat => new SimpleLogger(Service!)
+            {
+                Filepath = filePath,
+                Category = category
+            });
+            if(replacement != null && replacement is ILog wrapperLogger)
+                SimpleLogger.Current = wrapperLogger;
+
+            var levelFunctions = levels.GetMethods(null)
+                .Select(m => new Tuple<MethodInfo, ParameterInfo[]>(m, m.GetParameters()))
+                .Where(data => data is (var Method, var Parameters) && Method.ReturnType == typeof(void)
+                    && Method.GetParameters() is { } parameters
+                    && parameters.Length > 1 && parameters.Length < 3
+                    && parameters.FirstOrDefault() is ParameterInfo first
+                    && (typeof(object).IsAssignableFrom(Nullable.GetUnderlyingType(first.ParameterType) ?? first.ParameterType)
+                    || typeof(string).IsAssignableFrom(Nullable.GetUnderlyingType(first.ParameterType) ?? first.ParameterType)
+                    || typeof(Exception).IsAssignableFrom(Nullable.GetUnderlyingType(first.ParameterType) ?? first.ParameterType)
+                    || (parameters.ElementAtOrDefault(1) is ParameterInfo second
+                        && (typeof(object).IsAssignableFrom(Nullable.GetUnderlyingType(second.ParameterType) ?? second.ParameterType)
+                        || typeof(string).IsAssignableFrom(Nullable.GetUnderlyingType(second.ParameterType) ?? second.ParameterType)
+                        || typeof(Exception).IsAssignableFrom(Nullable.GetUnderlyingType(second.ParameterType) ?? second.ParameterType))
+                        ))
+                )
+                .OrderBy(methodInfo => methodInfo.Item2.Length)
+                .DistinctBy(methodInfo => methodInfo.Item1.Name);
+
+
+            foreach (var levelFunction in levelFunctions)
+            {
+                levelsLogger._levels[levelFunction.Item1.Name] = (obj, ex) => levelsLogger.WriteLog(levelFunction.Item1.Name, obj, ex, levelFunction.Item1);
+            }
+            return levelsLogger;
+        }
+
+
+        public static object? ParameterToObject(ParameterInfo p, object? obj, Exception? ex)
+        {
+            // 1. If the parameter is an Exception, give it 'ex'
+            if (typeof(Exception).IsAssignableFrom(p.ParameterType))
+                return ex;
+
+            // 2. If it's the 'format' string in a Format method
+            if (p.Name == "format" && p.ParameterType == typeof(string))
+                return obj?.ToString();
+
+            // 3. If it's the standard 'message' object
+            if (p.ParameterType == typeof(object))
+                return obj;
+
+            // 4. Default to null for things like IFormatProvider or params arrays 
+            // (unless you want to add logic for those too)
+            return null;
+        }
+
+
+        public static int LoggingErrorCount { get; set; } = 0;
+        public static bool StopSavingLogs { get; set; } = false;
+
+        public static async Task ForgetAboutManager(
+            string Source,
+            string Title,
+            Exception? exception,
+            string? stackWhenCalled
+        ) {
+            if (Manager?.IsReady == true)
+            {
+                if (exception != null) Errors?.SetError(exception);
+                else
+                {
+                    var reportEx = exception ?? new Exception(Title) { Source = Source };
+                    reportEx.Data["OriginalStack"] = (exception?.Data["OriginalStack"] as string ?? exception?.StackTrace ?? stackWhenCalled);
+                    Errors?.SetError(reportEx);
+                }
+            }
+
+        }
+
+
+
+        public static async Task DoAppendForget(
+            string Source,
+            string Title,
+            Exception? exception
+        )
+        {
+            var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+
+            _ = ForgetAboutManager(Source, Title, exception, stackWhenCalled);
+            
+            
+            if (StopSavingLogs)
+            {
+                return;
+            }
+
+            try
+            {
+                Message newMessage;
+                if (exception != null)
+                {
+                    newMessage = new Message
+                    {
+                        Source = Source,
+                        Title = (Title ?? exception.Message).Limit(Message.Metadata.MaxLength[x => x.Title] ?? 1024),
+                        Body = (exception.Data["OriginalStack"] as string ?? exception.StackTrace ?? stackWhenCalled).Limit(Message.Metadata.MaxLength[nameof(Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    };
+                }
+                else
+                {
+                    newMessage = new Message
+                    {
+                        Source = Source,
+                        Title = Title.Limit(Message.Metadata.MaxLength[nameof(Message.Title)] ?? 1024),
+                        Body = stackWhenCalled.Limit(Message.Metadata.MaxLength[nameof(Message.Body)] ?? 4096),
+                        Created = DateTime.UtcNow,
+                        IsActive = true,
+                        MessageType = 4
+                    };
+                }
+
+
+                if (Manager == null)
+                {
+                    PreLog.Push(newMessage);
+                }
+                else
+                {
+                    _ = newMessage.Save(Query);
+                    // so we get a stack trace with it
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                LoggingErrorCount++;
+                if (LoggingErrorCount >= 5)
+                {
+                    StopSavingLogs = true;
+                }
+            }
+        }
+
+
+
+#pragma warning disable IDE1006 // Naming Styles
+        private Dictionary<string, Action<object, Exception?>> _levels { get; set; } = [];
+#pragma warning restore IDE1006 // Naming Styles
+
+
+        public virtual Action<object, Exception?> this[string level]
+        {
+            get
+            {
+                if (_levels.TryGetValue(level, out var log)) return log;
+                _levels[level] = (message, ex) => WriteLog(level, message, ex, null);
+                return _levels[level];
+            }
+            set
+            {
+                _levels[level] = value;
+            }
+        }
+
+        public string? Filepath { get; set; }
+        public string? Category { get; set; }
+
+        public virtual void Info(object msg, Exception? ex = null) => WriteLog(nameof(Info), msg, ex);
+        public virtual void Error(object msg, Exception? ex = null) => WriteLog(nameof(Error), msg, ex);
+        public virtual void Fatal(object msg, Exception? ex = null) => WriteLog(nameof(Fatal), msg, ex);
+        public virtual void Debug(object msg, Exception? ex = null) => WriteLog(nameof(Debug), msg, ex);
+
+
+        private void InvokeWrappedLogger(MethodInfo levelDelegate, /* string level, */ object message, Exception? ex)
+        {
+            if (_current != this && levelDelegate != null)
+            {
+                var parameters = levelDelegate?.GetParameters()
+                    .Select(p => ParameterToObject(p, message, ex)).ToArray();
+                // prevent accidental recursion from implementors, the only way to arrive here is to overload the methods above
+                if (!typeof(SimpleLogger).IsAssignableFrom(levelDelegate?.DeclaringType))
+                {
+                    levelDelegate?.Invoke(_current, parameters);
+                }
+            }
+            else
+            {
+                Task.Run(() =>
+                {
+                    if (ex != null) Errors?.SetError(ex);
+                    else Errors?.SetError(new Exception(message.ToString()) { Source = Category });
+                });
+
+                // TODO: I don't know if this is wise, it generates loops of errors
+                //var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
+                // its not wrapped by log4net so try and save the error anyways
+                //_ = DoAppendForget(Category ?? "Internal", message.ToString() ?? ex?.Message ?? string.Empty, reportEx);
+            }
+        }
+
+
+        private void WriteLog(string level, object message, Exception? ex = null, MethodInfo? levelDelegate = null)
+        {
+            var stackWhenCalled = new System.Diagnostics.StackTrace(true).ToString();
+            ex?.Data["OriginalStack"] = stackWhenCalled;
+            // 1. Incorporate Node-style attributes [Service][Folder][File]
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var folder = Category?.Split('\\').SkipLast(1).LastOrDefault();
+            var file = Category?.Split('\\').LastOrDefault();
+
+            // Build the "Pre-pended" message like your Node notebook
+            string formattedPrefix = $"[{timestamp}][{level.ToUpper()}][{folder}][{file}]";
+            string finalMessage = $"{formattedPrefix} {message}";
+
+            // 2. Output to Console (Immediate Feedback)
+
+            Console.WriteLine(finalMessage);
+            //if (ex != null) Console.WriteLine(ex);
+
+
+            // 5. If a heavy logger (log4net) is attached via Reflection, invoke it
+            if (levelDelegate != null)
+            {
+                var reportEx = ex ?? new Exception(message.ToString()) { Source = Category };
+                reportEx.Data["OriginalStack"] = stackWhenCalled;
+                InvokeWrappedLogger(levelDelegate, /* level, */ message, reportEx);
+            }
+
+        }
+    }
+
+    namespace Logging
+    {
+        internal static class Log
+        {
+
+            public static void Info(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+            {
+                SimpleLogger.GetLogger(callerPath)[nameof(Info)](message, ex);
+            }
+
+            public static void Error(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+            {
+                SimpleLogger.GetLogger(callerPath)[nameof(Error)](message, ex);
+            }
+
+            public static void Fatal(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+            {
+                SimpleLogger.GetLogger(callerPath)[nameof(Fatal)](message, ex);
+            }
+
+            public static void Debug(object message, Exception? ex = null, [CallerFilePath] string callerPath = "")
+            {
+                SimpleLogger.GetLogger(callerPath)[nameof(Debug)](message, ex);
+            }
+        }
+    }
+}

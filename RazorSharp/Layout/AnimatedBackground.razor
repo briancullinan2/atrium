@@ -1,0 +1,67 @@
+@inject IHasAnimation Animation
+
+<div class="canvas-container">
+    <canvas id="lichtenbergCanvas"></canvas>
+</div>
+
+@code
+{
+    
+    public AnimationMode? Background { get; set; } = AnimationMode.none;
+    public bool initRender { get; set; } = true;
+
+
+    private void SetBackground(AnimationMode? theme)
+    {
+        if (theme != Background)
+        {
+            Background = theme;
+            initRender = true;
+            _ = InitializeRender();
+        }
+    }
+
+    private IJSObjectReference? _animationCts;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!initRender || Background == null)
+        {
+            return;
+        }
+
+        _ = InitializeRender();
+    }
+
+    
+    protected async Task InitializeRender()
+    {
+        initRender = false;
+
+        if (_animationCts != null)
+        {
+            _ = _animationCts.InvokeVoidAsync("dispose");
+            _ = _animationCts.DisposeAsync();
+            _animationCts = null;
+        }
+
+        // still pass None to page manager to turn off
+        //if (Background == AnimationMode.None)
+        //{
+        //    return;
+        //}
+
+        if (Background.HasValue)
+            _ = Animation.InitializeBackground(Background.Value.ToString().ToLower(), "lichtenbergCanvas");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_animationCts != null)
+        {
+            _ = _animationCts.InvokeVoidAsync("dispose");
+            _ = _animationCts.DisposeAsync();
+            _animationCts = null;
+        }
+    }
+}

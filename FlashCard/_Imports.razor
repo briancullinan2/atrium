@@ -1,5 +1,8 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
+@using System.Text.Json.Serialization
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
@@ -10,7 +13,21 @@
 @using Microsoft.JSInterop
 @using FlashCard
 @using FlashCard.Layout
-@using FlashCard.Utilities.Extensions
-@using DataLayer
-@using DataLayer.Entities
+@using FlashCard.Pages.Course
+@using FlashData
+@using FlashData.Entities
+@using FlashCard.Services
+@using RazorSharp.Services
+@using Extensions.SlenderServices
+@using DataShared.ForeignEntity
+@using Extensions.PrometheusTypes
+@using RazorSharp.Controls
+@using RazorSharp.Layout
+@using DataStore
+@using Microsoft.EntityFrameworkCore
+@using FlashCard.Controls
+@using Interfacing.Services
 @attribute [Authorize]
+@using DataShared.Extensions
+@using RazorSharp.Extensions
+@using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions

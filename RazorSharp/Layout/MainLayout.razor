@@ -1,0 +1,120 @@
+﻿
+@inherits LayoutComponentBase
+@implements IDisposable
+@implements IHasChildren
+@inject IJSRuntime JS
+@inject IMenuService MenuService
+@inject ICompositeProvider Service
+@inject IHasClass Classy
+
+<NavMenu />
+    
+@*TODO: using the layout injection found below that way it only happens if there is a state set 
+@foreach (var item in RenderState.State)
+{
+    <input type="hidden" name="state_@item.Key" value="@item.Value" />
+}*@
+
+@if (ShowHeader != false)
+{
+    <ContextMenu />
+}
+
+<main>
+    
+
+    @if (Classy.ClassNames.Contains("cover-page"))
+    {
+        <article class="content course-container">
+            Logo.ChildContent(__builder);
+        </article>
+    }
+        
+
+
+    @*TODO: check for layout animation*@
+    @Body
+
+</main>
+
+@*TODO: insert services through page manager*@
+@foreach(var currentLayout in MenuService.EnabledLayouts)
+{
+    var myDelegate = currentLayout.GetProperties(nameof(IHasLayout.LayoutInsert)).First().GetValue(null) as Delegate;
+    if (myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+    ?? myDelegate?.Method.ReturnType)?.Extends(typeof(RenderFragment)) != true)
+        throw new InvalidOperationException("Context delegate must return a RenderFragment" + myDelegate?.Method);
+    var fragment = myDelegate.InvokeService(Service) as RenderFragment;
+    @fragment
+}
+
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+<dialog id="components-reconnect-modal">
+
+</dialog>
+
+@code {
+    public RenderFragment? HeaderMenu { get; private set; }
+    public string? HeaderTitle { get; private set; }
+    public bool? ShowHeader { get; set; }
+
+    protected override void OnInitialized()
+    {
+        //RenderState.NotifyEmptied(this);
+        // TODO: find a page animation
+        //var asses = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetAssemblies();
+        //Parallel.ForEachAsync(asses, async (s, _) => {
+        //    await TryFindingInterestingTypes(s);
+        //});
+    }
+
+    // TODO: use INotHasWrapper somewhere
+    private void SetTitle(string? title)
+    {
+        if (HeaderTitle != title)
+        {
+            HeaderTitle = title;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+
+    public bool IsClosing = false;
+
+    public void Dispose()
+    {
+        //RenderState.NotifyEmptied(this);
+        IsClosing = true;
+    }
+
+    public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
+
+    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            //RenderState.NotifyRendered(JS, this);
+        }
+
+        // TODO:
+        /*
+        if (!IsClosing && PageHasChanged)
+        {
+            //_activeBody.Component()?.JSInvokable();
+            await this.Mirror();
+            PageHasChanged = false;
+        }
+        */
+    }
+
+    
+
+}

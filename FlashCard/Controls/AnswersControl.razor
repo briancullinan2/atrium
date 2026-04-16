@@ -1,27 +1,29 @@
-@using System.ComponentModel.DataAnnotations
-@using System.ComponentModel
-@using DataLayer.Utilities.Extensions
+@attribute [SupportsType(typeof(Answer))]
+@attribute [SupportsType(typeof(IEnumerable<Answer>))]
+@implements IHasMeta
+
 @code
 {
-    [Parameter] public IEnumerable<DataLayer.Entities.Card>? Data { get; set; }
+    [Parameter] public IEnumerable<object?>? Data { get; set; }
     [Parameter] public PropertyMetadata? Model { get; set; }
-    [Parameter] public EventCallback<object?>? ValueChanged { get; set; }
-    public List<DataLayer.Entities.Answer> Answers { get; set; } = new List<DataLayer.Entities.Answer>();
+    [Parameter] public Action<object?>? ValueChanged { get; set; }
+    public List<Answer> Answers { get; set; } = new List<Answer>();
+    public Card? Card { get; set; } = null;
 
-
-    public DataLayer.ControlMode Mode
+    public ControlMode Mode
     {
         get
         {
             // TODO: declaring type
-            return DataLayer.ControlMode.View;
+            return ControlMode.View;
         }
     }
 
     protected override void OnInitialized()
     {
-        Answers = Data?.ElementAt(0).Answers.ToList() ?? [];
-        if(Data?.ElementAt(0).ResponseType == DataLayer.CardType.TrueFalse)
+        Card = Data?.ElementAt(0) as Card;
+        Answers = Card?.Answers.ToList() ?? [];
+        if (Card?.ResponseType == CardType.TrueFalse)
         {
             if (!Answers.Any(a => string.Equals(a.Value, "true", StringComparison.InvariantCultureIgnoreCase)))
             {
@@ -49,6 +51,6 @@
 
 @foreach (var answer in Answers)
 {
-    <input class="large-present" type="radio" value="@answer.Value ?? answer.Content" id="@answer.Content?.ToSafe()" name="@Data?.ElementAt(0).Content.ToSafe()" />
-    <label for="@answer.Content?.ToSafe()" onclick="@(() => ValueChanged?.InvokeAsync(answer))">@answer.Content</label>
+    <input class="large-present" type="radio" value="@answer.Value ?? answer.Content" id="@answer.Content?.ToSafe()" name="@Card?.Content.ToSafe()" />
+    <label for="@answer.Content?.ToSafe()" onclick="@(() => ValueChanged?.DynamicInvoke(answer))">@answer.Content</label>
 }

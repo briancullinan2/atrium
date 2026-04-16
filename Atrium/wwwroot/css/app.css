@@ -3,19 +3,37 @@
 }
 
 html, body {
-    /* leaving these here so we can see what's affecting */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     padding: 0;
     margin: 0;
+    max-width: 100%;
     /* TODO: look up cross platform system backups font-family: Verdana, Geneva, Tahoma, sans-serif; */
+    drag-drop-zone: none; /* Non-standard, but some engines respect it */
+    -webkit-user-drag: none;
+    height: 100%;
+    line-height: 1.6em;
+}
+
+h1:focus, h2:focus, h3:focus, h4:focus, h5:focus {
+    outline: none;
+}
+
+*, ::before, ::after, *:focus, *:active {
+    box-sizing: border-box;
+    outline: none; /* TODO: override this on specific elements for screen readers */
+}
+
+#app {
+    height: 100%;
+    width: 100%;
 }
 
 h1, h2, h3, h4, h5 {
-    outline:none;
+    outline: none;
 }
 
-*, ::before, ::after {
-    box-sizing: border-box;
-    outline: none; /* TODO: override this on specific elements for screen readers */
+a, .btn-link {
+    color: #006bb7;
 }
 
 @supports (-webkit-touch-callout: none) {
@@ -33,3 +51,27 @@ h1, h2, h3, h4, h5 {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+
+.bi {
+    display: inline-block;
+    position: relative;
+    /*width: 1.25rem;
+    height: 1.25rem; TODO: theme.css */
+    margin-right: 0.5rem;
+    margin-left: 0.5rem;
+    top: 0;
+    background-size: cover;
+    text-decoration:none;
+}
+
+a:hover .bi,
+a:hover .bi:before, a:hover .bi:after,
+.bi:before, .bi:after {
+    text-decoration:none;
+}
+
+a .bi {
+    cursor: pointer;
+}
+
