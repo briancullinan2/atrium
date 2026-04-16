@@ -14,25 +14,11 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     private static readonly SemaphoreSlim _gate = new(0);
     public IQueryProvider? FinalProvider { get; set; }
 
-    public virtual StorageType EphemeralStorage { get; set; } = StorageType.Ephemeral;
-    public virtual StorageType PersistentStorage { get; set; } = StorageType.Persistent;
-    public virtual StorageType RemoteStorage { get; set; } = StorageType.Remote;
-    public virtual StorageType TestStorage { get; set; } = StorageType.Test;
+    public virtual Type EphemeralStorage { get; set; }
+    public virtual Type PersistentStorage { get; set; }
+    public virtual Type RemoteStorage { get; set; }
+    public virtual Type TestStorage { get; set; }
     
-    private Type? _ephemeral;
-    private Type? _persistent;
-    public virtual Type EphemeralType
-    {
-        get => _ephemeral ?? GetStorageType(EphemeralStorage);
-        set => _ephemeral = value;
-    }
-    public virtual Type PersistentType
-    {
-        get => _persistent ?? GetStorageType(PersistentStorage);
-        set => _persistent = value;
-    }
-    
-
 
 
 
@@ -143,37 +129,15 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
 
 
 
-    public Type GetStorageType(StorageType type)
+    public TContext GetContext<TContext>(Type? type = null) where TContext : DbContext
     {
-        return type switch
-        {
-            StorageType.Ephemeral => EphemeralStorage,
-            StorageType.Persistent => PersistentStorage,
-            StorageType.Remote => RemoteStorage,
-            StorageType.Test => TestStorage,
-            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
-        } switch
-        {
-            StorageType.Ephemeral => typeof(EphemeralStorage),
-            StorageType.Persistent => typeof(PersistentStorage),
-            StorageType.Remote => typeof(RemoteStorage),
-            StorageType.Test => typeof(TestStorage),
-            _ => throw new ArgumentOutOfRangeException(nameof(type), $"Type {type} not mapped.")
-        };
-    }
-
-
-
-
-    public TContext GetContext<TContext>(StorageType? type = null) where TContext : DbContext
-    {
-        var contextType = type == null ? typeof(TContext) : GetStorageType(type ?? EphemeralStorage);
+        var contextType = type == null ? typeof(TContext) : EphemeralStorage;
         return (TContext)Service.CreateScope().ServiceProvider.GetRequiredService(contextType);
     }
 
 
-    public ITranslationContext GetContext(StorageType type)
-        => GetContext<TranslationContext>(type);
+    public ITranslationContext? GetContext(Type type)
+        => GetContext<DbContext>(type) as ITranslationContext;
 
 
 
@@ -183,7 +147,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
         return await Synchronize(PersistentStorage, EphemeralStorage, qualifier, priority);
     }
 
-    public virtual async Task<List<TSet>> Synchronize<TSet>(StorageType From, StorageType To, Expression<Func<TSet, bool>> qualifier, int priority = 10)
+    public virtual async Task<List<TSet>> Synchronize<TSet>(Type From, Type To, Expression<Func<TSet, bool>> qualifier, int priority = 10)
         where TSet :class, IEntity<TSet>
     {
         await Enqueue(async () =>
@@ -372,7 +336,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) 
+    public virtual async Task<TEntity> Save<TEntity>(Type storage, Expression<Func<TEntity, TEntity>> expression, int priority = 10) 
         where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
@@ -410,7 +374,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<TEntity> Save<TEntity>(StorageType storage, TEntity entity, int priority = 10) 
+    public virtual async Task<TEntity> Save<TEntity>(Type storage, TEntity entity, int priority = 10) 
         where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
@@ -433,7 +397,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<IEntity> Save(StorageType storage, IEntity entity, int priority = 10)
+    public virtual async Task<IEntity> Save(Type storage, IEntity entity, int priority = 10)
     {
         await Enqueue(async () =>
         {
@@ -449,9 +413,9 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    protected virtual async Task<IEntity> SaveNow(StorageType storage, IEntity entity)
+    protected virtual async Task<IEntity> SaveNow(Type storage, IEntity entity)
     {
-        var RealSave = GetType().GetMethods(nameof(SaveNow), 1, [typeof(StorageType), typeof(object)])
+        var RealSave = GetType().GetMethods(nameof(SaveNow), 1, [typeof(Type), typeof(object)])
             .FirstOrDefault()
             ?.MakeGenericMethod(entity.GetType())
             ?? throw new InvalidOperationException("Failed to render save now function.");
@@ -465,7 +429,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    protected virtual async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity) where TEntity : Entity<TEntity>
+    protected virtual async Task<TEntity> SaveNow<TEntity>(Type storage, TEntity entity) where TEntity : Entity<TEntity>
     {
         var context = GetContext(storage)
             ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
@@ -557,7 +521,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
 
 
     public virtual TResult Query<TEntity, TResult>(
-        StorageType storage,
+        Type storage,
         Expression<Func<IQueryable<TEntity>, TResult>> query,
         int priority = 10)
         where TEntity : class, IEntity<TEntity>
@@ -581,7 +545,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     private static readonly ConcurrentDictionary<string, Task<object?>> _pendingQueries = new();
 
     public virtual async Task<TResult> QueryNow<TEntity, TResult>(
-        StorageType storage,
+        Type storage,
         Expression query,
         int priority = 10)
         where TEntity : class
@@ -841,7 +805,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public async Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, bool>> key, int priority = 10)
+    public async Task<TEntity> Update<TEntity>(Type storage, Expression<Func<TEntity, bool>> key, int priority = 10)
         where TEntity : class, IEntity<TEntity>
     {
         var entity = Activator.CreateInstance<TEntity>();
@@ -865,7 +829,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public async Task<TEntity> Update<TEntity, TResult>(StorageType storage, Expression<Func<TEntity, TResult>> key, int priority = 10)
+    public async Task<TEntity> Update<TEntity, TResult>(Type storage, Expression<Func<TEntity, TResult>> key, int priority = 10)
         where TEntity : class, IEntity<TEntity>
     {
         var entity = Activator.CreateInstance<TEntity>();
@@ -893,7 +857,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
         return await Update(EphemeralStorage, entity, priority);
     }
 
-    public virtual async Task<IEntity?> Update(StorageType storage, IEntity entity, int priority = 10)
+    public virtual async Task<IEntity?> Update(Type storage, IEntity entity, int priority = 10)
     {
         await Enqueue(async () =>
         {
@@ -919,7 +883,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public virtual async Task<TEntity> Update<TEntity>(StorageType storage, TEntity entity, int priority = 10)
+    public virtual async Task<TEntity> Update<TEntity>(Type storage, TEntity entity, int priority = 10)
         where TEntity : class, IEntity<TEntity>
     {
         await Enqueue(async () =>
@@ -932,7 +896,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
         return await Enqueue(async () => { return await UpdateNow(storage, entity); }, priority);
     }
 
-    protected virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity)
+    protected virtual async Task<TEntity> UpdateNow<TEntity>(Type storage, TEntity entity)
         where TEntity : class, IEntity<TEntity>
 
     {
@@ -940,7 +904,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    protected virtual async Task<TEntity> UpdateNow<TEntity>(StorageType storage, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null)
+    protected virtual async Task<TEntity> UpdateNow<TEntity>(Type storage, TEntity entity, Expression<Func<TEntity, bool>>? predicate = null)
         where TEntity : class, IEntity<TEntity>
 
     {
@@ -1012,7 +976,7 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public Task<TEntity> Update<TEntity>(StorageType storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) 
+    public Task<TEntity> Update<TEntity>(Type storage, Expression<Func<TEntity, TEntity>> key, int priority = 10) 
         where TEntity : class, IEntity<TEntity>
     {
         return Update<TEntity, TEntity>(storage, key, priority);
@@ -1029,12 +993,12 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
         return ToExpression(EphemeralStorage, query, out _);
     }
 
-    public Expression? ToExpression(StorageType? storage, string query)
+    public Expression? ToExpression(Type? storage, string query)
     {
         return ToExpression(EphemeralStorage, query, out _);
     }
 
-    public Expression? ToExpression(StorageType? storage, string query, out IQueryable? set)
+    public Expression? ToExpression(Type? storage, string query, out IQueryable? set)
     {
         var context = GetContext(storage ?? EphemeralStorage)
             ?? throw new InvalidOperationException("Database context failed.");
@@ -1062,12 +1026,12 @@ public class QueryManager(ICompositeProvider Service) : IQueryManager
     }
 
 
-    public async Task<object?> ToQueryable(string query, StorageType? storage)
+    public async Task<object?> ToQueryable(string query, Type? storage)
     {
         Expression? finalExpression = ToExpression(storage, query, out IQueryable? set)
             ?? throw new InvalidOperationException("Could not convert expression document to Queryable: " + query);
 
-        var QueryGeneric = GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
+        var QueryGeneric = GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(Type), typeof(Expression)])
             .FirstOrDefault()
              ?? throw new InvalidOperationException("Could not render QueryNow method");
 

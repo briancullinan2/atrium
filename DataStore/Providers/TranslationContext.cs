@@ -5,12 +5,12 @@ namespace DataStore.Providers;
 
 
 // This context never connects to a DB; it just holds your Entity mappings
-public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext, IHasEntityTypes
+public abstract class TranslationContext<TEntity, TAssembly>(DbContextOptions ctx) : DbContext(ctx), ITranslationContext, IHasEntityTypes
 {
 
     private static List<Type>? CachedEntities { get; set; }
 
-    public static List<Type> EntityTypes => CachedEntities ??= TypeExtensions.ToEntities<TEntity>();
+    public static List<Type> EntityTypes => CachedEntities ??= TypeExtensions.ToEntities<TEntity, TAssembly>();
 
     //public List<Type> EntityTypes => TranslationContext<TEntity>.EntityTypes;
 
@@ -52,7 +52,7 @@ public abstract class TranslationContext<TEntity>(DbContextOptions ctx) : DbCont
     public abstract ValueTask EnsureInitialized();
 }
 
-public abstract class SemaphoreTranslationContext<TEntity>(DbContextOptions ctx) : TranslationContext<TEntity>(ctx)
+public abstract class SemaphoreTranslationContext<TEntity, TAssembly>(DbContextOptions ctx) : TranslationContext<TEntity, TAssembly>(ctx)
 {
     private ValueTask? _initializeTask;
     private readonly SemaphoreSlim _initLock = new(1, 1);
@@ -121,7 +121,7 @@ public abstract class SemaphoreTranslationContext<TEntity>(DbContextOptions ctx)
 
 
 // needed one to hold the ID initialization stuff
-public class SqliteTranslationContext<TEntity>(IQueryManager query, DbContextOptions ctx) : SemaphoreTranslationContext<TEntity>(ctx)
+public class SqliteTranslationContext<TEntity, TAssembly>(IQueryManager query, DbContextOptions ctx) : SemaphoreTranslationContext<TEntity, TAssembly>(ctx)
 {
 
     public override IQueryManager Query { get; set; } = query;
@@ -202,9 +202,9 @@ public class SqliteTranslationContext<TEntity>(IQueryManager query, DbContextOpt
 
 
 // needed one to hold the reference to IEntity for all the others to inherit from for the automatic database
-public abstract class TranslationContext(IQueryManager query, DbContextOptions ctx)
+public abstract class TranslationContext<TAssembly>(IQueryManager query, DbContextOptions ctx)
     // TODO: change this to SqliteTranslationContext or do all the others override something else ??
-    : TranslationContext<IEntity>(ctx)
+    : TranslationContext<IEntity, TAssembly>(ctx)
 {
     public override IQueryManager Query { get; set; } = query;
 
@@ -216,7 +216,7 @@ public class WrapperInterceptor : IMaterializationInterceptor
     private WrapperInterceptor() { }
     public object InitializedInstance(MaterializationInterceptionData materializationData, object instance)
     {
-        if (instance is IEntity entity && materializationData.Context is TranslationContext transCtx)
+        if (instance is IEntity entity && materializationData.Context is ITranslationContext transCtx)
         {
             // Pull the Query manager directly from the context instance 
             // that is currently doing the materializing.
@@ -231,7 +231,7 @@ public class WrapperInterceptor : IMaterializationInterceptor
 
 
 // expected to reset only the first time the application runs and be persistent on disk
-public class PersistentStorage(IQueryManager service, DbContextOptions<PersistentStorage> ctx) : SqliteTranslationContext<IEntity>(service, ctx)
+public class PersistentStorage<TAssembly>(IQueryManager service, DbContextOptions<PersistentStorage<TAssembly>> ctx) : SqliteTranslationContext<IEntity, TAssembly>(service, ctx)
 {
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -242,7 +242,7 @@ public class PersistentStorage(IQueryManager service, DbContextOptions<Persisten
 
 
 // expected to reset once at the beginning of application load
-public class EphemeralStorage(IQueryManager service, DbContextOptions<EphemeralStorage> ctx) : SqliteTranslationContext<IEntity>(service, ctx)
+public class EphemeralStorage<TAssembly>(IQueryManager service, DbContextOptions<EphemeralStorage<TAssembly>> ctx) : SqliteTranslationContext<IEntity, TAssembly>(service, ctx)
 {
     private static KeepAlive? _keepAliveConnection;
 
@@ -259,8 +259,26 @@ public class EphemeralStorage(IQueryManager service, DbContextOptions<EphemeralS
 }
 
 
+public interface IHasRemote : ITranslationContext
+{
+    string? BaseAddress
+    {
+        get;
+    }
+    HttpClient Client
+    {
+        get;
+    }
+}
+public interface IHasStore : ITranslationContext
+{
+    ILocalStore Store { get; }
+}
+
+
 // default interface between web client and http host server
-public class RemoteStorage(HttpClient client, IQueryManager service, DbContextOptions<RemoteStorage> ctx) : SemaphoreTranslationContext<IEntity>(ctx)
+public class RemoteStorage<TAssembly>(HttpClient client, IQueryManager service, DbContextOptions<RemoteStorage<TAssembly>> ctx) 
+        : SemaphoreTranslationContext<IEntity, TAssembly>(ctx), IHasRemote
 {
     public HttpClient Client { get; set; } = client;
     public string? BaseAddress { get; set; } = client.BaseAddress?.ToString();
@@ -293,7 +311,8 @@ public class RemoteStorage(HttpClient client, IQueryManager service, DbContextOp
 
 
 // expected to reset multiple times per instance run
-public class TestStorage(ILocalStore _store, IQueryManager service, DbContextOptions<TestStorage> ctx) : SemaphoreTranslationContext<IEntity>(ctx)
+public class TestStorage<TAssembly>(ILocalStore _store, IQueryManager service, DbContextOptions<TestStorage<TAssembly>> ctx) 
+    : SemaphoreTranslationContext<IEntity, TAssembly>(ctx), IHasStore
 {
     public ILocalStore Store { get; } = _store;
     public override IQueryManager Query { get; set; } = service;

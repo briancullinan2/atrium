@@ -2,10 +2,10 @@
 
 namespace DataStore.Providers;
 
-public class EnqueuedQueryProvider<TEntity>(IQueryManager Query, StorageType storage, int priority)
+public class EnqueuedQueryProvider<TEntity>(IQueryManager Query, Type storage, int priority)
         : IAsyncQueryProvider where TEntity : class, IEntity<TEntity>
 {
-    private readonly StorageType _storage = storage;
+    private readonly Type _storage = storage;
     private readonly int _priority = priority;
 
     public IQueryable CreateQuery(Expression expression)
@@ -23,7 +23,7 @@ public class EnqueuedQueryProvider<TEntity>(IQueryManager Query, StorageType sto
     }
 
 
-    internal MethodInfo QueryGeneric { get; } = Query.GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(StorageType), typeof(Expression)])
+    internal MethodInfo QueryGeneric { get; } = Query.GetType().GetMethods(nameof(QueryManager.QueryNow), 2, [typeof(Type), typeof(Expression)])
             .FirstOrDefault()
              ?? throw new InvalidOperationException("Could not render QueryNow method");
 

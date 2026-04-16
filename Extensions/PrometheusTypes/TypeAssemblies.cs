@@ -192,7 +192,7 @@ public static partial class TypeExtensions
     }
 
 
-
+    /*
     public static List<Type> ToEntities<TEntity>()
     {
         List<Assembly> ass = [typeof(TEntity).Assembly, .. typeof(TEntity).Assembly.GetAssemblies()];
@@ -206,7 +206,23 @@ public static partial class TypeExtensions
             && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))
             ];
     }
+    */
 
+
+    public static List<Type> ToEntities<TInterface, TAssembly>()
+    {
+        return [..typeof(TAssembly).Assembly.GetAssTypesSafely().Where(t => t.IsClass && !t.IsAbstract
+            && t.Extends(typeof(TInterface)) && t.IsConcrete() && t != typeof(object))
+            ];
+    }
+
+    public static List<Type> ToEntities<TEntity>(this IEnumerable<Assembly?>? ass)
+    {
+        RegisterAssembly([.. ass ?? []]);
+        return [.._allMineTypes.Where(t => t.IsClass && !t.IsAbstract
+            && t.Extends(typeof(TEntity)) && t.IsConcrete() && t != typeof(object))
+            ];
+    }
 
 
     static TypeExtensions()

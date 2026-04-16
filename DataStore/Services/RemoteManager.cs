@@ -2,7 +2,7 @@
 
 namespace DataStore.Services;
 
-
+// provider backend swapper for browser
 public class RemoteManager : QueryManager
 {
 
@@ -11,8 +11,8 @@ public class RemoteManager : QueryManager
 
     public RemoteManager(HttpClient client, ICompositeProvider Service) : base(Service)
     {
-        PersistentStorage = StorageType.Remote; // TODO: switch these back
-        EphemeralStorage = StorageType.Test;
+        PersistentStorage = typeof(IHasRemote); // TODO: switch these back  RemoteStorage<User>
+        EphemeralStorage = typeof(IHasStore); // TODO: trigger idb like TestStorage<User>
 
         //var context = GetContext(EphemeralStorage) as RemoteStorage
         //    ?? throw new InvalidOperationException("Remote context is not of type: " + typeof(RemoteStorage));
@@ -24,13 +24,13 @@ public class RemoteManager : QueryManager
     }
 
 
-    protected async Task<TEntity> SaveRemote<TEntity>(RemoteStorage context, TEntity entity)
+    protected async Task<TEntity> SaveRemote<TEntity>(IHasRemote context, TEntity entity)
         where TEntity : class
     {
         var serialized = new XDocument(XNodeExtensions.VisitToXml(Expression.Constant(entity), 0, 0));
         Console.WriteLine("Save Object: " + serialized);
 
-        var baseAddress = (context as RemoteStorage)?.BaseAddress?.TrimEnd('/');
+        var baseAddress = context.BaseAddress?.TrimEnd('/');
         var queryAddress = (!string.IsNullOrEmpty(baseAddress) ? (baseAddress + (!baseAddress.EndsWith('/') ? '/' : "")) : "")
             + "api/save";
 
@@ -57,7 +57,7 @@ public class RemoteManager : QueryManager
 
 
 
-    protected static async Task<TEntity> SaveLocal<TEntity>(TestStorage context, TEntity entity)
+    protected static async Task<TEntity> SaveLocal<TEntity>(IHasStore context, TEntity entity)
         where TEntity : Entity<TEntity>
     {
         if (context.Store == null)
@@ -69,16 +69,14 @@ public class RemoteManager : QueryManager
 
 
     public override TResult Query<TEntity, TResult>(
-        StorageType storage,
+        Type storage,
         Expression<Func<IQueryable<TEntity>, TResult>> query,
         int priority = 10)
     {
-        var context = GetStorageType(storage)
-            ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
 
-        if (context == typeof(RemoteStorage))
+        if (typeof(IHasRemote).Extends(storage))
             return base.Query<TEntity, TResult>(storage, query, priority);
-        else if (context == typeof(TestStorage))
+        else if (typeof(IHasStore).Extends(storage))
         {
             // clean now so we know where it came from and don't have to go through task stack chains
             try
@@ -102,7 +100,7 @@ public class RemoteManager : QueryManager
 
 
 
-    protected override async Task<TEntity> SaveNow<TEntity>(StorageType storage, TEntity entity)
+    protected override async Task<TEntity> SaveNow<TEntity>(Type storage, TEntity entity)
     {
         if (_httpClient == null)
         {
@@ -112,9 +110,9 @@ public class RemoteManager : QueryManager
         var context = GetContext(storage)
             ?? throw new InvalidOperationException("Database context failed in: " + nameof(SaveNow));
 
-        if (context is RemoteStorage remote)
+        if (context is IHasRemote remote)
             return await SaveRemote<TEntity>(remote, entity);
-        else if (context is TestStorage test)
+        else if (context is IHasStore test)
             return await SaveLocal<TEntity>(test, entity);
         else
             return await base.SaveNow(storage, entity);

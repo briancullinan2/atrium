@@ -80,7 +80,7 @@ public class RemoteQueryProvider(ICurrentDbContext Current) : IAsyncQueryProvide
 
     private async Task<T> ExecuteRemoteAsync<T>(Expression query, CancellationToken? ct = null)
     {
-        var Context = Current.Context as RemoteStorage
+        var Context = Current.Context as IHasRemote
             ?? throw new InvalidOperationException("Could not render remote storage context.");
         if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 

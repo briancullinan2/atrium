@@ -161,9 +161,10 @@ public partial class CircuitProvider : ICircuitProvider
         ICircuitProvider Circuit,
         IFormFactor Form)
     {
+        if (Context.HttpContext == null) return;
         try
         {
-            var method = Context.HttpContext?.Request.Path.Value;
+            var method = Context.HttpContext.Request.Path.Value;
             var potentialType = TypeExtensions.MyRoutable.FirstOrDefault(t => method?.Contains(t.Route()!, StringComparison.InvariantCultureIgnoreCase) == true);
             var methodInfo = TypeExtensions.MyRoutes.FirstOrDefault(t => !string.IsNullOrWhiteSpace(method) && t.Route() == method)
                 ?? throw new InvalidOperationException("Method not routable: " + method + " are you trying to go here? " + potentialType);
@@ -184,11 +185,11 @@ public partial class CircuitProvider : ICircuitProvider
                 if (!first) continue;
                 first = false;
 
-                Context.Response.ContentType = "application/json";
+                Context.HttpContext.Response.ContentType = "application/json";
                 var json = JsonSerializer.Serialize(databaseFile, JsonExtensions.Default);
-                await Context.Response.WriteAsync(json);
-                await Context.Response.Body.FlushAsync();
-                await Context.Response.CompleteAsync();
+                await Context.HttpContext.Response.WriteAsync(json);
+                await Context.HttpContext.Response.Body.FlushAsync();
+                await Context.HttpContext.Response.CompleteAsync();
 
             }
 
@@ -208,10 +209,10 @@ public partial class CircuitProvider : ICircuitProvider
         }
         catch (Exception ex)
         {
-            Context.Response.ContentType = "application/json";
-            Context.Response.StatusCode = 500;
+            Context.HttpContext.Response.ContentType = "application/json";
+            Context.HttpContext.Response.StatusCode = 500;
             var json = JsonSerializer.Serialize(ex.Message, JsonExtensions.Default);
-            await Context.Response.WriteAsync(json);
+            await Context.HttpContext.Response.WriteAsync(json);
         }
 
     }

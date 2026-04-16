@@ -138,7 +138,7 @@ public class LocalQueryProvider(ICurrentDbContext Current) : IAsyncQueryProvider
 
     private async Task<T> ExecuteIDBAsync<T>(Expression query, CancellationToken? ct = null)
     {
-        var Context = Current.Context as TestStorage
+        var Context = Current.Context as IHasStore
             ?? throw new InvalidOperationException("Could not render remote storage context.");
         //if (Context.Client == null) throw new InvalidOperationException("No Http client.");
 

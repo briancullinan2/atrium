@@ -42,7 +42,7 @@ public static partial class InvokableExtensions
                     try
                     {
                         var nav = service.GetRequiredService<IHttpContextAccessor>();
-                        var uri = nav.HttpContext?.Request.Path;
+                        var uri = nav.HttpContext.Request.Path;
                         parameterValues[i] = TypeExtensions.IdentifyNavigation(uri).ComponentType;
                     }
                     catch { }

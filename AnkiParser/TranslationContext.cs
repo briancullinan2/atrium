@@ -2,7 +2,7 @@
 
 namespace AnkiParser;
 
-public class TranslationContext(string tempPath, IQueryManager query, DbContextOptions<TranslationContext> ctx) : SqliteTranslationContext<IEntity>(query, ctx)
+public class TranslationContext(string tempPath, IQueryManager query, DbContextOptions<TranslationContext> ctx) : SqliteTranslationContext<IEntity, Entities.Card>(query, ctx)
 {
     public override IQueryManager Query { get; set; } = query;
     protected override void OnConfiguring(DbContextOptionsBuilder options)

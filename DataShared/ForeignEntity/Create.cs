@@ -8,7 +8,7 @@ public static partial class IEntityExtensions
         return Create<T>(Query, Query.EphemeralStorage);
     }
 
-    public static T Create<T>(this IQueryManager Query, StorageType storage) where T : Entity<T>, IEntity
+    public static T Create<T>(this IQueryManager Query, Type storage) where T : Entity<T>, IEntity
     {
         var context = Query.GetContext(storage)
             ?? throw new InvalidOperationException("Could not render context: " + storage);
