@@ -39,6 +39,14 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/15/2026
+
+TODO: figure out how to use the query manager to INotifyPropertyChange across databases, was talking to Gemini about using the -wal sqlite file
+inotify from the FS watcher to run a check on a readonly nonblocking sqlite connection, so the server readonly the desktop and desktop readonly
+the server and they both look at each others "change" table thats keyed (tableName, primaryKey) that stores the previous and new values
+of every change. I built this in clearview for change tracking also.
+
+
 #### 4/12/2026
 
 Commit messages are getting long. I broke everything up into separate projects so help with build time and separation of concerns. 

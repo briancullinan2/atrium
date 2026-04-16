@@ -77,7 +77,7 @@
             var route = StatusService.GetType().GetMethods(nameof(IHostingService.CheckStatus)).FirstOrDefault().Route();
             var result = await Circuit.InvokeAsync<StatusResponse>(route);
 
-            if (StatusResponse.ItWorks?[0] == token)
+            if (result?.ItWorks?[0] == token)
             {
                 hostStatus = $"Tokens match, site is <a href=\"https://{Domain}/\">live and accessible.</a>";
                 IsWorking = true;

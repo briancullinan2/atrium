@@ -1,5 +1,6 @@
 ﻿
 #if !BROWSER
+using Extensions.QueryableChaos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Maui;
 using System.Runtime.CompilerServices;
@@ -42,7 +43,7 @@ public partial class CircuitProvider : ICircuitProvider
         else if (methodInfo is MethodInfo runable)
         {
             // TODO: put together a list of parameters and services
-            result = runable.Invoke(Implementation, parameters);
+            result = runable.InvokeService(Service, Implementation, parameters);
         }
         else throw new InvalidOperationException("Nothing to do in: " + methodInfo);
 
@@ -206,6 +207,21 @@ public partial class CircuitProvider : ICircuitProvider
                 return (result as dynamic)?.Result;
             }, Circuit.DefaultTTL, method, [.. Form.Files.Cast<object?>()]);
 
+            if(result is Expression expr)
+            {
+                Context.HttpContext.Response.ContentType = "application/xml";
+                await Context.HttpContext.Response.WriteAsync(expr.ToXDocument().ToString());
+                await Context.HttpContext.Response.Body.FlushAsync();
+                await Context.HttpContext.Response.CompleteAsync();
+            }
+            else
+            {
+                Context.HttpContext.Response.ContentType = "application/json";
+                var json = JsonSerializer.Serialize(result, JsonExtensions.Default);
+                await Context.HttpContext.Response.WriteAsync(json);
+                await Context.HttpContext.Response.Body.FlushAsync();
+                await Context.HttpContext.Response.CompleteAsync();
+            }
         }
         catch (Exception ex)
         {

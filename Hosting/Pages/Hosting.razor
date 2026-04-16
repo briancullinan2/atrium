@@ -255,9 +255,9 @@
                 return;
             }
 
-            var result = await StatusService.CheckStatus(Domain);
+            var result = await StatusService.CheckRemoteStatus(Domain);
 
-            if (StatusResponse.ItWorks?[0] == token)
+            if (result?.ItWorks?[0] == token)
             {
                 hostStatus = $"Tokens match, ";
                 IsWorking = true;

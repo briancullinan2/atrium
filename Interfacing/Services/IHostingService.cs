@@ -7,7 +7,8 @@ public interface IHostingService
     Task<string?> CheckTunnel(string? Account = null, string? Tunnel = null, string? Api = null);
     Task<bool?> CheckInstalled();
     Task<bool?> IsWorking();
-    Task<StatusResponse?> CheckStatus(string? domain);
+    StatusResponse CheckStatus();
+    Task<StatusResponse?> CheckRemoteStatus(string? domain);
     event Action<bool?>? OnHttpWorking;
 
 }
@@ -22,12 +23,21 @@ public class HostingSettings
 }
 
 
-public class StatusResponse
+public interface IHasStableGuid
+{
+    List<string>? ItWorks
+    {
+        get;
+    }
+}
+
+
+public class StatusResponse : IHasStableGuid
 {
 
     public StatusResponse()
     {
-        if (Now < DateTime.Now.AddMinutes(2))
+        if (Now < DateTime.Now.AddMinutes(-2))
         {
             StableGuid = Guid.NewGuid().ToString();
             Now = DateTime.Now;
@@ -38,7 +48,7 @@ public class StatusResponse
     private static string StableGuid { get; set; } = Guid.NewGuid().ToString();
     public static DateTime? Now { get; set; } = DateTime.Now;
 
-    public static List<string>? ItWorks { get => [StableGuid]; set => StableGuid = value?.Count > 0 ? value?.ElementAt(0) ?? StableGuid : StableGuid; }
+    public List<string> ItWorks { get => [StableGuid]; set => StableGuid = value?.Count > 0 ? value?.ElementAt(0) ?? StableGuid : StableGuid; }
     public string? Host { get; set; }
     public string? Tunnel { get; set; }
     public object? Error { get; set; }

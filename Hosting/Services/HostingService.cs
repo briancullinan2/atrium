@@ -43,7 +43,7 @@ internal class HostingService : IHostingService
 
     // --- IHostingService Implementation ---
 
-    public async Task<string?> GetToken() => StatusResponse.ItWorks?[0];
+    public async Task<string?> GetToken() => new StatusResponse().ItWorks[0];
 
     public async Task<string?> GetHost() => _settings?.Domain ?? _recentResult?.Host;
 
@@ -94,18 +94,25 @@ internal class HostingService : IHostingService
         var host = await GetHost();
         if (string.IsNullOrEmpty(host)) return false;
 
-        var result = await CheckStatus(host);
+        var result = await CheckRemoteStatus(host);
         bool isWorking = result?.Error == null && result?.Tunnel == "healthy";
 
         OnHttpWorking?.Invoke(isWorking);
         return isWorking;
     }
 
+
+    [AllowAnonymous]
+    public StatusResponse CheckStatus()
+    {
+        return new StatusResponse();
+    }
+
+
     /// <summary>
     /// Probes a remote domain for its status.
     /// </summary>
-    [AllowAnonymous]
-    public async Task<StatusResponse?> CheckStatus(string? domain)
+    public async Task<StatusResponse?> CheckRemoteStatus(string? domain)
     {
         if (string.IsNullOrEmpty(domain)) return null;
 

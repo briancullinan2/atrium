@@ -75,11 +75,6 @@ public static partial class TypeExtensions
 
 
 
-    public static bool IsRoutable<T>(this T _) where T : class
-    {
-        return typeof(T).Route() != null;
-    }
-
     public static bool IsRoutable(this Type type)
     {
         return type.Route() != null || type.Routes().Count > 0;

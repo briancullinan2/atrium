@@ -10,12 +10,9 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
 
     public IServiceProvider Services { get; private set; }
 
-    public static PluginActivator? Current { get; private set; } = null;
-
     public PluginActivator(IServiceProvider mainProvider)
     {
         Main = mainProvider;
-        Current ??= this;
         Services = new CompositeServiceProvider(this, mainProvider);
         Scope = Services.CreateScope();
     }
@@ -57,31 +54,18 @@ public class PluginActivator : IComponentActivator, IServiceProviderIsService, I
     }
 }
 
-public partial class CompositeServiceProvider : 
+public partial class CompositeServiceProvider(
+IServiceProviderIsService _service,
+IServiceProvider _provider) : 
     IServiceProvider
     , ISupportRequiredService
     , IHasService
     , IServiceScopeFactory
     , ICompositeProvider
-    , IHasCurrent<ICompositeProvider>
 {
-    private readonly IServiceProviderIsService IsService;
-    private readonly IServiceProvider Provider;
-
-    public CompositeServiceProvider(
-    IServiceProviderIsService _service,
-    IServiceProvider _provider)
-    {
-        IsService = _service;
-        Provider = _provider;
-        Current = this;
-    }
-
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy
     public IServiceProvider? PluginPopin { get; set; } = null;
-
-    public static ICompositeProvider? Current { get; private set; } = null;
 
     public object GetService(Type serviceType)
     {
@@ -92,7 +76,7 @@ public partial class CompositeServiceProvider :
         if (serviceType == typeof(IServiceProvider))
             return this;
         if (serviceType == typeof(IServiceProviderIsService))
-            return IsService;
+            return _service;
         if (serviceType == typeof(IServiceScopeFactory))
             return this;
 
@@ -101,7 +85,7 @@ public partial class CompositeServiceProvider :
         {
             return
                 PluginPopin?.GetService(serviceType)
-                ?? Provider.GetService(serviceType)!;
+                ?? _provider.GetService(serviceType)!;
 
         }
         catch(Exception ex)
@@ -121,7 +105,7 @@ public partial class CompositeServiceProvider :
 
     public IServiceScope CreateScope()
     {
-        return new CompositeServiceScope(PluginPopin?.CreateScope(), Provider.CreateScope(), IsService);
+        return new CompositeServiceScope(PluginPopin?.CreateScope(), _provider.CreateScope(), _service);
     }
 }
 

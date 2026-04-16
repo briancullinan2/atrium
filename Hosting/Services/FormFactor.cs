@@ -244,9 +244,10 @@ public partial class FormFactor(
         }
     }
 
-    public override List<IFile> Files => [
-        ..Current?.HttpContext?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
-        new BodyBag(Current?.HttpContext?.Request) ];
+    public override List<IFile> Files => Current?.HttpContext?.Request.Headers
+        .ContentType.FirstOrDefault() == "multipart/form-data" ?
+        [..Current?.HttpContext?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
+        new BodyBag(Current?.HttpContext?.Request) ] : [];
 
 
     public override async Task SetState()

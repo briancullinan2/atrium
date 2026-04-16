@@ -89,6 +89,15 @@ public class DatabaseBuilder : IHasBuilder
                 // Invoke CreateDbContext() via dynamic or reflection
                 return ((dynamic)factory).CreateDbContext();
             });
+
+
+
+            // TODO: loop through all assemblies and make individual keyed databases just for those entities
+            //   Synchronize implementation will copy data across all available instances
+
+            // TODO: use reflection to automatically manufacture concrete TranslationContext
+
+
         }
     }
 }
