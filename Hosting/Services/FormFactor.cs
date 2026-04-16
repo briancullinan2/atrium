@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Infrastructure;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
+using Microsoft.Maui.Storage;
 #else
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 #endif
@@ -17,7 +19,7 @@ namespace Hosting.Services;
 public abstract class BaseFormFactor(
     ICompositeProvider _service,
     NavigationManager? nav = null)
-    : IFormFactor, ITitleService, IPageState
+    : IFormFactor, ITitleService, IPageState, ISettings
 {
     public virtual ICompositeProvider Service { get; } = _service;
     public virtual NavigationManager? Navigation { get; } = nav;
@@ -33,6 +35,8 @@ public abstract class BaseFormFactor(
     public abstract string BaseUrl { get; }
     public abstract string ConnectionId { get; }
     public abstract List<IFile> Files { get; }
+
+
 
     public virtual async Task SetState()
     {
@@ -106,7 +110,9 @@ public abstract class BaseFormFactor(
         //return await Page.GetSessionCookie(name);
     }
 
+    public abstract Task SaveSetting(string key, string value);
 
+    public abstract Task<string> GetSetting(string key, string value);
 }
 
 
@@ -121,6 +127,12 @@ public partial class FormFactor : BaseFormFactor
     public override string BaseUrl => "http://localhost:8080";
     public override string GetFormFactor() => "WebAssembly";
     public override string ConnectionId => "Browser";
+    
+    public async Task SaveSetting(string key, string value)
+        => await JS.InvokeVoidAsync("localStorage.setItem", key, value);
+
+    public async Task<string> GetSetting(string key, string value)
+        => await JS.InvokeAsync<string>("localStorage.getItem", key) ?? value;
 
     public List<IFile> CurrentFormFiles = [];
     private readonly Lazy<WebAssemblyHost?>? App;
@@ -194,6 +206,12 @@ public partial class FormFactor(
     public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Current?.HttpContext?.Connection.Id ?? "Internal";
+
+    public override async Task SaveSetting(string key, string value)
+        => Preferences.Default.Set(key, value);
+
+    public override async Task<string> GetSetting(string key, string value)
+        => Preferences.Default.Get(key, value);
 
     public override Dictionary<string, string>? QueryParameters
     {

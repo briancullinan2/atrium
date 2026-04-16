@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+using Microsoft.Maui.Storage;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -76,14 +77,43 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public void Enable(string ass)
     {
+        Enable(ass, false);
+    }
+
+    public void Enable(string ass, bool fromLoader)
+    {
         EnabledAssemblies.Add(ass, true);
-        _ = RebuildServiceContainer();
+        CachedEnabledAssMappings = null;
+        CachedDependedAssemblies = null;
+        CachedDependedAssMappings = null;
+        Preferences.Default.Set("PluginEnabled" + ass, true);
+
+
+        if (!fromLoader)
+        {
+            // prevent recursion
+            try
+            {
+                var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
+                if (loaded == null) return;
+                // temporary whatever
+                LoadedAssemblies.TryAdd(ass, loaded);
+            }
+            catch (Exception ex)
+            {
+                // do something statusy
+                Error = ex.Message;
+            }
+        }
     }
 
     public void Disable(string ass)
     {
         EnabledAssemblies.Remove(ass);
-        _ = RebuildServiceContainer();
+        CachedEnabledAssMappings = null;
+        CachedDependedAssemblies = null;
+        CachedDependedAssMappings = null;
+        Preferences.Default.Set("PluginEnabled" + ass, false);
     }
 
     private readonly ConcurrentDictionary<string, string> Tried = [];
@@ -176,8 +206,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var mappings = EnabledAssMappings
                 .Concat(DependedAssMappings)
-                .Concat(RequiredAssMappings)
-                .Where(MetadataReaderExtensions.IsMine)
+                .Where(ass => !FILTER_MICROSOFT_DLLS_BY_NAME(ass.ToName())) // TODO: this isn't always true?
                 .ToList();
             var keys = JsonSerializer.Serialize(mappings.Select(ass => ass.FullName));
 
@@ -303,7 +332,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     internal List<Assembly> EnabledAssMappings
     {
         get => CachedEnabledAssMappings
-            ??= [..EnabledAssemblies.Keys
+            ??= [..EnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
         .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
         .OfType<Assembly>()];
     }
@@ -314,6 +343,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         get => CachedDependedAssemblies
             ??= EnabledAssMappings
+        .Concat(RequiredAssMappings)
+
         .SelectMany(parentAss =>
             parentAss.GetReferencedAssemblies()
                 .Select(refAss => new
@@ -321,6 +352,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     Parent = parentAss.ToName(),
                     Dependency = refAss.ToName()
                 }))
+        .Concat(RequiredAssMappings.Select(a => new
+        {
+            Parent = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).ToName(),
+            Dependency = a.ToName()
+        }))
         // Filter out null names if any
         .Where(x => x.Parent != null && x.Dependency != null)
         // Group by the Dependency (The "Required" assembly on the left)
@@ -335,7 +371,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public List<Assembly> DependedAssMappings
     {
         get => CachedDependedAssMappings
-            ??= [..EnabledAssMappings
+            ??= [..RequiredAssMappings, ..EnabledAssMappings
+        .Concat(RequiredAssMappings)
         .SelectMany(parentAss => parentAss.GetReferencedAssemblies())
         .Select(ass => {
             if (LoadedAssemblies.TryGetValue(ass.ToName(), out var loaded) == true) return loaded;
@@ -350,7 +387,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public List<string> RequiredAssemblies { get; } = [..new List<AssemblyName?>
         { Assembly.GetEntryAssembly()?.GetName(),
           Assembly.GetExecutingAssembly().GetName(),
-        }.Concat(Assembly.GetEntryAssembly()?.GetReferencedAssemblies() ?? [])
+        }.Concat((Assembly.GetEntryAssembly()??Assembly.GetExecutingAssembly()).GetReferencedAssemblies() ?? [])
         .OfType<AssemblyName>()
         .Select(MetadataReaderExtensions.ToName)
         ];
@@ -438,14 +475,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         LoadedAssemblies.TryAdd(title, assembly);
 
-        OnAssemblyLoaded?.Invoke(new PluginContract(
-            Title: title,
-            InstallPath: location, // Will be empty string in Single-File
-            IsTrusted: true,
-            Metadata: assembly.GetAssemblyInfo()
-        ));
-
-        if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+        if (Preferences.Default.Get("PluginEnabled" + title, false))
+            Enable(title, true);
+        else if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
         if (!Seen.Contains(assembly))
         {
@@ -453,6 +485,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             {
                 await TryFindingInterestingTypes(assembly);
                 await RebuildServiceContainer();
+
+                OnAssemblyLoaded?.Invoke(new PluginContract(
+                    Title: title,
+                    InstallPath: location, // Will be empty string in Single-File
+                    IsTrusted: true,
+                    Metadata: assembly.GetAssemblyInfo()
+                ));
             });
         }
     }
@@ -543,7 +582,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var title = Path.GetFileNameWithoutExtension(file);
 
-            if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+            if (Preferences.Default.Get("PluginEnabled" + title, false))
+            {
+                Enable(title);
+                if(LoadedAssemblies.TryGetValue(title, out var ass))
+                    await TryFindingInterestingTypes(ass);
+            }
+            else if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
             OnAssemblyLoaded?.Invoke(new PluginContract(
                 Title: title,
@@ -573,7 +618,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             // Tell the UI to refresh as each item arrives
             OnAssemblyLoaded?.Invoke(contract);
 
-#if false
             if ((int)trust >= (int)LevelOfTrust.Published)
             {
                 var meta = await GetAssemblyInfoAsync(file);
@@ -592,7 +636,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     OnAssemblyLoaded?.Invoke(newContract);
                 }
             }
-#endif
         });
 
         IsBootstrapping = false;
@@ -669,6 +712,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     private static string[]? PluginFiles { get; set; } = null;
+    public string Error { get; private set; }
 
     // GUID for the Action to verify a file using the Authenticode Policy Provider
 #if WINDOWS
@@ -767,7 +811,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             );
 
         // TODO: temporary
-        AssemblyInfo? meta;
+        AssemblyInfo? meta = null;
         if (LoadedAssemblies.TryGetValue(title, out var ass))
             meta = new AssemblyInfo(
                 ass.GetProduct(),
@@ -776,20 +820,17 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 ass.GetPackage(),
                 level.Value
             );
-        else
-            meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
+        //else if (EnabledAssemblies.TryGetValue(title, out var status) && status)
+        //    meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
 
 
         if (meta == null) return new AssemblyInfo(
             "No Metadata",
             "",
             "",
-            Path.GetFileNameWithoutExtension(filePath),
+            title,
             level.Value
         );
-
-        if (meta.IsMine())
-            level = LevelOfTrust.Mine;
 
 
         return new AssemblyInfo(

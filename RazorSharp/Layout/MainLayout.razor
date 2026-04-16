@@ -20,17 +20,12 @@
     <ContextMenu />
 }
 
-<main>
-    
+@if (routeData?.PageType.GetInterfaces().Any(i => i == typeof(IHasCover)) == true)
+{
+    <div class="cover-container"></div>
+}
 
-    @if (Classy.ClassNames.Contains("cover-page"))
-    {
-        <article class="content course-container">
-            Logo.ChildContent(__builder);
-        </article>
-    }
-        
-
+<main class="@(routeData?.PageType.GetInterfaces().Any(i => i == typeof(IHasCover)) == true ? "cover-page" : "")">
 
     @*TODO: check for layout animation*@
     @Body
@@ -60,6 +55,7 @@
 </dialog>
 
 @code {
+    [CascadingParameter] public RouteData? routeData { get; set; }
     public RenderFragment? HeaderMenu { get; private set; }
     public string? HeaderTitle { get; private set; }
     public bool? ShowHeader { get; set; }

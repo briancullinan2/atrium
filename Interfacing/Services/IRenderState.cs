@@ -102,7 +102,12 @@ public interface IPageState
     int OffsetInMinutes { get; }
 }
 
+public interface ISettings
+{
+    Task SaveSetting(string key, string value);
 
+    Task<string> GetSetting(string key, string value);
+}
 
 
 // TODO: add component state saving stuff here because its also agnostic and small

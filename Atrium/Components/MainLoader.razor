@@ -65,18 +65,20 @@
     {
         <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
             <Found Context="routeData">
-                @{
-                    _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
-                }
-                @if (AuthService != null)
-                {
-                    @CreatePermissionContent(routeData)
-                }
-                else
-                {
-                    <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
-                    <FocusOnNavigate RouteData="routeData" Selector="h1" />
-                }
+                <CascadingValue Value="@routeData">
+                    @{
+                        _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
+                    }
+                    @if (AuthService != null)
+                    {
+                        @CreatePermissionContent(routeData)
+                    }
+                    else
+                    {
+                        <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                    }
+                </CascadingValue>
             </Found>
             <NotFound>
                 <LayoutView Layout="DefaultLayout">
@@ -93,18 +95,20 @@
         <main>
             <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
                 <Found Context="routeData">
-                    @{
-                        _ = Css.ListenUp(routeData.PageType, null, this);
-                    }
-                    @if (AuthService != null)
-                    {
-                        @CreatePermissionContent(routeData)
-                    }
-                    else
-                    {
-                        <RouteView RouteData="routeData" />
-                        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-                    }
+                    <CascadingValue Value="@routeData">
+                        @{
+                            _ = Css.ListenUp(routeData.PageType, null, this);
+                        }
+                        @if (AuthService != null)
+                        {
+                            @CreatePermissionContent(routeData)
+                        }
+                        else
+                        {
+                            <RouteView RouteData="routeData" />
+                            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                        }
+                    </CascadingValue>
                 </Found>
                 <NotFound>
                     @BuildNotFound()

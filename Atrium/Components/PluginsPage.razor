@@ -2,6 +2,7 @@
 @using Atrium.Services
 @using Interfacing.Services
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.Maui.Storage
 @implements IHasForms
 @implements IHasCover
 @inject ITrustProvider Trust
@@ -108,11 +109,7 @@
                 </td>
                     
                 <td class="enable-col">
-                    @if (plugin.Metadata.TrustLevel == LevelOfTrust.Required)
-                    {
-                        <span>Required</span>
-                    }
-                    else if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    @if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
                     {
                         <label class="switch" aria-disabled="true">
                             <input type="checkbox" disabled="disabled" checked="checked" />
@@ -212,6 +209,8 @@
             return true;
         if (Trust.LoadedAssemblies.ContainsKey(ass))
             return true;
+        if (Preferences.Default.Get("PluginEnabled" + e.Title, false))
+            return true;
         return false;
     }
 
@@ -223,24 +222,12 @@
         var isChecked = (bool)(e.Value ?? false);
         var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
 
-        try
-        {
-            var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
-            if (loaded == null) return;
-            // temporary whatever
-            Trust.LoadedAssemblies.TryAdd(ass, loaded);
-        }
-        catch (Exception ex)
-        {
-            // do something statusy
-            Error = ex.Message;
-        }
-
         if (!isChecked)
             Trust.Disable(ass);
         else
             Trust.Enable(ass);
 
+        Error = ((TrustedLoader)Trust).Error;
         // TODO: if the component has visual elements, activate window size from splash mode
         // TODO: 
         Trust.OnSettled += TriggerExpand;

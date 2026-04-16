@@ -23,8 +23,10 @@
             AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
                     AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
-                <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
-                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                <CascadingValue Value="@routeData">
+                    <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
+                    <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                </CascadingValue>
             </Found>
             <NotFound>
                 <LayoutView Layout="@typeof(RazorSharp.Layout.MainLayout)">
