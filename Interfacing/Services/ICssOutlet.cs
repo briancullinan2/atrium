@@ -131,10 +131,12 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
 
 
         if (IsClosing) return;
+        if (typeHint == null)
+        {
+            await Task.Delay(800); // wait for layout to insert the component
 
-        await Task.Delay(800); // wait for layout to insert the component
-
-        if (IsClosing) return;
+            if (IsClosing) return;
+        }
 
         List<Type?> components = [
             previousHint,
@@ -144,6 +146,7 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         ];
 
         var HasChanged = false;
+        var Starting = Registry.ToList();
 
         foreach (var type in components.OfType<Type>())
         {
@@ -175,12 +178,13 @@ public abstract partial class RenderOutlet : RenderService, IRenderLinks, IDispo
         {
             if (!components.Contains(component.Key))
             {
-                RealRegistry.TryRemove(component);
+                //RealRegistry.TryRemove(component);
             }
             // don't trigger removals, just let them happen
         }
 
-        if (HasChanged)
+        var Ending = Registry.ToList();
+        if (HasChanged && Ending.Except(Starting).Any())
         {
             var Container = Service.GetService<IHasChildren>();
             if (Container?.HasChanged() is Task task) await task;
