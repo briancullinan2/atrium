@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-browser</TargetFrameworks>
+		<OutputType>Library</OutputType>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<RootNamespace>UserModel</RootNamespace>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' != 'net10.0-browser'">
+		<PackageReference Include="AspNet.Security.OAuth.Apple" Version="10.0.*-*" />
+		<PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.*-*" />
+		<PackageReference Include="AspNet.Security.OAuth.GitHub" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\DataStore\DataStore.csproj" />
+	  <ProjectReference Include="..\RazorSharp\RazorSharp.csproj" />
+	  <ProjectReference Include="..\UserData\UserData.csproj" />
+	</ItemGroup>
+
+</Project>

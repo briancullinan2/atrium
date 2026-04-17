@@ -1,28 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
-
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-	  <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
-    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
-	  <WasmFingerprintAssets>false</WasmFingerprintAssets>
-	  <WasmEmitSymbolMap>true</WasmEmitSymbolMap>
-	  <DebuggerSupport>true</DebuggerSupport>
-	  <BlazorEnableCompression>false</BlazorEnableCompression>
-	  <WasmDebugLevel>1</WasmDebugLevel>
-	  <RunAOTCompilation>false</RunAOTCompilation>
-	  <ApplicationTitle>Atrium</ApplicationTitle>
-	  <ApplicationId>com.atrium.desktop</ApplicationId>
-	  <Authors>Brian Cullinan</Authors>
-	  <Product>Atrium</Product>
-	  <Company>Brian Cullinan</Company>
-  </PropertyGroup>
-	
 	
 	<PropertyGroup>
+		<TargetFrameworks>net10.0</TargetFrameworks>
 		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
 		<StartupObject>Program</StartupObject>
+		<RootNamespace>WebClient</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -33,9 +15,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.*-*" />
 	<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*-*" />
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.*-*" />
-	  <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="10.0.*-*" />
-	<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.*-*" />
   </ItemGroup>
 
 	

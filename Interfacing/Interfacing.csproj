@@ -1,19 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0-browser;net10.0</TargetFrameworks>
-		<UseMaui>false</UseMaui>
-		<SingleProject>false</SingleProject>
-		<ImplicitUsings>disable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<ApplicationTitle>Atrium</ApplicationTitle>
-		<ApplicationId>com.atrium.desktop</ApplicationId>
-		<Authors>Brian Cullinan</Authors>
-		<Product>Atrium</Product>
-		<Company>Brian Cullinan</Company>
-		<Publisher>Brian Cullinan</Publisher>
+		<TargetFrameworks>net10.0</TargetFrameworks>
+		<OutputType>Library</OutputType>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<RootNamespace>Interfacing</RootNamespace>
 	</PropertyGroup>
-
+	
 	<ItemGroup>
 	  <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.*-*" />
 	</ItemGroup>

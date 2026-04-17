@@ -2,7 +2,6 @@
 @using Atrium.Services
 @using Interfacing.Services
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.Maui.Storage
 @implements IHasForms
 @implements IHasCover
 @inject ITrustProvider Trust
@@ -211,8 +210,11 @@
             return true;
         if (Trust.LoadedAssemblies.ContainsKey(ass))
             return true;
-        if (Preferences.Default.Get("PluginEnabled" + e.Title, false))
+#if !BROWSER
+        // TODO: use ISettings
+        if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
             return true;
+#endif
         return false;
     }
 

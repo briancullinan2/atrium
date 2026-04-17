@@ -1,18 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0-browser;net10.0</TargetFrameworks>
-		<Nullable>enable</Nullable>
-		<WasmFingerprintAssets>false</WasmFingerprintAssets>
-		<ImplicitUsings>disable</ImplicitUsings>
-		<ApplicationTitle>Atrium</ApplicationTitle>
-		<ApplicationId>com.atrium.desktop</ApplicationId>
-		<Authors>Brian Cullinan</Authors>
-		<Product>Atrium</Product>
-		<Company>Brian Cullinan</Company>
-		<Publisher>Brian Cullinan</Publisher>
+		<TargetFrameworks>net10.0</TargetFrameworks>
+		<OutputType>Library</OutputType>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<RootNamespace>RazorSharp</RootNamespace>
 	</PropertyGroup>
-
+	
 	<ItemGroup>
 		<Content Update="wwwroot\triangle.svg">
 			<Color>transparent</Color>
@@ -29,6 +23,5 @@
 	  <ProjectReference Include="..\DataShared\DataShared.csproj" />
 	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
 	</ItemGroup>
-
 
 </Project>

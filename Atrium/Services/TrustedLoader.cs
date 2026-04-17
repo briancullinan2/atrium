@@ -4,10 +4,15 @@ using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Configuration;
+
+#if !BROWSER
 using Microsoft.Extensions.Hosting;
+#endif
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+#if !BROWSER
 using Microsoft.Maui.Storage;
+#endif
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -86,8 +91,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         CachedEnabledAssMappings = null;
         CachedDependedAssemblies = null;
         CachedDependedAssMappings = null;
+#if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, true);
-
+#endif
+        // TODO: if we end up here in web assembly, need to check ISettings instead 
 
         if (!fromLoader)
         {
@@ -114,7 +121,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         CachedEnabledAssMappings = null;
         CachedDependedAssemblies = null;
         CachedDependedAssMappings = null;
+#if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, false);
+#endif
     }
 
     private readonly ConcurrentDictionary<string, string> Tried = [];
@@ -123,14 +132,15 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         {typeof(HttpClient), null },
         {typeof(Lazy<MainLoader?>), null  },
-        {typeof(Lazy<Application?>), null },
         {typeof(NavigationManager), null  },
         {typeof(IJSRuntime), null  },
         {typeof(IConfiguration), null  },
-        {typeof(IHostEnvironment), null  },
         //{typeof(ILogger<>), typeof(Logger<>)  },
         {typeof(ILoggerFactory), null },
-
+#if !BROWSER
+        {typeof(Lazy<Application?>), null },
+        {typeof(IHostEnvironment), null  },
+#endif
     };
 #if false
 
@@ -486,9 +496,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         StoredAssemblies.TryAdd(title, assembly);
 
+#if !BROWSER
         if (Preferences.Default.Get("PluginEnabled" + title, false))
             Enable(title, true);
-        else if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+        else 
+#endif
+        if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
         if (!Seen.Contains(assembly))
         {
@@ -593,13 +606,16 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
             var title = Path.GetFileNameWithoutExtension(file);
 
+#if !BROWSER
             if (Preferences.Default.Get("PluginEnabled" + title, false))
             {
                 Enable(title);
                 if(LoadedAssemblies.TryGetValue(title, out var ass))
                     await TryFindingInterestingTypes(ass);
             }
-            else if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+            else 
+#endif
+            if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
             OnAssemblyLoaded?.Invoke(new PluginContract(
                 Title: title,

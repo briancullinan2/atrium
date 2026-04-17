@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Recollect": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:61434;http://localhost:61438"
+    }
+  }
+}

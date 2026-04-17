@@ -1,9 +1,22 @@
 <Project>
+	
 	<ItemGroup Condition="'$(MSBuildProjectName)' != 'Interfacing'">
-		<ProjectReference Include="$(SolutionDir)Interfacing\Interfacing.csproj" />
+		<ProjectReference Include="..\Interfacing\Interfacing.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup>
+		<ApplicationTitle>Atrium</ApplicationTitle>
+		<ApplicationId>com.atrium.desktop</ApplicationId>
+		<Authors>Brian Cullinan</Authors>
+		<Product>Atrium</Product>
+		<Company>Brian Cullinan</Company>
+		<Publisher>Brian Cullinan</Publisher>
+	</PropertyGroup>
+	
+	
+	<PropertyGroup>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 		<SelfContained>true</SelfContained>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<WasmFingerprintAssets>false</WasmFingerprintAssets>
@@ -13,18 +26,41 @@
 		<WasmEnableHotReload>false</WasmEnableHotReload>
 	</PropertyGroup>
 
-	<!-- i'm a goddamn mad man -->
-	<PropertyGroup Condition="'$(MSBuildProjectName)' != 'WebClient'">
-		<TargetFrameworks>$(TargetFrameworks);net10.0-browser</TargetFrameworks>
+	<PropertyGroup Condition="'$(MSBuildProjectName)' != 'Atrium'">
+		<UseMaui>false</UseMaui>
+	</PropertyGroup>
 
-		<RuntimeIdentifier Condition="'$(TargetFramework)' == 'net10.0-browser'">browser-wasm</RuntimeIdentifier>
-		
+	<PropertyGroup Condition="'$(TargetFramework)' != 'net10.0-browser'">
+		<TargetFrameworks>net10.0</TargetFrameworks>
+	</PropertyGroup>
+
+
+	<PropertyGroup Condition="$(MSBuildProjectName.Contains('.Wasm'))">
+		<NoWarn>$(NoWarn);IDE0130</NoWarn>
+	</PropertyGroup>
+	
+	
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
+		<BaseOutputPath>bin\Wasm\</BaseOutputPath>
+		<BaseIntermediateOutputPath>obj\Wasm\</BaseIntermediateOutputPath>
+		<MSBuildProjectExtensionsPath>obj\Wasm\</MSBuildProjectExtensionsPath>
+		<DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
+		<TargetFrameworks>net10.0-browser</TargetFrameworks>
+		<MicrosoftNetSdkBlazorWebAssemblyImported>true</MicrosoftNetSdkBlazorWebAssemblyImported>
+		<GenerateProgramFile>false</GenerateProgramFile>
+		<DebuggerSupport>true</DebuggerSupport>
+		<IncludeMicrosoftNetSdkBlazorWebAssembly>true</IncludeMicrosoftNetSdkBlazorWebAssembly>
+		<WasmIsAspNetCheckDisabled>true</WasmIsAspNetCheckDisabled>
+		<WasmGenerateAppBundle>false</WasmGenerateAppBundle>
 		<WasmFingerprintAssets>false</WasmFingerprintAssets>
 		<WasmEmitSymbolMap>true</WasmEmitSymbolMap>
 		<WasmDebugLevel>1</WasmDebugLevel>
-
-		<DebuggerSupport>true</DebuggerSupport>
-		<RunAOTCompilation>true</RunAOTCompilation>
+		<WasmEnableWebcil>true</WasmEnableWebcil>
+		<OutputType>Library</OutputType>
+		<WasmBuildNative>true</WasmBuildNative>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<!--<UsingMicrosoftNETSdkBlazorWebAssembly>true</UsingMicrosoftNETSdkBlazorWebAssembly>-->
+		<RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
 	</PropertyGroup>
 	
 	<!--<PropertyGroup>
@@ -33,11 +69,12 @@
 		<AssemblyOriginatorKeyFile>$(UserProfile)\.credentials\my-code-signing-legacy.pfx</AssemblyOriginatorKeyFile>
 	</PropertyGroup>-->
 
+	<!-- TODO: copy android and ios and catalyst downloads to output directory so we can build a download page like my void zero chrome quine plugin -->
 	
 	
-	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' or '$(TargetFramework)' == 'net10.0') and '$(MSBuildProjectName)' != 'Atrium'">
+	<Target Name="CopyPluginToHost" AfterTargets="PostBuildEvent" Condition="('$(TargetFramework)' == 'net10.0-windows10.0.19041.0' and '$(MSBuildProjectName)' == 'Hosting') or ('$(TargetFramework)' == 'net10.0' and '$(MSBuildProjectName)' != 'Atrium')">
 		<PropertyGroup>
-			<HostBinPath>$(SolutionDir)Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
+			<HostBinPath>..\Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
 
 			<ContentPath>$(HostBinPath)wwwroot\_content\$(MSBuildProjectName)\</ContentPath>
 		</PropertyGroup>
@@ -53,6 +90,8 @@
 
 			<ProjectAssets Include="$(TargetDir)$(MSBuildProjectName)\wwwroot\**\*.*" />
 		</ItemGroup>
+
+		<Message Importance="high" Text="DEBUG: Copying Bullshit [$(TargetFramework)] in Project [$(MSBuildProjectName)]" />
 
 		<Copy SourceFiles="@(PluginBinaries)"
 			  DestinationFolder="$(HostBinPath)%(RecursiveDir)"
@@ -73,6 +112,38 @@
 		<Copy SourceFiles="@(ProjectAssets)"
 			  DestinationFiles="@(ProjectAssets->'$(ContentPath)%(RecursiveDir)%(Filename)%(Extension)')"
 			  SkipUnchangedFiles="true" />
+	</Target>
+
+
+
+	<Target Name="CopyWasmToHost" AfterTargets="PostBuildEvent" Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(MSBuildProjectName)' != 'WebClient'">
+		<PropertyGroup>
+			<HostBinPath>..\Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
+
+		</PropertyGroup>
+
+		<ItemGroup>
+			<PluginBinaries Include="$(TargetDir)**\*.wasm" Exclude="$(TargetDir)wwwroot\**\*.*" />
+
+			<PluginJsons Include="$(TargetDir)**\*.json" Exclude="$(TargetDir)wwwroot\**\*.*" />
+
+			<PluginRootAssets Include="$(TargetDir)wwwroot\**\*.*" />
+		</ItemGroup>
+
+		<Message Importance="high" Text="DEBUG: Copying Bullshit [$(TargetFramework)] in Project [$(MSBuildProjectName)]" />
+		
+		<Copy SourceFiles="@(PluginBinaries)"
+			  DestinationFolder="$(HostBinPath)wwwroot\_framework\%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(PluginJsons)"
+			  DestinationFolder="$(HostBinPath)wwwroot\_framework\%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(PluginRootAssets)"
+			  DestinationFolder="$(HostBinPath)wwwroot\%(RecursiveDir)"
+			  SkipUnchangedFiles="true" />
+
 	</Target>
 
 

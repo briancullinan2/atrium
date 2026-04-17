@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+	<PropertyGroup>
+		<RootNamespace>Clippy</RootNamespace>
+		<TargetFrameworks>net10.0-browser</TargetFrameworks>
+		<OutputType>Library</OutputType>
+		<WasmBuildNative>true</WasmBuildNative>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	  <PackageReference Include="Microsoft.JSInterop" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Extensions\Extensions.csproj" />
+	</ItemGroup>
+
+</Project>

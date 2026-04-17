@@ -1,0 +1,107 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+    <TargetFrameworks>net10.0-browser</TargetFrameworks>
+
+	<OutputType>Library</OutputType>
+	<WasmBuildNative>true</WasmBuildNative>
+	<HasRuntimeOutput>false</HasRuntimeOutput>
+
+	<RootNamespace>Atrium</RootNamespace>
+
+	<SingleProject>true</SingleProject>
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+    <Nullable>enable</Nullable>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<ImplicitUsings>disable</ImplicitUsings>
+	
+		
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+    <WindowsPackageType>None</WindowsPackageType>
+
+	<UsingMicrosoftNETSdkRazor>true</UsingMicrosoftNETSdkRazor>
+		<BaseOutputPath>bin\Wasm\</BaseOutputPath>
+	</PropertyGroup>
+
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup>
+    <!-- App Icon -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="transparent" />
+    <MauiIcon Include="wwwroot\triangle.svg">
+      <Color>transparent</Color>
+    </MauiIcon>
+
+    <!-- Splash Screen -->
+    <MauiSplashScreen Include="Resources\AppIcon\appicon.svg" Color="#512BD4" BaseSize="128,128" />
+
+    <!-- Images -->
+    <MauiImage Include="Resources\Images\*" />
+    <MauiImage Update="Resources\AppIcon\appicon.svg" BaseSize="168,208" />
+
+    <!-- Custom Fonts -->
+    <MauiFont Include="Resources\Fonts\*" />
+
+    <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+	
+	
+  <ItemGroup>
+    <Compile Remove="Platforms\Android\**" />
+    <Compile Remove="Platforms\iOS\**" />
+    <Compile Remove="Platforms\MacCatalyst\**" />
+    <Compile Remove="Platforms\Windows\**" />
+    <Content Remove="Platforms\Android\**" />
+    <Content Remove="Platforms\iOS\**" />
+    <Content Remove="Platforms\MacCatalyst\**" />
+    <Content Remove="Platforms\Windows\**" />
+    <EmbeddedResource Remove="Platforms\Android\**" />
+    <EmbeddedResource Remove="Platforms\iOS\**" />
+    <EmbeddedResource Remove="Platforms\MacCatalyst\**" />
+    <EmbeddedResource Remove="Platforms\Windows\**" />
+    <None Remove="Platforms\Android\**" />
+    <None Remove="Platforms\iOS\**" />
+    <None Remove="Platforms\MacCatalyst\**" />
+    <None Remove="Platforms\Windows\**" />
+  </ItemGroup>
+	
+	
+  <ItemGroup>
+    <Compile Remove="App.xaml.cs" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <Content Remove="wwwroot\index.html" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <None Remove="App.xaml" />
+  </ItemGroup>
+
+	<ItemGroup>
+	  <MauiAsset Update="Resources\Raws\triangle.svg">
+	    <Color>transparent</Color>
+	  </MauiAsset>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Platforms\" />
+	</ItemGroup>
+
+
+	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
+		<ItemGroup>
+			<_GeneratedWinIcon Include="$(IntermediateOutputPath)resizetizer\r\triangle.ico" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(_GeneratedWinIcon)" DestinationFolder="$(OutputPath)" Condition="Exists('%(_GeneratedWinIcon.Identity)')" SkipUnchangedFiles="true" />
+	</Target>
+	
+</Project>

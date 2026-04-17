@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
+	<PropertyGroup>
     <TargetFrameworks>net10.0-android</TargetFrameworks>
     <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
@@ -11,34 +11,19 @@
       The Mac App Store will NOT accept apps with ONLY maccatalyst-arm64 indicated;
       either BOTH runtimes must be indicated or ONLY macatalyst-x64. -->
     <!-- For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers> -->
+	<RootNamespace>Atrium</RootNamespace>
 
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Atrium</RootNamespace>
-    <UseMaui>true</UseMaui>
-	  <UseMauiAssets>true</UseMauiAssets>
-	  <UseMauiEssentials>true</UseMauiEssentials>
-	  <SingleProject>true</SingleProject>
-	  <WindowsPackageType>None</WindowsPackageType>
-	  <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+	<SingleProject>true</SingleProject>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
     <Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<WasmFingerprintAssets>false</WasmFingerprintAssets>
-	  <ImplicitUsings>disable</ImplicitUsings>
+	<ImplicitUsings>disable</ImplicitUsings>
 	  <!-- Enable XAML source generation for faster build times and improved performance.
          This generates C# code from XAML at compile time instead of runtime inflation.
          To disable, remove this line.
          For individual files, you can override by setting Inflator metadata:
            <MauiXaml Update="MyPage.xaml" Inflator="Default" /> (reverts to defaults: Runtime for Debug, XamlC for Release)
            <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
-    <MauiXamlInflator>SourceGen</MauiXamlInflator>
-
-    <!-- Display name -->
-    <ApplicationTitle>Atrium</ApplicationTitle>
-    <ApplicationId>com.atrium.desktop</ApplicationId>
-	<Authors>Brian Cullinan</Authors>
-	  <Product>Atrium</Product>
-	  <Company>Brian Cullinan</Company>
 
 	  <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
@@ -54,12 +39,32 @@
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
 
 	  <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
-		<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+	  <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
 	  <RuntimeIdentifier Condition="$(TargetFramework.Contains('-windows'))">win-x64</RuntimeIdentifier>
 	  <PackageCertificateThumbprint>94B89D853E13C43243CD6FE22C185EE81FD0AA1E</PackageCertificateThumbprint>
 	  <PackageCertificateKeyFile>Atrium_TemporaryKey.pfx</PackageCertificateKeyFile>
 	  <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
   </PropertyGroup>
+	
+	<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+		<WindowsPackageType>None</WindowsPackageType>
+		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+	</PropertyGroup>
+	
+	<PropertyGroup>
+		<UseMaui>true</UseMaui>
+		<OutputType>Exe</OutputType>
+		<!--<OutputType>WinExe</OutputType>-->
+		<StartupObject>Atrium.WinUI.App</StartupObject>
+
+	</PropertyGroup>
+	
+	<PropertyGroup>
+		<UseMauiAssets>true</UseMauiAssets>
+		<UseMauiEssentials>true</UseMauiEssentials>
+		<MauiXamlInflator>SourceGen</MauiXamlInflator>
+	</PropertyGroup>
+	
 	
   <ItemGroup>
     <!-- App Icon -->
@@ -88,7 +93,6 @@
 
   <ItemGroup>
     <Content Remove="wwwroot\index.html" />
-    <Content Remove="wwwroot\triangle.svg" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -102,11 +106,12 @@
 	</PropertyGroup>
 
 
-	<ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' != 'net10.0-browser'">
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.Maui.Resizetizer" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 	
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
@@ -115,7 +120,6 @@
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -123,11 +127,6 @@
 	    <Color>transparent</Color>
 	  </MauiAsset>
 	</ItemGroup>
-
-	<PropertyGroup Condition="$(TargetFramework) == 'net10.0'">
-		<OutputType>WinExe</OutputType>
-		<StartupObject>Atrium.WinUI.App</StartupObject>
-	</PropertyGroup>
 
 
 	<Target Name="ForceMauiIconToCustomPath" AfterTargets="Resizetizer">
@@ -137,4 +136,5 @@
 
 		<Copy SourceFiles="@(_GeneratedWinIcon)" DestinationFolder="$(OutputPath)" Condition="Exists('%(_GeneratedWinIcon.Identity)')" SkipUnchangedFiles="true" />
 	</Target>
+	
 </Project>

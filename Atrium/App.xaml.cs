@@ -1,16 +1,21 @@
 ﻿#if WINDOWS
 using Atrium.Platforms.Windows;
-
 #endif
+#if !BROWSER
 using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
+#endif
 
 namespace Atrium;
 
-public partial class App : Microsoft.Maui.Controls.Application //, IHasCurrent<Application>
+public partial class App
+#if !BROWSER
+    : Microsoft.Maui.Controls.Application //, IHasCurrent<Application>
+#endif
 {
+#if !BROWSER
     public App()
     {
         InitializeComponent();
@@ -21,6 +26,6 @@ public partial class App : Microsoft.Maui.Controls.Application //, IHasCurrent<A
     {
         return WindowManager.CreateWindow();
     }
-
+#endif
 
 }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+	<PropertyGroup>
+		<TargetFrameworks>net10.0-browser</TargetFrameworks>
+		<OutputType>Library</OutputType>
+		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<RootNamespace>GameHub</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Folder Include="Acquisition\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.*-*" />
+	</ItemGroup>
+
+</Project>

@@ -2,10 +2,9 @@
 #if !BROWSER
 using Extensions.QueryableChaos;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Maui;
-using System.Runtime.CompilerServices;
 #endif
-
 
 namespace Hosting.Services;
 
@@ -141,7 +140,7 @@ public partial class CircuitProvider
 
 
 
-
+#if !BROWSER
     public async Task<T?> RespondHub<T>(string method, CancellationToken? ct = null)
     {
         if (_connection == null) return default;
@@ -157,6 +156,7 @@ public partial class CircuitProvider
         5 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3), parameters.ElementAt(4)),
         _ => await _connection.InvokeAsync<T>(method, new CancellationTokenSource().Token)
     };
+#endif
 
 
 
@@ -279,10 +279,12 @@ public partial class CircuitProvider
         {
             return await RespondCircuit<TResult>(methodInfo, parameters);
         }
-        if (IsHubConnected)
+#if !BROWSER
+        else if (IsHubConnected)
         {
             return await RespondHub<TResult>(method, parameters);
         }
+#endif
         else if (OperatingSystem.IsBrowser())
         {
             return await RespondRemote<TResult>(methodInfo, parameters);

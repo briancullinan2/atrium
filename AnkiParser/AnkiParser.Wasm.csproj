@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <RootNamespace>AnkiParser</RootNamespace>
+	<TargetFrameworks>net10.0-browser</TargetFrameworks>
+	<OutputType>Library</OutputType>
+	<WasmBuildNative>true</WasmBuildNative>
+	<HasRuntimeOutput>false</HasRuntimeOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.*-*" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.*-*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.*-*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.*-*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' != 'true'">
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.*-*" ExcludeAssets="all" />
+    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" Version="3.0.*-*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <TrimmerRootAssembly Include="Microsoft.EntityFrameworkCore" />
+    <TrimmerRootAssembly Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <TrimmerRootAssembly Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DataStore\DataStore.csproj" />
+    <ProjectReference Include="..\FlashData\FlashData.csproj" />
+  </ItemGroup>
+
+</Project>

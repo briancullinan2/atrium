@@ -1,4 +1,8 @@
-﻿using System.Runtime.InteropServices.JavaScript;
+﻿#if !BROWSER
+using Microsoft.JSInterop;
+#else
+using System.Runtime.InteropServices.JavaScript;
+#endif
 
 namespace Hosting.Platforms.Browser;
 

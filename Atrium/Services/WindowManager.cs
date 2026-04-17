@@ -2,12 +2,18 @@
 using Atrium.Platforms.Windows;
 #endif
 using Interfacing.Services;
+#if !BROWSER
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
+#endif
 
 namespace Atrium.Services;
 
-internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
+internal class WindowManager
+#if !BROWSER
+    (Lazy<Application?>? App = null)
+#endif
+    : IWindowManager
 {
 
     // TODO: make this an includeable module that triggers
@@ -16,6 +22,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
     public const int SPLASH_WIDTH = 550;
 
     // TODO: WINDOWS ONLY?
+#if !BROWSER
     public static Microsoft.Maui.Controls.Window CreateWindow()
     {
         var window = new Microsoft.Maui.Controls.Window(new MainPage()) { Title = "Atrium" };
@@ -31,6 +38,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
         window.Height = SPLASH_HEIGHT;
         return window;
     }
+#endif
 
     private CancellationTokenSource? _animationCts;
 
@@ -40,6 +48,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
     public async Task<nint> GetWindowHwnd()
     {
         var tcs = new TaskCompletionSource<nint>();
+#if !BROWSER
 #if WINDOWS
 
         MainThread.BeginInvokeOnMainThread(() =>
@@ -83,6 +92,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
         tcs.SetResult(0);
     });
 #endif
+#endif
         return await tcs.Task;
     }
 
@@ -92,6 +102,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
     {
         var tcs = new TaskCompletionSource<Tuple<double, double, double, double, double>>();
 
+#if !BROWSER
         MainThread.BeginInvokeOnMainThread(() =>
         {
             try
@@ -116,6 +127,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
                 tcs.SetException(ex);
             }
         });
+#endif
 
         // The background thread pauses here until tcs.SetResult is called
         return await tcs.Task;
@@ -123,7 +135,8 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
 
     public async Task UpdateTitle(string? title)
     {
-
+        // shouldn't end up here, but interesting service patterns emerge
+#if !BROWSER
         MainThread.BeginInvokeOnMainThread(() =>
         {
             foreach (var window in App?.Value?.Windows ?? [])
@@ -131,6 +144,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
                 window.Title = title; // This is now safe
             }
         });
+#endif
     }
 
 
@@ -176,6 +190,8 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
                 int finalX = (int)Math.Round((screenWidthUnits - finalW) / 2);
                 int finalY = (int)Math.Round((screenHeightUnits - finalH) / 2);
 
+                // can clicking allow window pos change like the old days?
+#if !BROWSER
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     if (App?.Value?.Windows.Count > 0)
@@ -189,7 +205,7 @@ internal class WindowManager(Lazy<Application?>? App = null) : IWindowManager
                         window.Height = finalH;
                     }
                 });
-
+#endif
                 await Task.Delay(1000 / fps, token);
             }
         }

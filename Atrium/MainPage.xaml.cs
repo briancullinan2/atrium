@@ -4,6 +4,8 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace Atrium;
 
+#if !BROWSER
+
 public partial class MainPage : ContentPage
 {
 
@@ -80,3 +82,5 @@ public partial class MainPage : ContentPage
 #endif
     }
 }
+
+#endif

@@ -5,7 +5,12 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Maui.Controls;
+#else
+using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 #endif
+
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Hosting.Services;
 

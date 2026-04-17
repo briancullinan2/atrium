@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
+﻿
 namespace Hosting.Platforms.Windows;
 
 using Microsoft.Win32;
 
 public static class StartupCheck
 {
-
+#if WINDOWS
     public static bool IsScheduledForStartup(string appName)
     {
         string runKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -46,5 +43,6 @@ public static class StartupCheck
             }
         }
     }
+#endif
 }
 

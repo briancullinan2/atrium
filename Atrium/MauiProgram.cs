@@ -14,7 +14,9 @@ using System.Net.Http;
 
 namespace Atrium;
 
+// TODO: maybe turn this into an addressable service interface on client soon
 
+#if !BROWSER
 public class MauiProgram : IHasCurrent<MauiApp>
 {
 
@@ -80,3 +82,12 @@ public class MauiProgram : IHasCurrent<MauiApp>
 
 
 }
+#else
+
+
+public class MauiProgram : IHasCurrent<object>
+{
+    public static object? Current => null;
+}
+
+#endif

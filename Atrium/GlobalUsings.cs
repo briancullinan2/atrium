@@ -1,8 +1,10 @@
 ﻿global using Microsoft.Extensions.DependencyInjection;
+#if !BROWSER
 global using Microsoft.Maui;
 global using Microsoft.Maui.Controls;
 global using Microsoft.Maui.Controls.Hosting;
 global using Microsoft.Maui.Hosting;
+#endif
 global using System;
 global using System.IO;
 global using System.Linq;
