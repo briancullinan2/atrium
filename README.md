@@ -12,6 +12,8 @@ dotnet build RazorSharp/RazorSharp.csproj -f net10.0-android -c Debug -r android
 
 dotnet build $project -f net10.0 -c Debug
 
+dotnet build Atrium/Atrium.csproj -f net10.0-browser -c Debug -r browser-wasm
+
 dotnet build Retheme/Retheme.csproj -f net10.0 -c Debug
 
 dotnet build Hosting/Hosting.csproj -f net10.0-browser -c Debug

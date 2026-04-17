@@ -2,10 +2,6 @@
 global using Extensions.JsonVoorhees;
 global using Extensions.PrometheusTypes;
 global using Extensions.SlenderServices;
-global using Microsoft.AspNetCore.Authentication;
-global using Microsoft.AspNetCore.Authentication.Cookies;
-global using Microsoft.AspNetCore.Authentication.OAuth;
-global using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 global using Microsoft.AspNetCore.Components;
 global using Microsoft.AspNetCore.Components.Authorization;
 global using Microsoft.AspNetCore.Http;

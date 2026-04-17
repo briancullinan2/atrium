@@ -383,7 +383,7 @@ public static partial class TypeExtensions
     private static readonly List<Assembly> _registeredAssemblies = [];
     public static List<Assembly> AllAssemblies { get => [.. _registeredAssemblies]; }
     private static readonly Assembly entry;
-    private static readonly string? entryDirectory;
+    public static readonly string? entryDirectory;
     private static readonly string? product;
     private static readonly string? package;
     private static readonly string? company;

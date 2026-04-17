@@ -1,11 +1,12 @@
 ﻿#if !BROWSER
 using Hosting.Platforms.Windows;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 #endif
 #if WINDOWS
 using System.ServiceProcess;
 #endif
+
+using Microsoft.AspNetCore.Authorization;
 
 namespace Hosting.Services;
 

@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using static System.Net.WebRequestMethods;
 
 internal class Program
 {
@@ -28,6 +29,15 @@ internal class Program
         };
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+        var Http = new HttpClient
+        {
+            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
+        };
+
+        byte[] wasmBytes = await Http.GetByteArrayAsync($"/_framework/Atrium.wasm");
+
+        var assembly = Assembly.Load(wasmBytes);
 
         var domain = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
@@ -52,11 +62,7 @@ internal class Program
 
         builder.Services.RemoveAll<IQueryManager>();
         //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
-
-        builder.Services.AddSingleton(sp => new HttpClient
-        {
-            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
-        });
+        builder.Services.AddSingleton(sp => Http);
 
         builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
 

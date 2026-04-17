@@ -257,8 +257,8 @@ public static class HttpContextExtensions
         if (context == null) return false;
         return context.Response.HasStarted
             && context.WebSockets.IsWebSocketRequest
-            && (context.Request.Path.StartsWithSegments("/_blazor")
-            || context.Request.Path.StartsWithSegments(CircuitProvider.HubAddress));
+            && (context.Request.Path.Value?.StartsWith("/_blazor") == true
+            || context.Request.Path.Value?.StartsWith(CircuitProvider.HubAddress) == true);
     }
 
 

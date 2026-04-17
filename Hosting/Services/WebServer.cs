@@ -11,7 +11,11 @@ namespace Hosting.Services;
 // lol, just had an idea to easily slide this into a service-worker like my http cache, no reason i cant
 //  use that worker as a background task for actually generating the pages i need.
 
-public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApplication>
+public class WebServer(
+#if WINDOWS
+    ITrustProvider trust
+#endif
+) : IHasModule //, IHasCurrent<WebApplication>
 {
 #if WINDOWS
     private static WebApplication? _private;
@@ -158,6 +162,8 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             });
 
 
+            // TODO: add brotli caching to all this
+
             var webApp = _private = webBuilder.Build();
 
             //var options = new DefaultFilesOptions();
@@ -181,7 +187,38 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 
                 return next();
             });
+            webApp.Use(async (context, next) => {
+                try
+                {
 
+                    if (context.Request.Path.Value?.EndsWith(".wasm") == true)
+                    {
+                        if (context.Request.Path.Value.Contains("_framework/")
+                        && !File.Exists(Path.Combine(TypeExtensions.entryDirectory ?? string.Empty, "wwwroot", context.Request.Path.Value.Trim('/')))
+                        && Path.Combine(TypeExtensions.entryDirectory ?? string.Empty, "wwwroot", context.Request.Path.Value.Trim('/').Replace(".wasm", ".dll")) is string dllPath
+                        && File.Exists(dllPath))
+                        {
+                            // 1. Find the actual DLL on disk
+                            byte[] rawDll = await File.ReadAllBytesAsync(dllPath);
+
+                            // 2. Wrap it on the fly
+                            byte[] webcil = WrapDllInWebcil(rawDll);
+
+                            // 3. Serve as WASM
+                            context.Response.ContentType = "application/wasm";
+                            await context.Response.Body.WriteAsync(webcil);
+                            await context.Response.Body.FlushAsync();
+                            await context.Response.CompleteAsync();
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+                await next();
+            });
             webApp.UseBlazorFrameworkFiles();
             webApp.UseStaticFiles();
 
@@ -280,6 +317,46 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
 #endif
     }
 
+    public static byte[] WrapDllInWebcil(byte[] dllBytes)
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
 
+        // 1. WASM Magic Number & Version
+        writer.Write([0x00, 0x61, 0x73, 0x6D]); // \0asm
+        writer.Write([0x01, 0x00, 0x00, 0x00]); // Version 1
+
+        // 2. Custom Section Header (Section ID 0)
+        writer.Write((byte)0);
+
+        // 3. Calculate Section Length
+        // Section Name ("webcil") + its length prefix + the actual DLL bytes
+        byte[] sectionName = Encoding.UTF8.GetBytes("webcil");
+        int payloadSize = 1 + sectionName.Length + dllBytes.Length;
+
+        // Write size as LEB128 (Variable length integer)
+        WriteLEB128(writer, payloadSize);
+
+        // 4. Write Section Name
+        writer.Write((byte)sectionName.Length);
+        writer.Write(sectionName);
+
+        // 5. The Payload
+        writer.Write(dllBytes);
+
+        return ms.ToArray();
+    }
+
+    // Helper to write WASM-style variable integers
+    private static void WriteLEB128(BinaryWriter writer, int value)
+    {
+        do
+        {
+            byte b = (byte)(value & 0x7F);
+            value >>= 7;
+            if (value != 0) b |= 0x80;
+            writer.Write(b);
+        } while (value != 0);
+    }
 }
 

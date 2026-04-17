@@ -1,11 +1,22 @@
 ﻿
+#if !BROWSER
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
 
+#endif
 
 namespace UserModel.Services;
 
 public class ServerAuthService : IHasBuilder
 {
 
+#if BROWSER
+    public static void BuildServices(IServiceCollection Services, string? key = null)
+    {
+        // TODO: load the list of providers here as a static for use on the auth pages?
+    }
+#else
     public static void BuildServices(IServiceCollection Services, string? key = null)
     {
         // Define a constant for the claim type to avoid naming mismatches
@@ -172,6 +183,6 @@ public class ServerAuthService : IHasBuilder
         }
         return builder;
     }
-
+#endif
 
 }

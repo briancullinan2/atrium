@@ -1,9 +1,15 @@
 ﻿
+#if !BROWSER
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OAuth.Claims;
+#endif
+
 namespace UserModel.Extensions;
 
 public static partial class AuthenticationExtensions
 {
 
+#if !BROWSER
     public static void ConfigureClaimActions(
         this ClaimActionCollection target,
         AuthID id
@@ -22,7 +28,7 @@ public static partial class AuthenticationExtensions
             target.MapCustomJson(claimType, user => mappingFunc(user));
         }
     }
-
+#endif
 
 
     public static void ConfigureClaimActions(

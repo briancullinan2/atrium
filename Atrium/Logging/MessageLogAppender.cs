@@ -27,6 +27,7 @@ public class MessageLogAppender
         Name ??= nameof(MessageLogAppender);
     }
 
+#if !BROWSER
 
     public void ActivateOptions()
     {
@@ -176,5 +177,6 @@ public class MessageLogAppender
 
     // Token: 0x04000170 RID: 368
     private AppenderAttachedImpl? _mAppenderAttachedImpl;
+#endif
 }
 

@@ -238,7 +238,7 @@ public partial class FormFactor(
 
             try
             {
-                var uri = Current?.HttpContext?.Request.Path;
+                var uri = Current?.HttpContext?.Request.Path.Value;
                 return TypeExtensions.IdentifyNavigation(uri).ComponentType;
             }
             catch { }
