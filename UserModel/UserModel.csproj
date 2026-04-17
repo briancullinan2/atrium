@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0</TargetFrameworks>
+		<TargetFrameworks>net10.0-browser;net10.0</TargetFrameworks>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<ApplicationTitle>Atrium</ApplicationTitle>
@@ -13,6 +13,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' != 'net10.0-browser'">
 		<PackageReference Include="AspNet.Security.OAuth.Apple" Version="10.0.*-*" />
 		<PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.*-*" />
 		<PackageReference Include="AspNet.Security.OAuth.GitHub" Version="10.0.*-*" />
@@ -21,7 +26,6 @@
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Twitter" Version="10.0.*-*" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.*-*" />
 	</ItemGroup>
 
 	<ItemGroup>

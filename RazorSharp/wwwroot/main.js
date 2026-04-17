@@ -186,7 +186,7 @@ window.startBlazor = function (type = "server") {
         //server: startParameters,
             
         auto: {
-            type: type == "webassembly" ? "webassembly" : "server",
+            type: startParameters?.type || type == "webassembly" ? "webassembly" : "server",
             prerenderId: startParameters?.predrenderId,
             key: {
                 locationHash: startParameters?.key?.locationHash,
@@ -194,7 +194,7 @@ window.startBlazor = function (type = "server") {
             },
             sequence: startParameters?.sequence,
             descriptor: startParameters?.descriptor,
-            assembly: "RazorSharp",
+            assembly: "WebClient",
             typeName: "WebClient.Components.App",
             parameterDefinitions: "[]",
             parameterValues: "[]",

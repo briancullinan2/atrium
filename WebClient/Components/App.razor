@@ -134,7 +134,7 @@
     public static Dictionary<string, string> Query(string uri)
     {
         // Use a simple split/regex to avoid heavy libraries
-        var query = uri.TrimStart('?');
+        var query = uri.IndexOf('?') is int i && i > 0 ? uri[(i+1)..] : uri;
         var parameters = query.Split('&')
                               .Select(p => p.Split('='))
                               .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");

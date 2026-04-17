@@ -294,7 +294,8 @@ internal static class BuilderExtensions
             .Select(t => {
                 var interf = t.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>)));
                 return interf.GetGenericArguments().First();
-            })];
+            })
+            .Where(t => t.IsConcrete())];
 
         return [.. servicable.Concat(currents).Distinct()];
     }

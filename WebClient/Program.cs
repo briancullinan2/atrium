@@ -29,14 +29,26 @@ internal class Program
 
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-        var currents = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
+        var domain = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
+            .ToList();
+
+        Console.WriteLine("Domain: " + JsonSerializer.Serialize(domain.Select(t => t.ToName()).ToList()));
+
+        var mine = domain
             .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
-            .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely).GetServicable().ToList();
+            .ToList();
 
-        Console.WriteLine(JsonSerializer.Serialize(currents.Select(t => t.Name).ToList()));
+        Console.WriteLine("Mine: " + JsonSerializer.Serialize(mine.Select(t => t.ToName()).ToList()));
 
-        DatabaseBuilder.BuildServices(builder.Services, currents);
+        var serviceTypes = mine
+            .SelectMany(Extensions.PrometheusTypes.TypeExtensions.GetAssTypesSafely)
+            .GetServicable()
+            .ToList();
+
+        Console.WriteLine("Services: " + JsonSerializer.Serialize(serviceTypes.Select(t => t.Name).ToList()));
+
+        DatabaseBuilder.BuildServices(builder.Services, serviceTypes);
 
         builder.Services.RemoveAll<IQueryManager>();
         //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
@@ -48,12 +60,16 @@ internal class Program
 
         builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
 
+        builder.Services.AddSingleton(sp => new HttpClient
+        {
+            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
+        });
 
         builder.RootComponents.Add<WebClient.Components.App>("#app");
 
         _app = builder.Build();
         // FUCK DI
-        _ = _app.Services.GetRequiredService<SimpleLogger>();
+        //_ = _app.Services.GetRequiredService<SimpleLogger>();
 
 
         await _app.RunAsync();

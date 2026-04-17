@@ -1,7 +1,4 @@
 @page "/hosting"
-@using Microsoft.AspNetCore.Builder
-@using Microsoft.Maui
-@using Microsoft.Maui.Controls
 @implements IDisposable
 @implements IHasForms
 @inject ICompositeProvider ServiceProvider
@@ -110,14 +107,18 @@
         {
             if (ServiceProvider.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
                 await server.EnsureInitialized();
-            else if (ServiceProvider.GetService<Lazy<WebApplication?>>()?.Value == null)
+#if WINDOWS
+            else if (ServiceProvider.GetService<Lazy<Microsoft.AspNetCore.Builder.WebApplication?>>()?.Value == null)
                 WebServer.StartWebServer(Trust);
-
+#endif
         }
         else
         {
+            // TODO: connect to real server with page event event from browser
+#if WINDOWS
             if (WebServer.Current != null)
                 await WebServer.Current.StopAsync();
+#endif
         }
     }
 

@@ -12,6 +12,20 @@
 	    <IncludeHotReloadInvocationCode>false</IncludeHotReloadInvocationCode>
 		<WasmEnableHotReload>false</WasmEnableHotReload>
 	</PropertyGroup>
+
+	<!-- i'm a goddamn mad man -->
+	<PropertyGroup Condition="'$(MSBuildProjectName)' != 'WebClient'">
+		<TargetFrameworks>$(TargetFrameworks);net10.0-browser</TargetFrameworks>
+
+		<RuntimeIdentifier Condition="'$(TargetFramework)' == 'net10.0-browser'">browser-wasm</RuntimeIdentifier>
+		
+		<WasmFingerprintAssets>false</WasmFingerprintAssets>
+		<WasmEmitSymbolMap>true</WasmEmitSymbolMap>
+		<WasmDebugLevel>1</WasmDebugLevel>
+
+		<DebuggerSupport>true</DebuggerSupport>
+		<RunAOTCompilation>true</RunAOTCompilation>
+	</PropertyGroup>
 	
 	<!--<PropertyGroup>
 		<SignAssembly>true</SignAssembly>

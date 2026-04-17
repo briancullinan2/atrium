@@ -36,7 +36,10 @@ public abstract class BaseFormFactor(
     public abstract string ConnectionId { get; }
     public abstract List<IFile> Files { get; }
 
-
+    public abstract Type? RequestControl
+    {
+        get;
+    }
 
     public virtual async Task SetState()
     {
@@ -118,7 +121,7 @@ public abstract class BaseFormFactor(
 
 #if BROWSER
 
-public partial class FormFactor : BaseFormFactor
+public partial class FormFactor : BaseFormFactor, IDisposable
 {
     public override bool IsBrowser => true;
     public override bool IsWebContext => true;
@@ -128,41 +131,57 @@ public partial class FormFactor : BaseFormFactor
     public override string GetFormFactor() => "WebAssembly";
     public override string ConnectionId => "Browser";
     
-    public async Task SaveSetting(string key, string value)
+    public override async Task SaveSetting(string key, string value)
         => await JS.InvokeVoidAsync("localStorage.setItem", key, value);
 
-    public async Task<string> GetSetting(string key, string value)
+    public override async Task<string> GetSetting(string key, string value)
         => await JS.InvokeAsync<string>("localStorage.getItem", key) ?? value;
 
     public List<IFile> CurrentFormFiles = [];
     private readonly Lazy<WebAssemblyHost?>? App;
     private readonly IJSRuntime JS;
+    private readonly IPageEvents Page;
+
+    public override Type? RequestControl
+    {
+        get
+        {
+            try
+            {
+                var nav = Service.GetRequiredService<NavigationManager>();
+                return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
+            }
+            catch { }
+            return null;
+        }
+    }
 
     public override List<IFile> Files { get => CurrentFormFiles; }
 
     public FormFactor(
     NavigationManager nav
-    , IPageManager page
+    , ICompositeProvider service
     , IJSRuntime js 
+    , IPageEvents page
     , Lazy<WebAssemblyHost?>? app = null
-    ) : base(nav, page)
+    ) : base(service, nav)
     {
         App = app;
         JS = js;
-        Page.Subscribe((PageAction.Upload, "window"), SwapFileListasync);
+        Page = page;
+        Page.Subscribe((PageAction.Upload, "window"), SwapFileListAsync);
     }
     
 
-    protected async Task SwapFileListasync(InputFileChangeEventArgs args)
+    protected async Task SwapFileListAsync(InputFileChangeEventArgs args)
     {
         CurrentFormFiles = [..CurrentFormFiles, ..args.GetMultipleFiles().Select(f => new BrowserFile(f) as IFile)];
     }
 
 
-    public override void Dispose()
+    public void Dispose()
     {
-        Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListasync);
-        base.Dispose();
+        Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListAsync);
         GC.SuppressFinalize(this);
     }
 
@@ -206,6 +225,26 @@ public partial class FormFactor(
     public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Current?.HttpContext?.Connection.Id ?? "Internal";
+
+    public override Type? RequestControl
+    {
+        get
+        {
+            try
+            {
+                return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
+            }
+            catch { }
+
+            try
+            {
+                var uri = Current?.HttpContext?.Request.Path;
+                return TypeExtensions.IdentifyNavigation(uri).ComponentType;
+            }
+            catch { }
+            return null;
+        }
+    }
 
     public override async Task SaveSetting(string key, string value)
         => Preferences.Default.Set(key, value);

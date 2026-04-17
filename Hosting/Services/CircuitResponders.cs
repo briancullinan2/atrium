@@ -9,17 +9,17 @@ using System.Runtime.CompilerServices;
 
 namespace Hosting.Services;
 
-public partial class CircuitProvider : ICircuitProvider
+public partial class CircuitProvider
 {
 
-    public async Task<TResult?> InvokeAsync<TResult>(string? method, CancellationToken? token = null)
+    public override async Task<T?> InvokeAsync<T>(string? method, CancellationToken? ct = null) where T : default
     {
-        return await TaskExtensions.Debounce<string, object?[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, [token]);
+        return await TaskExtensions.Debounce<string, object?[], T>(ExecuteAsyncDebounced<T>, DefaultTTL, method, [ct]);
     }
 
-    public async Task<TResult?> InvokeAsync<TResult>(string? method, params object?[]? parameters)
+    public override async Task<T?> InvokeAsync<T>(string? method, object?[]? parameters) where T : default
     {
-        return await TaskExtensions.Debounce<string, object?[], TResult>(ExecuteAsyncDebounced<TResult>, DefaultTTL, method, parameters);
+        return await TaskExtensions.Debounce<string, object?[], T>(ExecuteAsyncDebounced<T>, DefaultTTL, method, parameters);
     }
 
 
@@ -142,15 +142,20 @@ public partial class CircuitProvider : ICircuitProvider
 
 
 
-    public async Task<T?> RespondHub<T>(string method, CancellationToken? ct = null) => await Connection.InvokeAsync<T>(method, ct);
+    public async Task<T?> RespondHub<T>(string method, CancellationToken? ct = null)
+    {
+        if (_connection == null) return default;
+        return await _connection.InvokeAsync<T>(method, ct);
+    }
     public async Task<T?> RespondHub<T>(string method, object?[]? parameters) => parameters?.Length switch
     {
-        1 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
-        2 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
-        3 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2)),
-        4 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3)),
-        5 => await Connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3), parameters.ElementAt(4)),
-        _ => await Connection.InvokeAsync<T>(method, new CancellationTokenSource().Token)
+        _ when _connection == null => default,
+        1 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0)),
+        2 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1)),
+        3 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2)),
+        4 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3)),
+        5 => await _connection.InvokeAsync<T>(method, parameters.ElementAt(0), parameters.ElementAt(1), parameters.ElementAt(2), parameters.ElementAt(3), parameters.ElementAt(4)),
+        _ => await _connection.InvokeAsync<T>(method, new CancellationTokenSource().Token)
     };
 
 
@@ -305,4 +310,5 @@ public partial class CircuitProvider : ICircuitProvider
 
         }
     }
+
 }

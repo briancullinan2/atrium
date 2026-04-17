@@ -723,7 +723,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     private static string[]? PluginFiles { get; set; } = null;
-    public string Error { get; private set; }
+    public string? Error { get; private set; }
 
     // GUID for the Action to verify a file using the Authenticode Policy Provider
 #if WINDOWS

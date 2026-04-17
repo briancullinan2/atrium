@@ -82,12 +82,34 @@ public static partial class TypeExtensions
 
 
 
+    public static string ToName(this Assembly ass)
+    {
+        var file = Path.GetFileNameWithoutExtension(ass.Location);
+        return string.IsNullOrWhiteSpace(file) ?
+                    ass.FullName?.Split(',')[0]
+                    ?? ass.GetName().Name
+                    ?? ass.GetName().FullName.Split(',')[0]
+                    : file;
+    }
+
+    public static string ToName(this AssemblyName ass)
+    {
+        return ass.Name ?? ass.FullName.Split(',')[0];
+    }
+
+
     public static bool IsMine(this Assembly ass)
     {
 
-        if (entryDirectory == null) return false;
+        //Console.WriteLine("Product: " + entryDirectory + ", " + ass.Location + ", " + GetProduct(ass));
 
-        if (!string.Equals(ass.Location[..Math.Min(entryDirectory.Length, ass.Location.Length)],
+        // doesn't work on web as promised by compiler
+        //if (entryDirectory == null) return false;
+
+
+        if (!string.IsNullOrWhiteSpace(entryDirectory)
+            && !string.IsNullOrWhiteSpace(ass.Location)
+            && !string.Equals(ass.Location[..Math.Min(entryDirectory.Length, ass.Location.Length)],
                         entryDirectory, StringComparison.InvariantCultureIgnoreCase)) return false;
 
         if ((product != null && string.Equals(product, GetProduct(ass), StringComparison.InvariantCultureIgnoreCase))
@@ -106,7 +128,7 @@ public static partial class TypeExtensions
     public static bool IsMine(this AssemblyInfo ass)
     {
 
-        if (entryDirectory == null) return false;
+        //if (entryDirectory == null) return false;
 
 
         if ((product != null && string.Equals(product, ass.Product, StringComparison.InvariantCultureIgnoreCase))
@@ -175,7 +197,8 @@ public static partial class TypeExtensions
             .Select(t => {
                 var interf = t.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>)));
                 return interf.GetGenericArguments().First();
-            })];
+            })
+            .Where(t => t.IsConcrete())];
 
         return [.. servicable.Concat(currents).Distinct()];
     }
@@ -229,11 +252,13 @@ public static partial class TypeExtensions
     {
 
         entry ??= Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        entryDirectory ??= Path.GetDirectoryName(entry.Location);
+        entryDirectory ??= Path.GetDirectoryName(entry.Location) ?? AppContext.BaseDirectory;
         product ??= GetProduct(entry);
         package ??= GetPackage(entry);
         publisher ??= GetPublisher(entry);
         company ??= GetCompany(entry);
+
+        Console.WriteLine("Product: " + product + ", " + package + ", " + publisher + ", " + company);
 
         // needed for IsMine function to work
         RegisterAssembly([

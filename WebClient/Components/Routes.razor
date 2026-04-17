@@ -4,6 +4,7 @@
 @using RazorSharp.Extensions
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
+@using System.Text.Json
 @implements IDisposable
 @implements IHasChildren
 @inject NavigationManager Nav
@@ -20,8 +21,8 @@
 <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
     <CascadingValue Name="Loader" Value="@this">
         <Router OnNavigateAsync="HandleNavigation" 
-            AppAssembly="@typeof(RazorSharp.Pages.Landing.Default).Assembly"
-                    AdditionalAssemblies="@EntryAsses">
+                AppAssembly="@typeof(WebClient.Components.App).Assembly"
+                AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
                 <CascadingValue Value="@routeData">
                     <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
@@ -41,11 +42,16 @@
     public Type? DefaultLayout { get; set; } = typeof(RazorSharp.Layout.MainLayout);
 
     List<Assembly> EntryAsses {
-        get => [.. (Assembly.GetEntryAssembly()
+        get
+        {
+            List<Assembly> entryAssemblies = [.. (Assembly.GetEntryAssembly()
             ?? Assembly.GetExecutingAssembly())
             .GetAssemblies().GetMine()
-            .Except([typeof(RazorSharp.Pages.Landing.Default).Assembly])
-        ];
+            .Except([typeof(WebClient.Components.App).Assembly])
+            ];
+            Console.WriteLine("Entry: " + JsonSerializer.Serialize(entryAssemblies.Select(ass => ass.ToName())));
+            return entryAssemblies;
+        }
     }
     protected string Ready = "loading";
 

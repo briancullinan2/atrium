@@ -8,25 +8,43 @@ using Microsoft.Extensions.Hosting;
 
 namespace Hosting.Services;
 
+// lol, just had an idea to easily slide this into a service-worker like my http cache, no reason i cant
+//  use that worker as a background task for actually generating the pages i need.
+
 public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApplication>
 {
-
-#if !BROWSER
+#if WINDOWS
     private static WebApplication? _private;
+    public static WebApplication? Current => _private;
+#endif
+
     internal static bool IsStarting;
     private static TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
-    public static WebApplication? Current => _private;
+
     //public static IServiceProvider Services => _private.Services;
+
     public async ValueTask EnsureInitialized()
     {
         if (IsStarting) await _renderTcs.Task;
         if (_renderTcs.Task.IsCompleted)
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+#if WINDOWS
         StartWebServer(trust);
+#else
+        // WAKE ON LAN?
+        _renderTcs.SetResult(false);
+#endif
         await _renderTcs.Task;
     }
 
+    private static readonly Func<string?, bool> FILTER_MICROSOFT_DLLS_BY_NAME;
+    static WebServer()
+    {
+        FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
+    }
+
+#if WINDOWS
     public static WebApplication? StartWebServer(ITrustProvider Trust)
     {
         try
@@ -150,6 +168,13 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             //webApp.MapFallbackToFile("app.html");
             webApp.Use((context, next) =>
             {
+                // i hate that i have to do this, WHAT IS THEY GET AROUND TO FIXING SOMETHING????
+                //    i'll end up with a bunch of browsers sitting around with old dependencies in their cache?
+                
+                // this had no effect because microsoft is loading it internally, this won't be an issue when i get the service worker working again
+                //if (FILTER_MICROSOFT_DLLS_BY_NAME(context.Request.Path.ToString().Split("_framework/").ElementAtOrDefault(1)))
+                //    return next();
+
                 context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                 context.Response.Headers.Append("Pragma", "no-cache");
                 context.Response.Headers.Append("Expires", "0");
@@ -231,10 +256,13 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             IsStarting = false;
         }
     }
+#endif
+
 
 
     protected static async Task TryRunning()
     {
+#if WINDOWS
         if (_private == null) return;
         // Run the Web Server in the background
         try
@@ -249,9 +277,9 @@ public class WebServer(ITrustProvider trust) : IHasModule //, IHasCurrent<WebApp
             IsStarting = false;
             _renderTcs.SetException(ex);
         }
+#endif
     }
 
-#endif
 
 }
 

@@ -11,7 +11,11 @@ namespace Hosting.Services;
 
 
 
-public partial class CircuitProvider : ICircuitProvider
+public abstract partial class BaseCircuitProvider(
+    ICompositeProvider service,
+    HttpClient? http = null,
+    HubConnection? connection = null
+) : ICircuitProvider
 {
 
     public static string HubAddress { get; } = "/api/hub";
@@ -20,12 +24,12 @@ public partial class CircuitProvider : ICircuitProvider
     public event Action<bool, ConnectionMetadata>? OnConnectionUp;
 
     public int DefaultTTL { get; set; } = 100;
-    private static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
+    protected static readonly ConcurrentDictionary<string, ConnectionMetadata> _activeCircuits = new();
 
     public ICompositeProvider Service { get; } = service;
     public HttpClient? Http { get; } = http;
 
-    private HubConnection? _connection = connection;
+    protected HubConnection? _connection = connection;
     private HubConnection Connection
     {
         get
@@ -36,8 +40,19 @@ public partial class CircuitProvider : ICircuitProvider
         set => _connection = value;
     }
 
+    public abstract bool IsConnected { get; }
 
-    public async Task OnConnectionUpAsync(ConnectionMetadata metadata)
+    public abstract int ClientCount { get; }
+
+    public abstract bool IsAppConnected { get; }
+
+    public abstract bool IsServerConnected { get; }
+
+    public abstract bool IsSignalCircuit { get; }
+
+    public abstract bool IsHubConnected { get; }
+
+    public virtual async Task OnConnectionUpAsync(ConnectionMetadata metadata)
     {
         // Add or update the circuit in the static dictionary
         _activeCircuits.TryAdd(metadata.Id, metadata);
@@ -45,7 +60,7 @@ public partial class CircuitProvider : ICircuitProvider
         OnConnectionUp?.Invoke(true, metadata);
     }
 
-    public async Task OnConnectionDownAsync(ConnectionMetadata metadata)
+    public virtual async Task OnConnectionDownAsync(ConnectionMetadata metadata)
     {
         // Remove the circuit from the static dictionary
         _activeCircuits.TryRemove(metadata.Id, out _);
@@ -53,40 +68,41 @@ public partial class CircuitProvider : ICircuitProvider
         OnConnectionDown?.Invoke(false, metadata);
     }
 
+    public abstract Task<T?> InvokeAsync<T>(string? method, CancellationToken? ct = null);
 
+    public abstract Task<T?> InvokeAsync<T>(string? method, object?[]? parameters);
 }
 
 #if BROWSER
 // TODO: make webassembly the page serving server
-public partial  class CircuitProvider : IAsyncDisposable
+public partial class CircuitProvider : BaseCircuitProvider, IAsyncDisposable
 {
 
-    public bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
-    public bool IsSignalCircuit => IsHubConnected;
-    public bool IsAppConnected => true;
-    public bool IsServerConnected => IsConnected;
-    public int ClientCount => 1;
+    public override bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
+    public override bool IsSignalCircuit => IsHubConnected;
+    public override bool IsAppConnected => true;
+    public override bool IsServerConnected => IsConnected;
+    public override int ClientCount => 1;
 
 
     public IRenderState Rendered { get; }
-    public IPageManager PageManager { get; }
+    public IPageEvents PageManager { get; }
     public NavigationManager Nav { get; }
 
-    public bool IsConnected => IsHubConnected;
+    public override bool IsConnected => IsHubConnected;
 
     public Dictionary<string, string> RequestParameters => Nav.Uri.Query();
 
 
     public CircuitProvider(
-        IServiceProvider service, 
+        ICompositeProvider service, 
         NavigationManager nav, 
-        IPageManager page, 
+        IPageEvents page, 
         HttpClient http, 
         IRenderState rendered, 
         HubConnection? connection = null)
+        :base(service, http, connection)
     {
-        Service = service;
-        Http = http;
         Rendered = rendered;
         PageManager = page;
         Nav = nav;
@@ -128,21 +144,21 @@ public partial  class CircuitProvider : IAsyncDisposable
         }
 
         _connection.Reconnected += async (id) =>
-            OnConnectionUp?.Invoke(true, new ConnectionMetadata(id ?? _connection.ConnectionId ?? "unknown", DateTime.UtcNow));
+            await OnConnectionUpAsync(new ConnectionMetadata(id ?? _connection.ConnectionId ?? "unknown", DateTime.UtcNow));
 
         _connection.Closed += async (ex) =>
-            OnConnectionDown?.Invoke(false, new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
+            await OnConnectionDownAsync(new ConnectionMetadata(_connection.ConnectionId ?? "unknown", DateTime.UtcNow, ex?.Message, ex));
     }
 
     protected void ReportFromPage(string? state)
     {
         if (state == "hide")
         {
-            _ = OnConnectionUpAsync(new ConnectionMetadata(Connection.ConnectionId ?? "unknown", DateTime.UtcNow));
+            _ = OnConnectionUpAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow));
         }
         else
         {
-            _ = OnConnectionDownAsync(new ConnectionMetadata(Connection.ConnectionId ?? "unknown", DateTime.UtcNow, state));
+            _ = OnConnectionDownAsync(new ConnectionMetadata(_connection?.ConnectionId ?? "unknown", DateTime.UtcNow, state));
         }
     }
 
@@ -175,22 +191,23 @@ public partial class CircuitHub(ICircuitProvider Circuit) : Microsoft.AspNetCore
 
 public partial class CircuitProvider(
     ICompositeProvider service,
-    Lazy<Application?>? app = null,
     HttpClient? http = null,
-    HubConnection? connection = null) : IAsyncDisposable
+    HubConnection? connection = null,
+    Lazy<Application?>? app = null
+) : BaseCircuitProvider(service, http, connection), IAsyncDisposable
 {
 
-    public bool IsSignalCircuit => true;
+    public override bool IsSignalCircuit => true;
 
-    public bool IsConnected => !_activeCircuits.IsEmpty;
+    public override bool IsConnected => !_activeCircuits.IsEmpty;
 
-    public bool IsHubConnected => !_activeCircuits.IsEmpty;
+    public override bool IsHubConnected => !_activeCircuits.IsEmpty;
 
-    public bool IsAppConnected => App?.Value != null;
+    public override bool IsAppConnected => App?.Value != null;
 
-    public bool IsServerConnected => App?.Value != null;
+    public override bool IsServerConnected => App?.Value != null;
 
-    public int ClientCount => _activeCircuits.Count;
+    public override int ClientCount => _activeCircuits.Count;
 
     public Lazy<Application?>? App { get; } = app;
 
@@ -205,8 +222,7 @@ public partial class CircuitProvider(
 }
 
 
-public partial class CircuitProvider
-    : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, IHasCircuit
+public abstract partial class BaseCircuitProvider : Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, ICircuitProvider, IHasCircuit
 {
 
     public override async Task OnConnectionUpAsync(Circuit circuit, CancellationToken ct)

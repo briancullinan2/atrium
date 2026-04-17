@@ -9,7 +9,8 @@ public interface IFormFactor
     bool IsBrowser { get; }
     bool IsWebContext { get; }
     bool IsMauiContext { get; }
-    List<IFile> Files { get; }
+    Type? RequestControl { get; }
+    List <IFile> Files { get; }
     Task SetState();
 
     ValueTask Clipboard(string text);
