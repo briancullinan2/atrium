@@ -6,6 +6,7 @@
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<RootNamespace>Hosting</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">

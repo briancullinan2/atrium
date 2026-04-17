@@ -20,8 +20,8 @@ public static partial class InvokableExtensions
         var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
         var parameters = myDelegate.GetParameters();
         var parameterValues = new object?[parameters.Length];
-        var rendered = service.GetRequiredService<IRenderState>();
-
+        var Scope = service.CreateScope();
+        var rendered = Scope.ServiceProvider.GetRequiredService<IRenderState>();
         for (int i = 0; i < parameters.Length; i++)
         {
             var realType = Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType;
@@ -31,7 +31,7 @@ public static partial class InvokableExtensions
                 var isSet = false;
                 try
                 {
-                    var nav = service.GetRequiredService<NavigationManager>();
+                    var nav = Scope.ServiceProvider.GetRequiredService<NavigationManager>();
                     parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
                     isSet = true;
                 }
@@ -41,7 +41,7 @@ public static partial class InvokableExtensions
                 {
                     try
                     {
-                        var nav = service.GetRequiredService<IFormFactor>();
+                        var nav = Scope.ServiceProvider.GetRequiredService<IFormFactor>();
                         parameterValues[i] = nav.RequestControl;
                     }
                     catch { }
@@ -69,7 +69,7 @@ public static partial class InvokableExtensions
             }
             else
             {
-                parameterValues[i] = service.GetService(realType);
+                parameterValues[i] = Scope.ServiceProvider.GetService(realType);
             }
         }
 

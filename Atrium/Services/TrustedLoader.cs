@@ -131,13 +131,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     internal static Dictionary<Type, Type?> SingleUser { get; } = new()
     {
         {typeof(HttpClient), null },
-        {typeof(Lazy<MainLoader?>), null  },
         {typeof(NavigationManager), null  },
         {typeof(IJSRuntime), null  },
         {typeof(IConfiguration), null  },
         //{typeof(ILogger<>), typeof(Logger<>)  },
         {typeof(ILoggerFactory), null },
 #if !BROWSER
+        {typeof(Lazy<MainLoader?>), null  },
         {typeof(Lazy<Application?>), null },
         {typeof(IHostEnvironment), null  },
 #endif

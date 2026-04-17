@@ -37,6 +37,8 @@ internal class Program
 
         byte[] wasmBytes = await Http.GetByteArrayAsync($"/_framework/Atrium.wasm");
 
+        Console.WriteLine("Adding Atrium: " + wasmBytes);
+
         var assembly = Assembly.Load(wasmBytes);
 
         var domain = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }

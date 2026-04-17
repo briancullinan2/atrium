@@ -5,6 +5,7 @@
 		<OutputType>Library</OutputType>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>Recollect</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 	
 </Project>

@@ -12,6 +12,7 @@
       either BOTH runtimes must be indicated or ONLY macatalyst-x64. -->
     <!-- For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers> -->
 	<RootNamespace>Atrium</RootNamespace>
+	<AssemblyName>$(RootNamespace)</AssemblyName>
 
 	<SingleProject>true</SingleProject>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
@@ -55,7 +56,6 @@
 		<UseMaui>true</UseMaui>
 		<OutputType>Exe</OutputType>
 		<!--<OutputType>WinExe</OutputType>-->
-		<StartupObject>Atrium.WinUI.App</StartupObject>
 
 	</PropertyGroup>
 	
@@ -103,6 +103,7 @@
 
 	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+		<StartupObject>Atrium.WinUI.App</StartupObject>
 	</PropertyGroup>
 
 
@@ -111,7 +112,6 @@
 		<PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.Maui.Resizetizer" Version="10.0.*-*" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.*-*" />
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 	
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'browser'">
@@ -120,6 +120,7 @@
 
 	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.*-*" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
 	<ItemGroup>

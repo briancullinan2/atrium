@@ -4,6 +4,7 @@
 		<OutputType>Library</OutputType>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>FlashData</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

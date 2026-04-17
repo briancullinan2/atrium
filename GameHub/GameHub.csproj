@@ -5,6 +5,7 @@
 		<OutputType>Library</OutputType>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>GameHub</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

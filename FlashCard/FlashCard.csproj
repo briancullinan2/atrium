@@ -5,6 +5,7 @@
 		<OutputType>Library</OutputType>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>FlashCard</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 	
 	<PropertyGroup>

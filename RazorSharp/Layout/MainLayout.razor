@@ -60,6 +60,11 @@
     public string? HeaderTitle { get; private set; }
     public bool? ShowHeader { get; set; }
 
+    public Task SetAppAssembly(System.Reflection.Assembly? assembly)
+    {
+        return Task.CompletedTask;
+    }
+
     protected override void OnInitialized()
     {
         //RenderState.NotifyEmptied(this);

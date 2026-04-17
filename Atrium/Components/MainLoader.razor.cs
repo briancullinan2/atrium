@@ -4,6 +4,7 @@ using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -36,9 +37,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
 
 
         var query = Query(Nav.Uri);
-        if (Nav?.Uri.Contains("#mode=server") == true)
+        if (Nav?.Uri.Contains("#mode=server", StringComparison.OrdinalIgnoreCase) == true)
         {
             PreferredMode = RenderMode.InteractiveServer;
+        }
+        else if (Nav?.Uri.Contains("#mode=webassembly", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            PreferredMode = RenderMode.InteractiveWebAssembly;
         }
         else if (query?.TryGetValue("mode", out var mode) == true)
         {
@@ -83,7 +88,9 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         if (firstRender)
         {
             Trust.OnSettledAsync += ProbablyUpdateTitle;
-            Rendered.NotifyRendered(JS, this);
+            var JS = Service.GetService<IJSRuntime>();
+            if(JS != null)
+                Rendered.NotifyRendered(JS, this);
         }
     }
 

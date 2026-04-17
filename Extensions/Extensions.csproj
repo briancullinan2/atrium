@@ -4,6 +4,7 @@
 		<OutputType>Library</OutputType>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>Extensions</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 

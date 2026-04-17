@@ -8,6 +8,7 @@
 	<HasRuntimeOutput>false</HasRuntimeOutput>
 
 	<RootNamespace>Atrium</RootNamespace>
+	<AssemblyName>$(RootNamespace)</AssemblyName>
 
 	<SingleProject>true</SingleProject>
     <EnableDefaultCssItems>false</EnableDefaultCssItems>
@@ -75,9 +76,11 @@
 	
   <ItemGroup>
     <Compile Remove="App.xaml.cs" />
+    <Compile Remove="Components\MainLoader.razor.cs" />
   </ItemGroup>
 	
   <ItemGroup>
+    <Content Remove="Components\MainLoader.razor" />
     <Content Remove="wwwroot\index.html" />
   </ItemGroup>
 	

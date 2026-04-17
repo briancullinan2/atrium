@@ -21,7 +21,7 @@
 <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
     <CascadingValue Name="Loader" Value="@this">
         <Router OnNavigateAsync="HandleNavigation" 
-                AppAssembly="@typeof(WebClient.Components.App).Assembly"
+                AppAssembly="@StoredAppAssembly"
                 AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
                 <CascadingValue Value="@routeData">
@@ -45,15 +45,28 @@
         get
         {
             List<Assembly> entryAssemblies = [.. (Assembly.GetEntryAssembly()
-            ?? Assembly.GetExecutingAssembly())
-            .GetAssemblies().GetMine()
-            .Except([typeof(WebClient.Components.App).Assembly])
-            ];
+                ?? Assembly.GetExecutingAssembly())
+                .GetAssemblies().GetMine()
+                .Except([typeof(WebClient.Components.App).Assembly])
+                    ];
             Console.WriteLine("Entry: " + JsonSerializer.Serialize(entryAssemblies.Select(ass => ass.ToName())));
             return entryAssemblies;
         }
     }
     protected string Ready = "loading";
+
+    static System.Reflection.Assembly? StoredAppAssembly = typeof(WebClient.Components.App).Assembly;
+    public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
+    {
+        StoredAppAssembly = assembly;
+        if (StoredAppAssembly != null)
+        {
+            Ready = "layout"; // Explicitly move to layout
+            //await InvokeAsync(StateHasChanged);
+            _ = ProbablyUpdateTitle();
+            _ = Css?.ListenUp(null, DefaultLayout, this);
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -78,7 +91,8 @@
         if (firstRender)
         {
             Trust.OnSettledAsync += () => ProbablyUpdateTitle();
-            Rendered = Service.GetService<IRenderState>();
+            var Scope = Service.CreateScope();
+            Rendered = Scope.ServiceProvider.GetService<IRenderState>();
             Rendered?.NotifyRendered(JS, this);
         }
     }

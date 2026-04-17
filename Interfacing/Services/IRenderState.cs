@@ -32,6 +32,7 @@ public interface IHasChildren
 {
     object[] GetChildComponents();
     Task HasChanged();
+    Task SetAppAssembly(System.Reflection.Assembly? assembly);
 }
 
 public interface IRenderState : IHasModule, ISingleUser

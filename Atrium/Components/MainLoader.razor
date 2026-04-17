@@ -4,14 +4,11 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.JSInterop
-@inject ITrustProvider Trust
 @inject NavigationManager Nav
 @inject ICompositeProvider Service
 @inject ITrustProvider Trust
 @inject IRenderState Rendered
 @inject IHasClass Css
-@inject IJSRuntime JS
 
 @foreach (var cssUrl in Css.Registry)
 {

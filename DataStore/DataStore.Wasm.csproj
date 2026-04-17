@@ -5,6 +5,7 @@
 		<WasmBuildNative>true</WasmBuildNative>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<RootNamespace>DataStore</RootNamespace>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

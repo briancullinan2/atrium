@@ -192,15 +192,16 @@ public static partial class TypeExtensions
                 .Any())                // Returns true if the intersection isn't empty
             ];
 
-        List<Type> currents = [..servicable
+        /*List<Type> currents = [..servicable
             .Where(t => t.Extends(typeof(IHasCurrent<>)))
             .Select(t => {
                 var interf = t.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>)));
                 return interf.GetGenericArguments().First();
             })
             .Where(t => t.IsConcrete())];
+        */
 
-        return [.. servicable.Concat(currents).Distinct()];
+        return [.. servicable.Distinct()];
     }
 
 

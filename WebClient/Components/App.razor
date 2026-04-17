@@ -26,6 +26,7 @@
 
 <body>
  
+    <div id="app">
     <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
         <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
             <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
@@ -33,6 +34,7 @@
             </CascadingValue>
         </CascadingValue>
     </CascadingValue>
+    </div>
 
     <script src="/_content/RazorSharp/main.js"></script>
     <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
@@ -96,9 +98,13 @@
         IsDebug = true;
 #endif
         var Query = App.Query(Nav.Uri);
-        if (Nav.Uri.Contains("#mode=server") == true)
+        if (Nav.Uri.Contains("#mode=server", StringComparison.OrdinalIgnoreCase) == true)
         {
             PreferredMode = InteractiveServer;
+        }
+        else if (Nav.Uri.Contains("#mode=webassembly", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            PreferredMode = InteractiveWebAssembly;
         }
         else if (Query?.TryGetValue("mode", out var mode) == true)
         {
@@ -127,8 +133,9 @@
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        var Page = Service.GetRequiredService<IRenderState>();
-        await Page.SetState(this);
+        //var Scope = Service.CreateScope();
+        //var Page = Scope.ServiceProvider.GetRequiredService<IRenderState>();
+        //await Page.SetState(this);
     }
 
     public static Dictionary<string, string> Query(string uri)

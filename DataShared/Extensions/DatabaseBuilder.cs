@@ -25,6 +25,7 @@ public class DatabaseBuilder : IHasBuilder
         // TODO: need to map all IHasCurrent values to their functional Current static interface value
         //   do this before the service creator below reaches them
         var currents = AllServices.Where(s => s.Extends(typeof(IHasCurrent<>))).ToList();
+        Console.WriteLine("Current: " + JsonSerializer.Serialize(currents.Select(c => c.Name)));
         foreach (var cur in currents)
         {
             if (cur.Extends(typeof(IHasNoService))) continue;

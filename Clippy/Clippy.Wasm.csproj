@@ -5,6 +5,7 @@
 		<OutputType>Library</OutputType>
 		<WasmBuildNative>true</WasmBuildNative>
 		<HasRuntimeOutput>false</HasRuntimeOutput>
+		<AssemblyName>$(RootNamespace)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

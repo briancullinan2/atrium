@@ -186,7 +186,7 @@ window.startBlazor = function (type = "server") {
         //server: startParameters,
             
         auto: {
-            type: startParameters?.type || type == "webassembly" ? "webassembly" : "server",
+            type: "webassembly", //TODO: startParameters?.type || (type == "webassembly" ? "webassembly" : "server"),
             prerenderId: startParameters?.predrenderId,
             key: {
                 locationHash: startParameters?.key?.locationHash,
@@ -205,6 +205,8 @@ window.startBlazor = function (type = "server") {
         
     };
 
+
+    window.location.hash = "mode=" + geminiSaidICouldnt.auto.type
 
     var blazorConfig = {
 

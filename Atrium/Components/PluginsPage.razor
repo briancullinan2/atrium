@@ -2,6 +2,7 @@
 @using Atrium.Services
 @using Interfacing.Services
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.Extensions.DependencyInjection
 @implements IHasForms
 @implements IHasCover
 @inject ITrustProvider Trust
@@ -144,51 +145,58 @@
     private string? SelectedRoot
     {
         get => StoredSelectedRoot;
-        set => StoredSelectedRoot = (Main?.DefaultRoot = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
-    }
-
-    private MainLoader? Main {
-        get => Service.GetService<Lazy<MainLoader?>>()?.Value;
+        set 
+        {
+            var type = Type.GetType(value);
+            StoredSelectedRoot = type?.AssemblyQualifiedName;
+        }
     }
 
     private string? StoredSelectedLayout = null;
     private string? SelectedLayout
     {
         get => StoredSelectedLayout;
-        set => StoredSelectedLayout = (Main?.DefaultLayout = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+        set => StoredSelectedLayout = Type.GetType(value)?.AssemblyQualifiedName;
     }
 
     private string? StoredSelectedPermission  = null;
     private string? SelectedPermission
     {
         get => StoredSelectedPermission;
-        set => StoredSelectedPermission = (Main?.PermissionType = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+        set => StoredSelectedPermission = Type.GetType(value)?.AssemblyQualifiedName;
     }
 
     private string? StoredSelectedNotFound = null;
     private string? SelectedNotFound
     {
         get => StoredSelectedNotFound;
-        set => StoredSelectedNotFound = (Main?.NotFoundControl = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+        set => StoredSelectedNotFound = Type.GetType(value)?.AssemblyQualifiedName;
     }
 
     private string? StoredSelectedAuth = null;
     private string? SelectedAuth
     {
         get => StoredSelectedAuth;
-        set => StoredSelectedAuth = (Main?.AuthWrapper = value == null ? null : Type.GetType(value))?.AssemblyQualifiedName;
+        set => StoredSelectedAuth = Type.GetType(value)?.AssemblyQualifiedName;
     }
 
     private string? StoredSelectedAssembly = null;
     private async Task SetSelectedAssembly(string? value)
     {
-        var main = Main;
-        if ((Path.GetFileNameWithoutExtension(value) is string path
+        if (Path.GetFileNameWithoutExtension(value) is string path
         && Trust.LoadedAssemblies.TryGetValue(path, out var ass))
-        && main != null)
         {
             StoredSelectedAssembly = ass.FullName?.Split(',')[0];
-            await main.SetAppAssembly(ass);
+            try
+            {
+                var Scope = Service.CreateScope();
+                var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
+                await Main.SetAppAssembly(ass);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 
@@ -343,6 +351,20 @@
         {
             SelectedRoot = loader.AllRoutes[0].AssemblyQualifiedName;
         }
+
+        try
+        {
+            var Scope = Service.CreateScope();
+            var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
+#if WINDOWS
+            (Main as MainLoader)?.DefaultRoot = Type.GetType(SelectedRoot);
+#endif
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+
         if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
         {
             await SetSelectedAssembly(likelyRootAss?.FullName?.Split(',')[0]);

@@ -30,22 +30,19 @@
 		<UseMaui>false</UseMaui>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(TargetFramework)' != 'net10.0-browser'">
-		<TargetFrameworks>net10.0</TargetFrameworks>
-	</PropertyGroup>
-
-
 	<PropertyGroup Condition="$(MSBuildProjectName.Contains('.Wasm'))">
 		<NoWarn>$(NoWarn);IDE0130</NoWarn>
 	</PropertyGroup>
-	
-	
+
+	<PropertyGroup Condition="'$(TargetFramework)' != 'net10.0-browser' and '$(MSBuildProjectName)' != 'Atrium'">
+		<OutputType>Library</OutputType>
+	</PropertyGroup>
+		
 	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
 		<BaseOutputPath>bin\Wasm\</BaseOutputPath>
 		<BaseIntermediateOutputPath>obj\Wasm\</BaseIntermediateOutputPath>
 		<MSBuildProjectExtensionsPath>obj\Wasm\</MSBuildProjectExtensionsPath>
 		<DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
-		<TargetFrameworks>net10.0-browser</TargetFrameworks>
 		<MicrosoftNetSdkBlazorWebAssemblyImported>true</MicrosoftNetSdkBlazorWebAssemblyImported>
 		<GenerateProgramFile>false</GenerateProgramFile>
 		<DebuggerSupport>true</DebuggerSupport>
@@ -58,7 +55,6 @@
 		<WasmEnableWebcil>true</WasmEnableWebcil>
 		<OutputType>Library</OutputType>
 		<WasmBuildNative>true</WasmBuildNative>
-		<HasRuntimeOutput>false</HasRuntimeOutput>
 		<!--<UsingMicrosoftNETSdkBlazorWebAssembly>true</UsingMicrosoftNETSdkBlazorWebAssembly>-->
 		<RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
 	</PropertyGroup>
