@@ -19,10 +19,11 @@ namespace RazorSharp.Services
         public SimpleLogger(IServiceProvider _services)
         {
             Service ??= _services;
-            Manager = Service.GetService<IRenderState>();
-            Query = Service.GetService<IQueryManager>();
-            Errors = Service.GetService<IHasErrors>();
-            LocalStore = Service.GetService<Lazy<ILocalStore?>>();
+            var scope = Service?.CreateScope();
+            Manager = scope?.ServiceProvider.GetService<IRenderState>();
+            Query = scope?.ServiceProvider.GetService<IQueryManager>();
+            Errors = scope?.ServiceProvider.GetService<IHasErrors>();
+            LocalStore = scope?.ServiceProvider.GetService<Lazy<ILocalStore?>>();
             ResolveCache();
         }
 

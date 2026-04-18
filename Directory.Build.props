@@ -116,22 +116,23 @@
 		<PropertyGroup>
 			<HostBinPath>..\Atrium\bin\$(Configuration)\net10.0-windows10.0.19041.0\win-x64\</HostBinPath>
 
+			<ClientBinPath>..\WebClient\</ClientBinPath>
 		</PropertyGroup>
 
 		<ItemGroup>
-			<PluginBinaries Include="$(TargetDir)**\*.wasm" Exclude="$(TargetDir)wwwroot\**\*.*" />
+			<PluginBinaries Include="$(TargetDir)wwwroot\_framework\$(MSBuildProjectName)" />
 
 			<PluginJsons Include="$(TargetDir)**\*.json" Exclude="$(TargetDir)wwwroot\**\*.*" />
 
 			<PluginRootAssets Include="$(TargetDir)wwwroot\**\*.*" />
 		</ItemGroup>
 
-		<Message Importance="high" Text="DEBUG: Copying Bullshit [$(TargetFramework)] in Project [$(MSBuildProjectName)]" />
+		<Message Importance="high" Text="DEBUG: Copying Bullshit [$(TargetFramework)] in Project [$(MSBuildProjectName)] to [$(ClientBinPath)] [$(PluginBinaries)]" />
 		
 		<Copy SourceFiles="@(PluginBinaries)"
-			  DestinationFolder="$(HostBinPath)wwwroot\_framework\%(RecursiveDir)"
-			  SkipUnchangedFiles="true" />
-
+			  DestinationFolder="$(ClientBinPath)wwwroot\_framework\%(RecursiveDir)"
+			  SkipUnchangedFiles="false" />
+		
 		<Copy SourceFiles="@(PluginJsons)"
 			  DestinationFolder="$(HostBinPath)wwwroot\_framework\%(RecursiveDir)"
 			  SkipUnchangedFiles="true" />

@@ -280,11 +280,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             //   all the additional service types and the value is its display options
             List<Type> AlreadyMapped = [];
             var checkExisting = currents.Concat(SingleUser.Keys).ToList(); // add this here so it can be checked below
+            var scope = Provider?.CreateScope();
             foreach (var ass in checkExisting)
             {
                 try
                 {
-                    if (Provider?.GetService(ass) is object serve)
+                    if (scope?.ServiceProvider.GetService(ass) is object serve)
                     {
                         if (ass.Extends(typeof(IHasService)))
                             collection.AddSingleton(ass, sp => serve);
@@ -528,6 +529,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private async Task TryFindingInterestingTypes(Assembly ass)
     {
+#if BROWSER
+        await Task.Delay(1000); // very lazy loading
+
+#endif
         if (Seen.Contains(ass))
             return;
 

@@ -49,5 +49,8 @@
   <Project Path="UserData/UserData.csproj" Id="9e8ce5dc-3fd1-4cf2-ad98-2b0cd942cbe8" />
   <Project Path="UserModel/UserModel.csproj" Id="7bb214e4-4026-4850-b6a4-1c3725e7fdb3" />
   <Project Path="UserModel/UserModel.Wasm.csproj" Id="7bb214e4-4026-4850-b6a4-1c3725e7fdb4" />
-  <Project Path="WebClient/WebClient.csproj" />
+  <Project Path="WebClient/WebClient.csproj">
+    <BuildDependency Project="Atrium/Atrium.Wasm.csproj" />
+    <BuildDependency Project="Hosting/Hosting.Wasm.csproj" />
+  </Project>
 </Solution>

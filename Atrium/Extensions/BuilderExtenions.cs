@@ -54,6 +54,12 @@ public static class BuilderExtensions
         BuildServices(Services, currents, key);
     }
 
+    public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key, List<Type>? alreadyMapped)
+    {
+        BuildServices(Services, AllServices, key, alreadyMapped, false);
+
+    }
+
 
     public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null, List<Type>? alreadyMapped = null, bool isSingleUser = false)
     {
@@ -76,37 +82,47 @@ public static class BuilderExtensions
 
         foreach (var service in AllServices)
         {
-            if (service.Extends(typeof(IHasNoService))) continue;
-
-            var interfaces = service.GetInterfaces();
-            Console.WriteLine("Concrete: " + service.Name + " - " + JsonSerializer.Serialize(interfaces.Select(i => i.Name)));
-            var currentType = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
-            var iHasService = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasService)));
-            var iHasSingleton = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleton)));
-            var iHasSingleUser = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
-
-            //var alreadyMapped = AlreadyMapped.Contains(service);
-            if (service == typeof(TrustedLoader))
+            try
             {
-                Console.WriteLine("here");
+
+
+                if (service.Extends(typeof(IHasNoService))) continue;
+
+                var interfaces = service.GetInterfaces();
+                Console.WriteLine("Concrete: " + service.Name + " - " + JsonSerializer.Serialize(interfaces.Select(i => i.Name)));
+                var currentType = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+                var iHasService = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasService)));
+                var iHasSingleton = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleton)));
+                var iHasSingleUser = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
+
+                //var alreadyMapped = AlreadyMapped.Contains(service);
+                if (service == typeof(TrustedLoader))
+                {
+                    Console.WriteLine("here");
+                }
+                if (iHasSingleton != null)
+                {
+                    Console.WriteLine("singleton?");
+                }
+                // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
+                // static Current {get;} are inherently singletons
+                // IHasService service containers are inherently singletons
+                if (currentType != null || iHasService != null || iHasSingleton != null
+                    || (iHasSingleUser != null && isSingleUser))
+                {
+                    Services.AddAutoSingleton(service, key, alreadyMapped);
+
+                }
+                else
+                {
+                    Services.AddAutoScoped(service, key, alreadyMapped);
+
+                }
+
             }
-            if(service.Name.Contains("Render"))
+            catch (Exception ex)
             {
-                Console.WriteLine("singleton?");
-            }
-            // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
-            // static Current {get;} are inherently singletons
-            // IHasService service containers are inherently singletons
-            if (currentType != null || iHasService != null || iHasSingleton != null
-                || (iHasSingleUser != null && isSingleUser))
-            {
-                Services.AddAutoSingleton(service, key, alreadyMapped);
-
-            }
-            else
-            {
-                Services.AddAutoScoped(service, key, alreadyMapped);
-
+                Console.WriteLine(ex);
             }
 
         }

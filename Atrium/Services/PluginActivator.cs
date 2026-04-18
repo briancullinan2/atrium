@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Atrium.Services;
 
-public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService //, IHasCurrent<PluginActivator> // Current is null
+public class PluginActivator : IComponentActivator, IServiceProviderIsService, IHasService, ISingleton //, IHasCurrent<PluginActivator> // Current is null
 {
     private readonly IServiceProvider Main;
     private readonly IServiceScope Scope;
@@ -83,9 +83,12 @@ IServiceProvider _provider) :
         // The "Wizard" logic: check plugin first, then fallback
         try
         {
-            return
+            var service =
                 PluginPopin?.GetService(serviceType)
                 ?? _provider.GetService(serviceType)!;
+            if (service == null && PluginPopin == null)
+                Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!Plugins is null!!!!!!!!!!!!!!");
+            return service;
 
         }
         catch(Exception ex)

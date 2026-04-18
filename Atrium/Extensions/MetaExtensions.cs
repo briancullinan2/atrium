@@ -1,4 +1,5 @@
 ﻿using Interfacing.Services;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
@@ -6,7 +7,7 @@ using System.Reflection.PortableExecutable;
 namespace Atrium.Extensions;
 
 
-internal static class MetadataReaderExtensions
+public static class MetadataReaderExtensions
 {
     public static AssemblyInfo? GetAssemblyInfo(string filePath)
     {
@@ -26,6 +27,29 @@ internal static class MetadataReaderExtensions
         }
     }
 
+    public static List<string> GetAssemblyReferences(byte[] assemblyBytes)
+    {
+        var references = new List<string>();
+        using var ms = new MemoryStream(assemblyBytes);
+        using var peReader = new PEReader(ms);
+        var metadataReader = peReader.GetMetadataReader();
+
+        // Iterate through the AssemblyReference table
+        foreach (var handle in metadataReader.AssemblyReferences)
+        {
+            var assemblyRef = metadataReader.GetAssemblyReference(handle);
+
+            // Get the name of the referenced assembly
+            string name = metadataReader.GetString(assemblyRef.Name);
+
+            // You can also get Version, Culture, and PublicKeyToken if needed
+            var version = assemblyRef.Version;
+
+            references.Add($"{name}, Version={version}");
+        }
+
+        return references;
+    }
 
     public static AssemblyInfo MetaAttributeNameValueMatch(this MetadataReader? mr)
     {
