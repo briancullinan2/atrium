@@ -4,10 +4,11 @@ using Microsoft.AspNetCore.Components.Web;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ConstrainedExecution;
+using System.Text.Json;
 
 namespace Atrium.Extensions;
 
-internal static class BuilderExtensions
+public static class BuilderExtensions
 {
     internal static List<Type>? CachedAllServices;
     internal static List<Type> AllServices
@@ -42,19 +43,21 @@ internal static class BuilderExtensions
 
     public static void BuildServices(this IServiceCollection Services, string? key = null)
     {
+        Console.WriteLine("wtf?");
         BuildServices(Services, AllServices, key);
     }
 
     public static void BuildServices(this IServiceCollection Services, IEnumerable<Assembly> asses, string? key = null)
     {
         var currents = asses.SelectMany(GetAssTypesSafely).GetServicable().ToList();
-
+        Console.WriteLine("wtf 2?");
         BuildServices(Services, currents, key);
     }
 
 
     public static void BuildServices(this IServiceCollection Services, List<Type> AllServices, string? key = null, List<Type>? alreadyMapped = null, bool isSingleUser = false)
     {
+        Console.WriteLine("wtf 3?");
         alreadyMapped ??= [];
         // TODO: need to map all IHasCurrent values to their functional Current static interface value
         //   do this before the service creator below reaches them
@@ -75,10 +78,12 @@ internal static class BuilderExtensions
         {
             if (service.Extends(typeof(IHasNoService))) continue;
 
-            var currentType = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
-            var iHasService = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(IHasService)));
-            var iHasSingleton = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleton)));
-            var iHasSingleUser = service.GetInterfaces().FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
+            var interfaces = service.GetInterfaces();
+            Console.WriteLine("Concrete: " + service.Name + " - " + JsonSerializer.Serialize(interfaces.Select(i => i.Name)));
+            var currentType = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
+            var iHasService = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasService)));
+            var iHasSingleton = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleton)));
+            var iHasSingleUser = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleUser)));
 
             //var alreadyMapped = AlreadyMapped.Contains(service);
             if (service == typeof(TrustedLoader))

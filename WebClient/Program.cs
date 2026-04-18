@@ -5,16 +5,22 @@
 using DataShared.Extensions;
 using Extensions.PrometheusTypes;
 using Interfacing.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.WebAssembly.Services;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using RazorSharp.Layout;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using static System.Net.WebRequestMethods;
+using TypeExtensions = Extensions.PrometheusTypes.TypeExtensions;
 
 internal class Program
 {
     private static WebAssemblyHost? _app;
+
+    public static ServiceProvider? Services { get; private set; }
 
     private static async Task Main(string[] args)
     {
@@ -35,11 +41,23 @@ internal class Program
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
         };
 
-        byte[] wasmBytes = await Http.GetByteArrayAsync($"/_framework/Atrium.wasm");
+        MethodInfo? serviceBuilder = null;
 
-        Console.WriteLine("Adding Atrium: " + wasmBytes);
+        try
+        {
+            byte[] wasmBytes = await Http.GetByteArrayAsync($"/_framework/Atrium.wasm");
+            Console.WriteLine("Adding Atrium: ");
+            var ass = Assembly.Load(wasmBytes);
+            var extensions = ass.GetType("Atrium.Extensions.BuilderExtensions") 
+                ?? throw new InvalidOperationException("Can't find BuilderExtensions, this probably won't work.");
+            serviceBuilder = extensions.GetMethods("BuildServices", null, [typeof(IServiceCollection), typeof(List<Type>), typeof(string), typeof(List<Type>), typeof(bool)]).FirstOrDefault()
+                ?? throw new InvalidOperationException("Can't find BuilderExtensions.BuildServices, this probably won't work.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
 
-        var assembly = Assembly.Load(wasmBytes);
 
         var domain = new List<Assembly>() { typeof(MainLayout).Assembly, typeof(IHasClass).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
@@ -60,7 +78,7 @@ internal class Program
 
         Console.WriteLine("Services: " + JsonSerializer.Serialize(serviceTypes.Select(t => t.Name).ToList()));
 
-        DatabaseBuilder.BuildServices(builder.Services, serviceTypes);
+        serviceBuilder?.Invoke(null, [builder.Services, serviceTypes, null, new List<Type>(), false]);
 
         builder.Services.RemoveAll<IQueryManager>();
         //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
@@ -68,16 +86,52 @@ internal class Program
 
         builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
 
-        builder.Services.AddSingleton(sp => new HttpClient
-        {
-            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
-        });
-
         builder.RootComponents.Add<WebClient.Components.Routes>("#app");
+
+        Console.WriteLine("Building app with " + builder.Services.Count + " services: " + JsonSerializer.Serialize(builder.Services.Select(t => t.ServiceType.Name).ToList()));
 
         _app = builder.Build();
         // FUCK DI
         //_ = _app.Services.GetRequiredService<SimpleLogger>();
+
+        // TODO: move this to trusted loader and just grab Atrium?
+        var assemblyLoader = _app.Services.GetRequiredService<LazyAssemblyLoader>();
+
+        ITrustProvider? trust = _app.Services.GetRequiredService<ITrustProvider>();
+
+        IComponentActivator? plugin = _app.Services.GetRequiredService<IComponentActivator>();
+
+        var collection = new ServiceCollection();
+
+        try
+        {
+            Console.WriteLine("Adding Hosting: ");
+
+            var assemblies = await assemblyLoader.LoadAssembliesAsync(["/_framework/Hosting.wasm"]);
+
+
+            var currents = assemblies
+                .SelectMany(TypeExtensions.GetAssTypesSafely)
+                .GetServicable()
+                .ToList();
+
+            trust.BuildServices(collection, currents);
+
+            // Finalize the provider
+            Services = collection.BuildServiceProvider();
+
+            if (plugin is IHasService p
+                && p.Services is ICompositeProvider service)
+                service.PluginPopin = Services;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+
+
+
+        
 
 
         await _app.RunAsync();

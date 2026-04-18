@@ -109,22 +109,22 @@ IServiceProvider _provider) :
     }
 }
 
-internal partial class CompositeServiceScope : IServiceScope
+internal partial class CompositeServiceScope(IServiceScope? primary, IServiceScope fallback, IServiceProviderIsService isService) : IServiceScope
 {
-    private readonly IServiceScope? _primaryScope;
-    private readonly IServiceScope _fallbackScope;
-
-    public CompositeServiceScope(IServiceScope? primary, IServiceScope fallback, IServiceProviderIsService isService)
+    private readonly IServiceScope? _primaryScope = primary;
+    private readonly IServiceScope _fallbackScope = fallback;
+    private readonly IServiceProviderIsService _isService = isService;
+    public IServiceProvider? StoredServiceProvider = null;
+    public IServiceProvider ServiceProvider
     {
-        _primaryScope = primary;
-        _fallbackScope = fallback;
-        // The ServiceProvider of the scope must ALSO be a composite!
-        var scopedComposite = new CompositeServiceProvider(isService, _fallbackScope.ServiceProvider);
-        ServiceProvider = scopedComposite;
-        scopedComposite.PluginPopin = primary?.ServiceProvider;
+        get
+        {
+            return StoredServiceProvider ??= new CompositeServiceProvider(_isService, _fallbackScope.ServiceProvider)
+            {
+                PluginPopin = _primaryScope?.ServiceProvider
+            };
+        }
     }
-
-    public IServiceProvider ServiceProvider { get; }
 
     public void Dispose()
     {

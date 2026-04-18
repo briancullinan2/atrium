@@ -18,6 +18,8 @@ public class DatabaseBuilder : IHasBuilder
 
     }
 
+
+#if false
     public static void BuildServices(IServiceCollection Services, List<Type> AllServices, string? key = null)
     {
 
@@ -62,6 +64,7 @@ public class DatabaseBuilder : IHasBuilder
         }
 
     }
+#endif
 
 
     public static void BuildServices(IServiceCollection Services, string? key = null)

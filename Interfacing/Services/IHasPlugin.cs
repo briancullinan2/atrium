@@ -16,6 +16,7 @@ public interface IHasService
 
 public interface ICompositeProvider : IServiceProvider, IHasService
 {
+    IServiceProvider? PluginPopin { get; set; }
 }
 
 

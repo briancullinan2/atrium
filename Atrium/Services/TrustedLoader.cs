@@ -433,11 +433,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     [RequiresAssemblyFiles]
     public TrustedLoader(
         IComponentActivator? plugin = null,
-        ICompositeProvider? provider = null,
-        IServiceProvider? service = null)
+        ICompositeProvider? provider = null)
     {
         Plugin = plugin;
-        Service = service;
         Provider = provider;
         //StoredServices ??= _service;
         var asses = AppDomain.CurrentDomain.GetAssemblies();
@@ -752,7 +750,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     //private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
     private readonly IComponentActivator? Plugin;
-    private readonly IServiceProvider? Service;
     private readonly ICompositeProvider? Provider;
 
     public event Action<PluginContract>? OnAssemblyLoaded;
