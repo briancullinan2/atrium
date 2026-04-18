@@ -82,8 +82,9 @@ public static partial class TypeExtensions
 
 
 
-    public static string ToName(this Assembly ass)
+    public static string ToName(this Assembly? ass)
     {
+        if (ass == null) return string.Empty;
         var file = Path.GetFileNameWithoutExtension(ass.Location);
         return string.IsNullOrWhiteSpace(file) ?
                     ass.FullName?.Split(',')[0]
@@ -333,12 +334,15 @@ public static partial class TypeExtensions
         {
             if (assembly == null) continue;
 
+
             if (!_registeredAssemblies.Contains(assembly))
                 _registeredAssemblies.Add(assembly);
 
             var name = assembly.FullName!;
 
             if (_loadedAssemblies.Contains(name)) continue;
+
+            Console.WriteLine("Assembling: " + name);
 
             lock (_loaderLock)
             {
@@ -424,17 +428,23 @@ public static partial class TypeExtensions
         {
             // Standardize path separators
             var normalizedPath = path.Replace("\\", "/");
-            var fileName = Path.GetFileNameWithoutExtension(normalizedPath);
+            var fileName = normalizedPath.Replace(".razor", "").Replace(".html", "").Replace(".cs", "");
 
             // 1. Direct Lookup (In case it's a fully qualified name string)
-            var directType = Type.GetType(path);
+            var directType = Type.GetType(path) ?? Type.GetType(path.Split(',')[0]);
             if (directType != null) return directType;
 
             // 2. Exact Name Match (Fuzzy step 1)
             // Filters the master list for anything matching the file name (Component.razor -> Component)
             var potentialMatches = _allKnownTypes
-                .Where(t => t.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                .Where(t => t.Name.Equals(fileName, StringComparison.InvariantCultureIgnoreCase)
+                    || t.FullName?.Equals(fileName, StringComparison.InvariantCultureIgnoreCase) == true
+                    || t.Name.Equals(path.Split(',')[0], StringComparison.InvariantCultureIgnoreCase)
+                    || t.FullName?.Equals(path.Split(',')[0], StringComparison.InvariantCultureIgnoreCase) == true
+                    || t.AssemblyQualifiedName?.Equals(path, StringComparison.InvariantCultureIgnoreCase) == true)
                 .ToList();
+
+            Console.WriteLine("Trying to match against: " + _allKnownTypes.Count + " : " + fileName + " : " + JsonSerializer.Serialize(potentialMatches.Select(t => t.Name)));
 
             if (potentialMatches.Count == 0) return null;
             if (potentialMatches.Count == 1) return potentialMatches[0];

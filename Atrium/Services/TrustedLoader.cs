@@ -261,7 +261,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 {
                     try
                     {
-                        Assembly.Load(ass.Key);
+                        AppDomain.CurrentDomain.Load(ass.Key);
                     }
                     catch (Exception)
                     {

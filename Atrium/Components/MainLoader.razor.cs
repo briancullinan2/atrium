@@ -24,7 +24,9 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Rendered.NotifyEmptied(this);
+        var Provider = Service.GetService<IServiceProvider>();
+        var Runtime = Provider?.GetService<IJSRuntime>();
+        Rendered.NotifyEmptied(Runtime, this);
 
         var isFirstRun = true; // Use your ILocalStore service here
         FirstTimeLoad = isFirstRun;
@@ -63,7 +65,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     {
         Trust.OnAssemblyLoaded -= NotifyAssembly;
         Nav.LocationChanged -= Nav_LocationChanged;
-        Rendered.NotifyEmptied(this);
+        Rendered.NotifyEmptied(null, this);
         GC.SuppressFinalize(this);
     }
 

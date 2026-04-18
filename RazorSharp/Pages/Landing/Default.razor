@@ -33,15 +33,15 @@ else
     [CascadingParameter(Name = "Loader")] 
     public IHasChildren? Loader { get; set; }
 
-    [JsonPropertyName(nameof(StoredRoot))]
-    public string? StoredRoot
-    {
-        get => DefaultRoot?.AssemblyQualifiedName;
-        set => SetRoot = Type.GetType(value);
-    }
+    public string? StoredRoot = null;
 
+    [JsonPropertyName(nameof(SetRoot))]
     [CascadingParameter(Name = nameof(DefaultRoot))]
-    public Type? SetRoot { get; set; } = null;
+    public Type? SetRoot
+    {
+        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
+        set => StoredRoot = value?.AssemblyQualifiedName;
+    }
 
     public Type? DefaultRoot { 
         get
@@ -102,6 +102,10 @@ else
     protected override async Task OnInitializedAsync()
     {
 
+        if (OperatingSystem.IsBrowser() && Rendered != null)
+            await Rendered.RestoreState(this);
+
+        global::System.Console.WriteLine("Default root: " + DefaultRoot);
         if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             await TryLoading();
 
@@ -112,9 +116,6 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        
-        if (OperatingSystem.IsBrowser() && Rendered != null)
-            await Rendered.RestoreState(this);
 
         await base.OnParametersSetAsync();
     }

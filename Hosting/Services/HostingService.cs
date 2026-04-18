@@ -30,14 +30,16 @@ internal class HostingService : IHostingService
             catch { /* Silent fail for corrupted JSON */ }
         }
 
-
         long appStart = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+#if !BROWSER
         long latestFile = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
             .Max(a => { try { return new FileInfo(a.Location).LastWriteTimeUtc; } catch { return DateTime.MinValue; } })
             .Ticks / 10000;
-
         _versionCache = [appStart, latestFile];
+#else
+        _versionCache = [appStart, appStart];
+#endif
 
     }
 
@@ -76,7 +78,7 @@ internal class HostingService : IHostingService
 
     public static async Task<bool?> CheckInstalled(string name)
     {
-    #if WINDOWS
+#if WINDOWS
         try
         {
             return ServiceController.GetServices().Any(s => s.ServiceName.Contains(name, StringComparison.OrdinalIgnoreCase));
@@ -84,7 +86,7 @@ internal class HostingService : IHostingService
         catch {  }
 
         return WindowsServiceWorkerService.DoesServiceExistNative(name);
-    #else
+#else
     return false;
 #endif
     }

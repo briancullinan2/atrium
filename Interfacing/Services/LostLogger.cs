@@ -23,7 +23,7 @@ public class LostLogger : ILog
             Console.WriteLine("Loading assembly: " + flashCard);
             if (flashCard != null)
             {
-                var logger = Assembly.Load(flashCard.FullName).GetType("RazorSharp.Services.SimpleLogger");
+                var logger = AppDomain.CurrentDomain.Load(flashCard.FullName).GetType("RazorSharp.Services.SimpleLogger");
                 Console.WriteLine("Using logger: " + logger);
                 WrappedLogger = logger?.GetMethod(nameof(GetLogger), [typeof(string)]);
                 Console.WriteLine("Using logger method: " + WrappedLogger);

@@ -168,9 +168,9 @@ internal class WindowManager
             if (Math.Abs(startWidth - targetWidth) < 1) return;
 
             // 3. Lowering FPS to 30 often improves Window Manager stability during resizes
-            int durationMs = 300;
+            int durationMs = 100;
             int fps = 50;
-            int totalFrames = (int)((durationMs / 1000.0) * fps);
+            int totalFrames = 1; // (int)((durationMs / 1000.0) * fps);
 
             for (int i = 1; i <= totalFrames; i++)
             {

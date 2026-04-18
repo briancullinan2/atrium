@@ -41,8 +41,8 @@ public interface IRenderState : IHasModule, ISingleUser
     object Runtime { get; }
     event Action OnRendered;
     event Action OnEmptied;
-    void NotifyEmptied(IHasChildren container);
-    void NotifyRendered(object runtime, IHasChildren container);
+    void NotifyEmptied(object? runtime, IHasChildren container);
+    void NotifyRendered(object? runtime, IHasChildren container);
 
 
 
@@ -98,8 +98,7 @@ public interface IHasAnimation
 
 public interface IPageState
 {
-    string ConnectionId { get; }
-    Task<Dictionary<string, string?>?> RestoreState();
+    Task<Dictionary<string, string?>?> RestoreState(object? runtime);
     Task<int> GetTimezoneOffset();
     int OffsetInMinutes { get; }
 }
@@ -153,6 +152,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
     private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal IHasChildren? _container;
+    private Dictionary<string, string?>? previousState;
 
     public async ValueTask EnsureInitialized()
     {
@@ -163,9 +163,9 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
-    public void NotifyRendered(object runtime, IHasChildren container)
+    public void NotifyRendered(object? runtime, IHasChildren container)
     {
-        Runtime = runtime;
+        _runtime = runtime;
         _container = container; // i think AI solved 1 bug here
         // Fulfill the promise for everyone currently waiting
         _renderTcs.TrySetResult(true);
@@ -173,19 +173,18 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
         _onRendered?.Invoke();
     }
 
-    public void NotifyEmptied(IHasChildren container)
+    public void NotifyEmptied(object? runtime, IHasChildren container)
     {
+        if(_runtime == null || _container == container)
+            _runtime = runtime; // if !null then its OnInitialize
+
         if (_container != container) return;
 
-        _runtime = null;
-        if (!_renderTcs.Task.IsCompleted)
+        if (_runtime == null && !_renderTcs.Task.IsCompleted)
         {
             _renderTcs.TrySetResult(false);
+            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
-        //if (_renderTcs.Task.IsCompleted)
-        //{
-        _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        //}
         OnEmptied?.Invoke();
     }
 
@@ -209,7 +208,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
     public void ClearRedirect()
     {
-        var Page = Provider.GetRequiredService<IPageState>();
+        var Page = Provider.GetRequiredService<IFormFactor>();
         if (InFlight.ContainsKey(Page.ConnectionId))
             InFlight.Remove(Page.ConnectionId, out _);
     }
@@ -218,7 +217,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
     // prevent redirect loops
     public async Task<string?> FilterRedirect(string loginUri)
     {
-        var Page = Provider.GetRequiredService<IPageState>();
+        var Page = Provider.GetRequiredService<IFormFactor>();
 
         InFlight.TryGetValue(Page.ConnectionId, out var existing);
 
@@ -263,7 +262,15 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
         }
         //await EnsureInitialized(); // allow early because reading out of window with IJSRuntime directly
         var Page = Provider.GetRequiredService<IPageState>();
-        var state = await Page.RestoreState();
+        if (_runtime == null)
+            Console.WriteLine("Error: State ran with no runtime. State won't work.");
+        else
+            Console.WriteLine("Note: State ran with runtime. State should work. " + _runtime.GetType().AssemblyQualifiedName);
+
+        var state = await Page.RestoreState(_runtime);
+        state = (state ?? []).Concat(previousState ?? []).DistinctBy(kvp => kvp.Key).ToDictionary();
+        previousState = state;
+        Console.WriteLine("State: " + JsonSerializer.Serialize(state));
         if (state?.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState) == true)
         {
             Console.WriteLine("Restoring: " + component.GetType().Name);

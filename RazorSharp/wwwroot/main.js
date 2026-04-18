@@ -153,7 +153,7 @@ function restoreState() {
 }
 
 var startParameters = null;
-window.startBlazor = function (type = "server") {
+window.startBlazor = function (type) {
 
 
 
@@ -187,13 +187,19 @@ window.startBlazor = function (type = "server") {
     if (startParameters == null)
         startParameters = allParameters[0]
 
+    var mode = startParameters?.type || (type == "webassembly" ? "webassembly" : "server")
+    if (window.location.hash == "#mode=webassembly")
+        mode = 'webassembly'
+    if (window.location.hash == "#mode=server")
+        mode = 'server'
+
     var geminiSaidICouldnt = {
            
 
         //server: startParameters,
             
         auto: {
-            type: "webassembly", //TODO: startParameters?.type || (type == "webassembly" ? "webassembly" : "server"),
+            type: mode,
             prerenderId: startParameters?.predrenderId,
             key: {
                 locationHash: startParameters?.key?.locationHash,
@@ -214,7 +220,7 @@ window.startBlazor = function (type = "server") {
 
 
     window.location.hash = "mode=" + geminiSaidICouldnt.auto.type
-    window.myCustomState = () => restoreState
+    window.myCustomState = () => restoreState()
 
     var blazorConfig = {
 
@@ -267,6 +273,7 @@ window.startBlazor = function (type = "server") {
 
     try {
         Blazor.start(blazorConfig);
+        console.log('Done booting')
     } catch (e) {
         console.error(e)
         if (typeof (type) != "string") {

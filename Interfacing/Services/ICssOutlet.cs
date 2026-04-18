@@ -199,11 +199,13 @@ public partial class ClassyService : IHasClass, IDisposable
 
 
         var Ending = Registry.ToList();
-        if (HasChanged && Ending.Except(Starting).Any())
+        if (HasChanged && Ending.Except(Starting).Any()) // adds
         {
             Container ??= loader ?? Service.GetService<IHasChildren>();
             if (Container?.HasChanged() is Task task) await task;
+            Console.WriteLine("Registry updated: " + JsonSerializer.Serialize(Registry));
         }
+
     }
 
     public void Dispose()

@@ -11,7 +11,6 @@
 @inject NavigationManager Nav
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
-@inject IJSRuntime JS
 @inject IHasClass Css
 
 @foreach (var cssUrl in Css.Registry)
@@ -31,8 +30,13 @@
                 AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
                 @{
-                    CurrentControl = routeData.PageType.AssemblyQualifiedName;
-                    SaveState();
+                    var controlType = routeData.PageType.AssemblyQualifiedName;
+                    if(CurrentControl != controlType)
+                    {
+                        CurrentControl = controlType;
+                        _ = SaveState();
+                        InvokeAsync(StateHasChanged);
+                    }
                 }
                 <CascadingValue Value="@routeData">
                     <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
@@ -54,42 +58,73 @@
     List<Assembly> EntryAsses {
         get
         {
-            List<Assembly> entryAssemblies = [.. (Assembly.GetEntryAssembly()
-    ?? Assembly.GetExecutingAssembly())
-    .GetAssemblies().GetMine()
-    .Except([typeof(WebClient.Components.App).Assembly])
-                    ];
-            Console.WriteLine("Entry: " + JsonSerializer.Serialize(entryAssemblies.Select(ass => ass.ToName())));
+            List<Assembly> entryAssemblies = [
+                ..Trust.LoadedAssemblies.Values.GetMine()
+    .Except(StoredAppAssembly != null ? [StoredAppAssembly] : [])
+            ];
+            Console.WriteLine("Entry: " + AppAssemblyName + " : " + JsonSerializer.Serialize(entryAssemblies.Select(ass => ass.ToName())));
             return entryAssemblies;
         }
     }
     protected string Ready = "loading";
 
-    static System.Reflection.Assembly? StoredAppAssembly = typeof(WebClient.Components.App).Assembly;
+    [JsonPropertyName(nameof(AppAssemblyName))]
+    public static string? AppAssemblyName { get; set; } = null;
+    public Assembly StoredAppAssembly {
+        get => AppAssemblyName != null && Trust.LoadedAssemblies.TryGetValue(AppAssemblyName, out var ass)
+            ? ass : DefaultLayout?.Assembly 
+            ?? typeof(RazorSharp.Pages.Landing.Default).Assembly;
+        set => AppAssemblyName = value.ToName();
+    }
+
     public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
     {
-        StoredAppAssembly = assembly;
-        if (StoredAppAssembly != null)
+        if (assembly != null)
         {
+            StoredAppAssembly = assembly;
             Ready = "layout"; // Explicitly move to layout
             //await InvokeAsync(StateHasChanged);
-            _ = ProbablyUpdateTitle();
-            _ = Css?.ListenUp(null, DefaultLayout, this);
+            await ProbablyUpdateTitle();
+            await SaveState();
         }
     }
     IRenderState? Rendered = null;
+    IServiceProvider? Provider = null;
+    IJSRuntime? Runtime = null;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         Rendered = Service.GetService<IRenderState>();
+        Provider = Service.GetService<IServiceProvider>();
+        Runtime = Provider?.GetService<IJSRuntime>();
         Nav.LocationChanged += Nav_LocationChanged;
+        if (Runtime == null)
+            Console.WriteLine("Error: Starting with no runtime. State won't work.");
+        else
+            Console.WriteLine("Note: Starting with runtime. State should work.");
+        Rendered?.NotifyEmptied(Runtime, this);
 
     }
 
 
     protected override async Task OnInitializedAsync()
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            if (Rendered?.RestoreState(this) is Task task) await task;
+        }
+
+        Console.WriteLine("Current route: " + CurrentControl);
+
+        if (CurrentControl != null) {
+            var controlType = CurrentControl.ToType();
+            if (controlType != null) {
+                //StoredAppAssembly = controlType.Assembly;
+                await Css.ListenUp(controlType, DefaultLayout, this);
+            }
+        }
+
         await base.OnInitializedAsync();
     }
 
@@ -101,26 +136,24 @@
     }
 
 
-    protected void SaveState()
+    protected async Task SaveState()
     {
         if (CurrentControl != null)
-            Css.ListenUp(Type.GetType(CurrentControl), DefaultLayout, this);
+        {
+            await Css.ListenUp(CurrentControl.ToType(), DefaultLayout, this);
 
+            Console.WriteLine("Current route 2: " + CurrentControl + " - " + CurrentControl.ToType());
+        }
         if (!OperatingSystem.IsBrowser())
         {
             if (Rendered?.SetState(this) == true)
-                InvokeAsync(StateHasChanged);
+                await InvokeAsync(StateHasChanged);
         }        
     }
 
 
     protected override async Task OnParametersSetAsync()
     {
-        if (OperatingSystem.IsBrowser())
-        {
-            if (Rendered?.RestoreState(this) is Task task) await task;
-        }
-
         await base.OnParametersSetAsync();
     }
 
@@ -131,7 +164,7 @@
         if (firstRender)
         {
             Trust.OnSettledAsync += () => ProbablyUpdateTitle();
-            Rendered?.NotifyRendered(JS, this);
+            Rendered?.NotifyRendered(Runtime, this);
         }
 
     }
@@ -167,7 +200,7 @@
     {
         IsClosing = true;
         //Trust.OnAssemblyLoaded -= NotifyAssembly;
-        Rendered?.NotifyEmptied(this);
+        Rendered?.NotifyEmptied(null, this);
         Nav.LocationChanged -= Nav_LocationChanged;
         GC.SuppressFinalize(this);
     }

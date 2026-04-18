@@ -119,11 +119,11 @@ internal class Program
         {
             var assemblies = await RecursiveLoad(Http, "Hosting.wasm");
             var types = assemblies
-                .Where(Extensions.PrometheusTypes.TypeExtensions.IsMine)
+                .Where(TypeExtensions.IsMine)
                 .Concat(mine) // needed for service builder to recognize interfaces
                 .SelectMany(TypeExtensions.GetAssTypesSafely);
 
-            Console.WriteLine("where the fuck are my types? " + JsonSerializer.Serialize(types.Select(t => t.Name)));
+            //Console.WriteLine("where the fuck are my types? " + JsonSerializer.Serialize(types.Select(t => t.Name)));
             var currents = types.GetServicable();
 
             var checkExisting = currents.Concat(trust.SingleUser.Keys).ToList(); // add this here so it can be checked below
@@ -151,7 +151,7 @@ internal class Program
             }
             Console.WriteLine("Already mapped: " + JsonSerializer.Serialize(AlreadyMapped.Select(t => t.Name)));
 
-            serviceBuilder?.Invoke(null, [collection, currents, null, AlreadyMapped, false]);
+            serviceBuilder?.Invoke(null, [collection, currents, null, AlreadyMapped, true /* single user */]);
 
             Console.WriteLine("Building app with " + collection.Count + " more services: " + JsonSerializer.Serialize(collection.Select(t => t.ServiceType.Name).ToList()));
 
@@ -192,9 +192,9 @@ internal class Program
 
             byte[] wasmBytes = await Http.GetByteArrayAsync($"/_framework/" + assemblyName + (assemblyName.Contains(".wasm") ? "" : ".wasm"));
 
-            var ass = Assembly.Load(wasmBytes);
+            var ass = AppDomain.CurrentDomain.Load(wasmBytes);
 
-            Console.WriteLine("Added: " + assemblyName + " - " + ass.GetName().GetPublicKeyToken() + " : " + ass.ImageRuntimeVersion);
+            Console.WriteLine("Added: " + assemblyName);
 
 
             result.Add(ass);

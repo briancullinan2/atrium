@@ -6,7 +6,7 @@ using System.Runtime.InteropServices.JavaScript;
 
 namespace Hosting.Platforms.Browser;
 
-public partial class QuakeEngine
+public static partial class QuakeEngine
 {
 #if BROWSER
     // Directly import the JS function that initializes the WASM

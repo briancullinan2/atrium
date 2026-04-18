@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.JSInterop;
+using System.Runtime.InteropServices.JavaScript;
 
 namespace Hosting.Services;
 
@@ -93,7 +94,14 @@ public abstract class BaseFormFactor(
         return OffsetInMinutes;
     }
 
-    public virtual async Task<Dictionary<string, string?>?> RestoreState()
+
+    // TODO: ?
+    //#if BROWSER
+    //    [JSExport]
+    //#else
+    //    [JSInvokable]
+    //#endif
+    public virtual async Task<Dictionary<string, string?>?> RestoreState(object? runtime = null)
     {
         //var Manager = Service.GetService<PageManager>();
         //if (Manager == null) return null;
@@ -104,7 +112,8 @@ public abstract class BaseFormFactor(
         try
         {
             // TODO: fix this for desktop?
-            var JS = Service.GetService<IJSRuntime>();
+            var provider = Service.GetService<IServiceProvider>();
+            var JS = (runtime as IJSRuntime) ?? provider?.GetService<IJSRuntime>();
             if (JS == null) return null;
             var config = await JS.InvokeAsync<Dictionary<string, string?>?>("window.myCustomState");
             return config;

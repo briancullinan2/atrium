@@ -89,7 +89,7 @@ public static class BuilderExtensions
                 if (service.Extends(typeof(IHasNoService))) continue;
 
                 var interfaces = service.GetInterfaces();
-                Console.WriteLine("Concrete: " + service.Name + " - " + JsonSerializer.Serialize(interfaces.Select(i => i.Name)));
+                //Console.WriteLine("Concrete: " + service.Name + " - " + JsonSerializer.Serialize(interfaces.Select(i => i.Name)));
                 var currentType = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasCurrent<>)));
                 var iHasService = interfaces.FirstOrDefault(i => i.Extends(typeof(IHasService)));
                 var iHasSingleton = interfaces.FirstOrDefault(i => i.Extends(typeof(ISingleton)));

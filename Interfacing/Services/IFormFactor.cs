@@ -9,6 +9,7 @@ public interface IFormFactor
     bool IsBrowser { get; }
     bool IsWebContext { get; }
     bool IsMauiContext { get; }
+    string ConnectionId { get; }
     Type? RequestControl { get; }
     List <IFile> Files { get; }
     //Task SetState();
