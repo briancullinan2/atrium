@@ -143,7 +143,14 @@ async function shouldStartInWebAssembly(url) {
 }
 
 
-
+function restoreState() {
+    return Array.from(document.getElementsByTagName('input')).reduce((acc, input) => {
+        let key = input.id || input.name || 'unnamed'
+        if (key.substring(0, 6) == 'state_')
+            acc[key] = input.value
+        return acc
+    }, {})
+}
 
 var startParameters = null;
 window.startBlazor = function (type = "server") {
@@ -207,6 +214,7 @@ window.startBlazor = function (type = "server") {
 
 
     window.location.hash = "mode=" + geminiSaidICouldnt.auto.type
+    window.myCustomState = () => restoreState
 
     var blazorConfig = {
 
@@ -220,7 +228,6 @@ window.startBlazor = function (type = "server") {
         geminiSaidICouldnt: geminiSaidICouldnt.auto.start != null ? {
             server: [...Blazor.parse(document, { geminiSaidICouldnt })][0]
         } : {},
-
 
 
         circuit: {

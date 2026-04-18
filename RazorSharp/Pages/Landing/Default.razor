@@ -101,8 +101,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        if (OperatingSystem.IsBrowser() && Rendered != null)
-            await Rendered.RestoreState(this);
 
         if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             await TryLoading();
@@ -112,12 +110,22 @@ else
         await base.OnInitializedAsync();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        
+        if (OperatingSystem.IsBrowser() && Rendered != null)
+            await Rendered.RestoreState(this);
+
+        await base.OnParametersSetAsync();
+    }
+
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         if (!OperatingSystem.IsBrowser())
             if (Rendered?.SetState(this) == true)
                 InvokeAsync(StateHasChanged);
+
 
         if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             _ = TryLoading();

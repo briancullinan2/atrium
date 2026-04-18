@@ -95,13 +95,25 @@ public abstract class BaseFormFactor(
 
     public virtual async Task<Dictionary<string, string?>?> RestoreState()
     {
-        var Manager = Service.GetService<PageManager>();
-        if (Manager == null) return null;
-        await Manager.EnsureInitialized();
-        var Module = Manager.Module as IJSObjectReference;
-        if (Module == null) return null;
-        var state = await Module.InvokeAsync<Dictionary<string, string?>>("restoreState");
-        return state;
+        //var Manager = Service.GetService<PageManager>();
+        //if (Manager == null) return null;
+        //await Manager.EnsureInitialized();
+        //var Module = Manager.Module as IJSObjectReference;
+        //if (Module == null) return null;
+        //var state = await Module.InvokeAsync<Dictionary<string, string?>>("restoreState");
+        try
+        {
+            // TODO: fix this for desktop?
+            var JS = Service.GetService<IJSRuntime>();
+            if (JS == null) return null;
+            var config = await JS.InvokeAsync<Dictionary<string, string?>?>("window.myCustomState");
+            return config;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return null;
     }
 
 

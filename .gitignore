@@ -2,3 +2,4 @@
 **/obj
 **/bin
 *.user
+WebClient/wwwroot/_framework/*.Wasm

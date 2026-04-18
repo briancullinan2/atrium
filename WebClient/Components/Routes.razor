@@ -91,10 +91,6 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        if (OperatingSystem.IsBrowser())
-        {
-            if(Rendered?.RestoreState(this) is Task task) await task;
-        }
     }
 
     protected override void OnParametersSet()
@@ -120,6 +116,11 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            if (Rendered?.RestoreState(this) is Task task) await task;
+        }
+
         await base.OnParametersSetAsync();
     }
 

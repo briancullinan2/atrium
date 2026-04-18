@@ -16,6 +16,7 @@ using Microsoft.Maui.Storage;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -38,8 +39,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         add
         {
+            if (value == null) return;
+            // incase anything forgets this bool setOnce = false pattern
+            if (InternalOnSettled?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettled += value;
-            if (IsRebuilding) return;
+            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
             _ = RebuildServiceContainer();
         }
         remove
@@ -49,13 +53,17 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
     // TODO: use a ConcurrentDictionary and actually await the calls?
+    // fires at least once for everybody even if services aren't rebuilt
     private event Func<Task>? InternalOnSettledAsync;
     public event Func<Task>? OnSettledAsync
     {
         add
         {
+            if (value == null) return;
+            // incase anything forgets this bool setOnce = false pattern
+            if (InternalOnSettledAsync?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettledAsync += value;
-            if (IsRebuilding) return;
+            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
             _ = RebuildServiceContainer();
         }
         remove
@@ -128,7 +136,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private readonly ConcurrentDictionary<string, string> Tried = [];
 
-    internal static Dictionary<Type, Type?> SingleUser { get; } = new()
+    public Dictionary<Type, Type?> SingleUser { get; } = new()
     {
         {typeof(HttpClient), null },
         {typeof(NavigationManager), null  },
@@ -315,13 +323,15 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 composite.PluginPopin = Services;
             }
 
-            var old = InternalOnSettled;
-            var oldAsync = InternalOnSettledAsync;
-            InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
-            InternalOnSettledAsync = null;
-            old?.Invoke();
-            _ = oldAsync?.Invoke();
-
+            lock (DiscoveredStatus)
+            {
+                var old = InternalOnSettled;
+                var oldAsync = InternalOnSettledAsync;
+                InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
+                InternalOnSettledAsync = null;
+                old?.Invoke();
+                _ = oldAsync?.Invoke();
+            }
 
         }
         catch (Exception ex)
@@ -439,35 +449,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         Plugin = plugin;
         Provider = provider;
         //StoredServices ??= _service;
-        var asses = AppDomain.CurrentDomain.GetAssemblies();
-        var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
-        var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
-        if (collisions.Count > 0)
-        {
-            Console.WriteLine(JsonSerializer.Serialize(assNames));
-        }
-        lock (StoredAssemblies)
-        {
-            foreach (var ass in asses)
-            {
-                StoredAssemblies.TryAdd(ass.ToName(), ass);
-            }
-        }
-        var parallel = Environment.ProcessorCount - 4;
 
-        var options = new ParallelOptions
-        {
-            // Leave at least one or two cores for the UI thread
-            MaxDegreeOfParallelism = Math.Max(1, parallel)
-        };
-
-        // this is why i put the Seen gate on this and the file scan
-        _ = Parallel.ForEachAsync(asses, options, async (ass, ct) =>
-        {
-            await TryFindingInterestingTypes(ass);
-        });
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
-        IsBootstrapping = true;
         Task.Run(RunFullScan);
 
 
@@ -478,7 +461,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         */
 
     }
-    public bool IsBootstrapping { get; set; } = true;
+    public bool IsBootstrapping { get; set; } = false;
     public ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; } = new();
 
     //public static List<Type> AllPlugins { get; } = [..Assembly.GetExecutingAssembly().GetTypes()
@@ -509,12 +492,14 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 await TryFindingInterestingTypes(assembly);
                 await RebuildServiceContainer();
 
-                OnAssemblyLoaded?.Invoke(new PluginContract(
+                var contract = new PluginContract(
                     Title: title,
                     InstallPath: location, // Will be empty string in Single-File
                     IsTrusted: true,
                     Metadata: assembly.GetAssemblyInfo()
-                ));
+                );
+                DiscoveredStatus.TryAdd(location, contract);
+                OnAssemblyLoaded?.Invoke(contract);
             });
         }
     }
@@ -586,7 +571,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     protected async Task CheckPluginFiles()
     {
-
         // TODO: refresh button
         PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
 
@@ -727,19 +711,71 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     [RequiresAssemblyFiles()]
     private async Task RunFullScan()
     {
-        if (IsLoading) return;
+        if (IsBootstrapping) return;
 
-        IsLoading = true;
-        DiscoveredStatus.Clear();
+        IsBootstrapping = true;
 
         await Task.Delay(500);
 
-        // Offload the heavy file IO to a background thread to keep UI snappy
-        _ = CheckPluginFiles();
+        DiscoveredStatus.Clear();
 
-        IsLoading = false;
+        await ReloadAppDomain();
+
+        // Offload the heavy file IO to a background thread to keep UI snappy
+        await CheckPluginFiles();
+
+        IsBootstrapping = false;
+
+        await RebuildServiceContainer();
     }
 
+
+
+
+    private async Task ReloadAppDomain()
+    {
+
+        var asses = AppDomain.CurrentDomain.GetAssemblies();
+        var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
+        var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
+        if (collisions.Count > 0)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(assNames));
+        }
+
+        foreach (var ass in asses)
+        {
+            StoredAssemblies.TryAdd(ass.ToName(), ass);
+        }
+
+        var parallel = Environment.ProcessorCount - 4;
+
+        var options = new ParallelOptions
+        {
+            // Leave at least one or two cores for the UI thread
+            MaxDegreeOfParallelism = Math.Max(1, parallel)
+        };
+
+        // this is why i put the Seen gate on this and the file scan
+        await Parallel.ForEachAsync(asses, options, async (ass, ct) =>
+        {
+            string title = ass.ToName();
+
+            if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+
+            await TryFindingInterestingTypes(ass);
+            var contract = new PluginContract(
+                Title: title,
+                InstallPath: ass.Location, // Will be empty string in Single-File
+                IsTrusted: true,
+                Metadata: ass.GetAssemblyInfo()
+            );
+            DiscoveredStatus.TryAdd(ass.Location ?? title, contract);
+            OnAssemblyLoaded?.Invoke(contract);
+
+        });
+
+    }
 
     private static string[]? PluginFiles { get; set; } = null;
     public string? Error { get; private set; }

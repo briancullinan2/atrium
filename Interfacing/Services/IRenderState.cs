@@ -261,7 +261,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
         {
             throw new InvalidOperationException("This probably wont work from server.");
         }
-        await EnsureInitialized();
+        //await EnsureInitialized(); // allow early because reading out of window with IJSRuntime directly
         var Page = Provider.GetRequiredService<IPageState>();
         var state = await Page.RestoreState();
         if (state?.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState) == true)

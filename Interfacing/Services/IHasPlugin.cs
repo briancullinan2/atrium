@@ -89,6 +89,7 @@ public interface ITrustProvider
     Dictionary<string, List<string>> DependedAssemblies { get; }
     ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
     void BuildServices(IServiceCollection collection, List<Type>? types);
+    Dictionary<Type, Type?> SingleUser { get; }
 }
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.Untrusted);

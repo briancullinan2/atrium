@@ -115,13 +115,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         set
         {
             StoredDefaultRoot = value;
+            Ready = "layout";
+            _ = ProbablyUpdateTitle();
+            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
             if (StoredAppAssembly != null)
             {
-                Ready = "layout";
                 InvokeAsync(StateHasChanged);
-                _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
         }
     }
 
@@ -132,13 +132,13 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         set
         {
             StoredDefaultLayout = value;
+            Ready = "layout";
+            _ = ProbablyUpdateTitle();
+            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
             if (StoredAppAssembly != null)
             {
-                Ready = "layout";
                 InvokeAsync(StateHasChanged);
-                _ = ProbablyUpdateTitle();
             }
-            _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
         }
     }
 
@@ -146,12 +146,12 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
     public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
     {
         StoredAppAssembly = assembly;
+        Ready = "layout"; // Explicitly move to layout
+        _ = ProbablyUpdateTitle();
+        _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
         if (StoredAppAssembly != null)
         {
-            Ready = "layout"; // Explicitly move to layout
             await InvokeAsync(StateHasChanged);
-            _ = ProbablyUpdateTitle();
-            _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
         }
     }
 

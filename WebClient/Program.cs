@@ -126,9 +126,10 @@ internal class Program
             Console.WriteLine("where the fuck are my types? " + JsonSerializer.Serialize(types.Select(t => t.Name)));
             var currents = types.GetServicable();
 
+            var checkExisting = currents.Concat(trust.SingleUser.Keys).ToList(); // add this here so it can be checked below
             List<Type> AlreadyMapped = [];
             var scope = _app.Services.CreateScope();
-            foreach (var ass in currents)
+            foreach (var ass in checkExisting)
             {
                 try
                 {

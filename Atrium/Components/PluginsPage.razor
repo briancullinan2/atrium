@@ -3,6 +3,7 @@
 @using Interfacing.Services
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.DependencyInjection
+@using System.Text.Json.Serialization
 @implements IHasForms
 @implements IHasCover
 @inject ITrustProvider Trust
@@ -147,12 +148,19 @@
         get => StoredSelectedRoot;
         set 
         {
+            if (value == null) 
+            {
+                StoredSelectedRoot = null;
+                return;
+            }
             var type = Type.GetType(value);
             StoredSelectedRoot = type?.AssemblyQualifiedName;
         }
     }
 
+
     private string? StoredSelectedLayout = null;
+    [JsonPropertyName(nameof(SelectedLayout))]
     private string? SelectedLayout
     {
         get => StoredSelectedLayout;
@@ -160,6 +168,7 @@
     }
 
     private string? StoredSelectedPermission  = null;
+    [JsonPropertyName(nameof(SelectedPermission))]
     private string? SelectedPermission
     {
         get => StoredSelectedPermission;
@@ -167,6 +176,7 @@
     }
 
     private string? StoredSelectedNotFound = null;
+    [JsonPropertyName(nameof(SelectedNotFound))]
     private string? SelectedNotFound
     {
         get => StoredSelectedNotFound;
@@ -174,6 +184,7 @@
     }
 
     private string? StoredSelectedAuth = null;
+    [JsonPropertyName(nameof(SelectedAuth))]
     private string? SelectedAuth
     {
         get => StoredSelectedAuth;
@@ -181,21 +192,29 @@
     }
 
     private string? StoredSelectedAssembly = null;
-    private async Task SetSelectedAssembly(string? value)
+    [JsonPropertyName(nameof(SelectedAssembly))]
+    private string? SelectedAssembly
     {
-        if (Path.GetFileNameWithoutExtension(value) is string path
-        && Trust.LoadedAssemblies.TryGetValue(path, out var ass))
+        get
         {
-            StoredSelectedAssembly = ass.FullName?.Split(',')[0];
-            try
+            return StoredSelectedAssembly;
+        }
+        set
+        {
+            var title = Path.GetFileNameWithoutExtension(value);
+            if (title is string path && Trust.LoadedAssemblies.TryGetValue(path, out var ass))
             {
-                var Scope = Service.CreateScope();
-                var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-                await Main.SetAppAssembly(ass);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
+                StoredSelectedAssembly = ass.FullName?.Split(',')[0];
+                try
+                {
+                    var Scope = Service.CreateScope();
+                    var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
+                    _ = Main.SetAppAssembly(ass);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
         }
     }
@@ -206,9 +225,9 @@
     }
 
 
-    public void SetRoutable(ChangeEventArgs item)
+    public async Task SetRoutable(ChangeEventArgs item)
     {
-        _ = SetSelectedAssembly(item.Value as string);
+        SelectedAssembly = item.Value as string;
     }
 
     private bool GetActive(PluginContract e)
@@ -219,9 +238,9 @@
         if (Trust.LoadedAssemblies.ContainsKey(ass))
             return true;
 #if !BROWSER
-        // TODO: use ISettings
-        if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
-            return true;
+    // TODO: use ISettings
+    if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
+    return true;
 #endif
         return false;
     }
@@ -275,7 +294,7 @@
         var isFirstRun = true; // Use your ILocalStore service here
         _showSplash = isFirstRun;
         Trust.OnAssemblyLoaded += NotifyAssembly;
-        Trust.OnSettledAsync += TryLoading;
+        Trust.OnSettledAsync += NotifySettled; // fires at least once for everybody even if services aren't rebuilt
     }
 
     private void HandleOnComplete()
@@ -289,19 +308,49 @@
         base.OnParametersSet();
         await TryLoading();
 
+        // thing is, this page loads before the Hosting plugin, so there is no render state when the app starts 
+        //   because there are no browsers to serve other than out own
+        var Rendered = Service.GetService<IRenderState>();
+        if (!OperatingSystem.IsBrowser())
+            if (Rendered?.SetState(this) == true)
+                await InvokeAsync(StateHasChanged);
+
+        if (OperatingSystem.IsBrowser() && Rendered != null)
+            await Rendered.RestoreState(this);
+
+        // this might be a plan on webassembly, but it won't work for first load/discovery on desktop
+        try
+        {
+            Trust.LoadedAssemblies.TryGetValue(SelectedAssembly, out var ass);
+            var Scope = Service.CreateScope();
+            var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
+            await Main.SetAppAssembly(ass);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 
     private string? Scanning = null;
     private DateTime _lastUiUpdate = DateTime.MinValue;
     // static because i want it to be the same across browser and desktop
     //   multitenant would be a container inside this state
-    List<PluginContract> MyList = [];
+    [JsonPropertyName(nameof(MyList))]
+    public List<PluginContract> MyList = [];
+
+    protected async Task NotifySettled()
+    {
+        // This block only runs if no more NotifyAssembly calls happened for 1 second
+        Scanning = "";
+        await TryLoading();
+    }
 
     protected void NotifyAssembly(PluginContract file)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
-        if ((DateTime.Now - _lastUiUpdate).TotalMilliseconds > 300)
+        if ((DateTime.Now - _lastUiUpdate).TotalMilliseconds > 200)
         {
             Scanning = file.InstallPath;
             _lastUiUpdate = DateTime.Now;
@@ -315,6 +364,7 @@
     bool running = false;
     public async Task TryLoading()
     {
+        // allows calling multiple times
         if (running) return;
         running = true;
 
@@ -322,12 +372,7 @@
             Trust.OnSettledAsync += TryLoading; // subscribe to be a sub for next time
         setOnce = true;
 
-        await Task.Delay(600); // wait for UX to refresh and drop something in
-
         MyList = Trust.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
-
-        // This block only runs if no more NotifyAssembly calls happened for 1 second
-        Scanning = "";
 
         var loader = (TrustedLoader)Trust;
         //if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
@@ -356,7 +401,7 @@
         {
             var Scope = Service.CreateScope();
             var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-#if WINDOWS
+#if !BROWSER
             (Main as MainLoader)?.DefaultRoot = Type.GetType(SelectedRoot);
 #endif
         }
@@ -367,7 +412,7 @@
 
         if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
         {
-            await SetSelectedAssembly(likelyRootAss?.FullName?.Split(',')[0]);
+            SelectedAssembly = likelyRootAss?.FullName?.Split(',')[0];
         }
 
         await InvokeAsync(StateHasChanged);
