@@ -22,7 +22,6 @@ namespace Hosting.Services;
 public abstract class BaseFormFactor(
     ICompositeProvider _service,
     NavigationManager? nav = null)
-    : IFormFactor, ITitleService, IPageState, ISettings
 {
     public virtual ICompositeProvider Service { get; } = _service;
     public virtual NavigationManager? Navigation { get; } = nav;
@@ -44,10 +43,12 @@ public abstract class BaseFormFactor(
         get;
     }
 
+    /*
     public virtual async Task SetState()
     {
 
     }
+    */
 
     public static string? AppName
     {
@@ -124,7 +125,8 @@ public abstract class BaseFormFactor(
 
 #if BROWSER
 
-public partial class FormFactor : BaseFormFactor, IDisposable
+public partial class FormFactor : BaseFormFactor
+    , IFormFactor, ITitleService, IPageState, ISettings, IDisposable
 {
     public override bool IsBrowser => true;
     public override bool IsWebContext => true;
@@ -220,6 +222,7 @@ public partial class FormFactor(
     , Lazy<WebApplication?>? App = null
 
 ) : BaseFormFactor(service, nav)
+    , IFormFactor, ITitleService, IPageState, ISettings
 {
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Current?.HttpContext != null;
@@ -309,7 +312,7 @@ public partial class FormFactor(
         [..Current?.HttpContext?.Request.Form.Files.Select(f => new FormFile(f) as IFile) ?? [],
         new BodyBag(Current?.HttpContext?.Request) ] : [];
 
-
+    /*
     public override async Task SetState()
     {
         var context = Service.GetRequiredService<IHttpContextAccessor>();
@@ -320,6 +323,7 @@ public partial class FormFactor(
         if (store != null)
             _ = manager.PersistStateAsync(store, renderer);
     }
+    */
 
 
     public override async Task SetSessionCookie(string name, string value, int days)

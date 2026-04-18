@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -47,7 +48,7 @@ public interface IRenderState : IHasModule, ISingleUser
 
     // page data handling instead of built in MS uninspectable crap
     Task<Dictionary<string, string?>?> RestoreState(object component);
-    Task SetState(object? state);
+    bool SetState(object? state);
     event Action<object?>? OnStateChanged;
     Dictionary<string, string?> State { get; set; }
 
@@ -235,7 +236,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
     }
 
 
-    public virtual async Task SetState(object? state)
+    public virtual bool SetState(object? state)
     {
         if (OperatingSystem.IsBrowser())
         {
@@ -243,10 +244,13 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
         }
         if (state == null)
         {
-            return;
+            return false;
         }
-        State[state.GetType().Name.ToSafe()] = state.ToSerialized();
+        State.TryGetValue(state.GetType().Name.ToSafe(), out string? before);
+        var after = state.ToSerialized();
+        State[state.GetType().Name.ToSafe()] = after;
         OnStateChanged?.Invoke(state);
+        return before != after;
         //var Form = Provider.GetRequiredService<IFormFactor>();
         //await Form.SetState();
     }

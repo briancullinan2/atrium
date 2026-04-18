@@ -3,7 +3,12 @@
 @page "/app.html"
 @page "/{*notFound}"
 @inject IHasClass Classy
+@inject IRenderState? Rendered
 
+@foreach (var item in Rendered?.State ?? [])
+{
+    <input type="hidden" name="state_@item.Key" value="@item.Value" />
+}
 
 @if (DefaultRoot != null)
 {
@@ -16,7 +21,6 @@ else if (!String.IsNullOrWhiteSpace(notFound))
 }
 else
 {
-        
     <div class="flash-card animate-in">
         TODO: Find a home page.
     </div>
@@ -26,9 +30,19 @@ else
 @code
 {
     // TODO: find the best home page based on the plugins loaded.
-    [CascadingParameter(Name = "Loader")] public IHasChildren? Loader { get; set; }
+    [CascadingParameter(Name = "Loader")] 
+    public IHasChildren? Loader { get; set; }
+
+    [JsonPropertyName(nameof(StoredRoot))]
+    public string? StoredRoot
+    {
+        get => DefaultRoot?.AssemblyQualifiedName;
+        set => SetRoot = Type.GetType(value);
+    }
+
     [CascadingParameter(Name = nameof(DefaultRoot))]
     public Type? SetRoot { get; set; } = null;
+
     public Type? DefaultRoot { 
         get
         {
@@ -54,15 +68,24 @@ else
         set
         {
             SetRoot = value;
+            if(!OperatingSystem.IsBrowser())
+                if (Rendered?.SetState(this) == true)
+                    InvokeAsync(StateHasChanged);
         }
     }
     [Parameter] public string? notFound { get; set; }
-    [CascadingParameter(Name = nameof(FirstTimeLoad))] public bool FirstTimeLoad { get; set; }
+
+    [CascadingParameter(Name = nameof(FirstTimeLoad))] 
+    [JsonPropertyName(nameof(FirstTimeLoad))]
+    public bool FirstTimeLoad { get; set; }
 
     protected override void OnInitialized()
     {
-        // TODO: find a page animation
+        // TODO: find a page animation       
+
     }
+
+
 
 
     protected async Task TryLoading()
@@ -78,15 +101,24 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        if(AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
+        if (OperatingSystem.IsBrowser() && Rendered != null)
+            await Rendered.RestoreState(this);
+
+        if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             await TryLoading();
+
         await Classy.ListenUp(DefaultRoot, typeof(MainLayout), Loader);
+
         await base.OnInitializedAsync();
     }
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        if (!OperatingSystem.IsBrowser())
+            if (Rendered?.SetState(this) == true)
+                InvokeAsync(StateHasChanged);
+
         if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             _ = TryLoading();
         else if (DefaultRoot == null && AllRoutes.Count > 0)

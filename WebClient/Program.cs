@@ -73,7 +73,7 @@ internal class Program
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
         });
 
-        builder.RootComponents.Add<WebClient.Components.App>("#app");
+        builder.RootComponents.Add<WebClient.Components.Routes>("#app");
 
         _app = builder.Build();
         // FUCK DI

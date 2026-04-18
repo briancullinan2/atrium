@@ -11,7 +11,7 @@ public interface IFormFactor
     bool IsMauiContext { get; }
     Type? RequestControl { get; }
     List <IFile> Files { get; }
-    Task SetState();
+    //Task SetState();
 
     ValueTask Clipboard(string text);
 

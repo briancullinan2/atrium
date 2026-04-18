@@ -20,7 +20,7 @@ public abstract partial class BaseCircuitProvider(
     ICompositeProvider service,
     HttpClient? http = null,
     HubConnection? connection = null
-) : ICircuitProvider
+)
 {
 
     public static string HubAddress { get; } = "/api/hub";
@@ -80,7 +80,7 @@ public abstract partial class BaseCircuitProvider(
 
 #if BROWSER
 // TODO: make webassembly the page serving server
-public partial class CircuitProvider : BaseCircuitProvider, IAsyncDisposable
+public partial class CircuitProvider : BaseCircuitProvider, ICircuitProvider, IAsyncDisposable
 {
 
     public override bool IsHubConnected => _connection?.State == HubConnectionState.Connected;
@@ -199,7 +199,7 @@ public partial class CircuitProvider(
     HttpClient? http = null,
     HubConnection? connection = null,
     Lazy<Application?>? app = null
-) : BaseCircuitProvider(service, http, connection), IAsyncDisposable
+) : BaseCircuitProvider(service, http, connection), ICircuitProvider, IAsyncDisposable
 {
 
     public override bool IsSignalCircuit => true;

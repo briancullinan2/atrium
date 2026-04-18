@@ -9,11 +9,6 @@
 
 <NavMenu />
     
-@*TODO: using the layout injection found below that way it only happens if there is a state set 
-@foreach (var item in RenderState.State)
-{
-    <input type="hidden" name="state_@item.Key" value="@item.Value" />
-}*@
 
 @if (ShowHeader != false)
 {

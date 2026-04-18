@@ -5,10 +5,11 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
 @using System.Text.Json
+@using System.Text.Json.Serialization
 @implements IDisposable
 @implements IHasChildren
 @inject NavigationManager Nav
-@inject ICompositeProvider Service
+@inject IServiceProvider Service
 @inject ITrustProvider Trust
 @inject IJSRuntime JS
 @inject IHasClass Css
@@ -17,6 +18,11 @@
 {
     <link rel="stylesheet" href="@cssUrl" />
 }
+@*TODO: using the layout injection found below that way it only happens if there is a state set *@
+@foreach (var item in Rendered?.State ?? [])
+{
+    <input type="hidden" name="state_@item.Key" value="@item.Value" />
+}
 
 <div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
     <CascadingValue Name="Loader" Value="@this">
@@ -24,6 +30,10 @@
                 AppAssembly="@StoredAppAssembly"
                 AdditionalAssemblies="@EntryAsses">
             <Found Context="routeData">
+                @{
+                    CurrentControl = routeData.PageType.AssemblyQualifiedName;
+                    SaveState();
+                }
                 <CascadingValue Value="@routeData">
                     <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
                     <FocusOnNavigate RouteData="routeData" Selector="h1" />
@@ -45,9 +55,9 @@
         get
         {
             List<Assembly> entryAssemblies = [.. (Assembly.GetEntryAssembly()
-                ?? Assembly.GetExecutingAssembly())
-                .GetAssemblies().GetMine()
-                .Except([typeof(WebClient.Components.App).Assembly])
+    ?? Assembly.GetExecutingAssembly())
+    .GetAssemblies().GetMine()
+    .Except([typeof(WebClient.Components.App).Assembly])
                     ];
             Console.WriteLine("Entry: " + JsonSerializer.Serialize(entryAssemblies.Select(ass => ass.ToName())));
             return entryAssemblies;
@@ -67,15 +77,25 @@
             _ = Css?.ListenUp(null, DefaultLayout, this);
         }
     }
+    IRenderState? Rendered = null;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
+        Rendered = Service.GetService<IRenderState>();
         Nav.LocationChanged += Nav_LocationChanged;
 
     }
 
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        if (OperatingSystem.IsBrowser())
+        {
+            if(Rendered?.RestoreState(this) is Task task) await task;
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -84,17 +104,35 @@
         _ = ProbablyUpdateTitle();
     }
 
-    IRenderState? Rendered = null;
+
+    protected void SaveState()
+    {
+        if (CurrentControl != null)
+            Css.ListenUp(Type.GetType(CurrentControl), DefaultLayout, this);
+
+        if (!OperatingSystem.IsBrowser())
+        {
+            if (Rendered?.SetState(this) == true)
+                InvokeAsync(StateHasChanged);
+        }        
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+    }
+
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             Trust.OnSettledAsync += () => ProbablyUpdateTitle();
-            var Scope = Service.CreateScope();
-            Rendered = Scope.ServiceProvider.GetService<IRenderState>();
             Rendered?.NotifyRendered(JS, this);
         }
+
     }
 
 
@@ -109,15 +147,18 @@
 
         if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Css.SetPageClasses(["Home"], controlType);
         else Css.SetPageClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
-            .Split('/')
-            .Select(seg => seg.ToSafe())
+    .Split('/')
+    .Select(seg => seg.ToSafe())
         ], controlType);
 
         _ = ProbablyUpdateTitle();
     }
 
     public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
-    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
+    public async Task HasChanged()
+    {
+        //await InvokeAsync(StateHasChanged);
+    }
 
     bool IsClosing = false;
 
@@ -145,9 +186,14 @@
         {
             var Title = Service.GetService<ITitleService>();
             Title?.UpdateTitle(attr.Name);
-            await InvokeAsync(StateHasChanged);
+            //await InvokeAsync(StateHasChanged);
         }
     }
+
+
+    [JsonPropertyName(nameof(CurrentControl))]
+    public string? CurrentControl { get; set; }
+
     private async Task HandleNavigation(NavigationContext args)
     {
         if (IsClosing) return;
@@ -155,11 +201,15 @@
         {
             var controlType = TypeExtensions.IdentifyNavigation(args.Path).ComponentType;
 
+            CurrentControl = controlType.AssemblyQualifiedName;
+
             if (controlType == typeof(RazorSharp.Pages.Landing.Default)) return;
 
             await Css.ListenUp(controlType, DefaultLayout, this);
-
+            
             _ = ProbablyUpdateTitle(controlType);
+
+
         } catch {}
     }
 }
