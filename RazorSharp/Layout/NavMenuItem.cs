@@ -1,19 +1,6 @@
 ﻿
 namespace RazorSharp.Layout;
 
-public interface INavMenuItem
-{
-    string Title { get; set; }
-    string Href { get; }
-    string Icon { get; set; }
-    string? RoleRequired { get; set; }
-    bool IsBeta { get; set; }
-    bool IsCollapsed { get; set; }
-    List<INavMenuItem> Children { get; set; }
-    DefaultPermissions? Permission { get; set; }
-    string? RequiredPermission { get; set; }
-}
-
 
 public class NavMenuItem<TComponent> : INavMenuItem
     where TComponent : class, new()

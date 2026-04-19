@@ -4,22 +4,25 @@ namespace RazorSharp.Services;
 
 
 
-public class MenuService(ICompositeProvider Service) : IMenuService
+public class MenuService(ICompositeProvider Service, ITrustProvider Trust) : IMenuService
 {
 
     // TODO: make this a static interface on IHasMenu to make it ask for types up front
-    public static List<Type> Menus { get; } = [.. new List<Type> { typeof(Layout.NavMenu) } // make our menu first
-        .Concat((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-        .GetAssemblies().GetMine().ToMenus())
+    public List<Type> Menus
+    {
+        get => [.. new List<Type> { typeof(Layout.NavMenu) } // make our menu first
+        .Concat(Trust.LoadedAssemblies.Values
+        //.GetAssemblies()
+        .GetMine().ToMenus())
         .Distinct()];
+    }
 
 
     static Dictionary<Type, DisplayAttribute>? CachedPotentialRoutes { get; set; } = null;
-    public static Dictionary<Type, DisplayAttribute> PotentialRoutes
+    public Dictionary<Type, DisplayAttribute> PotentialRoutes
     {
         get => CachedPotentialRoutes
-            ??= (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-            .GetAssemblies()
+            ??= Trust.LoadedAssemblies.Values
             .GetMine()
             .SelectMany(TypeExtensions.GetAssTypesSafely)
             .Where(t => t.GetCustomAttributes() is IEnumerable<Attribute> attrs
@@ -30,17 +33,21 @@ public class MenuService(ICompositeProvider Service) : IMenuService
     }
 
 
-    public static List<KeyValuePair<string, string>> Categories { get; } = [.. PotentialRoutes
+    public List<KeyValuePair<string, string>> Categories { get => [
+        .. PotentialRoutes
         .Where(r => !string.IsNullOrWhiteSpace(r.Value.Prompt)) // get icons from Prompt field
-        .Select(r => KeyValuePair.Create<string, string>(r.Value.GroupName ?? string.Empty, r.Value.Prompt ?? string.Empty))];
+        .Select(r => KeyValuePair.Create<string, string>(r.Value.GroupName ?? string.Empty, r.Value.Prompt ?? string.Empty))]; }
 
 
-    public static List<INavMenuItem> GetMenuItems(string menu) => [.. PotentialRoutes
+    public List<INavMenuItem> GetMenuItems(string menu) => [
+        .. PotentialRoutes
         .Where(r => string.Equals(r.Value.GroupName, menu, StringComparison.InvariantCultureIgnoreCase))
         .Select(r => {
             var pageTyped = typeof(NavMenuItem<>).MakeGenericType(r.Key);
-            var navItem = Activator.CreateInstance(pageTyped) as INavMenuItem ?? throw new InvalidOperationException("Failed to create menu entry: " + r.Key);
-            navItem.Title = r.Value.ShortName ?? r.Value.Name ?? throw new InvalidOperationException("Menu title must be set through [Display(Name, ShortName)]: " + r.Key);
+            var navItem = Activator.CreateInstance(pageTyped) as INavMenuItem 
+                ?? throw new InvalidOperationException("Failed to create menu entry: " + r.Key);
+            navItem.Title = r.Value.ShortName ?? r.Value.Name 
+                ?? throw new InvalidOperationException("Menu title must be set through [Display(Name, ShortName)]: " + r.Key);
             navItem.Icon = r.Value.Prompt ?? string.Empty;
             if (r.Value.Name != null)
                 navItem.Children = GetMenuItems(r.Value.Name);
@@ -50,9 +57,9 @@ public class MenuService(ICompositeProvider Service) : IMenuService
         })
         .OfType<INavMenuItem>()];
 
-    public List<Type> EnabledMenus { get; private set; } = GetEnabledMenus(Service);
+    public List<Type> EnabledMenus { get => GetEnabledMenus(Service); }
 
-    public static List<Type> GetEnabledMenus(ICompositeProvider service) => [.. Menus.Where(m =>
+    public List<Type> GetEnabledMenus(ICompositeProvider service) => [.. Menus.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasMenu.ShowMenu)).First().GetValue(null) as Delegate;
         if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
@@ -92,8 +99,8 @@ public class MenuService(ICompositeProvider Service) : IMenuService
 
 
     // TODO: make this a static interface on IHasContext to make it ask for types up front
-    public static List<Type> Contexts { get; } = [.. (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
-        .GetAssemblies().ToContexts().Distinct()];
+    static List<Type>? StoredContexts = null;
+    public List<Type> Contexts { get => StoredContexts ??= Trust?.LoadedAssemblies.Values.GetMine().ToContexts().Distinct().ToList() ?? []; }
 
 
     private List<Type>? CachedEnabledContexts = null;
@@ -101,7 +108,7 @@ public class MenuService(ICompositeProvider Service) : IMenuService
 
 
 
-    public static List<Type> GetEnabledContexts(ICompositeProvider service) => [.. Contexts.Where(m =>
+    public  List<Type> GetEnabledContexts(ICompositeProvider service) => [.. Contexts.Where(m =>
     {
         var myDelegate = m.GetProperties(nameof(IHasContext.ShowContext)).First().GetValue(null) as Delegate;
         if(myDelegate == null || (Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)

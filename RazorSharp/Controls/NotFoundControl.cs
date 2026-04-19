@@ -7,8 +7,10 @@ namespace RazorSharp.Controls;
 [AllowAnonymous]
 public class NotFoundControl : ComponentBase
 {
+    [Inject] public IPageState? Page { get; set; } = null;
     protected override void BuildRenderTree(RenderTreeBuilder __builder)
     {
+        Page?.NotFound();
         // <div class="flash-card">
         __builder.OpenElement(0, "div");
         __builder.AddAttribute(1, "class", "flash-card");

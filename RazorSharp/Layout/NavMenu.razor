@@ -212,7 +212,7 @@
 
     private List<INavMenuItem> GetVisibleItems()
     {
-        MenuStructure ??= MenuService.GetMenuItems("Main");
+        MenuStructure ??= Menu.GetMenuItems("Main");
         // Filter out items the user shouldn't see
         // For example: hide Premium link if they already paid
         return [..MenuStructure.Where(i => string.IsNullOrEmpty(i.RoleRequired) || !UserHasPaid)];

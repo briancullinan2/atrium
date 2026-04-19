@@ -161,7 +161,7 @@ public static partial class TypeExtensions
     }
 
 
-    public static List<Type> GetServicable(this IEnumerable<Assembly> asses)
+    private static List<Type> GetServicable(this IEnumerable<Assembly> asses)
     {
         return asses
             .Where(IsMine)
@@ -170,7 +170,7 @@ public static partial class TypeExtensions
     }
 
 
-    public static List<Type> GetServicable(this IEnumerable<Type> asses)
+    private static List<Type> GetServicable(this IEnumerable<Type> asses)
     {
 
         List<Type> plugins = [..asses
@@ -324,7 +324,7 @@ public static partial class TypeExtensions
     }
 
 
-    public static void RegisterAssembly(params Assembly?[]? assemblies)
+    public static void RegisterAssembly(params IEnumerable<Assembly?>? assemblies)
     {
         assemblies = [.. (assemblies ?? []).Concat(AppDomain.CurrentDomain.GetAssemblies())];
 
@@ -394,22 +394,30 @@ public static partial class TypeExtensions
     private static readonly string? company;
     private static readonly string? publisher;
 
-    public static List<Assembly> GetAssemblies(this Assembly assembly, params Assembly?[]? calling)
+    public static List<Assembly> GetAssemblies(this Assembly assembly, params IEnumerable<Assembly>? calling)
     {
         RegisterAssembly([assembly, .. calling ?? []]);
         return [.. _registeredAssemblies];
     }
 
-    public static List<Assembly> GetAssemblies(this AppDomain domain, params Assembly?[]? calling)
+    public static List<Assembly> GetAssemblies(this AppDomain domain, params IEnumerable<Assembly>? calling)
     {
         RegisterAssembly([.. domain.GetAssemblies(), .. calling ?? []]);
         return [.. _registeredAssemblies];
     }
 
 
-    public static List<Assembly> GetAssemblies(params Assembly?[]? calling)
+    public static List<Assembly> GetAssemblies(params IEnumerable<Assembly>? calling)
     {
         RegisterAssembly(calling);
+        return [.. _registeredAssemblies];
+    }
+
+
+
+    public static List<Assembly> GetAssemblies(this IEnumerable<Assembly>? calling, params IEnumerable<Assembly>? calling2)
+    {
+        RegisterAssembly([..calling ?? [], ..calling2 ?? []]);
         return [.. _registeredAssemblies];
     }
 

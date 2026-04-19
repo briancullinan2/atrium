@@ -17,6 +17,8 @@ public interface IMenuService
     List<Type> EnabledMenus { get; }
     List<Type> EnabledContexts { get; }
     List<Type> EnabledLayouts { get; }
+
+    List<INavMenuItem> GetMenuItems(string menu);
 }
 
 public interface IHasMenu
@@ -67,3 +69,17 @@ public interface IHasTransition
 {
 
 }
+
+public interface INavMenuItem
+{
+    string Title { get; set; }
+    string Href { get; }
+    string Icon { get; set; }
+    string? RoleRequired { get; set; }
+    bool IsBeta { get; set; }
+    bool IsCollapsed { get; set; }
+    List<INavMenuItem> Children { get; set; }
+    DefaultPermissions? Permission { get; set; }
+    string? RequiredPermission { get; set; }
+}
+

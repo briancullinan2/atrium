@@ -463,8 +463,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     public bool IsBootstrapping { get; set; } = false;
     public ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; } = new();
 
-    //public static List<Type> AllPlugins { get; } = [..Assembly.GetExecutingAssembly().GetTypes()
-    //    .Where(t => typeof(IHasPlugins).IsAssignableFrom(t))];
+    public static List<Type> AllPlugins { get; } = [];
 
     [RequiresAssemblyFiles("Uses Location for plugin tracking")]
     private void CurrentDomainOnAssemblyLoad(object? sender, AssemblyLoadEventArgs args)
@@ -534,6 +533,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 if (typeof(LayoutComponentBase).IsAssignableFrom(type)
                     && type != typeof(LayoutComponentBase))
                     Layouts.Add(type);
+
+                if (typeof(IHasPlugins).IsAssignableFrom(type))
+                    AllPlugins.Add(type);
+
                 if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
                     && type != typeof(PluginsPage)) // we already know about ourselves
                 {
@@ -662,30 +665,29 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
 
-
-    /*
-
     public static List<Type> EnabledPlugins { get; private set; } = [];
 
     [RequiresAssemblyFiles()]
     public async Task CheckStatus()
     {
-        EnabledPlugins ??= await GetEnabledPlugins(Services);
+        if (Provider == null) return;
+        EnabledPlugins ??= await GetEnabledPlugins(Provider);
         foreach (var plugin in EnabledPlugins)
         {
+            var title = plugin.Assembly.ToName();
             var newContract = new PluginContract(
-                    Title: plugin.Name,
+                    Title: plugin.AssemblyQualifiedName ?? plugin.FullName ?? plugin.Name,
                     InstallPath: plugin.Assembly.Location,
                     IsTrusted: false, //metadata?.IsTrusted ?? false,
                     Metadata: plugin.GetAssemblyInfo()
                 );
-            DiscoveredStatus.TryAdd(plugin.Assembly.Location, newContract);
+            DiscoveredStatus.TryAdd(title, newContract);
             OnAssemblyLoaded?.Invoke(newContract);
         }
     }
 
     // TODO: use this on service startup? way to bootstrap another container?
-    public static async Task<List<Type>> GetEnabledPlugins(IServiceProvider service)
+    public static async Task<List<Type>> GetEnabledPlugins(ICompositeProvider service)
     {
         List<Type> enabledPlugins = [];
         foreach (var plugin in AllPlugins)
@@ -706,8 +708,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         }
         return enabledPlugins;
     }
-
-    */
 
 
     public static bool IsLoading { get; private set; } = false;

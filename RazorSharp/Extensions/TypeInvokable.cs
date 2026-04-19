@@ -5,80 +5,8 @@ using Microsoft.AspNetCore.Http;
 
 namespace RazorSharp.Extensions;
 
-public static partial class InvokableExtensions
+public static partial class ComponentExtensions
 {
-
-    public static object? InvokeService(this Delegate? myDelegate, ICompositeProvider service, params object?[]? args)
-    {
-        if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
-        return myDelegate.Method.InvokeService(service, myDelegate.Target, args);
-    }
-
-    public static object? InvokeService(this MethodInfo? myDelegate, ICompositeProvider service, object? thisObject = null, params object?[]? args)
-    {
-        if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
-        var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
-        var parameters = myDelegate.GetParameters();
-        var parameterValues = new object?[parameters.Length];
-        var Scope = service.CreateScope();
-        var rendered = Scope.ServiceProvider.GetRequiredService<IRenderState>();
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var realType = Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType;
-            // TODO: add more special service injection handlers
-            if (parameters[i].ParameterType == typeof(Type) && string.Equals(parameters[i].Name, "routeControl"))
-            {
-                var isSet = false;
-                try
-                {
-                    var nav = Scope.ServiceProvider.GetRequiredService<NavigationManager>();
-                    parameterValues[i] = TypeExtensions.IdentifyNavigation(nav.Uri).ComponentType;
-                    isSet = true;
-                }
-                catch { }
-
-                if (!isSet)
-                {
-                    try
-                    {
-                        var nav = Scope.ServiceProvider.GetRequiredService<IFormFactor>();
-                        parameterValues[i] = nav.RequestControl;
-                    }
-                    catch { }
-                }
-            }
-            else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
-            {
-                parameterValues[i] = null;
-            }
-            // TODO: find a way to match parameter names to a dictionary passed in or query params?
-            else if (args?.ElementAtOrDefault(i) is object obj
-                && obj.GetType().Extends(realType))
-            {
-                parameterValues[i] = Convert.ChangeType(obj, realType);
-            }
-            else if (args?.FirstOrDefault(a => a?.GetType().Extends(realType) == true) is object obj2)
-            {
-                parameterValues[i] = Convert.ChangeType(obj2, realType);
-            }
-            else if (!string.IsNullOrEmpty(parameters[i].Name)
-                && rendered.IsReady // don't touch NavigationManager until its ready or it will complain
-                && formFactor?.QueryParameters?.TryGetValue(parameters[i].Name!, out var param) == true)
-            {
-                parameterValues[i] = Convert.ChangeType(param, realType);
-            }
-            else
-            {
-                parameterValues[i] = Scope.ServiceProvider.GetService(realType);
-            }
-        }
-
-        if (thisObject != null && !myDelegate.IsStatic)
-        {
-            return myDelegate.Invoke(thisObject, parameterValues);
-        }
-        return myDelegate.Invoke(null, thisObject != null ? [thisObject, .. parameterValues] : parameterValues);
-    }
 
 #pragma warning disable BL0006 // Do not use RenderTree types
     public static Renderer? Renderer(this IComponent component)

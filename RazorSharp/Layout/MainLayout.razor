@@ -89,7 +89,7 @@
         IsClosing = true;
     }
 
-    public object[] GetChildComponents() => [.. InvokableExtensions.GetChildComponents(this).Cast<object>()];
+    public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
 
     public async Task HasChanged() => await InvokeAsync(StateHasChanged);
 

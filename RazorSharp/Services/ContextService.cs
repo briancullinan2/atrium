@@ -1,14 +1,25 @@
 ﻿
 
 
+using System.ComponentModel.DataAnnotations;
+
 namespace RazorSharp.Services;
 
 // TODO: see ContextMenu.razor for a .razor example, works exactly the same
 internal class ContextService : IHasContext
 {
+    public static Func<Type?, bool> NotHomePageOrLogin = routeControl 
+        => !routeControl.Extends(typeof(INotHasWrapper))
+            && routeControl?.GetType().FullName?.Contains("login", StringComparison.InvariantCultureIgnoreCase) != true;
+
+    public static Func<Type?, bool> IsAdminPage = routeControl 
+        => routeControl?.GetType().Namespace?.Contains("admin", StringComparison.InvariantCultureIgnoreCase) == true
+        || routeControl?.Route()?.Contains("admin") == true
+        || routeControl?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault()?.GroupName?.Contains("admin", StringComparison.InvariantCultureIgnoreCase) == true;
+
     public static Delegate ShowContext
     {
-        get => (Type routeControl) => true; //Nav.Uri.Contains("/admin", StringComparison.InvariantCultureIgnoreCase);
+        get => (Type? routeControl) => NotHomePageOrLogin(routeControl) || IsAdminPage(routeControl);
     }
 
 
@@ -16,12 +27,11 @@ internal class ContextService : IHasContext
     public static Delegate ContextInsert => (Func<Type?, RenderFragment>)(
         (routeControl) => (__builder) =>
         {
-            if (!routeControl.Extends(typeof(INotHasWrapper))
-                && routeControl?.GetType().FullName?.Contains("login", StringComparison.InvariantCultureIgnoreCase)  == true)
+            if (NotHomePageOrLogin(routeControl))
             {
                 RenderExtensions.ToNavLink<Pages.Landing.Search>()(__builder);
             }
-            if (routeControl?.GetType().Namespace?.Contains("admin", StringComparison.InvariantCultureIgnoreCase) == true)
+            if (IsAdminPage(routeControl))
             {
                 RenderExtensions.ToNavLink<Pages.Admin.Status>()(__builder);
             }

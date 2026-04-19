@@ -41,6 +41,16 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/19/2026
+
+I think I need to expand on blazor as a service, I realized on mobile I can generate an serve our own pages with an http responder, but I'm also realizing
+blazor supports this template system I wrote in PHP years ago where it's sort half callback like drupal, and half API like vue.js and blazor. 
+I'm doing some small context with menus -> plugin, but i'll need a main layout insert for the theme detection. home and auth inserts, context menus need
+work as they aren't showing up. but i used this system to build a console menu, "drawbox" i called it, it would draw a text frame any size in the console 
+but it would center your input text inside it, so i used it to make "sections" for all my forms which were also well defined like drupal forms. I
+sort of hated that specificity, I like the reflection metadata thing present in this better than anything I've written in PHP. This is model -> html
+like ruby on rails.
+
 
 #### 4/16/2026
 
@@ -63,7 +73,7 @@ my cells as a service to C#, just thinking out loud for fun, maybe too exotic.
 Finally think I have the renderstate responding to a valid full page load. Not a missed page or accidentally getting into the service container
 which the whole SignalR circuit thing is wacky btw. I'll explain. In the demo project you have a desktop project, a web server project, and a web assembly client project.
 If you add a service according to the demo and documentation, you have to update all 3 of these projects and add code that fits all 3 of these
-platforms seperately, possibly even different compile targets. I'm killing this in the seed. I hate frameworks that make me repeat myself.
+platforms separately, possibly even different compile targets. I'm killing this in the seed. I hate frameworks that make me repeat myself.
 This is all part of my evil plan to turn every client into an injectable service container. I even imagined rewriting Microsoft blazor Hub as a mock
 just so I could do all this in a background service worker. I'm sure Google drive does more evil things to service workers than I ever could.
 

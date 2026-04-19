@@ -58,6 +58,7 @@ public abstract class BaseFormFactor(
             ?.Product;
     }
     public int OffsetInMinutes { get; private set; }
+    public bool PageNotFound { get; private set; }
 
     internal static string? _title;
 
@@ -76,6 +77,10 @@ public abstract class BaseFormFactor(
         return _title;
     }
 
+    public virtual void NotFound()
+    {
+        PageNotFound = true;
+    }
 
     public async ValueTask Clipboard(string text)
     {
@@ -156,7 +161,11 @@ public partial class FormFactor : BaseFormFactor
     public override string BaseUrl => "http://localhost:8080";
     public override string GetFormFactor() => "WebAssembly";
     public override string ConnectionId => "Browser";
-    
+    public override void NotFound()
+    {
+        base.NotFound();
+        // TODO: something javascripty on the page
+    }
     public override async Task SaveSetting(string key, string value)
         => await JS.InvokeVoidAsync("localStorage.setItem", key, value);
 
@@ -252,7 +261,13 @@ public partial class FormFactor(
     public override string BaseUrl => App?.Value?.Urls.FirstOrDefault() ?? "http://localhost:8080";
     public override string GetFormFactor() => (IsWebContext ? "Http " : "MAUI ") + DeviceInfo.Idiom.ToString();
     public override string ConnectionId => Current?.HttpContext?.Connection.Id ?? "Internal";
-
+    public override void NotFound() {
+        base.NotFound();
+        if(Current?.HttpContext?.Response.HasStarted != true)
+        {
+            Current?.HttpContext?.Response.StatusCode = 404;
+        }
+    }
     public override Type? RequestControl
     {
         get
@@ -373,6 +388,8 @@ public partial class FormFactor(
     public override async Task<string?> UpdateTitle(string? title)
     {
         var _title = await base.UpdateTitle(title); // sets title bar on html page
+
+        if (PageNotFound) return _title;
 
         var Page = Service.GetService<IPageEvents>();
         if (Page != null)

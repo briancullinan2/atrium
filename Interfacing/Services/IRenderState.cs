@@ -101,6 +101,9 @@ public interface IPageState
     Task<Dictionary<string, string?>?> RestoreState(object? runtime);
     Task<int> GetTimezoneOffset();
     int OffsetInMinutes { get; }
+    void NotFound(); // set not found status in http context is available
+
+    bool PageNotFound { get; }
 }
 
 public interface ISettings
