@@ -120,6 +120,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
             Ready = "layout";
             _ = ProbablyUpdateTitle();
             _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
+            Service.GetService<IFormFactor>()?.RequestControl = StoredDefaultRoot;
             if (StoredAppAssembly != null)
             {
                 InvokeAsync(StateHasChanged);
@@ -137,6 +138,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
             Ready = "layout";
             _ = ProbablyUpdateTitle();
             _ = Css.ListenUp(StoredDefaultRoot, StoredDefaultLayout, this);
+            Service.GetService<IFormFactor>()?.RequestControl = StoredDefaultRoot;
             if (StoredAppAssembly != null)
             {
                 InvokeAsync(StateHasChanged);
@@ -151,6 +153,7 @@ public partial class MainLoader : ComponentBase, IHasCurrent<MainLoader>, IDispo
         Ready = "layout"; // Explicitly move to layout
         _ = ProbablyUpdateTitle();
         _ = Css.ListenUp(DefaultRoot, DefaultLayout, this);
+        Service.GetService<IFormFactor>()?.RequestControl = StoredDefaultRoot;
         if (StoredAppAssembly != null)
         {
             await InvokeAsync(StateHasChanged);

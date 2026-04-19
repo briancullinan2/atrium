@@ -73,8 +73,8 @@ IServiceProvider _provider) :
             return this;
         if (serviceType == typeof(ICompositeProvider))
             return this;
-        if (serviceType == typeof(IServiceProvider))
-            return this;
+        //if (serviceType == typeof(IServiceProvider))
+        //    return this;
         if (serviceType == typeof(IServiceProviderIsService))
             return _service;
         if (serviceType == typeof(IServiceScopeFactory))

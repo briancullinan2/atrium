@@ -10,7 +10,7 @@
     <input type="hidden" name="state_@item.Key" value="@item.Value" />
 }
 
-@if (DefaultRoot != null)
+@if (DefaultRoot != null && DefaultRoot != typeof(Pages.Landing.Default))
 {
     __builder.OpenComponent(0, DefaultRoot);
     __builder.CloseComponent();

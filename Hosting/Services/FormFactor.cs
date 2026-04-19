@@ -41,7 +41,7 @@ public abstract class BaseFormFactor(
 
     public abstract Type? RequestControl
     {
-        get;
+        get; set;
     }
 
     /*
@@ -176,11 +176,19 @@ public partial class FormFactor : BaseFormFactor
     private readonly Lazy<WebAssemblyHost?>? App;
     private readonly IJSRuntime JS;
     private readonly IPageEvents Page;
+    private Type? _routeHint;
 
     public override Type? RequestControl
     {
         get
         {
+             try
+            {
+                if (_routeHint is not null) return _routeHint;
+                if (Service.GetService<IHasClass>()?.RouteHint is Type route) return route; 
+            }
+            catch { }
+
             try
             {
                 var nav = Service.GetRequiredService<NavigationManager>();
@@ -189,6 +197,7 @@ public partial class FormFactor : BaseFormFactor
             catch { }
             return null;
         }
+        set => _routeHint = value;
     }
 
     public override List<IFile> Files { get => CurrentFormFiles; }
@@ -254,6 +263,8 @@ public partial class FormFactor(
 ) : BaseFormFactor(service, nav)
     , IFormFactor, ITitleService, IPageState, ISettings
 {
+    private Type? _routeHint;
+
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Current?.HttpContext != null;
     public override bool IsMauiContext => (Current?.HttpContext == null || App == null) && (Maui != null || Windows != null);
@@ -265,6 +276,7 @@ public partial class FormFactor(
         base.NotFound();
         if(Current?.HttpContext?.Response.HasStarted != true)
         {
+            Current?.HttpContext?.Response.ContentType = "text/html";
             Current?.HttpContext?.Response.StatusCode = 404;
         }
     }
@@ -274,6 +286,13 @@ public partial class FormFactor(
         {
             try
             {
+                if (_routeHint is not null) return _routeHint;
+                if (Service.GetService<IHasClass>()?.RouteHint is Type route) return route; 
+            }
+            catch { }
+
+            try
+            {
                 return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
             }
             catch { }
@@ -281,11 +300,14 @@ public partial class FormFactor(
             try
             {
                 var uri = Current?.HttpContext?.Request.Path.Value;
+                if(uri?.Contains("_blazor") == true)
+                    uri = Current?.HttpContext?.Request.Headers.Referer.ToString();
                 return TypeExtensions.IdentifyNavigation(uri).ComponentType;
             }
             catch { }
             return null;
         }
+        set => _routeHint = value;
     }
 
     public override async Task SaveSetting(string key, string value)

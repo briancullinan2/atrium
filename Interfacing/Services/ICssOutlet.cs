@@ -106,12 +106,12 @@ public partial class ClassyService : IHasClass, IDisposable
             "/_content/RazorSharp/css/layout.css",
             "/_content/RazorSharp/css/menu.css",
             "/_content/RazorSharp/css/nav.css"],
-        _ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => [
-            "/_content/RazorSharp/css/main.css"],
+        //_ when type.Name.Contains("Layout", StringComparison.InvariantCultureIgnoreCase) => [
+        //    "/_content/RazorSharp/css/main.css"],
         _ => []
     };
 
-    protected Type? previousHint = null;
+    public Type? RouteHint { get; private set; } = null;
     private Type? layout = null;
     private bool IsClosing = false;
     public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
@@ -121,7 +121,7 @@ public partial class ClassyService : IHasClass, IDisposable
     public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null, IHasChildren? loader = null)
     {
         if (typeHint != null)
-            previousHint = typeHint;
+            RouteHint = typeHint;
         if (_layout != null)
             layout = _layout;
 
@@ -135,7 +135,7 @@ public partial class ClassyService : IHasClass, IDisposable
         }
 
         List<Type?> components = [
-            previousHint,
+            RouteHint,
             layout,
             //Rendered._container?.GetType(),
             //..Rendered._container?.GetChildComponents().Select(c => c.GetType()) ?? []
@@ -228,7 +228,7 @@ public partial class ClassyService : IHasClass, IDisposable
     {
         PageClasses = classes;
         if (typeHint != null)
-            previousHint = typeHint;
+            RouteHint = typeHint;
 
     }
 

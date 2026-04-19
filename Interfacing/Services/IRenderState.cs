@@ -83,6 +83,7 @@ public interface IHasClass
 
     Task ListenUp(Type? typeHint, Type? layout, IHasChildren? loader);
 
+    Type? RouteHint { get; }
     List<string> Registry { get; }
 
 }

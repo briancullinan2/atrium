@@ -10,7 +10,7 @@ public interface IFormFactor
     bool IsWebContext { get; }
     bool IsMauiContext { get; }
     string ConnectionId { get; }
-    Type? RequestControl { get; }
+    Type? RequestControl { get; set; }
     List <IFile> Files { get; }
     //Task SetState();
 

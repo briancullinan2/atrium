@@ -177,10 +177,15 @@ public class WebServer(
             {
                 // i hate that i have to do this, WHAT IS THEY GET AROUND TO FIXING SOMETHING????
                 //    i'll end up with a bunch of browsers sitting around with old dependencies in their cache?
-                
+
                 // this had no effect because microsoft is loading it internally, this won't be an issue when i get the service worker working again
                 //if (FILTER_MICROSOFT_DLLS_BY_NAME(context.Request.Path.ToString().Split("_framework/").ElementAtOrDefault(1)))
                 //    return next();
+                if (context.Request.Path.Value?.Contains(".well-known") == true)
+                {
+                    context.Abort();
+                    return Task.CompletedTask;
+                }
 
                 context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                 context.Response.Headers.Append("Pragma", "no-cache");

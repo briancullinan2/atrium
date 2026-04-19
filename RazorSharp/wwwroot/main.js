@@ -156,11 +156,12 @@ var startParameters = null;
 window.startBlazor = function (type) {
 
 
-
+    /*
     if(typeof(type) != "string") {
         if(!navigator.onLine) {
              return startBlazor("webassembly");
         }
+
 
         return shouldStartInWebAssembly('/version.json?t=' + Date.now())
             .catch(function (response) { return response; })
@@ -180,6 +181,7 @@ window.startBlazor = function (type) {
                 }
             });
     }
+    */
 
 
     var allParameters = [
@@ -285,6 +287,10 @@ window.startBlazor = function (type) {
 window.manageServiceWorker = manageServiceWorker;
 
 async function manageServiceWorker() {
+
+    return; // TODO: 
+
+
     if (!('serviceWorker' in navigator)) return;
 
     // 1. Get the Server's Truth first (our Token/Version)

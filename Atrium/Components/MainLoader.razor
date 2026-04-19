@@ -67,6 +67,7 @@
                 <CascadingValue Value="@routeData">
                     @{
                         _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
+                        Service.GetService<IFormFactor>()?.RequestControl = routeData.PageType;
                     }
                     @if (AuthService != null)
                     {
@@ -97,6 +98,7 @@
                     <CascadingValue Value="@routeData">
                         @{
                             _ = Css.ListenUp(routeData.PageType, null, this);
+                            Service.GetService<IFormFactor>()?.RequestControl = routeData.PageType;
                         }
                         @if (AuthService != null)
                         {
