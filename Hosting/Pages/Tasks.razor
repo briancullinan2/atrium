@@ -1,0 +1,54 @@
+@page "/runner"
+@*@inject ITaskManager TaskManager*@
+
+@attribute [Display(Name = "Task Status", ShortName = "Tasks", GroupName = "Admin", Prompt = "bi-calendar")]
+
+<div class="task-runner-dashboard">
+
+    
+    <div class="form-row">
+        <label>Enable HTTP hosting</label>
+        <input type="checkbox" />
+    </div>
+
+
+    <h3>Active Tasks</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>CPU/RAM</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @*@foreach (var task in TaskManager.GetActiveProcesses())
+            {
+                <tr>
+                    <td>@task.Name (@task.Pid)</td>
+                    <td>@task.Status</td>
+                    <td></td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => TaskManager.StopTaskAsync(task.Id)">Kill</button>
+                    </td>
+                </tr>
+            }*@
+        </tbody>
+    </table>
+
+    <hr />
+
+    <h3>Launch New Task</h3>
+    @* Here you would iterate your available TaskTemplates *@
+    <button class="cta" @onclick="() => TaskManager.LaunchTaskAsync(Guid.NewGuid())">
+        Start Default Game Server
+    </button>
+</div>
+
+
+@code
+{
+
+
+}

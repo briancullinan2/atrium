@@ -1,14 +1,14 @@
 @page "/hosting"
 @implements IDisposable
 @implements IHasForms
-@inject ICompositeProvider ServiceProvider
+@inject ICompositeProvider Service
 @inject ITrustProvider Trust
 @attribute [Display(Name = "Hosting", GroupName = "Administration", Prompt = "bi-hdd-network")]
 
 
 <div class="form-row">
     <label>Enable HTTP hosting</label>
-    <input type="checkbox" onchange="@EnableHosting"  />
+    <input type="checkbox" @bind="@IsServicing" onchange="@EnableHosting"  />
 </div>
 
 <div class="form-row">
@@ -105,10 +105,10 @@
         var enable = (bool)(args.Value ?? false);
         if(enable)
         {
-            if (ServiceProvider.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
+            if (Service.GetService<WebServer>() is WebServer server && !WebServer.IsStarting)
                 await server.EnsureInitialized();
 #if WINDOWS
-            else if (ServiceProvider.GetService<Lazy<Microsoft.AspNetCore.Builder.WebApplication?>>()?.Value == null)
+            else if (Service.GetService<Lazy<Microsoft.AspNetCore.Builder.WebApplication?>>()?.Value == null)
                 WebServer.StartWebServer(Trust);
 #endif
         }
@@ -130,25 +130,39 @@
     protected async Task EnableStartup(ChangeEventArgs args)
     {
 #if WINDOWS
-        if (ServiceProvider.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
+        //if (Window?.IsSplashMode == true)
         {
-            await window.CreateTrayIcon();
+            if(Window?.CreateTrayIcon() is Task task) await task;
         }
 #endif
 
     }
 
+    IWindowManager? Window = null;
+
     protected override void OnInitialized()
     {
         Instance = this;
-        Services = ServiceProvider;
+        Services = Service;
         Trust.OnSettledAsync += PollTunnelStatusAsync;
+        Window = Service.GetService<IWindowManager>();
+
         // try to make the first one hit AFTER the dll to run it has loaded
-        _ = TaskExtensions.Debounce(PollTunnelStatusAsync, 60 * 3 * 1000);
+        // this also runs the first time
+        _timer = TaskExtensions.Timer(PollTunnelStatusAsync, 60 * 3 * 1000);
+    }
+
+
+    IHostingService? StatusService = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        StatusService = Services?.GetService(typeof(IHostingService)) as IHostingService;
     }
 
     private static string? _apiToken;
-    private static string? ApiToken
+    private string? ApiToken
     {
         get => _apiToken;
         set
@@ -158,7 +172,7 @@
         }
     }
     private static string? _tunnelName;
-    private static string? TunnelName
+    private string? TunnelName
     {
         get => _tunnelName;
         set
@@ -168,7 +182,7 @@
         }
     }
     private static string? _accountId;
-    private static string? AccountId
+    private string? AccountId
     {
         get => _accountId;
         set
@@ -178,9 +192,9 @@
         }
     }
     private static string? _domain;
-    private static string? Domain
+    private string? Domain
     {
-        get => _domain;
+        get => _domain ?? StatusService?.GetHost() ?? Service.GetService<HttpClient>()?.BaseAddress?.Authority;
         set
         {
             _domain = value;
@@ -200,7 +214,7 @@
     private static bool? IsServicing { get; set; } = null;
     protected static global::Hosting.Pages.Hosting? Instance { get; set; }
 
-    private static async Task PollTunnelStatusAsync()
+    private async Task PollTunnelStatusAsync()
     {
         if(_timer == null)
         {
@@ -221,19 +235,18 @@
     }
 
 
-    private static async Task CheckStatus()
+    private async Task CheckStatus()
     {
         try
         {
-            var StatusService = Services?.GetService(typeof(IHostingService)) as IHostingService;
-
             if(StatusService == null)
             {
                 return;
             }
 
+            // TODO: needs to be Http>async  Domain default, callback to our own server, then below callback to public server
             var token = await StatusService.GetToken();
-            var host = await StatusService.GetHost();
+            var host = StatusService.GetHost();
 
 
             tunnelStatus = await StatusService.CheckTunnel(AccountId, TunnelName, ApiToken);
@@ -258,12 +271,13 @@
 
             var result = await StatusService.CheckRemoteStatus(Domain);
 
-            if (result?.ItWorks?[0] == token)
+            if (token != null && result?.Error == null && result?.ItWorks?[0] == token)
             {
                 hostStatus = $"Tokens match, ";
                 IsWorking = true;
             } else
             {
+                hostStatus = "Error: " + result?.Error;
                 hostStatus = "Token mismatch, site is not accessible.";
             }
             hostChecked = DateTime.Now.ToLongTimeString();
@@ -278,5 +292,7 @@
         {
             hostStatus = "Error: " + ex.Message;
         }
+
+        await InvokeAsync(StateHasChanged);
     }
 }

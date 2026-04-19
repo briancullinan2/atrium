@@ -4,6 +4,7 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.DependencyInjection
 @using System.Text.Json.Serialization
+@using System.Text.Json
 @implements IHasForms
 @implements IHasCover
 @inject ITrustProvider Trust
@@ -238,9 +239,9 @@
         if (Trust.LoadedAssemblies.ContainsKey(ass))
             return true;
 #if !BROWSER
-    // TODO: use ISettings
-    if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
-    return true;
+        // TODO: use ISettings
+        if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
+            return true;
 #endif
         return false;
     }
@@ -284,7 +285,7 @@
         });
     }
 
-
+    IRenderState? Rendered = null;
 
     protected override void OnInitialized()
     {
@@ -295,6 +296,16 @@
         _showSplash = isFirstRun;
         Trust.OnAssemblyLoaded += NotifyAssembly;
         Trust.OnSettledAsync += NotifySettled; // fires at least once for everybody even if services aren't rebuilt
+        Rendered = Service.GetService<IRenderState>();
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (OperatingSystem.IsBrowser() && Rendered != null)
+            await Rendered.RestoreState(this);
+
+        await base.OnInitializedAsync();
     }
 
     private void HandleOnComplete()
@@ -306,25 +317,25 @@
     protected override async Task OnParametersSetAsync()
     {
         base.OnParametersSet();
+
         await TryLoading();
 
         // thing is, this page loads before the Hosting plugin, so there is no render state when the app starts 
         //   because there are no browsers to serve other than out own
-        var Rendered = Service.GetService<IRenderState>();
         if (!OperatingSystem.IsBrowser())
             if (Rendered?.SetState(this) == true)
                 await InvokeAsync(StateHasChanged);
 
-        if (OperatingSystem.IsBrowser() && Rendered != null)
-            await Rendered.RestoreState(this);
-
         // this might be a plan on webassembly, but it won't work for first load/discovery on desktop
         try
         {
-            Trust.LoadedAssemblies.TryGetValue(SelectedAssembly, out var ass);
-            var Scope = Service.CreateScope();
-            var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-            await Main.SetAppAssembly(ass);
+            if (SelectedAssembly != null)
+            {
+                Trust.LoadedAssemblies.TryGetValue(SelectedAssembly, out var ass);
+                var Scope = Service.CreateScope();
+                var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
+                await Main.SetAppAssembly(ass);
+            }
         }
         catch (Exception ex)
         {
@@ -360,7 +371,6 @@
         _ = TryLoading();
     }
 
-    bool setOnce = false;
     bool running = false;
     public async Task TryLoading()
     {
@@ -368,11 +378,10 @@
         if (running) return;
         running = true;
 
-        if (!setOnce)
-            Trust.OnSettledAsync += TryLoading; // subscribe to be a sub for next time
-        setOnce = true;
+        Trust.OnSettledAsync += TryLoading; // subscribe to be a sub for next time
 
         MyList = Trust.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
+        Console.WriteLine("Plugins: " + JsonSerializer.Serialize(MyList));
 
         var loader = (TrustedLoader)Trust;
         //if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
@@ -402,7 +411,8 @@
             var Scope = Service.CreateScope();
             var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
 #if !BROWSER
-            (Main as MainLoader)?.DefaultRoot = Type.GetType(SelectedRoot);
+            if (SelectedRoot != null)
+                (Main as MainLoader)?.DefaultRoot = Type.GetType(SelectedRoot);
 #endif
         }
         catch (Exception ex)

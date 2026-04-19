@@ -107,6 +107,8 @@ public static partial class TaskExtensions
                 // Initial execution
                 await action(cts.Token);
 
+                if (cts.IsCancellationRequested) return;
+
                 while (await timer.WaitForNextTickAsync(cts.Token))
                 {
                     await action(cts.Token);

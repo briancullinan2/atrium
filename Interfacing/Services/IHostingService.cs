@@ -3,7 +3,7 @@
 public interface IHostingService
 {
     Task<string?> GetToken();
-    Task<string?> GetHost();
+    string? GetHost();
     Task<string?> CheckTunnel(string? Account = null, string? Tunnel = null, string? Api = null);
     Task<bool?> CheckInstalled();
     Task<bool?> IsWorking();

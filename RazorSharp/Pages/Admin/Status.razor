@@ -59,7 +59,7 @@
         {
 
             var token = await StatusService.GetToken();
-            var host = await StatusService.GetHost();
+            var host = StatusService.GetHost();
 
             if (string.IsNullOrWhiteSpace(Domain))
             {

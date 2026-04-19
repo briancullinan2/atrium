@@ -89,7 +89,7 @@ public class WebServer(
 
             webBuilder.Services.AddSingleton(sp => new HttpClient
             {
-                BaseAddress = new Uri("https://127.0.0.1")
+                BaseAddress = new Uri("https://127.0.0.1:8080") //TODO: make this dynamic
             });
 
 

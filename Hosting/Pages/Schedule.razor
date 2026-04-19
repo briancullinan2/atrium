@@ -1,0 +1,83 @@
+@page "/schedule"
+
+@attribute [Display(Name = "Task Scheduler", ShortName = "Schedule", GroupName = "Admin", Prompt = "bi-calendar")]
+
+<div class="flash-card animate-in">
+    
+
+    <button class="cta" @onclick="AddParameter">+ Add</button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var parameter in Parameters)
+            {
+                <tr>
+                    <td><input type="text" @bind="parameter.Key" class="form-control" /></td>
+                    <td>
+                        <select @bind="parameter.Type" class="form-control">
+                            <option value="string">String</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean</option>
+                        </select>
+                    </td>
+                    <td>
+                        @if (parameter.Type == "boolean")
+                        {
+                            <input type="checkbox" @bind="parameter.BoolValue" />
+                        }
+                        else
+                        {
+                            <input type="text" @bind="parameter.Value" class="form-control" />
+                        }
+                    </td>
+                    <td>
+                        @if (Parameters.Count() > 1)
+                        {
+                            <button class="btn btn-danger btn-sm" @onclick="() => Parameters.Remove(parameter)">X</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="cta" @onclick="ExecutePost">Save Service</button>
+
+</div>
+@code {
+    private List<DynamicParam> Parameters = new() { new DynamicParam() };
+
+    protected string? _selectedPreset = null;
+    protected string? SelectedPreset
+    {
+        get
+        {
+            return _selectedPreset;
+        }
+        set
+        {
+            _selectedPreset = value;
+        }
+    }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+
+
+    private void AddParameter() => Parameters.Add(new DynamicParam());
+
+    private async Task ExecutePost()
+    {
+        
+    }
+}

@@ -48,7 +48,8 @@ internal class HostingService : IHostingService
 
     public async Task<string?> GetToken() => new StatusResponse().ItWorks[0];
 
-    public async Task<string?> GetHost() => _settings?.Domain ?? _recentResult?.Host;
+    // TODO: get from HttpClient context factory?
+    public string? GetHost() => _settings?.Domain ?? _recentResult?.Host;
 
     // TODO: rebuild the service containers based on set hosting address
     /*
@@ -94,7 +95,7 @@ internal class HostingService : IHostingService
 
     public async Task<bool?> IsWorking()
     {
-        var host = await GetHost();
+        var host = GetHost();
         if (string.IsNullOrEmpty(host)) return false;
 
         var result = await CheckRemoteStatus(host);
@@ -108,7 +109,11 @@ internal class HostingService : IHostingService
     [AllowAnonymous]
     public StatusResponse CheckStatus()
     {
-        return new StatusResponse();
+        return new StatusResponse()
+        {
+            Host = _settings?.Domain,
+            Tunnel = _settings?.TunnelName
+        };
     }
 
 
@@ -135,7 +140,20 @@ internal class HostingService : IHostingService
         }
         catch (Exception ex)
         {
-            return new StatusResponse { Error = ex.Message, Host = domain };
+            Console.WriteLine(ex);
+            try
+            {
+                var url = $"http://{domain.Replace("http://", "")}" + typeof(HostingService).GetMethod(nameof(CheckStatus))?.Route();
+                var response = await Http.PostAsJsonAsync(url, _settings);
+                _recentResult = await response.Content.ReadFromJsonAsync<StatusResponse>();
+                _lastChecked = DateTime.Now;
+                return _recentResult;
+            }
+            catch (Exception ex2)
+            {
+                Console.WriteLine(ex2);
+                return new StatusResponse { Error = ex2.Message + ex.Message, Host = domain };
+            }
         }
     }
 

@@ -16,7 +16,6 @@ using Microsoft.Maui.Storage;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -476,6 +475,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         string location = assembly.Location;
         string title = assembly.ToName();
 
+        Console.WriteLine("Assembly loaded: " + title + " : " + location);
         StoredAssemblies.TryAdd(title, assembly);
 
 #if !BROWSER
@@ -498,7 +498,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     IsTrusted: true,
                     Metadata: assembly.GetAssemblyInfo()
                 );
-                DiscoveredStatus.TryAdd(location, contract);
+                DiscoveredStatus.TryAdd(title, contract);
                 OnAssemblyLoaded?.Invoke(contract);
             });
         }
@@ -515,7 +515,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     private async Task TryFindingInterestingTypes(Assembly ass)
     {
 #if BROWSER
-        await Task.Delay(1000); // very lazy loading
+        await Task.Delay(100); // very lazy loading
 
 #endif
         if (Seen.Contains(ass))
@@ -604,12 +604,14 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 #endif
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
-            OnAssemblyLoaded?.Invoke(new PluginContract(
+            var unloadedContract = new PluginContract(
                 Title: title,
                 InstallPath: file,
                 IsTrusted: false,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.Untrusted)
-            ));
+            );
+            OnAssemblyLoaded?.Invoke(unloadedContract);
+            DiscoveredStatus.TryAdd(title, unloadedContract);
 
             await Task.Delay((counter % parallel) * 100, ct); // burst mode
 
@@ -627,7 +629,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             );
 
             // Thread-safe update to the UI list
-            DiscoveredStatus.TryAdd(file, contract);
+            if (DiscoveredStatus.ContainsKey(title))
+                DiscoveredStatus[title] = contract;
+            else
+                DiscoveredStatus.TryAdd(title, contract);
 
             // Tell the UI to refresh as each item arrives
             OnAssemblyLoaded?.Invoke(contract);
@@ -643,10 +648,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                         IsTrusted: (int)trust.Value > 2,
                         Metadata: meta
                     );
-                    if (DiscoveredStatus.ContainsKey(file))
-                        DiscoveredStatus[file] = newContract;
+                    if (DiscoveredStatus.ContainsKey(title))
+                        DiscoveredStatus[title] = newContract;
                     else
-                        DiscoveredStatus.TryAdd(file, newContract);
+                        DiscoveredStatus.TryAdd(title, newContract);
                     OnAssemblyLoaded?.Invoke(newContract);
                 }
             }
@@ -736,16 +741,16 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
 
         var asses = AppDomain.CurrentDomain.GetAssemblies();
+
         var assNames = asses.Select(MetadataReaderExtensions.ToName).ToList();
         var collisions = assNames.GroupBy(n => n).Where(g => g.Count() > 1).ToList();
-        if (collisions.Count > 0)
-        {
-            Console.WriteLine(JsonSerializer.Serialize(assNames));
-        }
+        Console.WriteLine("Domain: " + JsonSerializer.Serialize(collisions) + " - " + JsonSerializer.Serialize(assNames));
 
         foreach (var ass in asses)
         {
-            StoredAssemblies.TryAdd(ass.ToName(), ass);
+            var title = ass.ToName();
+            Console.WriteLine("Assembly loaded: " + title + " : " + ass.Location);
+            StoredAssemblies.TryAdd(title, ass);
         }
 
         var parallel = Environment.ProcessorCount - 4;
@@ -760,7 +765,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         await Parallel.ForEachAsync(asses, options, async (ass, ct) =>
         {
             string title = ass.ToName();
-
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
             await TryFindingInterestingTypes(ass);
@@ -770,9 +774,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 IsTrusted: true,
                 Metadata: ass.GetAssemblyInfo()
             );
-            DiscoveredStatus.TryAdd(ass.Location ?? title, contract);
+            DiscoveredStatus.TryAdd(title, contract);
             OnAssemblyLoaded?.Invoke(contract);
-
         });
 
     }
