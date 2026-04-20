@@ -14,11 +14,9 @@ namespace Atrium.Extensions;
 internal static class ComponentExtensions
 {
     
-    public static async Task<string> ToHtml(this RenderFragment fragment)
+    public static async Task<string> ToHtml(this RenderFragment fragment, IServiceProvider? serviceProvider)
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        var serviceProvider = services.BuildServiceProvider();
+        serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
         using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);

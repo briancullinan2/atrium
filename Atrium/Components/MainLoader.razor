@@ -1,6 +1,7 @@
 @implements IHasChildren
+@inject ICompositeProvider Composite
 
-@ChildContent
+@(new MarkupString(ChildContent ?? string.Empty))
 
 @code
 {
@@ -83,12 +84,13 @@
 
     public async Task HasChanged()
     {
+        ChildContent = await RenderMain(null, null, FirstTimeLoad).ToHtml(Composite);
         await InvokeAsync(StateHasChanged);
     }
 
     public bool FirstTimeLoad = true;
 
-    public RenderFragment? ChildContent = null;
+    public string? ChildContent = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -96,7 +98,7 @@
         if(firstRender)
         {
             var showPlugins = FirstTimeLoad; // || DefaultLayout == null || StoredAppAssembly == null;
-            ChildContent = RenderMain(null, null, showPlugins);
+            ChildContent = await RenderMain(null, null, FirstTimeLoad).ToHtml(Composite);
             await InvokeAsync(StateHasChanged);
         }
     }

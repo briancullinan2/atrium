@@ -6,10 +6,10 @@
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
 @inject ICompositeProvider Composite
 
-@ChildContent
+@(new MarkupString(ChildContent ?? string.Empty))
 
 @code {
-    public RenderFragment? ChildContent { get; set; } = null;
+    public string? ChildContent { get; set; } = null;
     TrustedLoader? Trust = null;
     IHasClass? Logo = null;
     IHasChildren? Main = null;
@@ -26,8 +26,9 @@
 
     public async Task HasChanged()
     {
-        ChildContent = await RenderMain(Trust, Logo, Main, this, Window);
+        ChildContent = await (await RenderMain(Trust, Logo, Main, this, Window, Composite)).ToHtml(Composite);
         await InvokeAsync(StateHasChanged);
+        if(Main?.HasChanged() is Task task) await task;
     }
 
 
@@ -53,7 +54,7 @@
 
 
 
-    protected static async Task NotifyAssembly(PluginContract? file, TrustedState? gatherTrust)
+    protected static async Task NotifyAssembly(PluginContract? file, TrustedState? gatherTrust, ICompositeProvider? Composite)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
@@ -63,7 +64,7 @@
         {
             gatherTrust.Scanning = file?.InstallPath;
             gatherTrust.LastUpdate = DateTime.Now;
-            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml();
+            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml(Composite);
             if(gatherTrust.HasChanged?.Invoke() is Task task) await task;
         }
     }
@@ -134,7 +135,7 @@
 
 
 
-    public static TrustedState? GatherTrust(TrustedLoader? Trust, Atrium.Components.PluginsPage? Plugin)
+    public static TrustedState? GatherTrust(TrustedLoader? Trust, Atrium.Components.PluginsPage? Plugin, ICompositeProvider? Composite)
     {
         if (Plugin == null) return null;
 
@@ -152,7 +153,7 @@
         {
             Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
                 {
-                    await NotifyAssembly(file, Plugin.GatheredTrust);
+                    await NotifyAssembly(file, Plugin.GatheredTrust, Composite);
                 };
 
             Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
@@ -170,11 +171,12 @@
         IHasClass? Logo, 
         IHasChildren? Main,
         Atrium.Components.PluginsPage Plugin,
-        IWindowManager? Window
+        IWindowManager? Window,
+        ICompositeProvider? Composite
     )
     {
         // prevent concurrency errors while printing the view
-        Plugin.GatheredTrust = GatherTrust(Trust, Plugin);
+        Plugin.GatheredTrust = GatherTrust(Trust, Plugin, Composite);
 
         if (Plugin.GatheredTrust == null) return __builder => { };
 
@@ -186,8 +188,9 @@
 
         var OnSettled = async () =>
         {
+            Plugin.GatheredTrust = GatherTrust(Trust, Plugin, Composite);
             Plugin.GatheredTrust?.PluginControls = await NotifySettled(
-                Trust, Plugin.GatheredTrust, SetRoutable, Window).ToHtml();
+                Trust, Plugin.GatheredTrust, SetRoutable, Window).ToHtml(Composite);
             if (Plugin.GatheredTrust?.HasChanged?.Invoke() is Task task) await task;
         };
 
@@ -197,7 +200,7 @@
             Plugin.GatheredTrust.ScanningRendered = await RenderPluginStatus(
                 Plugin.GatheredTrust.IsBootstrapping, 
                 Plugin.GatheredTrust.Error, 
-                Plugin.GatheredTrust.Scanning).ToHtml();
+                Plugin.GatheredTrust.Scanning).ToHtml(Composite);
 
         if (Plugin.GatheredTrust.PluginControls == null)
             await OnSettled();
