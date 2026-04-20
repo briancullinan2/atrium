@@ -1,8 +1,5 @@
 ﻿
-using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -35,20 +32,13 @@ public interface IHasChanged
 }
 
 
-public interface IHasChildren : IHasChanged
-{
-    //object[] GetChildComponents();
-    Task SetAppAssembly(System.Reflection.Assembly? assembly);
-}
-
 public interface IRenderState : IHasModule, ISingleUser
 {
     object Runtime { get; }
-    IHasChildren Container { get; }
     event Action OnRendered;
     event Action OnEmptied;
-    void NotifyEmptied(object? runtime, IHasChildren container);
-    void NotifyRendered(object? runtime, IHasChildren container);
+    void NotifyEmptied(object? runtime);
+    void NotifyRendered(object? runtime);
 
 
 
@@ -87,7 +77,7 @@ public interface IHasClass
     string? Sidebar { get; }
     Action<object> LogoContent { get; }
 
-    Task ListenUp(Type? typeHint, Type? layout, IHasChildren? loader);
+    Task ListenUp(Type? typeHint, Type? layout);
 
     Type? RouteHint { get; }
     List<string> Registry { get; }
@@ -140,18 +130,6 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
         private set => _runtime = value;
     }
 
-    public IHasChildren Container
-    {
-        get
-        {
-            if (_container == null)
-            {
-                throw new InvalidOperationException("JSRuntime is not available. Ensure that the component is rendered before registering for scroll events.");
-            }
-            return _container;
-        }
-        private set => _container = value;
-    }
 
     // This is the task your LocalStore will 'Then' off of
     private Action? _onRendered;
@@ -174,7 +152,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
 
     private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    internal IHasChildren? _container;
+
     private Dictionary<string, string?>? previousState;
 
     public async ValueTask EnsureInitialized()
@@ -186,22 +164,19 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
-    public void NotifyRendered(object? runtime, IHasChildren container)
+    public void NotifyRendered(object? runtime)
     {
         _runtime = runtime;
-        _container = container; // i think AI solved 1 bug here
         // Fulfill the promise for everyone currently waiting
         _renderTcs.TrySetResult(true);
         //OffsetInMinutes = await Page.GetTimezoneOffset();
         _onRendered?.Invoke();
     }
 
-    public void NotifyEmptied(object? runtime, IHasChildren container)
+    public void NotifyEmptied(object? runtime)
     {
-        if(_runtime == null || _container == container)
+        if(_runtime == null)
             _runtime = runtime; // if !null then its OnInitialize
-
-        if (_container != container) return;
 
         if (_runtime == null && !_renderTcs.Task.IsCompleted)
         {
@@ -209,6 +184,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
         OnEmptied?.Invoke();
+        OnEmptied = null;
     }
 
 
@@ -216,6 +192,7 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
     {
         _renderTcs.TrySetResult(false);
         OnEmptied?.Invoke();
+        OnEmptied = null;
         GC.SuppressFinalize(this);
     }
 

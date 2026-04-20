@@ -7,7 +7,6 @@
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @implements IDisposable
-@implements IHasChildren
 @inject NavigationManager Nav
 @inject ICompositeProvider Composite
 @inject IServiceProvider Service
@@ -104,7 +103,7 @@
             Console.WriteLine("Error: Starting with no runtime. State won't work.");
         else
             Console.WriteLine("Note: Starting with runtime. State should work.");
-        Rendered?.NotifyEmptied(Runtime, this);
+        Rendered?.NotifyEmptied(Runtime);
 
     }
 
@@ -122,7 +121,7 @@
             var controlType = CurrentControl.ToType();
             if (controlType != null) {
                 //StoredAppAssembly = controlType.Assembly;
-                await Css.ListenUp(controlType, DefaultLayout, this);
+                await Css.ListenUp(controlType, DefaultLayout);
                 Service.GetService<IFormFactor>()?.RequestControl = controlType;
             }
         }
@@ -143,7 +142,7 @@
         if (CurrentControl != null)
         {
             var controlType = CurrentControl.ToType();
-            await Css.ListenUp(controlType, DefaultLayout, this);
+            await Css.ListenUp(controlType, DefaultLayout);
             Service.GetService<IFormFactor>()?.RequestControl = controlType;
 
             Console.WriteLine("Current route 2: " + CurrentControl + " - " + controlType);
@@ -173,7 +172,7 @@
         if (firstRender)
         {
             Trust.OnSettledAsync += () => ProbablyUpdateTitle();
-            Rendered?.NotifyRendered(Runtime, this);
+            Rendered?.NotifyRendered(Runtime);
         }
 
     }
@@ -210,7 +209,7 @@
     {
         IsClosing = true;
         //Trust.OnAssemblyLoaded -= NotifyAssembly;
-        Rendered?.NotifyEmptied(null, this);
+        Rendered?.NotifyEmptied(null);
         Nav.LocationChanged -= Nav_LocationChanged;
         GC.SuppressFinalize(this);
     }
@@ -250,7 +249,7 @@
 
             if (controlType == typeof(RazorSharp.Pages.Landing.Default)) return;
 
-            await Css.ListenUp(controlType, DefaultLayout, this);
+            await Css.ListenUp(controlType, DefaultLayout);
             Service.GetService<IFormFactor>()?.RequestControl = controlType;
 
             _ = ProbablyUpdateTitle(controlType);

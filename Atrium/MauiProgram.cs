@@ -17,8 +17,9 @@ public class MauiProgram : IHasCurrent<MauiApp>
     private static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        
+
         var args = Environment.GetCommandLineArgs();
+
         if (args.Any(a => a.StartsWith("app://")))
         {
             string protocolData = args.First(a => a.StartsWith("app://"));

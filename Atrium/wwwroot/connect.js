@@ -123,3 +123,25 @@ export function dispatchEvent(eventName, detail) {
 
     window.dispatchEvent(event);
 }
+
+
+export function replaceContainer(id, content) {
+    const container = document.getElementById(id);
+    const fragment = document.createDocumentFragment();
+
+    // Build your new structure in memory
+    const newContent = document.createElement('div');
+    newContent.id = id;
+    newContent.className = container.className;
+    newContent.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
+    fragment.appendChild(newContent);
+
+    // Perform a single swap
+    if(container)
+        container.replaceWith(fragment);
+}
+
+export function replaceChildren(id, content) {
+    const container = document.getElementById(id);
+    container.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
+}

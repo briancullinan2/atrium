@@ -108,7 +108,7 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
     }
 
     private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    IJSObjectReference? Module = null;
+    internal IJSObjectReference? Module = null;
     private DotNetObjectReference<PageManager>? dotNetHelper;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
 
@@ -128,6 +128,12 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
         {
             if (_restartRequired.Task.IsCompleted) return;
             await Rendered.EnsureInitialized();
+            Rendered.OnEmptied += () =>
+            {
+                if (_restartRequired.Task.IsCompleted)
+                    _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            };
             if (((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/connect.js") is ValueTask<IJSObjectReference> task)
                 Module = await task;
             dotNetHelper = DotNetObjectReference.Create(this);

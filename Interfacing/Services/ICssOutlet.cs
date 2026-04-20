@@ -90,7 +90,7 @@ public partial class ClassyService : IHasClass, IDisposable
     protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
     private readonly Dictionary<string, string> _filePresence = [];
 
-    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null, IHasChildren? loader = null)
+    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null)
     {
         if (typeHint != null)
             RouteHint = typeHint;

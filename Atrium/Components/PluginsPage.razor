@@ -1,5 +1,5 @@
 @page "/plugins"
-@implements IDisposable
+@implements IAsyncRender
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
@@ -7,12 +7,8 @@
 
 @code {
 
+    public event Action<object?>? OnChanged;
 
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
-    }
 
     public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
     {
@@ -30,7 +26,7 @@
 
 
 
-    protected static async Task NotifyAssembly(TrustedLoader? Trust, string? file, TrustedState? gatherTrust, ICompositeProvider? Composite)
+    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
@@ -41,16 +37,14 @@
             gatherTrust.Scanning = file;
             gatherTrust.LastUpdate = DateTime.Now;
             gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml(Composite);
-            gatherTrust.PluginControls = await NotifySettled(
-                Trust, gatherTrust).ToHtml(Composite);
-            if (Composite?.GetService<IHasChildren>()?.HasChanged(Composite) is Task task) await task;
+            gatherTrust.PluginControls = await RenderPluginListControls(Composite, gatherTrust).ToHtml(Composite);
         }
     }
 
 
 
-    protected static RenderFragment NotifySettled(
-        TrustedLoader? Trust,
+    protected static RenderFragment RenderPluginListControls(
+        ICompositeProvider? Composite,
         TrustedState? gatherTrust
     ) => __builder =>
     {
@@ -66,15 +60,16 @@
         foreach (var plugin in gatherTrust.MyList ?? [])
         {
             List<string>? requiredBy = null;
-            Trust?.DependedAssemblies.TryGetValue(plugin.Title, out requiredBy);
-            RenderPluginContract(plugin, requiredBy, GetActive(Trust, plugin))(__builder);
-        
+            Composite?.GetService<TrustedLoader>()?.DependedAssemblies.TryGetValue(plugin.Title, out requiredBy);
+            RenderPluginContract(plugin, requiredBy, GetActive(Composite, plugin.Title))(__builder);
+
         }
     };
 
 
-    public class TrustedState(TrustedLoader? Trust) : IDisposable
+    public class TrustedState(TrustedLoader? _trust) : IDisposable
     {
+        public TrustedLoader? Trust { get; set; } = _trust;
         public List<Type>? Layouts { get; set; }
         public List<Assembly>? Routable { get; set; }
         public List<Type>? CatchAll { get; set; }
@@ -96,8 +91,11 @@
 
 
 
-    public static TrustedState? GatherTrust(TrustedLoader? Trust, Atrium.Components.PluginsPage? Plugin, ICompositeProvider? Composite)
+    public static TrustedState? GatherTrust(ICompositeProvider? Composite, PluginsPage? Plugin, TrustedLoader? Trust)
     {
+        Plugin ??= Composite?.GetService<PluginsPage>();
+        Trust ??= Composite?.GetService<TrustedLoader>();
+
         if (Plugin == null) return null;
 
         Plugin.GatheredTrust ??= new TrustedState(Trust);
@@ -114,7 +112,8 @@
         {
             Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
                 {
-                    await NotifyAssembly(Trust, file?.InstallPath, Plugin.GatheredTrust, Composite);
+                    await RenderAssemblyScannedFile(file?.InstallPath, Plugin.GatheredTrust, Composite);
+                    Plugin.HasChanged();
                 };
 
             Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
@@ -124,49 +123,50 @@
     }
 
 
+    protected void HasChanged()
+    {
+        OnChanged?.Invoke(this);
+    }
+
     protected TrustedState? GatheredTrust { get; set; } = null;
 
-    public static async Task<RenderFragment> RenderMain(
-        TrustedLoader? Trust, 
-        IHasClass? Logo, 
-        IHasChildren? Main,
-        Atrium.Components.PluginsPage? Plugin,
-        IWindowManager? Window,
+    public async Task<Delegate?> Render(
         ICompositeProvider? Composite
     )
     {
+        var Trust = Composite?.GetService<TrustedLoader>();
+        var Logo = Composite?.GetService<IHasClass>();
         // prevent concurrency errors while printing the view
-        Plugin?.GatheredTrust = GatherTrust(Trust, Plugin, Composite);
+        GatheredTrust = GatherTrust(Composite, this, Trust);
 
-        if (Plugin?.GatheredTrust == null) return __builder => { };
-
-        var SetRoutable = async (ChangeEventArgs item) => {
-            if (item.Value is string key
-                && Trust?.LoadedAssemblies.TryGetValue(key, out var ass) == true)
-                if (Main?.SetAppAssembly(ass) is Task task) await task;
-        };
+        if (GatheredTrust == null) return null;
 
         Func<Task>? OnSettled = null;
         OnSettled = async () =>
         {
             Trust?.OnSettledAsync += OnSettled;
 
-            Plugin.GatheredTrust = GatherTrust(Trust, Plugin, Composite);
-            if (Plugin.GatheredTrust == null) return;
-            await NotifyAssembly(Trust, "", Plugin.GatheredTrust, Composite);
+            GatheredTrust = GatherTrust(Composite, this, Trust);
+            if (GatheredTrust == null) return;
 
-            Plugin.GatheredTrust.PluginControls = await NotifySettled(
-                Trust, Plugin.GatheredTrust).ToHtml(Composite);
-            if (Composite?.GetService<IHasChildren>()?.HasChanged(Composite) is Task task) await task;
+            GatheredTrust.PluginControls = await RenderPluginListControls(
+                Composite, GatheredTrust).ToHtml(Composite);
+
+            OnChanged?.Invoke(this);
         };
 
-        if (Plugin.GatheredTrust.ScanningRendered == null)
-            await NotifyAssembly(Trust, "", Plugin.GatheredTrust, Composite);
+        if (GatheredTrust.ScanningRendered == null)
+            await RenderAssemblyScannedFile("", GatheredTrust, Composite);
 
-        if (Plugin.GatheredTrust.PluginControls == null)
+        if (GatheredTrust.PluginControls == null)
             await OnSettled();
 
-        return __builder =>
+        return RenderMainBody(Logo, GatheredTrust);
+    }
+
+
+    public static RenderFragment RenderMainBody(IHasClass? Logo, TrustedState? State)
+    => __builder =>
         {
 
             <article class="content course-container">
@@ -176,17 +176,16 @@
                 <table>
                     <tbody>
 
-                        @(new MarkupString(Plugin.GatheredTrust.ScanningRendered ?? string.Empty))
+                        @(new MarkupString(State?.ScanningRendered ?? string.Empty))
 
-                        @(new MarkupString(Plugin.GatheredTrust.PluginControls ?? string.Empty))
-                        
+                        @(new MarkupString(State?.PluginControls ?? string.Empty))
+
                     </tbody>
                 </table>
 
             </article>
 
         };
-    }
 
 
 
@@ -319,22 +318,25 @@
         };
 
 
-    public static bool GetActive(ITrustProvider? Trust, PluginContract e)
+    public static bool GetActive(ICompositeProvider? Composite, string? title)
     {
-        if (Trust?.EnabledAssemblies.ContainsKey(e.Title) == true)
+        if (title == null) return false;
+        var Trust = Composite?.GetService<TrustedLoader>();
+        if (Trust?.EnabledAssemblies.ContainsKey(title) == true)
             return true;
-        if (Trust?.LoadedAssemblies.ContainsKey(e.Title) == true)
+        if (Trust?.LoadedAssemblies.ContainsKey(title) == true)
             return true;
 #if !BROWSER
         // TODO: use ISettings
-        if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + e.Title, false))
+        if (Microsoft.Maui.Storage.Preferences.Default.Get("PluginEnabled" + title, false))
             return true;
 #endif
         return false;
     }
 
     public static async Task<string?> OnEnabled(
-        TrustedLoader? Trust, 
+        ICompositeProvider? Composite,
+        TrustedLoader? Trust,
         string? title,
         bool? isChecked)
     {
@@ -345,18 +347,19 @@
         else
             Trust?.Enable(title);
 
-        Trust?.OnSettled += () => TriggerExpand(Trust, null);
+        Trust?.OnSettled += () => TriggerExpand(Composite);
 
         return TrustedLoader.Error;
     }
 
 
-    protected static void TriggerExpand(ITrustProvider? Trust, IWindowManager? window)
+    protected static void TriggerExpand(ICompositeProvider? Composite)
     {
-        if (Trust?.EnabledAssemblies.Count == 0)
-            _ = window?.ExpandWindow(false);
+
+        if (Composite?.GetService<TrustedLoader>()?.EnabledAssemblies.Count == 0)
+            _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(false);
         else
-            _ = window?.ExpandWindow(true);
+            _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(true);
     }
 
 

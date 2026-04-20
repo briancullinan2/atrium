@@ -30,8 +30,6 @@ else
 @code
 {
     // TODO: find the best home page based on the plugins loaded.
-    [CascadingParameter(Name = "Loader")] 
-    public IHasChildren? Loader { get; set; }
 
     public string? StoredRoot = null;
 
@@ -109,7 +107,7 @@ else
         if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
             await TryLoading();
 
-        await Classy.ListenUp(DefaultRoot, typeof(MainLayout), Loader);
+        await Classy.ListenUp(DefaultRoot, typeof(MainLayout));
 
         await base.OnInitializedAsync();
     }

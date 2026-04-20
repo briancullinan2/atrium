@@ -1,5 +1,7 @@
 ﻿
 
+using System.Reflection.Metadata.Ecma335;
+
 namespace Atrium.Services;
 
 
@@ -17,7 +19,9 @@ public class PluginActivator(ICompositeProvider Composite) : IComponentActivator
 
         if(Composite.IsService(componentType))
         {
-            return (IComponent)Composite.GetRequiredService(componentType);
+
+            var serviceComponent = (IComponent)Composite.GetRequiredService(componentType);
+            return serviceComponent;
         }
 
         var instance = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
