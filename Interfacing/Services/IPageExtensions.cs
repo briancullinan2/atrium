@@ -92,4 +92,14 @@ public static partial class PageExtensions
     public static async Task Upload(this IPageEvents Page, EventArgs args)
         => await Page.TriggerEvent(PageAction.Upload, args);
 
+
+    public static async Task EnablePlugin(this IPageEvents Page, string? args)
+        => await Page.TriggerEvent(PageAction.EnablePlugin, args);
+
+    public static async Task DisablePlugin(this IPageEvents Page, string? args)
+        => await Page.TriggerEvent(PageAction.DisablePlugin, args);
+
+    public static async Task TogglePlugin(this IPageEvents Page, string? args)
+        => await Page.TriggerEvent(PageAction.TogglePlugin, args);
+
 }

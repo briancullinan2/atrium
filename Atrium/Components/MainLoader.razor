@@ -1,19 +1,17 @@
 @implements IHasChildren
 @inject ICompositeProvider Composite
+@inject IJSRuntime Runtime
 
 @(new MarkupString(ChildContent ?? string.Empty))
 
 @code
 {
 
-    PluginsPage? Plugins { get; set; } = null;
-
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        Plugins = Composite.GetService<PluginsPage>();
-        if(Plugins?.HasChanged(Composite) is Task task) await task;
-        PluginContent = Plugins?.ChildContent;
+        //if(Plugins?.HasChanged(Composite) is Task task) await task;
+        //PluginContent = Plugins?.ChildContent;
     }
 
 
@@ -94,7 +92,12 @@
 
     public async Task HasChanged(ICompositeProvider? Composite)
     {
-        PluginContent = Plugins?.ChildContent;
+        var Plugins = Composite?.GetService<PluginsPage>();
+        var Trust = Composite?.GetService<TrustedLoader>();
+        var Logo = Composite?.GetService<IHasClass>();
+        var Main = Composite?.GetService<IHasChildren>();
+        var Window = Composite?.GetService<IWindowManager>();
+        PluginContent = await (await PluginsPage.RenderMain(Trust, Logo, Main, Plugins, Window, Composite)).ToHtml(Composite);
         ChildContent = await RenderMain(null, null, PluginContent, FirstTimeLoad).ToHtml(Composite);
         await InvokeAsync(StateHasChanged);
     }
@@ -109,10 +112,14 @@
         await base.OnAfterRenderAsync(firstRender);
         if(firstRender)
         {
-            var showPlugins = FirstTimeLoad; // || DefaultLayout == null || StoredAppAssembly == null;
-            ChildContent = await RenderMain(null, null, PluginContent, FirstTimeLoad).ToHtml(Composite);
+            Composite.GetService<IRenderState>()?.NotifyRendered(Runtime, this);
+            if(Composite.GetService<IHasEvents>()?.EnsureInitialized() is ValueTask task)
+                await task;
+            await HasChanged(Composite);
         }
     }
+
+    
 
 #if false
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
