@@ -469,7 +469,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     && !AllPlugins.Contains(type))
                     AllPlugins.Add(type);
 
-                if (type.IsServiceable() && Serviceable.ContainsKey(type))
+                if (type.IsServiceable() && !Serviceable.ContainsKey(type))
                     lock(Serviceable)
                         Serviceable.TryAdd(type, [..type.GetInterfaces()]);
 
