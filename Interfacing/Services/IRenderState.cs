@@ -29,10 +29,15 @@ public interface ISingleton
 }
 
 
-public interface IHasChildren
+public interface IHasChanged
+{
+    Task HasChanged();
+}
+
+
+public interface IHasChildren : IHasChanged
 {
     //object[] GetChildComponents();
-    //Task HasChanged();
     Task SetAppAssembly(System.Reflection.Assembly? assembly);
 }
 

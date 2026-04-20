@@ -1,13 +1,15 @@
 @page "/plugins"
+@implements IDisposable
+@implements IHasChanged
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
 @inject ICompositeProvider Composite
 
-@RenderMain(Trust, Logo, Main, Window)
+@ChildContent
 
 @code {
-
+    public RenderFragment? ChildContent { get; set; } = null;
     TrustedLoader? Trust = null;
     IHasClass? Logo = null;
     IHasChildren? Main = null;
@@ -19,8 +21,21 @@
         Logo = Composite.GetService<IHasClass>();
         Main = Composite.GetService<IHasChildren>();
         Window = Composite.GetService<IWindowManager>();
+        await HasChanged();
     }
 
+    public async Task HasChanged()
+    {
+        ChildContent = await RenderMain(Trust, Logo, Main, this, Window);
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    public void Dispose()
+    {
+        ChildContent = null;
+        GC.SuppressFinalize(this);
+    }
 
     public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
     {
@@ -38,20 +53,64 @@
 
 
 
-    protected static void NotifyAssembly(PluginContract file, TrustedState? gatherTrust)
+    protected static async Task NotifyAssembly(PluginContract? file, TrustedState? gatherTrust)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
-        if (gatherTrust == null || gatherTrust.LastUpdate == null) return;
-        if ((DateTime.Now - gatherTrust.LastUpdate.Value).TotalMilliseconds > 200)
+        if (gatherTrust == null) return;
+        if (gatherTrust.LastUpdate == null 
+            || (DateTime.Now - gatherTrust.LastUpdate.Value).TotalMilliseconds > 200)
         {
-            gatherTrust.Scanning = file.InstallPath;
+            gatherTrust.Scanning = file?.InstallPath;
             gatherTrust.LastUpdate = DateTime.Now;
+            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml();
+            if(gatherTrust.HasChanged?.Invoke() is Task task) await task;
         }
     }
 
 
-    public class TrustedState
+
+    protected static RenderFragment NotifySettled(
+        TrustedLoader? Trust,
+        TrustedState? gatherTrust,
+        Delegate? SetRoutable,
+        IWindowManager? Window
+    ) => __builder =>
+    {
+        if (gatherTrust == null) return;
+
+        gatherTrust.Scanning = "";
+
+        RenderPluginSelect(
+            gatherTrust.Layouts,
+            gatherTrust.Routable,
+            gatherTrust.CatchAll,
+            gatherTrust.Roots,
+            gatherTrust.AllRoutes,
+            SetRoutable, () => { })(__builder);
+
+        foreach (var plugin in gatherTrust.MyList ?? [])
+        {
+            List<string>? requiredBy = null;
+            Trust?.DependedAssemblies.TryGetValue(plugin.Title, out requiredBy);
+            RenderPluginContract(plugin, requiredBy, ChangeDelegatePluginGenerator(Trust, gatherTrust, Window, plugin), GetActive(Trust, plugin))(__builder);
+        }
+    };
+
+
+    protected static Action<ChangeEventArgs> ChangeDelegatePluginGenerator(
+        TrustedLoader? Trust,
+        TrustedState? gatherTrust,
+        IWindowManager? Window,
+        PluginContract? plugin
+    )
+    {
+        return (async (ChangeEventArgs args) => gatherTrust?.Error = await OnEnabled(Trust, Window, plugin, args));
+    }
+
+
+
+    public class TrustedState(TrustedLoader? Trust) : IDisposable
     {
         public List<Type>? Layouts { get; set; }
         public List<Assembly>? Routable { get; set; }
@@ -63,36 +122,61 @@
         public List<PluginContract>? MyList { get; set; }
         public DateTime? LastUpdate { get; set; }
         public string? Scanning { get; set; }
-    }
-
-
-
-    public static TrustedState GatherTrust(TrustedLoader? Trust)
-    {
-        return new TrustedState
+        public string? ScanningRendered { get; set; }
+        public string? PluginControls { get; set; }
+        public Action<PluginContract?>? NotifyDelegate = null;
+        public Func<Task>? HasChanged { get; set; } = null;
+        public void Dispose()
         {
-            Layouts = TrustedLoader.Layouts.ToList(),
-            Routable = TrustedLoader.Routable.ToList(),
-            CatchAll = TrustedLoader.CatchAll.ToList(),
-            Roots = TrustedLoader.Roots.ToList(),
-            AllRoutes = TrustedLoader.AllRoutes.ToList(),
-            IsBootstrapping = TrustedLoader.IsBootstrapping,
-            Error = TrustedLoader.Error,
-            MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList(),
-        };
+            Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
+        }
     }
 
 
-    public static RenderFragment RenderMain(
+
+    public static TrustedState? GatherTrust(TrustedLoader? Trust, Atrium.Components.PluginsPage? Plugin)
+    {
+        if (Plugin == null) return null;
+
+        Plugin.GatheredTrust ??= new TrustedState(Trust);
+
+        Plugin.GatheredTrust?.Layouts = TrustedLoader.Layouts.ToList();
+        Plugin.GatheredTrust?.Routable = TrustedLoader.Routable.ToList();
+        Plugin.GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToList();
+        Plugin.GatheredTrust?.Roots = TrustedLoader.Roots.ToList();
+        Plugin.GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToList();
+        Plugin.GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
+        Plugin.GatheredTrust?.Error = TrustedLoader.Error;
+        Plugin.GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
+        if (Plugin.GatheredTrust?.NotifyDelegate == null)
+        {
+            Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
+                {
+                    await NotifyAssembly(file, Plugin.GatheredTrust);
+                };
+
+            Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
+            Plugin.GatheredTrust?.HasChanged = Plugin.HasChanged;
+        }
+
+        return Plugin.GatheredTrust;
+    }
+
+
+    protected TrustedState? GatheredTrust { get; set; } = null;
+
+    public static async Task<RenderFragment> RenderMain(
         TrustedLoader? Trust, 
         IHasClass? Logo, 
         IHasChildren? Main,
-        IWindowManager? Window)
+        Atrium.Components.PluginsPage Plugin,
+        IWindowManager? Window
+    )
     {
         // prevent concurrency errors while printing the view
-        var gatherTrust = GatherTrust(Trust);
+        Plugin.GatheredTrust = GatherTrust(Trust, Plugin);
 
-        Trust?.OnSettled += () => gatherTrust.Scanning = "";
+        if (Plugin.GatheredTrust == null) return __builder => { };
 
         var SetRoutable = async (ChangeEventArgs item) => {
             if (item.Value is string key
@@ -100,7 +184,23 @@
                 if (Main?.SetAppAssembly(ass) is Task task) await task;
         };
 
-        var OnChange = (PluginContract plugin) => (async (ChangeEventArgs args) => gatherTrust.Error = await OnEnabled(Trust, Window, plugin, args));
+        var OnSettled = async () =>
+        {
+            Plugin.GatheredTrust?.PluginControls = await NotifySettled(
+                Trust, Plugin.GatheredTrust, SetRoutable, Window).ToHtml();
+            if (Plugin.GatheredTrust?.HasChanged?.Invoke() is Task task) await task;
+        };
+
+        Trust?.OnSettledAsync += OnSettled;
+
+        if (Plugin.GatheredTrust.ScanningRendered == null)
+            Plugin.GatheredTrust.ScanningRendered = await RenderPluginStatus(
+                Plugin.GatheredTrust.IsBootstrapping, 
+                Plugin.GatheredTrust.Error, 
+                Plugin.GatheredTrust.Scanning).ToHtml();
+
+        if (Plugin.GatheredTrust.PluginControls == null)
+            await OnSettled();
 
         return __builder =>
         {
@@ -112,16 +212,10 @@
                 <table>
                     <tbody>
 
-                        @RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning)
+                        @(new MarkupString(Plugin.GatheredTrust.ScanningRendered ?? string.Empty))
 
-                        @RenderPluginSelect(gatherTrust.Layouts, gatherTrust.Routable, gatherTrust.CatchAll, gatherTrust.Roots, gatherTrust.AllRoutes, SetRoutable, () => { })
-
-                        @foreach (var plugin in gatherTrust.MyList ?? [])
-                        {
-                            List<string>? requiredBy = null;
-                            Trust?.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out requiredBy);
-                            @RenderPluginContract(plugin, requiredBy, OnChange(plugin), GetActive(Trust, plugin))
-                        }
+                        @(new MarkupString(Plugin.GatheredTrust.PluginControls ?? string.Empty))
+                        
                     </tbody>
                 </table>
 
@@ -281,8 +375,10 @@
     private static async Task<string?> OnEnabled(
         TrustedLoader? Trust, 
         IWindowManager? window,
-        PluginContract plugin, ChangeEventArgs e)
+        PluginContract? plugin, ChangeEventArgs e)
     {
+        if (plugin == null) return null;
+
         var isChecked = (bool)(e.Value ?? false);
 
         if (!isChecked)

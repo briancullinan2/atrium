@@ -32,7 +32,7 @@
         };
 
 
-    public static RenderFragment RenderDebugInvokationLogger()
+    public static RenderFragment RenderDebugInvocationLogger()
         => (RenderTreeBuilder __builder) =>
         {
             <script>
@@ -68,7 +68,7 @@
         {
             @RenderHeader(Css, Rendered)
 #if DEBUG
-            @RenderDebugInvokationLogger()
+            @RenderDebugInvocationLogger()
 #endif
             <div class="page @(string.Join(" ", Css?.ClassNames ?? []))">
                 
@@ -80,6 +80,11 @@
             </div>
         };
 
+
+    public async Task HasChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
 
     public bool FirstTimeLoad = true;
 

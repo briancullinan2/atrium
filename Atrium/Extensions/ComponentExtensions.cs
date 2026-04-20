@@ -3,12 +3,47 @@ using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.RenderTree;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 
 namespace Atrium.Extensions;
 
 internal static class ComponentExtensions
 {
+    
+    public static async Task<string> ToHtml(this RenderFragment fragment)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var serviceProvider = services.BuildServiceProvider();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+
+        using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            // Use the private wrapper defined below
+            var output = await renderer.RenderComponentAsync<FragmentWrapper>(
+                ParameterView.FromDictionary(new Dictionary<string, object?>
+                {
+                { nameof(FragmentWrapper.Content), fragment }
+                })
+            );
+
+            return output.ToHtmlString();
+        });
+    }
+
+    // Private helper to satisfy the IComponent requirement
+    private class FragmentWrapper : ComponentBase
+    {
+        [Parameter] public RenderFragment Content { get; set; } = default!;
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+            => builder.AddContent(0, Content);
+    }
 
 #pragma warning disable BL0006 // Do not use RenderTree types
     public static RenderHandle? Handle(this IComponent component)
