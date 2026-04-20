@@ -126,8 +126,12 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
     {
         var collection = new ServiceCollection();
 
-        var baseType = TrustedLoader.Serviceable.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
-            ?? TrustedLoader.Serviceable.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
+        Dictionary<Type, List<Type>> services;
+        lock(TrustedLoader.Serviceable)
+            services = TrustedLoader.Serviceable.ToDictionary();
+
+        var baseType = services.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
+            ?? services.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
 
         if (baseType == null) return null;
 
@@ -138,7 +142,7 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
             .Select(parameter => parameter.ParameterType)
             .ToList();
 
-        var moreServices = TrustedLoader.Serviceable
+        var moreServices = services
             .Where(kvp => moreRequirements.Any(req => kvp.Key.Extends(req)
                 || kvp.Value.Any(inter => inter.Extends(req))))
             .Select(kvp => kvp.Key)

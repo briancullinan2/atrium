@@ -321,10 +321,9 @@
 
     public static bool GetActive(ITrustProvider? Trust, PluginContract e)
     {
-        var ass = Path.GetFileNameWithoutExtension(e.InstallPath);
-        if (Trust?.EnabledAssemblies.ContainsKey(ass) == true)
+        if (Trust?.EnabledAssemblies.ContainsKey(e.Title) == true)
             return true;
-        if (Trust?.LoadedAssemblies.ContainsKey(ass) == true)
+        if (Trust?.LoadedAssemblies.ContainsKey(e.Title) == true)
             return true;
 #if !BROWSER
         // TODO: use ISettings

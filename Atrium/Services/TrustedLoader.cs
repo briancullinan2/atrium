@@ -173,15 +173,16 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private static async Task SettleServices(Assembly? newAss)
     {
-        if (IsRebuilding) return;
-
-        IsRebuilding = true; // was trying to decide to put it here or 3 lines down
         try
         {
-            // 2. Wait for the "silence" period
             await Task.Delay(300);
 
-            // 3. The actual work
+            if (IsRebuilding) return;
+
+            IsRebuilding = true; // was trying to decide to put it here or 3 lines down
+
+
+
             CachedDependedAssemblies = null;
             CachedEnabledAssMappings = null;
             CachedDependedAssMappings = null;
@@ -353,7 +354,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         IsBootstrapping = true;
 
-        _ = CheckPluginFiles().ContinueWith((_) => SettleServices(null), TaskContinuationOptions.NotOnFaulted);
+        _ = CheckPluginFiles();
 
         _ = Parallel.ForEachAsync(LoadedAssemblies.Values, options, async (ass, ct) =>
         {
@@ -438,10 +439,13 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private static void TryFindingInterestingTypes(Assembly ass)
     {
-        if (Seen.Contains(ass))
-            return;
+        lock (Seen)
+        {
+            if (Seen.Contains(ass))
+                return;
 
-        Seen.Add(ass);
+            Seen.Add(ass);
+        }
 
         if(ass.IsMine())
         {
@@ -457,17 +461,21 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             try
             {
                 if (typeof(LayoutComponentBase).IsAssignableFrom(type)
-                    && type != typeof(LayoutComponentBase))
+                    && type != typeof(LayoutComponentBase)
+                    && !Layouts.Contains(type))
                     Layouts.Add(type);
 
-                if (typeof(IHasPlugins).IsAssignableFrom(type))
+                if (typeof(IHasPlugins).IsAssignableFrom(type)
+                    && !AllPlugins.Contains(type))
                     AllPlugins.Add(type);
 
-                if (type.IsServiceable())
-                    Serviceable.TryAdd(type, [..type.GetInterfaces()]);
+                if (type.IsServiceable() && Serviceable.ContainsKey(type))
+                    lock(Serviceable)
+                        Serviceable.TryAdd(type, [..type.GetInterfaces()]);
 
                 if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
-                    && type != typeof(Atrium.Components.PluginsPage)) // we already know about ourselves
+                    && type != typeof(Atrium.Components.PluginsPage)
+                    && !AllRoutes.Contains(type)) // we already know about ourselves
                 {
                     routable = true;
                     if (attr.Template.StartsWith("/*")
@@ -487,7 +495,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             }
         }
 
-        if (routable)
+        if (routable && !Routable.Contains(ass))
             Routable.Add(ass);
     }
 
@@ -528,7 +536,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 #if !BROWSER
             if (Preferences.Default.Get("PluginEnabled" + title, false))
             {
-                Enable(title, true);
+                Enable(title, false);
                 if(StoredAssemblies.TryGetValue(title, out var ass))
                     TryFindingInterestingTypes(ass);
             }
@@ -590,6 +598,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         });
 
         IsBootstrapping = false;
+        await SettleServices(null);
     }
 
 
