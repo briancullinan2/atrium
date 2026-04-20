@@ -1,19 +1,12 @@
 @page "/plugins"
 @implements IDisposable
-@implements IHasChanged
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
+@inject ICompositeProvider Composite
 
 @code {
 
-
-    public async Task HasChanged(ICompositeProvider? Composite)
-    {
-        var Main = Composite?.GetService<IHasChildren>();
-        //var ChildContent = await (await RenderMain(Trust, Logo, Main, this, Window, Composite)).ToHtml(Composite);
-        if(Main?.HasChanged(Composite) is Task task) await task;
-    }
 
 
     public void Dispose()
@@ -48,10 +41,9 @@
             gatherTrust.Scanning = file;
             gatherTrust.LastUpdate = DateTime.Now;
             gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml(Composite);
-            if(gatherTrust.HasChanged?.Invoke(Composite) is Task task) await task;
             gatherTrust.PluginControls = await NotifySettled(
                 Trust, gatherTrust).ToHtml(Composite);
-
+            if (Composite?.GetService<IHasChildren>()?.HasChanged(Composite) is Task task) await task;
         }
     }
 
@@ -96,7 +88,6 @@
         public string? ScanningRendered { get; set; }
         public string? PluginControls { get; set; }
         public Action<PluginContract?>? NotifyDelegate = null;
-        public Func<ICompositeProvider?, Task>? HasChanged { get; set; } = null;
         public void Dispose()
         {
             Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
@@ -127,7 +118,6 @@
                 };
 
             Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
-            Plugin.GatheredTrust?.HasChanged = Plugin.HasChanged;
         }
 
         return Plugin.GatheredTrust;
@@ -167,7 +157,7 @@
 
             Plugin.GatheredTrust.PluginControls = await NotifySettled(
                 Trust, Plugin.GatheredTrust).ToHtml(Composite);
-            if (Plugin.GatheredTrust?.HasChanged?.Invoke(Composite) is Task task) await task;
+            if (Composite?.GetService<IHasChildren>()?.HasChanged(Composite) is Task task) await task;
         };
 
         if (Plugin.GatheredTrust.ScanningRendered == null)
@@ -229,7 +219,7 @@
                     else
                     {
                         <label class="switch">
-                            <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', '@plugin?.Title')" checked="@Checked" />
+                            <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', ['@plugin?.Title', !!this.value])" checked="@Checked" />
                         </label>
                     }
                 </td>
@@ -344,19 +334,17 @@
         return false;
     }
 
-    private static async Task<string?> OnEnabled(
+    public static async Task<string?> OnEnabled(
         TrustedLoader? Trust, 
-        PluginContract? plugin, 
-        ChangeEventArgs e)
+        string? title,
+        bool? isChecked)
     {
-        if (plugin == null) return null;
+        if (title == null) return null;
 
-        var isChecked = (bool)(e.Value ?? false);
-
-        if (!isChecked)
-            Trust?.Disable(plugin.Title);
+        if (isChecked != true)
+            Trust?.Disable(title);
         else
-            Trust?.Enable(plugin.Title);
+            Trust?.Enable(title);
 
         Trust?.OnSettled += () => TriggerExpand(Trust, null);
 

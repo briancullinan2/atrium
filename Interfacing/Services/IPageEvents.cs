@@ -5,8 +5,9 @@ namespace Interfacing.Services;
 
 public interface IHasEvents : IHasModule
 {
-    void Subscribe((PageAction Action, string Id) key, Delegate? value);
-    void Unsubscribe((PageAction Action, string Id) key, Delegate? value);
+    void Subscribe(PageAction Action, Delegate? value);
+    void Subscribe(PageAction Action, string key, Delegate? value);
+    void Unsubscribe(PageAction Action, string key, Delegate? value);
     ValueTask TriggerEvent(string eventName, object? detail = null);
     ValueTask TriggerEvent(PageAction id, object? detail = null);
 

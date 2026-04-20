@@ -113,8 +113,12 @@
         if(firstRender)
         {
             Composite.GetService<IRenderState>()?.NotifyRendered(Runtime, this);
-            if(Composite.GetService<IHasEvents>()?.EnsureInitialized() is ValueTask task)
+            var Events = Composite.GetService<IHasEvents>();
+            if (Events?.EnsureInitialized() is ValueTask task)
                 await task;
+            var Trust = Composite.GetService<TrustedLoader>();
+            Events?.Subscribe(PageAction.TogglePlugin, (string? title, bool? isChecked)
+                => PluginsPage.OnEnabled(Trust, title, isChecked));
             await HasChanged(Composite);
         }
     }

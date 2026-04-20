@@ -1,17 +1,18 @@
 ﻿
 
+using System.Collections;
 using System.ComponentModel;
 
 namespace Atrium.Services;
 
 public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : IHasEvents
 {
-    private readonly Dictionary<(PageAction Action, string Id), object?> _states = [];
+    private readonly Dictionary<(PageAction Action, string? Id), object?> _states = [];
 
-    private readonly Dictionary<(PageAction Action, string Id), Delegate?> _events = [];
+    private readonly Dictionary<(PageAction Action, string? Id), Delegate?> _events = [];
     public bool IsReady => _restartRequired.Task.IsCompleted && _restartRequired.Task.Result == true;
 
-    public void Unsubscribe((PageAction Action, string Id) key, Delegate? value)
+    public void Unsubscribe(PageAction Action, string? key, Delegate? value)
     {
         if (value == null)
         {
@@ -19,19 +20,24 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
             return;
         }
 
-        if (_events.TryGetValue(key, out var existing))
+        if (_events.TryGetValue((Action, key), out var existing))
         {
-            _events[key] = Delegate.Remove(existing, value);
+            _events[(Action, key)] = Delegate.Remove(existing, value);
         }
         else
-            _events[key] = null;
+            _events[(Action, key)] = null;
         // Combine adds 'value' to the invocation list of 'existing'
 
         // THE AUTO-FIRE ENGINE
-        TriggerState(key, value);
+        TriggerState((Action, key), value);
     }
 
-    public void Subscribe((PageAction Action, string Id) key, Delegate? value)
+    public void Subscribe(PageAction Action, Delegate? value)
+    {
+        Subscribe(Action, "window", value);
+    }
+
+    public void Subscribe(PageAction Action, string? key, Delegate? value)
     {
         if (value == null)
         {
@@ -39,71 +45,58 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
             return;
         }
 
-        if (_events.TryGetValue(key, out var existing))
+        if (_events.TryGetValue((Action, key), out var existing))
         {
-            _events[key] = Delegate.Remove(existing, value);
-            _events[key] = Delegate.Combine(existing, value);
+            _events[(Action, key)] = Delegate.Remove(existing, value);
+            _events[(Action, key)] = Delegate.Combine(existing, value);
         }
         else
-            _events[key] = value;
+            _events[(Action, key)] = value;
         // Combine adds 'value' to the invocation list of 'existing'
 
         // THE AUTO-FIRE ENGINE
-        TriggerState(key, value);
+        TriggerState((Action, key), value);
     }
 
 
-    private void TriggerState((PageAction Action, string Id) key, Delegate? value, object? newState = null)
+
+
+    private void TriggerState((PageAction Action, string? Id) key, Delegate? value, object? newState = null)
     {
+        if (value == null) return;
         var lastState = newState ?? (_states.TryGetValue(key, out var state) ? state : null);
+        var possibleValues = (lastState as IEnumerable)?.Cast<object?>();
+        var possibleEl = ((newState is JsonElement el2) ? el2.ToObject() : null);
 
-        if (newState != null || lastState != null)
+        if (newState == null && lastState == null) return;
+
+        try
         {
-            // Pattern match the action to know how to 'Replay' the state
-            switch (key.Action)
+            var consumed = 0;
+            var parameters = value.Method.GetParameters();
+            object?[] inputParameters = new object?[parameters.Length];
+            for (var i = 0; i < parameters?.Length; i++)
             {
-                case PageAction.Visible:
-                    if (value is Action<bool> visibleHandler
-                        && lastState is bool visible)
-                        visibleHandler.Invoke(visible);
-                    else if (value is Action<bool?> visibleHandler2)
-                        visibleHandler2.Invoke(lastState as bool?);
-                    break;
-                case PageAction.Reconnect:
-                    if (value is Action<string> stateHandler
-                        && lastState is string reconnect)
-                        stateHandler.Invoke(reconnect);
-                    else if (value is Action<string?> stateHandler2)
-                        stateHandler2.Invoke(lastState as string);
-                    break;
-                case PageAction.Scroll:
-                case PageAction.Focus:
-                    if (value is Action<string, bool> boolHandler
-                        && lastState is bool b)
-                        boolHandler.Invoke(key.Id, b);
-                    else if (value is Action<bool?> boolHandler2)
-                        boolHandler2.Invoke(lastState as bool?);
-                    else if (value is Func<bool?, Task> boolHandler3)
-                        boolHandler3.Invoke(lastState as bool?);
-                    break;
+                var val = possibleValues?.ElementAtOrDefault(consumed) ?? possibleEl ?? lastState;
+                if (possibleEl is IEnumerable enumerable)
+                    val = enumerable.Cast<object?>().ElementAtOrDefault(consumed);
 
-                case PageAction.Resize:
-                    var lastResize = lastState as (int w, int h, bool s)?;
-                    if (lastResize.HasValue)
-                    {
-                        var (w, h, s) = lastResize.Value;
-                        if (value is Action<int, int, bool> resizeHandler)
-                            resizeHandler.Invoke(w, h, s);
-                        else if (value is Action<int, int> resizeHandler2)
-                            resizeHandler2.Invoke(w, h);
-                        else if (value is Func<int, int, bool, Task> resizeHandler3)
-                            _ = resizeHandler3.Invoke(w, h, s);
-                    }
-
-                    break;
+                if (val?.GetType().Extends(parameters[i].ParameterType) == true)
+                {
+                    inputParameters[i] = val;
+                    consumed++;
+                }
             }
+
+            value?.InvokeService(Composite, inputParameters);
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+            
     }
+
 
 
 
@@ -191,6 +184,10 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
         if (_events.TryGetValue(key, out var del))
         {
             TriggerState(key, del, value);
+        }
+        if (id != "window" && _events.TryGetValue((action, "window"), out var del2))
+        {
+            TriggerState(key, del2, value);
         }
     }
 
@@ -358,4 +355,24 @@ internal static class PageExtensions
 
         return null;
     }
+
+
+
+    public static object? ToObject(this JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.GetDecimal(), // Or GetDouble() depending on precision needs
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(x => x.Name, x => ToObject(x.Value)),
+            JsonValueKind.Array => element.EnumerateArray().Select(ToObject).ToList(),
+            JsonValueKind.Undefined => null,
+            _ => throw new NotSupportedException($"Unsupported JSON type: {element.ValueKind}")
+        };
+    }
+
 }
+
