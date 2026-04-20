@@ -31,7 +31,7 @@ public interface ISingleton
 
 public interface IHasChanged
 {
-    Task HasChanged();
+    Task HasChanged(ICompositeProvider? Composite);
 }
 
 

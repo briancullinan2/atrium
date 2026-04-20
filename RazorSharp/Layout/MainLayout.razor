@@ -91,7 +91,7 @@
 
     public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
 
-    public async Task HasChanged() => await InvokeAsync(StateHasChanged);
+    public async Task HasChanged(ICompositeProvider? Composite) => await InvokeAsync(StateHasChanged);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

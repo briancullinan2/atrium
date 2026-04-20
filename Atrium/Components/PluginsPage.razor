@@ -4,7 +4,7 @@
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
-@inject ICompositeProvider Composite
+
 
 @(new MarkupString(ChildContent ?? string.Empty))
 
@@ -14,21 +14,17 @@
     IHasClass? Logo = null;
     IHasChildren? Main = null;
     IWindowManager? Window = null;
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        Trust = Composite.GetService<TrustedLoader>();
-        Logo = Composite.GetService<IHasClass>();
-        Main = Composite.GetService<IHasChildren>();
-        Window = Composite.GetService<IWindowManager>();
-        await HasChanged();
-    }
 
-    public async Task HasChanged()
+
+
+    public async Task HasChanged(ICompositeProvider? Composite)
     {
+        Trust ??= Composite?.GetService<TrustedLoader>();
+        Logo ??= Composite?.GetService<IHasClass>();
+        Main ??= Composite?.GetService<IHasChildren>();
+        Window ??= Composite?.GetService<IWindowManager>();
         ChildContent = await (await RenderMain(Trust, Logo, Main, this, Window, Composite)).ToHtml(Composite);
-        await InvokeAsync(StateHasChanged);
-        if(Main?.HasChanged() is Task task) await task;
+        if(Main?.HasChanged(Composite) is Task task) await task;
     }
 
 
@@ -65,7 +61,7 @@
             gatherTrust.Scanning = file?.InstallPath;
             gatherTrust.LastUpdate = DateTime.Now;
             gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml(Composite);
-            if(gatherTrust.HasChanged?.Invoke() is Task task) await task;
+            if(gatherTrust.HasChanged?.Invoke(Composite) is Task task) await task;
         }
     }
 
@@ -79,8 +75,6 @@
     ) => __builder =>
     {
         if (gatherTrust == null) return;
-
-        gatherTrust.Scanning = "";
 
         RenderPluginSelect(
             gatherTrust.Layouts,
@@ -126,7 +120,7 @@
         public string? ScanningRendered { get; set; }
         public string? PluginControls { get; set; }
         public Action<PluginContract?>? NotifyDelegate = null;
-        public Func<Task>? HasChanged { get; set; } = null;
+        public Func<ICompositeProvider?, Task>? HasChanged { get; set; } = null;
         public void Dispose()
         {
             Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
@@ -186,15 +180,22 @@
                 if (Main?.SetAppAssembly(ass) is Task task) await task;
         };
 
-        var OnSettled = async () =>
+        Func<Task>? OnSettled = null;
+        OnSettled = async () =>
         {
+            Trust?.OnSettledAsync += OnSettled;
             Plugin.GatheredTrust = GatherTrust(Trust, Plugin, Composite);
-            Plugin.GatheredTrust?.PluginControls = await NotifySettled(
+            if (Plugin.GatheredTrust == null) return;
+            Plugin.GatheredTrust.Scanning = "";
+            Plugin.GatheredTrust.LastUpdate = DateTime.Now;
+            Plugin.GatheredTrust.ScanningRendered = await RenderPluginStatus(
+                Plugin.GatheredTrust.IsBootstrapping, 
+                Plugin.GatheredTrust.Error, 
+                Plugin.GatheredTrust.Scanning).ToHtml(Composite);
+            Plugin.GatheredTrust.PluginControls = await NotifySettled(
                 Trust, Plugin.GatheredTrust, SetRoutable, Window).ToHtml(Composite);
-            if (Plugin.GatheredTrust?.HasChanged?.Invoke() is Task task) await task;
+            if (Plugin.GatheredTrust?.HasChanged?.Invoke(Composite) is Task task) await task;
         };
-
-        Trust?.OnSettledAsync += OnSettled;
 
         if (Plugin.GatheredTrust.ScanningRendered == null)
             Plugin.GatheredTrust.ScanningRendered = await RenderPluginStatus(
@@ -317,7 +318,7 @@
 
             @if (Roots?.Count > 0 || AllRoutes?.Count > 0)
             {
-                @RenderSelectTypes([.. Roots ?? [], .. AllRoutes ?? []], ">Root Component", SetSelectedRoot)
+                @RenderSelectTypes([.. Roots ?? [], .. AllRoutes ?? []], "Root Component", SetSelectedRoot)
             }
 
         };

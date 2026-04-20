@@ -5,7 +5,18 @@
 
 @code
 {
-    
+
+    PluginsPage? Plugins { get; set; } = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Plugins = Composite.GetService<PluginsPage>();
+        if(Plugins?.HasChanged(Composite) is Task task) await task;
+        PluginContent = Plugins?.ChildContent;
+    }
+
+
     public static Dictionary<string, string> Query(string uri)
     {
         // Use a simple split/regex to avoid heavy libraries
@@ -48,13 +59,12 @@
         };
 
 
-    public static RenderFragment RenderPluginCoverPage()
+    public static RenderFragment RenderPluginCoverPage(string? PluginContent)
         => (RenderTreeBuilder __builder) =>
         {
             <div class="cover-container"></div>
             <main class="cover-page">
-                @*TODO: make this a component that can inject itself into a settings page*@
-                <Atrium.Components.PluginsPage />
+                @(new MarkupString(PluginContent ?? string.Empty))
             </main>
         };
 
@@ -64,7 +74,7 @@
         StoredAppAssembly = assembly;
     }
 
-    public static RenderFragment RenderMain(IHasClass? Css, IRenderState? Rendered, bool ShowPlugins)
+    public static RenderFragment RenderMain(IHasClass? Css, IRenderState? Rendered, string? PluginContent, bool ShowPlugins)
         => (RenderTreeBuilder __builder) =>
         {
             @RenderHeader(Css, Rendered)
@@ -75,22 +85,24 @@
                 
                 @if (ShowPlugins)
                 {
-                    @RenderPluginCoverPage()
+                    @RenderPluginCoverPage(PluginContent)
                 }
 
             </div>
         };
 
 
-    public async Task HasChanged()
+    public async Task HasChanged(ICompositeProvider? Composite)
     {
-        ChildContent = await RenderMain(null, null, FirstTimeLoad).ToHtml(Composite);
+        PluginContent = Plugins?.ChildContent;
+        ChildContent = await RenderMain(null, null, PluginContent, FirstTimeLoad).ToHtml(Composite);
         await InvokeAsync(StateHasChanged);
     }
 
     public bool FirstTimeLoad = true;
 
     public string? ChildContent = null;
+    public string? PluginContent = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -98,8 +110,7 @@
         if(firstRender)
         {
             var showPlugins = FirstTimeLoad; // || DefaultLayout == null || StoredAppAssembly == null;
-            ChildContent = await RenderMain(null, null, FirstTimeLoad).ToHtml(Composite);
-            await InvokeAsync(StateHasChanged);
+            ChildContent = await RenderMain(null, null, PluginContent, FirstTimeLoad).ToHtml(Composite);
         }
     }
 

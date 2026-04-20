@@ -16,8 +16,7 @@ namespace Atrium.Services;
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
-    //bool IsRebuilding = false;
-    private event Action? InternalOnSettled;
+    private static event Action? InternalOnSettled;
     public event Action? OnSettled
     {
         add
@@ -26,8 +25,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             // incase anything forgets this bool setOnce = false pattern
             if (InternalOnSettled?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettled += value;
-            //if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
-            //_ = RebuildServiceContainer();
+            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
+            _ = SettleServices(null);
         }
         remove
         {
@@ -37,7 +36,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     // TODO: use a ConcurrentDictionary and actually await the calls?
     // fires at least once for everybody even if services aren't rebuilt
-    private event Func<Task>? InternalOnSettledAsync;
+    private static event Func<Task>? InternalOnSettledAsync;
     public event Func<Task>? OnSettledAsync
     {
         add
@@ -46,8 +45,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             // incase anything forgets this bool setOnce = false pattern
             if (InternalOnSettledAsync?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettledAsync += value;
-            //if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
-            //_ = RebuildServiceContainer();
+            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
+            _ = SettleServices(null);
         }
         remove
         {
@@ -113,7 +112,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 #endif
     }
 
-    private readonly ConcurrentDictionary<string, string> Tried = [];
+    private static readonly ConcurrentDictionary<string, string> Tried = [];
 
 #if false
 
@@ -171,48 +170,33 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     }
 
 
-#if false
-    private async Task RebuildServiceContainer()
-    {
 
+    private static async Task SettleServices(Assembly? newAss)
+    {
         if (IsRebuilding) return;
 
         IsRebuilding = true; // was trying to decide to put it here or 3 lines down
-
         try
         {
             // 2. Wait for the "silence" period
-            await Task.Delay(400);
+            await Task.Delay(300);
 
             // 3. The actual work
             CachedDependedAssemblies = null;
             CachedEnabledAssMappings = null;
             CachedDependedAssMappings = null;
 
-            var mappings = EnabledAssMappings
-                .Concat(DependedAssMappings)
-                .Where(ass => !FILTER_MICROSOFT_DLLS_BY_NAME(ass.ToName())) // TODO: this isn't always true?
-                .Where(MetadataReaderExtensions.IsMine)
+            var mappings = newAss?.GetReferencedAssemblies()
+                .Select(ass => ass.ToName())
+                .Where(ass => !FILTER_MICROSOFT_DLLS_BY_NAME(ass))
                 .ToList();
 
-            var keys = JsonSerializer.Serialize(mappings.Select(ass => ass.FullName));
-
-            if (keys == previousKeys)
-            {
-                return;
-            }
-            previousKeys = keys;
 
             var collection = new ServiceCollection();
 
             // TODO: check depended assemblies is empty compared to loaded assemblies then offer an OnSettled even if its preloading is done
-            var missing = DependedAssemblies.Where(ass => Tried.ContainsKey(ass.Key) != true).ToList();
-            if (missing.Count == 0)
-            {
-
-
-            }
-            else
+            var missing = mappings?.Where(ass => Tried.ContainsKey(ass) != true).ToList();
+            if (missing?.Count > 0)
             {
                 var parallel = Environment.ProcessorCount - 4;
 
@@ -222,72 +206,27 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     MaxDegreeOfParallelism = Math.Max(1, parallel)
                 };
 
-                foreach (var ass in missing) // prevent recursion
-                    Tried.TryAdd(ass.Key, ass.Key);
+                foreach (var ass in missing ?? []) // prevent recursion
+                    Tried.TryAdd(ass, ass);
 
-                _ = Parallel.ForEachAsync(missing, options, async (ass, ct) =>
+                _ = Parallel.ForEachAsync(missing ?? [], options, async (ass, ct) =>
                 {
                     try
                     {
-                        AppDomain.CurrentDomain.Load(ass.Key);
+                        AppDomain.CurrentDomain.Load(ass);
                     }
                     catch (Exception)
                     {
 
                     }
-                }).ContinueWith(t => RebuildServiceContainer()); // make sure it fires at least once more after we quit below
+                }).ContinueWith(t => SettleServices(null)); // make sure it fires at least once more after we quit below
 
                 IsRebuilding = false;
 
                 return; // might as well duck out now because we know more are coming
             }
 
-
-            var currents = mappings
-                .SelectMany(BuilderExtensions.GetAssTypesSafely)
-                .GetServicable()
-                .ToList();
-
-            //collection.AddSingleton<IHttpClientFactory>(sp => root.GetRequiredService<IHttpClientFactory>());
-            //collection.AddScoped<HttpClient>(sp => Service.GetRequiredService<HttpClient>());
-            //collection.AddScoped<AuthenticationStateProvider>(sp => root.GetRequiredService<AuthenticationStateProvider>());
-
-            // TODO: need to check installed and get a list of IHasPlugin.Plugins.Keys would be a list of
-            //   all the additional service types and the value is its display options
-            List<Type> AlreadyMapped = [];
-            var checkExisting = currents.Concat(SingleUser.Keys).ToList(); // add this here so it can be checked below
-            foreach (var ass in checkExisting)
-            {
-                try
-                {
-                    if (Provider?.GetService(ass) is object serve)
-                    {
-                        if (ass.Extends(typeof(IHasService)))
-                            collection.AddSingleton(ass, sp => serve);
-                        else
-                            collection.AddScoped(ass, sp => serve);
-                        AlreadyMapped.Add(ass);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Who the fuck even are you? " + ex);
-                }
-
-            }
-
-            collection.AddCascadingValue(sp => new ErrorBoundary());
-
-            collection.BuildServices(currents, null, AlreadyMapped, true);
-
-            // Finalize the provider
-            Services = collection.BuildServiceProvider();
-
-            //var test = Services.GetService<ITitleService>();
-
-            Provider?.PluginPopin = Services;
-
-            lock (DiscoveredStatus)
+            lock (CachedPluginContracts)
             {
                 var old = InternalOnSettled;
                 var oldAsync = InternalOnSettledAsync;
@@ -296,7 +235,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 old?.Invoke();
                 _ = oldAsync?.Invoke();
             }
-
         }
         catch (Exception ex)
         {
@@ -308,10 +246,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             IsRebuilding = false;
 
         }
-
     }
 
-#endif
 
     public Dictionary<string, bool> EnabledAssemblies { get; } = [];
 
@@ -417,7 +353,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         IsBootstrapping = true;
 
-        _ = CheckPluginFiles();
+        _ = CheckPluginFiles().ContinueWith((_) => SettleServices(null), TaskContinuationOptions.NotOnFaulted);
 
         _ = Parallel.ForEachAsync(LoadedAssemblies.Values, options, async (ass, ct) =>
         {
@@ -432,7 +368,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             );
             DiscoveredStatus.TryAdd(title, contract);
             OnAssemblyLoaded?.Invoke(contract);
-        });
+        }).ContinueWith((_) => SettleServices(null), TaskContinuationOptions.NotOnFaulted);
 
         PrivateAssemblyLoaded += TrustedLoader_PrivateAssemblyLoaded;
         /*
@@ -478,7 +414,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         Task.Run(async () =>
         {
             TryFindingInterestingTypes(assembly);
-            //await RebuildServiceContainer();
 
             var contract = new PluginContract(
                 Title: title,
@@ -488,6 +423,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             );
             CachedPluginContracts.TryAdd(title, contract);
             PrivateAssemblyLoaded?.Invoke(contract);
+            await SettleServices(assembly);
         });
 
     }
@@ -506,6 +442,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             return;
 
         Seen.Add(ass);
+
+        if(ass.IsMine())
+        {
+            Console.WriteLine(ass.ToName());
+        }
 
         var allTypes = ass.GetAssTypesSafely();
 
@@ -601,8 +542,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 IsTrusted: false,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.Untrusted)
             );
-            PrivateAssemblyLoaded?.Invoke(unloadedContract);
             CachedPluginContracts.TryAdd(title, unloadedContract);
+            PrivateAssemblyLoaded?.Invoke(unloadedContract);
 
             await Task.Delay((counter % parallel) * 100, ct); // burst mode
 
@@ -745,6 +686,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
     private readonly IComponentActivator? Plugin;
     private readonly ICompositeProvider? Provider;
+    private static bool IsRebuilding = false;
 
     static event Action<PluginContract>? PrivateAssemblyLoaded;
 

@@ -199,7 +199,7 @@
     }
 
     public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
-    public async Task HasChanged()
+    public async Task HasChanged(ICompositeProvider Composite)
     {
         //await InvokeAsync(StateHasChanged);
     }
