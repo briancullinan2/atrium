@@ -52,6 +52,8 @@ sort of hated that specificity, I like the reflection metadata thing present in 
 like ruby on rails.
 
 
+I spoke to soon. Fuck microsoft. Their fucking bullshit lifecycle has NEVER worked.
+
 #### 4/16/2026
 
 This is a fairly solid foundation. I reorganized and rebuilt and my framework is still working. I even tried to ruin up Microsoft's framework lifecycle

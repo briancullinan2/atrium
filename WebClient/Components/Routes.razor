@@ -9,6 +9,7 @@
 @implements IDisposable
 @implements IHasChildren
 @inject NavigationManager Nav
+@inject ICompositeProvider Composite
 @inject IServiceProvider Service
 @inject ITrustProvider Trust
 @inject IHasClass Css
@@ -141,16 +142,22 @@
     {
         if (CurrentControl != null)
         {
-            await Css.ListenUp(CurrentControl.ToType(), DefaultLayout, this);
-            Service.GetService<IFormFactor>()?.RequestControl = CurrentControl.ToType();
+            var controlType = CurrentControl.ToType();
+            await Css.ListenUp(controlType, DefaultLayout, this);
+            Service.GetService<IFormFactor>()?.RequestControl = controlType;
 
-            Console.WriteLine("Current route 2: " + CurrentControl + " - " + CurrentControl.ToType());
+            Console.WriteLine("Current route 2: " + CurrentControl + " - " + controlType);
+            if (controlType != typeof(RazorSharp.Pages.Landing.Default))
+            {
+                Composite.GetService<IFormFactor>()?.RequestControl = controlType;
+                _ = ProbablyUpdateTitle(controlType);
+            }
         }
         if (!OperatingSystem.IsBrowser())
         {
             if (Rendered?.SetState(this) == true)
                 await InvokeAsync(StateHasChanged);
-        }        
+        }   
     }
 
 
@@ -187,7 +194,8 @@
     .Select(seg => seg.ToSafe())
         ], controlType);
 
-        _ = ProbablyUpdateTitle();
+        Composite.GetService<IFormFactor>()?.RequestControl = controlType;
+        _ = ProbablyUpdateTitle(controlType);
     }
 
     public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
@@ -214,7 +222,8 @@
         var components = this
             .GetChildComponents()
             .Select(comp => comp.GetType())
-            .OrderBy(type => type != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
+            .Concat(controlType != null ? [controlType] : [])
+            .OrderBy(type => type == controlType ? -2 : type != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
             .ToList();
         var title = components.SelectMany(comp => comp.GetCustomAttributes<DisplayAttribute>())
             .FirstOrDefault() ?? controlType?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();

@@ -1,122 +1,134 @@
-@using Atrium.Extensions
-@using Atrium.Services
-@using Interfacing.Services
-@using Microsoft.AspNetCore.Components.Rendering
-@using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.AspNetCore.Components.Web
-@inject NavigationManager Nav
-@inject ICompositeProvider Service
-@inject ITrustProvider Trust
-@inject IRenderState Rendered
-@inject IHasClass Css
+@implements IHasChildren
 
-@foreach (var cssUrl in Css.Registry)
-{
-    <link rel="stylesheet" href="@cssUrl" />
-}
-@foreach (var item in Rendered?.State ?? [])
-{
-    <input type="hidden" name="state_@item.Key" value="@item.Value" />
-}
+@ChildContent
 
-@if (IsDebug)
+@code
 {
-    <script>
-        (function() {
-        const originalInvoke = DotNet.invokeMethodAsync;
-        DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
-        console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
-        return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+    
+    public static Dictionary<string, string> Query(string uri)
+    {
+        // Use a simple split/regex to avoid heavy libraries
+        var query = uri.TrimStart('?');
+        var parameters = query.Split('&')
+                              .Select(p => p.Split('='))
+                              .ToDictionary(p => p[0], p => p.Length > 1 ? Uri.UnescapeDataString(p[1]) : "");
+
+        return parameters;
+    }
+
+    public static RenderFragment RenderHeader(IHasClass? Css, IRenderState? Rendered)
+         => (RenderTreeBuilder __builder) =>
+        {
+            foreach (var cssUrl in Css?.Registry ?? [])
+            {
+                <link rel="stylesheet" href="@cssUrl" />
+            }
+
+            foreach (var item in Rendered?.State ?? [])
+            {
+                <input type="hidden" name="state_@item.Key" value="@item.Value" />
+            }
+
         };
-        })();
-    </script>
-}
 
-<div class="page @(Ready) @(string.Join(" ", Css.ClassNames))">
+
+    public static RenderFragment RenderDebugInvokationLogger()
+        => (RenderTreeBuilder __builder) =>
+        {
+            <script>
+                (function() {
+                const originalInvoke = DotNet.invokeMethodAsync;
+                DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+                console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+                return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+                };
+                })();
+            </script>
+        };
+
+
+    public static RenderFragment RenderPluginCoverPage()
+        => (RenderTreeBuilder __builder) =>
+        {
+            <div class="cover-container"></div>
+            <main class="cover-page">
+                @*TODO: make this a component that can inject itself into a settings page*@
+                <Atrium.Components.PluginsPage />
+            </main>
+        };
+
+    static System.Reflection.Assembly? StoredAppAssembly = null;
+    public async Task SetAppAssembly(System.Reflection.Assembly? assembly)
+    {
+        StoredAppAssembly = assembly;
+    }
+
+    public static RenderFragment RenderMain(IHasClass? Css, IRenderState? Rendered, bool ShowPlugins)
+        => (RenderTreeBuilder __builder) =>
+        {
+            @RenderHeader(Css, Rendered)
+#if DEBUG
+            @RenderDebugInvokationLogger()
+#endif
+            <div class="page @(string.Join(" ", Css?.ClassNames ?? []))">
+                
+                @if (ShowPlugins)
+                {
+                    @RenderPluginCoverPage()
+                }
+
+            </div>
+        };
+
+
+    public bool FirstTimeLoad = true;
+
+    public RenderFragment? ChildContent = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if(firstRender)
+        {
+            var showPlugins = FirstTimeLoad; // || DefaultLayout == null || StoredAppAssembly == null;
+            ChildContent = RenderMain(null, null, showPlugins);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+#if false
     @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
     {
-        <div class="cover-container"></div>
-        <main class="cover-page">
-            @*TODO: make this a component that can inject itself into a settings page*@
-            <Atrium.Components.PluginsPage />
-        </main>
     }
 
-    @if (StoredAppAssembly != null)
+
+
+    private RenderFragment CreatePermissionContent(RouteData routeData) => builder =>
     {
-        <CascadingValue Name="Loader" Value="@this">
-            <CascadingValue Value="DefaultRoot" Name="@nameof(DefaultRoot)">
-                <CascadingValue Value="FirstTimeLoad" Name="@nameof(FirstTimeLoad)">
-                    <CascadingValue Value="PermissionType" Name="@nameof(PermissionType)">
-                        @RenderWithPermission()
-                    </CascadingValue>
-                </CascadingValue>
-            </CascadingValue>
-        </CascadingValue>
-    }
-</div>
+        if (PermissionType == null) throw new InvalidOperationException("CreatePermissionContent was called without auth setup");
+        builder.OpenComponent(0, PermissionType);
 
+        // Pass the standard parameters
+        builder.AddAttribute(1, "RouteData", routeData);
+        builder.AddAttribute(2, "NotAuthorizedLayout", DefaultLayout);
+        builder.AddAttribute(3, "LoadingLayout", DefaultLayout);
 
-@code {
-    
+        // Pass the nested content (RouteView and FocusOnNavigate)
+        builder.AddAttribute(4, "ChildContent", (RenderFragment)((childBuilder) =>
+        {
+            childBuilder.OpenComponent<RouteView>(0);
+            childBuilder.AddAttribute(1, "RouteData", routeData);
+            childBuilder.AddAttribute(2, "DefaultLayout", DefaultLayout);
+            childBuilder.CloseComponent();
 
-    private RenderFragment RenderWithLayout() => __builder =>
-    {
-        <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
-            <Found Context="routeData">
-                <CascadingValue Value="@routeData">
-                    @{
-                        _ = Css.ListenUp(routeData.PageType, DefaultLayout, this);
-                        Service.GetService<IFormFactor>()?.RequestControl = routeData.PageType;
-                    }
-                    @if (AuthService != null)
-                    {
-                        @CreatePermissionContent(routeData)
-                    }
-                    else
-                    {
-                        <RouteView RouteData="routeData" DefaultLayout="@DefaultLayout" />
-                        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-                    }
-                </CascadingValue>
-            </Found>
-            <NotFound>
-                <LayoutView Layout="DefaultLayout">
-                    @BuildNotFound()
-                </LayoutView>
-            </NotFound>
-        </Router>
+            childBuilder.OpenComponent<FocusOnNavigate>(3);
+            childBuilder.AddAttribute(4, "RouteData", routeData);
+            childBuilder.AddAttribute(5, "Selector", "h1");
+            childBuilder.CloseComponent();
+        }));
+
+        builder.CloseComponent();
     };
-
-
-
-    private RenderFragment RenderWithoutLayout() => __builder =>
-    {
-        <main>
-            <Router AppAssembly="@StoredAppAssembly" AdditionalAssemblies="@(((TrustedLoader)Trust).EnabledAssMappings)">
-                <Found Context="routeData">
-                    <CascadingValue Value="@routeData">
-                        @{
-                            _ = Css.ListenUp(routeData.PageType, null, this);
-                            Service.GetService<IFormFactor>()?.RequestControl = routeData.PageType;
-                        }
-                        @if (AuthService != null)
-                        {
-                            @CreatePermissionContent(routeData)
-                        }
-                        else
-                        {
-                            <RouteView RouteData="routeData" />
-                            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-                        }
-                    </CascadingValue>
-                </Found>
-                <NotFound>
-                    @BuildNotFound()
-                </NotFound>
-            </Router>
-        </main>
-    };
-
+#endif
 
 }

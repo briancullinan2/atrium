@@ -1,16 +1,9 @@
-﻿//#if DEBUG
-//using Microsoft.Extensions.Logging;
-//#endif
+﻿
 using Atrium.Components;
 using Atrium.Extensions;
-
-#if WINDOWS
-using Atrium.Platforms.Windows;
-#endif
+using Atrium.Services;
 using Interfacing.Services;
 using Microsoft.AspNetCore.Components;
-using System.Collections.Generic;
-using System.Net.Http;
 
 namespace Atrium;
 
@@ -41,16 +34,18 @@ public class MauiProgram : IHasCurrent<MauiApp>
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             });
 
+        /*
         var currents = new List<Assembly>() { typeof(PluginsPage).Assembly }
             .Concat(AppDomain.CurrentDomain.GetAssemblies())
             .Where(MetadataReaderExtensions.IsMine)
             .SelectMany(BuilderExtensions.GetAssTypesSafely)
             .GetServicable()
             .ToList();
+        */
 
-        BuilderExtensions.BuildServices(builder.Services, currents, null, null, true);
-        builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
-        builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
+        BuilderExtensions.BuildServices(builder.Services, CompositeServiceProvider.BuiltIn, null, null, true);
+        //builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
+        //builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
 
         //builder.Services.AddSingleton<Lazy<ILocalStore?>>(sp => new Lazy<ILocalStore?>(sp.GetRequiredService<ILocalStore>()));
         builder.Services.AddMauiBlazorWebView();

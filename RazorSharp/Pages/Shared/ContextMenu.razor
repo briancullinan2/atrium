@@ -47,7 +47,10 @@
 
     protected void Title_Changed(string? title)
     {
-        HeaderTitle = title;
+        if (HeaderTitle != title) {
+            HeaderTitle = title;
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     // TODO: ask controls if their context menu is visible

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -81,39 +82,29 @@ public static class InvokableExtensions
     }
 
 
-    public static List<Type> GetServicable(this IEnumerable<Type> asses)
+
+    public static bool IsServiceable(this Type type)
     {
+        return type.IsConcrete() && type.GetInterfaces().Any(IsService);
+    }
 
-        List<Type> plugins = [..asses
-            .Where(t => t.IsConcrete() && t.Extends(typeof(IHasPlugins)))
-            .SelectMany(t => t.GetProperty(nameof(IHasPlugins.Plugins), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as List<Type> ?? [])];
 
-        asses = [.. asses.Concat(plugins)];
+    public static bool IsService(this Type t)
+    {
+        if (t.Extends(typeof(IHasNoService))) return false;
+        return 
+            t.Name.Contains("Service", StringComparison.InvariantCultureIgnoreCase)
+            || t.Namespace?.Contains("Service", StringComparison.InvariantCultureIgnoreCase) == true
+            || t.Extends(typeof(IHasService))
+            || t.Extends(typeof(IHasCurrent<>))
+            || t.Extends(typeof(IHasPlugins))
+            || t.Extends(typeof(IHasFeatures));
+    }
 
-        List<Type> concrete = [.. asses.Where(s => s.IsConcrete() && !s.Extends(typeof(IHasNoService)))];
 
-        List<string> interfaces = [..asses
-            .Where(s => s.IsInterface)
-            .Select(i => i.Name)
-            ];
-
-        List<Type> servicable = [..concrete
-            .Where(c => c.GetInterfaces()
-                .Select(i => i.Name)
-                .Intersect(interfaces) // Finds names present in both lists
-                .Any())                // Returns true if the intersection isn't empty
-            ];
-
-        /*List<Type> currents = [..servicable
-            .Where(t => t.Extends(typeof(IHasCurrent<>)))
-            .Select(t => {
-                var interf = t.GetInterfaces().First(i => i.Extends(typeof(IHasCurrent<>)));
-                return interf.GetGenericArguments().First();
-            })
-            .Where(t => t.IsConcrete())];
-        */
-
-        return [.. servicable.Distinct()];
+    public static List<Type> GetServiceable(this IEnumerable<Type> asses)
+    {
+        return [.. asses.Where(IsServiceable).Distinct()];
     }
 
 

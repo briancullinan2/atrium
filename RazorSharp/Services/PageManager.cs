@@ -76,7 +76,10 @@ public class PageManager : IPageEvents, IAsyncDisposable
         Rendered.OnEmptied -= NotifyEmptied;
         if (IsReady)
         {
-            await Module.DisposeAsync();
+            try
+            {
+                await Module.DisposeAsync();
+            } catch { }
         }
         GC.SuppressFinalize(this);
     }

@@ -282,7 +282,7 @@ public static class HttpContextExtensions
             var serviceable = Assembly.GetCallingAssembly().GetAssemblies()
                 .Where(TypeExtensions.IsMine)
                 .SelectMany(TypeExtensions.GetAssTypesSafely)
-                .GetServicable();
+                .GetServiceable();
 
             Services = serviceable
                 .SelectMany(TypeExtensions.Routes)

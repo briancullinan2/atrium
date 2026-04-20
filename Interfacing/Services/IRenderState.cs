@@ -31,14 +31,15 @@ public interface ISingleton
 
 public interface IHasChildren
 {
-    object[] GetChildComponents();
-    Task HasChanged();
+    //object[] GetChildComponents();
+    //Task HasChanged();
     Task SetAppAssembly(System.Reflection.Assembly? assembly);
 }
 
 public interface IRenderState : IHasModule, ISingleUser
 {
     object Runtime { get; }
+    IHasChildren Container { get; }
     event Action OnRendered;
     event Action OnEmptied;
     void NotifyEmptied(object? runtime, IHasChildren container);
@@ -132,6 +133,19 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
             return _runtime;
         }
         private set => _runtime = value;
+    }
+
+    public IHasChildren Container
+    {
+        get
+        {
+            if (_container == null)
+            {
+                throw new InvalidOperationException("JSRuntime is not available. Ensure that the component is rendered before registering for scroll events.");
+            }
+            return _container;
+        }
+        private set => _container = value;
     }
 
     // This is the task your LocalStore will 'Then' off of

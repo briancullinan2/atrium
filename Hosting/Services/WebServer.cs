@@ -23,7 +23,7 @@ public class WebServer(
     public static WebApplication? Current => _private;
 #endif
 
-    internal static bool IsStarting;
+    internal static bool IsStarting = false;
     private static TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
@@ -38,7 +38,9 @@ public class WebServer(
         StartWebServer(trust);
 #else
         // WAKE ON LAN?
+        IsStarting = true;
         _renderTcs.SetResult(false);
+         IsStarting = false;
 #endif
         await _renderTcs.Task;
     }

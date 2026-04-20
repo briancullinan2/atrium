@@ -14,9 +14,9 @@ public interface IHasService
     IServiceProvider Services { get; }
 }
 
-public interface ICompositeProvider : IServiceProvider, IHasService
+public interface ICompositeProvider : IServiceProvider, IServiceProviderIsService, IHasService, IDisposable
 {
-    IServiceProvider? PluginPopin { get; set; }
+    List<IServiceProvider> PluginContainers { get; }
 }
 
 
@@ -74,22 +74,20 @@ public class Dumbass { }
 
 public interface ITrustProvider
 {
-    Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
-    Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
+    //Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
+    //Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
     event Action<PluginContract> OnAssemblyLoaded;
     event Action? OnSettled;
     event Func<Task>? OnSettledAsync;
-    bool IsBootstrapping { get; }
-    List<string> RequiredAssemblies { get; }
-    [RequiresAssemblyFiles]
-    ConcurrentDictionary<string, Assembly> LoadedAssemblies { get; }
+    //bool IsBootstrapping { get; }
+    //List<string> RequiredAssemblies { get; }
+    Dictionary<string, Assembly> LoadedAssemblies { get; }
     Dictionary<string, bool> EnabledAssemblies { get; }
     void Enable(string ass);
     void Disable(string ass);
     Dictionary<string, List<string>> DependedAssemblies { get; }
-    ConcurrentDictionary<string, PluginContract> DiscoveredStatus { get; }
+    Dictionary<string, PluginContract> DiscoveredStatus { get; }
     void BuildServices(IServiceCollection collection, List<Type>? types);
-    Dictionary<Type, Type?> SingleUser { get; }
 }
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.Untrusted);

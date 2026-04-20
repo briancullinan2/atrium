@@ -62,7 +62,22 @@ public abstract class BaseFormFactor(
 
     internal static string? _title;
 
-    public event Action<string?>? OnTitleChanged;
+    event Action<string?>? InternalTitleChanged;
+    public event Action<string?>? OnTitleChanged
+    {
+        add
+        {
+            if (value == null) return;
+            InternalTitleChanged += value;
+            if (_title != null)
+                value?.Invoke(_title);
+        }
+        remove
+        {
+            if (value == null) return;
+            InternalTitleChanged -= value;
+        }
+    }
     public virtual async Task<string?> UpdateTitle(string? title)
     {
         if (title == null)
@@ -71,10 +86,10 @@ public abstract class BaseFormFactor(
         }
         else
         {
-            _title = title + " - " + AppName;
+            _title = title;
         }
-        OnTitleChanged?.Invoke(title);
-        return _title;
+        InternalTitleChanged?.Invoke(title);
+        return _title + " - " + AppName;
     }
 
     public virtual void NotFound()
@@ -152,7 +167,7 @@ public abstract class BaseFormFactor(
 #if BROWSER
 
 public partial class FormFactor : BaseFormFactor
-    , IFormFactor, ITitleService, IPageState, ISettings, IDisposable
+    , IFormFactor, ISingleUser, ITitleService, IPageState, ISettings, IDisposable
 {
     public override bool IsBrowser => true;
     public override bool IsWebContext => true;
@@ -253,6 +268,7 @@ public partial class FormFactor : BaseFormFactor
 
 public partial class FormFactor(
     ICompositeProvider service,
+    IServiceProvider provider,
     NavigationManager nav,
     IHttpContextAccessor? Current = null
     , IWindowManager? Windows = null
@@ -261,7 +277,7 @@ public partial class FormFactor(
     , Lazy<WebApplication?>? App = null
 
 ) : BaseFormFactor(service, nav)
-    , IFormFactor, ITitleService, IPageState, ISettings
+    , IFormFactor, ISingleUser, ITitleService, IPageState, ISettings
 {
     private Type? _routeHint;
 
@@ -413,9 +429,21 @@ public partial class FormFactor(
 
         if (PageNotFound) return _title;
 
-        var Page = Service.GetService<IPageEvents>();
-        if (Page != null)
-            await Page.SetPageTitle(_title);
+        try
+        {
+            var Page = provider.GetService<IPageEvents>();
+            // TODO: just saw an error javascript cannot be set when statically rendering
+            if (Current?.HttpContext?.Response.HasStarted != true
+                && Current?.HttpContext?.Response != null)
+                // TODO: set title in header
+                return _title;
+            if (Page != null)
+                await Page.SetPageTitle(_title);
+        } 
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
 
         if (IsWebContext) return _title; // dont update app container from web context... yet.
 

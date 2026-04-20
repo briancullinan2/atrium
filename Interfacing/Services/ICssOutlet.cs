@@ -1,5 +1,4 @@
 ﻿
-using Microsoft.Win32;
 using System.Net.Http;
 
 namespace Interfacing.Services;
@@ -8,31 +7,6 @@ namespace Interfacing.Services;
 
 public partial class ClassyService : IHasClass, IDisposable
 {
-    protected ICompositeProvider Service { get; }
-
-#if false
-    protected string BuildRenderTree()
-    {
-        var sb = new StringBuilder();
-
-        foreach (var style in Registry)
-        {
-            if (_filePresence.TryGetValue(style, out var cssString))
-            {
-                sb.Append("<style>")
-                  .Append(cssString)
-                  .AppendLine("</style>");
-            }
-            else
-            {
-                // Using an interpolated string for the link tag
-                sb.AppendLine($"<link rel=\"stylesheet\" href=\"{style}\" />");
-            }
-        }
-
-        return sb.ToString();
-    }
-#endif
 
 
     public void SetUri(string uri)
@@ -45,35 +19,8 @@ public partial class ClassyService : IHasClass, IDisposable
     }
 
 
-    public ClassyService(ICompositeProvider service, HttpClient? _client = null)
+    static ClassyService()
     {
-        Service = service;
-        Http = _client;
-        _ = LoadSvg();
-
-        CombinedClassNames.AutoSources = () => [
-            Theme,
-            Sidebar,
-            Background,
-            .. (PageClasses ?? []),
-            .. GivenClassNames
-        ];
-    }
-
-    public async Task LoadSvg()
-    {
-        if (SvgString != null) return;
-
-        try
-        {
-            if (Http?.GetStringAsync("triangle.svg") is Task<string> task
-                && await task is string icon)
-            {
-                SvgString ??= icon;
-            }
-        }
-        catch
-        { }
 
         if (SvgString != null) return;
 
@@ -86,10 +33,35 @@ public partial class ClassyService : IHasClass, IDisposable
         {
             SvgString ??= File.ReadAllText(Path.Combine(root, "wwwroot/triangle.svg"));
         }
+
+        if (SvgString != null) return;
+
+        _ = LoadSvg();
+
+    }
+
+
+
+    public static async Task LoadSvg()
+    {
+        if (SvgString != null) return;
+
+        try
+        {
+            var Http = new HttpClient();
+
+            if (Http?.GetStringAsync("triangle.svg") is Task<string> task
+                && await task is string icon)
+            {
+                SvgString ??= icon;
+            }
+        }
+        catch
+        { }
+
     }
 
     public static string? SvgString { get; private set; } = null;
-    private readonly HttpClient? Http;
 
     public Action<object> LogoContent => __builder => (__builder as dynamic).AddMarkupContent(0, SvgString);
 
@@ -201,8 +173,8 @@ public partial class ClassyService : IHasClass, IDisposable
         var Ending = Registry.ToList();
         if (HasChanged && Ending.Except(Starting).Any()) // adds
         {
-            Container ??= loader ?? Service.GetService<IHasChildren>();
-            if (Container?.HasChanged() is Task task) await task;
+            //var Container = loader ?? Service.GetService<>()?.Container;
+            //if (Container?.HasChanged() is Task task) await task;
             Console.WriteLine("Registry updated: " + JsonSerializer.Serialize(Registry));
         }
 
@@ -215,15 +187,29 @@ public partial class ClassyService : IHasClass, IDisposable
     }
 
     private List<string> GivenClassNames { get; set; } = [];
-    public ClassNameCollection CombinedClassNames { get; } = [];
+    ClassNameCollection? StoredClassNames = null;
+    public ClassNameCollection CombinedClassNames
+    {
+        get
+            => StoredClassNames ??= new ClassNameCollection
+            {
+                AutoSources = () => [
+                    Theme,
+                    Sidebar,
+                    Background,
+                    .. (PageClasses ?? []),
+                    .. GivenClassNames
+                ]
+            };
+    }
     public ClassNameCollection ClassNames { get => CombinedClassNames; set => GivenClassNames = [.. value]; }
     private List<string>? PageClasses = [];
     public string? Theme;
     public string? Sidebar { get; private set; }
     public string? Background;
-    private IHasChildren? Container;
 
-    // TODO: move this to mainloader classes along side SetTitle
+
+    // TODO: move this to main loader classes along side SetTitle
     public void SetPageClasses(List<string> classes, Type? typeHint = null)
     {
         PageClasses = classes;

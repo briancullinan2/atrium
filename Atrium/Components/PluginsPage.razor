@@ -1,124 +1,159 @@
 @page "/plugins"
-@using Atrium.Services
-@using Interfacing.Services
-@using System.ComponentModel.DataAnnotations
-@using Microsoft.Extensions.DependencyInjection
-@using System.Text.Json.Serialization
-@using System.Text.Json
 @implements IHasForms
 @implements IHasCover
-@inject ITrustProvider Trust
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
-@inject ICompositeProvider Service
-@inject IHasClass Logo
+@inject ICompositeProvider Composite
 
-<article class="content course-container">
+@RenderMain(Trust, Logo, Main, Window)
 
-@{
-    Logo.LogoContent(__builder);
-}
+@code {
 
-<table>
-    <tbody>
-        <tr>
-            <td colspan="3" class="status-container">
-                <button class="cta">Save and Continue</button><br />
-                <span class="box-status">@(Error != null 
-                    ? Error : Trust.IsBootstrapping ? ("Scanning plugins... " + Scanning) : "Ready")
-                </span>
-            </td>
-        </tr>
+    TrustedLoader? Trust = null;
+    IHasClass? Logo = null;
+    IHasChildren? Main = null;
+    IWindowManager? Window = null;
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Trust = Composite.GetService<TrustedLoader>();
+        Logo = Composite.GetService<IHasClass>();
+        Main = Composite.GetService<IHasChildren>();
+        Window = Composite.GetService<IWindowManager>();
+    }
 
-        @if(((TrustedLoader)Trust).Layouts.Count > 0)
+
+    public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
+    {
+        var likelyRootAss = TrustedLoader.Routable
+            .FirstOrDefault(ass => Trust?.EnabledAssemblies.ContainsKey(ass.ToName()) == true)
+       ?? TrustedLoader.Routable.FirstOrDefault();
+
+        var likelyRoute = TrustedLoader.Roots[0].AssemblyQualifiedName
+            ?? TrustedLoader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName
+            ?? TrustedLoader.AllRoutes[0].AssemblyQualifiedName;
+
+        return (Assembly: likelyRootAss, RoutableType: likelyRoute);
+    }
+
+
+
+
+    protected static void NotifyAssembly(PluginContract file, TrustedState? gatherTrust)
+    {
+        // 1. Immediate Throttled UI Update (Max every 200ms)
+        // This keeps the UX fluid without flooding the RenderTree
+        if (gatherTrust == null || gatherTrust.LastUpdate == null) return;
+        if ((DateTime.Now - gatherTrust.LastUpdate.Value).TotalMilliseconds > 200)
         {
-            <tr>
-                <td colspan="3">
-                    <span>Layout</span><br />
-                    <select>
-                        <option value="">No Layout</option>
-                        @foreach (var layoutType in ((TrustedLoader)Trust).Layouts)
-                        {
-                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
-                        }
-                    </select>
-                </td>
-            </tr>
+            gatherTrust.Scanning = file.InstallPath;
+            gatherTrust.LastUpdate = DateTime.Now;
         }
-        
-        @if (((TrustedLoader)Trust).Routable.Count > 0)
+    }
+
+
+    public class TrustedState
+    {
+        public List<Type>? Layouts { get; set; }
+        public List<Assembly>? Routable { get; set; }
+        public List<Type>? CatchAll { get; set; }
+        public List<Type>? Roots { get; set; }
+        public List<Type>? AllRoutes { get; set; }
+        public bool? IsBootstrapping { get; set; }
+        public string? Error { get; set; }
+        public List<PluginContract>? MyList { get; set; }
+        public DateTime? LastUpdate { get; set; }
+        public string? Scanning { get; set; }
+    }
+
+
+
+    public static TrustedState GatherTrust(TrustedLoader? Trust)
+    {
+        return new TrustedState
         {
-            <tr>
-                <td colspan="3">
-                    <span>Routable</span><br />
-                    <select  onchange="@SetRoutable">
-                        @foreach (var layoutType in ((TrustedLoader)Trust).Routable)
-                        {
-                            var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
-                            <option value="@name">@name</option>
-                        }
-                    </select>
-                </td>
-            </tr>
-        }
-        
-        @if (((TrustedLoader)Trust).CatchAll.Count > 0)
+            Layouts = TrustedLoader.Layouts.ToList(),
+            Routable = TrustedLoader.Routable.ToList(),
+            CatchAll = TrustedLoader.CatchAll.ToList(),
+            Roots = TrustedLoader.Roots.ToList(),
+            AllRoutes = TrustedLoader.AllRoutes.ToList(),
+            IsBootstrapping = TrustedLoader.IsBootstrapping,
+            Error = TrustedLoader.Error,
+            MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList(),
+        };
+    }
+
+
+    public static RenderFragment RenderMain(
+        TrustedLoader? Trust, 
+        IHasClass? Logo, 
+        IHasChildren? Main,
+        IWindowManager? Window)
+    {
+        // prevent concurrency errors while printing the view
+        var gatherTrust = GatherTrust(Trust);
+
+        Trust?.OnSettled += () => gatherTrust.Scanning = "";
+
+        var SetRoutable = async (ChangeEventArgs item) => {
+            if (item.Value is string key
+                && Trust?.LoadedAssemblies.TryGetValue(key, out var ass) == true)
+                if (Main?.SetAppAssembly(ass) is Task task) await task;
+        };
+
+        var OnChange = (PluginContract plugin) => (async (ChangeEventArgs args) => gatherTrust.Error = await OnEnabled(Trust, Window, plugin, args));
+
+        return __builder =>
         {
-            <tr>
-                <td colspan="3">
-                    <span>Catch All</span><br />
-                    <select>
-                        @foreach (var layoutType in ((TrustedLoader)Trust).CatchAll)
+
+            <article class="content course-container">
+
+                @Logo?.LogoContent
+
+                <table>
+                    <tbody>
+
+                        @RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning)
+
+                        @RenderPluginSelect(gatherTrust.Layouts, gatherTrust.Routable, gatherTrust.CatchAll, gatherTrust.Roots, gatherTrust.AllRoutes, SetRoutable, () => { })
+
+                        @foreach (var plugin in gatherTrust.MyList ?? [])
                         {
-                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                            List<string>? requiredBy = null;
+                            Trust?.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out requiredBy);
+                            @RenderPluginContract(plugin, requiredBy, OnChange(plugin), GetActive(Trust, plugin))
                         }
-                    </select>
-                </td>
-            </tr>
-        }
-        
-        @if (((TrustedLoader)Trust).Roots.Count > 0)
-        {
-            <tr>
-                <td colspan="3">
-                    <span>Root Component</span><br />
-                    <select onchange="@SetSelectedRoot">
-                        @foreach (var layoutType in ((TrustedLoader)Trust).Roots)
-                        {
-                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
-                        }
-                        @foreach (var layoutType in ((TrustedLoader)Trust).AllRoutes)
-                        {
-                            <option value="@layoutType.AssemblyQualifiedName">
-                                @(layoutType.FullName?.Split(',')[0] ?? layoutType.Name ?? layoutType.FullName)
-                            </option>
-                        }
-                    </select>
-                </td>
-            </tr>
-        }
-        
-        
-        @foreach (var plugin in MyList)
+                    </tbody>
+                </table>
+
+            </article>
+
+        };
+    }
+
+
+
+    public static RenderFragment RenderPluginContract(PluginContract? plugin, List<string>? requiredBy, Delegate? OnChange, bool? Checked)
+        => __builder =>
         {
             <tr>
                 <td class="name-col">
-                    <strong>@plugin.Title</strong><br />
-                    <span class="product-tag">@plugin.Metadata.Product</span>
+                    <strong>@plugin?.Title</strong><br />
+                    <span class="product-tag">@plugin?.Metadata.Product</span>
                 </td>
 
                 <td class="meta-col">
-                    <small>Pkg: @plugin.Metadata.Package</small><br />
-                    <small>Pub: @plugin.Metadata.Company @plugin.Metadata.Publisher</small>
+                    <small>Pkg: @plugin?.Metadata.Package</small><br />
+                    <small>Pub: @plugin?.Metadata.Company @plugin?.Metadata.Publisher</small>
                 </td>
-                    
+
                 <td class="enable-col">
-                    @if (Trust.DependedAssemblies.TryGetValue(Path.GetFileNameWithoutExtension(plugin.InstallPath), out var requirees))
+                    @if (requiredBy != null && requiredBy.Count > 0)
                     {
                         <label class="switch" aria-disabled="true">
                             <input type="checkbox" disabled="disabled" checked="checked" />
                         </label>
                         <span>Required By:</span><br />
-                        @foreach (var required in requirees)
+                        @foreach (var required in requiredBy)
                         {
                             <span>@required</span><br />
                         }
@@ -126,117 +161,114 @@
                     else
                     {
                         <label class="switch">
-                            <input type="checkbox" onchange="@((ChangeEventArgs args) => OnEnabled(plugin, args))" checked="@(GetActive(plugin))" />
+                            <input type="checkbox" onchange="@OnChange" checked="@Checked" />
                         </label>
                     }
                 </td>
             </tr>
-            @*@if (Trust.LoadedAssemblies.ContainsKey(Path.GetFileNameWithoutExtension(plugin.InstallPath)))
-            {
-                
-            }*@
-        }
-    </tbody>
-</table>
+        };
 
-</article>
 
-@code {
-    private bool _showSplash = true;
-    private string? StoredSelectedRoot = null;
-    private string? SelectedRoot
+
+    public static RenderFragment RenderPluginStatus(bool? IsBootstrapping, string? Error, string? Scanning)
     {
-        get => StoredSelectedRoot;
-        set 
+        var message = Error != null
+            ? Error 
+            : IsBootstrapping == true 
+            ? ("Scanning plugins... " + Scanning) 
+            : "Ready";
+
+       return __builder =>
+       {
+           <tr>
+               <td colspan="3" class="status-container">
+                   <button class="cta">Save and Continue</button><br />
+                   <span class="box-status">
+                       @message
+                   </span>
+               </td>
+           </tr>
+       };
+    }
+
+
+    public static RenderFragment RenderPluginSelect(
+        List<Type>? Layouts, 
+        List<Assembly>? Routable,
+        List<Type>? CatchAll,
+        List<Type>? Roots,
+        List<Type>? AllRoutes,
+        Delegate? SetRoutable, 
+        Delegate? SetSelectedRoot)
+        => __builder =>
         {
-            if (value == null) 
+
+            @if (Layouts?.Count > 0)
             {
-                StoredSelectedRoot = null;
-                return;
+                @RenderSelectTypes(Layouts, "Layout", null)
             }
-            var type = Type.GetType(value);
-            StoredSelectedRoot = type?.AssemblyQualifiedName;
-        }
-    }
 
-
-    private string? StoredSelectedLayout = null;
-    [JsonPropertyName(nameof(SelectedLayout))]
-    private string? SelectedLayout
-    {
-        get => StoredSelectedLayout;
-        set => StoredSelectedLayout = Type.GetType(value)?.AssemblyQualifiedName;
-    }
-
-    private string? StoredSelectedPermission  = null;
-    [JsonPropertyName(nameof(SelectedPermission))]
-    private string? SelectedPermission
-    {
-        get => StoredSelectedPermission;
-        set => StoredSelectedPermission = Type.GetType(value)?.AssemblyQualifiedName;
-    }
-
-    private string? StoredSelectedNotFound = null;
-    [JsonPropertyName(nameof(SelectedNotFound))]
-    private string? SelectedNotFound
-    {
-        get => StoredSelectedNotFound;
-        set => StoredSelectedNotFound = Type.GetType(value)?.AssemblyQualifiedName;
-    }
-
-    private string? StoredSelectedAuth = null;
-    [JsonPropertyName(nameof(SelectedAuth))]
-    private string? SelectedAuth
-    {
-        get => StoredSelectedAuth;
-        set => StoredSelectedAuth = Type.GetType(value)?.AssemblyQualifiedName;
-    }
-
-    private string? StoredSelectedAssembly = null;
-    [JsonPropertyName(nameof(SelectedAssembly))]
-    private string? SelectedAssembly
-    {
-        get
-        {
-            return StoredSelectedAssembly;
-        }
-        set
-        {
-            var title = Path.GetFileNameWithoutExtension(value);
-            if (title is string path && Trust.LoadedAssemblies.TryGetValue(path, out var ass))
+            @if (Routable?.Count > 0)
             {
-                StoredSelectedAssembly = ass.FullName?.Split(',')[0];
-                try
-                {
-                    var Scope = Service.CreateScope();
-                    var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-                    _ = Main.SetAppAssembly(ass);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                }
+                @RenderSelectAssembly(Routable, "Routable", SetRoutable)
             }
-        }
-    }
 
-    public void SetSelectedRoot(ChangeEventArgs item)
-    {
-        SelectedRoot = item.Value as string;
-    }
+            @if (CatchAll?.Count > 0)
+            {
+                @RenderSelectTypes(CatchAll, "Catch All", null)
+            }
+
+            @if (Roots?.Count > 0 || AllRoutes?.Count > 0)
+            {
+                @RenderSelectTypes([.. Roots ?? [], .. AllRoutes ?? []], ">Root Component", SetSelectedRoot)
+            }
+
+        };
 
 
-    public async Task SetRoutable(ChangeEventArgs item)
-    {
-        SelectedAssembly = item.Value as string;
-    }
+    public static RenderFragment RenderSelectTypes(IEnumerable<Type>? selectTypes, string? label, Delegate? callback)
+        => __builder =>
+        {
+            <tr>
+                <td colspan="3">
+                    <span>@label</span><br />
+                    <select onchange="@callback">
+                        <option value="">No @label</option>
+                        @foreach (var layoutType in selectTypes ?? [])
+                        {
+                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        };
 
-    private bool GetActive(PluginContract e)
+        
+    public static RenderFragment RenderSelectAssembly(IEnumerable<Assembly>? selectTypes, string? label, Delegate? callback)
+        => __builder =>
+        {
+            <tr>
+                <td colspan="3">
+                    <span>@label</span><br />
+                    <select onchange="@callback">
+                        <option value="">No @label</option>
+                        @foreach (var layoutType in selectTypes ?? [])
+                        {
+                            var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
+                            <option value="@name">@name</option>
+                        }
+                    </select>
+                </td>
+            </tr>
+        };
+
+
+    public static bool GetActive(ITrustProvider? Trust, PluginContract e)
     {
         var ass = Path.GetFileNameWithoutExtension(e.InstallPath);
-        if (Trust.EnabledAssemblies.ContainsKey(ass))
+        if (Trust?.EnabledAssemblies.ContainsKey(ass) == true)
             return true;
-        if (Trust.LoadedAssemblies.ContainsKey(ass))
+        if (Trust?.LoadedAssemblies.ContainsKey(ass) == true)
             return true;
 #if !BROWSER
         // TODO: use ISettings
@@ -246,198 +278,32 @@
         return false;
     }
 
-    protected string? Error = null;
-
-    private async Task OnEnabled(PluginContract plugin, ChangeEventArgs e)
+    private static async Task<string?> OnEnabled(
+        TrustedLoader? Trust, 
+        IWindowManager? window,
+        PluginContract plugin, ChangeEventArgs e)
     {
-        Error = null;
         var isChecked = (bool)(e.Value ?? false);
-        var ass = Path.GetFileNameWithoutExtension(plugin.InstallPath);
 
         if (!isChecked)
-            Trust.Disable(ass);
+            Trust?.Disable(plugin.Title);
         else
-            Trust.Enable(ass);
+            Trust?.Enable(plugin.Title);
 
-        Error = ((TrustedLoader)Trust).Error;
-        // TODO: if the component has visual elements, activate window size from splash mode
-        // TODO: 
-        Trust.OnSettled += TriggerExpand;
+        Trust?.OnSettled += () => TriggerExpand(Trust, window);
 
-        await Task.Delay(500);
-
-        await InvokeAsync(StateHasChanged);
+        return TrustedLoader.Error;
     }
 
 
-    protected void TriggerExpand()
+    protected static void TriggerExpand(ITrustProvider? Trust, IWindowManager? window)
     {
-        InvokeAsync(() =>
-        {
-
-            if (Service.GetService<IWindowManager>() is IWindowManager window && !window.IsSplashMode)
-            {
-                if (Trust.EnabledAssemblies.Count == 0)
-                    _ = window.ExpandWindow(false);
-                else
-                    _ = window.ExpandWindow(true);
-            }
-        });
-    }
-
-    IRenderState? Rendered = null;
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        // Check local storage or your ILocalStore to see if this is the first run
-        // or if we should skip the splash.
-        var isFirstRun = true; // Use your ILocalStore service here
-        _showSplash = isFirstRun;
-        Trust.OnAssemblyLoaded += NotifyAssembly;
-        Trust.OnSettledAsync += NotifySettled; // fires at least once for everybody even if services aren't rebuilt
-        Rendered = Service.GetService<IRenderState>();
-
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (OperatingSystem.IsBrowser() && Rendered != null)
-            await Rendered.RestoreState(this);
-
-        await base.OnInitializedAsync();
-    }
-
-    private void HandleOnComplete()
-    {
-        _showSplash = false;
-        StateHasChanged();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        base.OnParametersSet();
-
-        await TryLoading();
-
-        // thing is, this page loads before the Hosting plugin, so there is no render state when the app starts 
-        //   because there are no browsers to serve other than out own
-        if (!OperatingSystem.IsBrowser())
-            if (Rendered?.SetState(this) == true)
-                await InvokeAsync(StateHasChanged);
-
-        // this might be a plan on webassembly, but it won't work for first load/discovery on desktop
-        try
-        {
-            if (SelectedAssembly != null)
-            {
-                Trust.LoadedAssemblies.TryGetValue(SelectedAssembly, out var ass);
-                var Scope = Service.CreateScope();
-                var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-                await Main.SetAppAssembly(ass);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
-    }
-
-    private string? Scanning = null;
-    private DateTime _lastUiUpdate = DateTime.MinValue;
-    // static because i want it to be the same across browser and desktop
-    //   multitenant would be a container inside this state
-    [JsonPropertyName(nameof(MyList))]
-    public List<PluginContract> MyList = [];
-
-    protected async Task NotifySettled()
-    {
-        // This block only runs if no more NotifyAssembly calls happened for 1 second
-        Scanning = "";
-        await TryLoading();
-    }
-
-    protected void NotifyAssembly(PluginContract file)
-    {
-        // 1. Immediate Throttled UI Update (Max every 200ms)
-        // This keeps the UX fluid without flooding the RenderTree
-        if ((DateTime.Now - _lastUiUpdate).TotalMilliseconds > 200)
-        {
-            Scanning = file.InstallPath;
-            _lastUiUpdate = DateTime.Now;
-            _ = InvokeAsync(StateHasChanged);
-        }
-
-        _ = TryLoading();
-    }
-
-    bool running = false;
-    public async Task TryLoading()
-    {
-        // allows calling multiple times
-        if (running) return;
-        running = true;
-
-        Trust.OnSettledAsync += TryLoading; // subscribe to be a sub for next time
-
-        MyList = Trust.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
-        Console.WriteLine("Plugins: " + JsonSerializer.Serialize(MyList));
-
-        var loader = (TrustedLoader)Trust;
-        //if (StoredSelectedLayout == null && loader.Layouts.Count > 0)
-        //{
-        //    SelectedLayout = loader.Layouts[0].AssemblyQualifiedName;
-        //}
-        var likelyRootAss = loader.Routable.FirstOrDefault(ass =>
-               Trust.EnabledAssemblies.Any(ass2 => ass.FullName?.Split(',')[0] == ass2.Key))
-               ?? loader.Routable.FirstOrDefault();
-
-        if (StoredSelectedRoot == null && loader.AllRoutes.Count > 0)
-        {
-            SelectedRoot = loader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName;
-        }
-        if (StoredSelectedRoot == null && loader.Roots.Count > 0)
-        {
-            SelectedRoot = loader.Roots[0].AssemblyQualifiedName;
-        }
-        if (StoredSelectedRoot == null && loader.Roots.Count == 0
-            && loader.AllRoutes.Count > 0)
-        {
-            SelectedRoot = loader.AllRoutes[0].AssemblyQualifiedName;
-        }
-
-        try
-        {
-            var Scope = Service.CreateScope();
-            var Main = Scope.ServiceProvider.GetRequiredService<IHasChildren>();
-#if !BROWSER
-            if (SelectedRoot != null)
-                (Main as MainLoader)?.DefaultRoot = Type.GetType(SelectedRoot);
-#endif
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
-
-        if (StoredSelectedAssembly == null && loader.Routable.Count > 0)
-        {
-            SelectedAssembly = likelyRootAss?.FullName?.Split(',')[0];
-        }
-
-        await InvokeAsync(StateHasChanged);
-
-        running = false;
+        if (Trust?.EnabledAssemblies.Count == 0)
+            _ = window?.ExpandWindow(false);
+        else
+            _ = window?.ExpandWindow(true);
     }
 
 
-
-
-
-    public void Dispose()
-    {
-        Trust.OnAssemblyLoaded -= NotifyAssembly;
-        GC.SuppressFinalize(this);
-    }
 
 }

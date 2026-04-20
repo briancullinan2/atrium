@@ -1,11 +1,35 @@
 ﻿using Interfacing.Services;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Text.RegularExpressions;
 
 namespace Atrium.Extensions;
 
+
+internal static partial class StringExtensions
+{
+    [GeneratedRegex(@"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase, "en-US")]
+    private static partial Regex SafeRegex();
+
+
+    public static string ToSafe(this string url)
+    {
+        if (string.IsNullOrEmpty(url)) return string.Empty;
+        string[] words = SafeRegex().Split(url);
+        TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
+
+        var titleCasedWords = words
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Select(w => ti.ToTitleCase(w.ToLower()));
+
+        string result = string.Join("", titleCasedWords);
+        return result[..Math.Min(result.Length, 100)];
+    }
+
+}
 
 public static class MetadataReaderExtensions
 {
