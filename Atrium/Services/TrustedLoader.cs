@@ -68,15 +68,20 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     public void Enable(string ass)
     {
-        EnabledAssemblies.Add(ass, true);
+        if (EnabledAssemblies.ContainsKey(ass))
+            EnabledAssemblies[ass] = true;
+        else
+            EnabledAssemblies.TryAdd(ass, true);
         Enable(ass, false);
     }
 
     public static void Enable(string ass, bool fromLoader)
     {
+        SystemEnabledAssemblies.TryAdd(ass, true);
         CachedEnabledAssMappings = null;
         CachedDependedAssemblies = null;
         CachedDependedAssMappings = null;
+        CachedRequiredAssMappings = null;
 #if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, true);
 #endif
@@ -107,6 +112,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         CachedEnabledAssMappings = null;
         CachedDependedAssemblies = null;
         CachedDependedAssMappings = null;
+        CachedRequiredAssMappings = null;
+
 #if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, false);
 #endif
@@ -169,28 +176,37 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             collection.BuildServices(types);
     }
 
-
+    static SemaphoreSlim _entry = new(1, 1);
+    static readonly List<Assembly> PileUp = [];
 
     private static async Task SettleServices(Assembly? newAss)
     {
         try
         {
+            if(newAss != null)
+                PileUp.Add(newAss);
+
             await Task.Delay(300);
 
-            if (IsRebuilding) return;
+            lock (_entry)
+            {
+                if (IsRebuilding) return;
 
-            IsRebuilding = true; // was trying to decide to put it here or 3 lines down
-
+                IsRebuilding = true; // was trying to decide to put it here or 3 lines down
+            }
 
 
             CachedDependedAssemblies = null;
             CachedEnabledAssMappings = null;
             CachedDependedAssMappings = null;
+            CachedRequiredAssMappings = null;
 
-            var mappings = newAss?.GetReferencedAssemblies()
+
+            var mappings = PileUp.SelectMany(ass => ass.GetReferencedAssemblies())
                 .Select(ass => ass.ToName())
                 .Where(ass => !FILTER_MICROSOFT_DLLS_BY_NAME(ass))
                 .ToList();
+            PileUp.Clear();
 
 
             var collection = new ServiceCollection();
@@ -222,7 +238,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                     }
                 }).ContinueWith(t => SettleServices(null)); // make sure it fires at least once more after we quit below
 
-                IsRebuilding = false;
 
                 return; // might as well duck out now because we know more are coming
             }
@@ -244,12 +259,15 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         finally
         {
 
-            IsRebuilding = false;
+            lock (_entry)
+            {
+                IsRebuilding = false;
+            }
 
         }
     }
 
-
+    public static Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
     public Dictionary<string, bool> EnabledAssemblies { get; } = [];
 
     static List<Assembly>? CachedEnabledAssMappings { get; set; } = null;
@@ -257,6 +275,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
     {
         get => CachedEnabledAssMappings
             ??= [..EnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+        .Concat(SystemEnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key))
         .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
         .OfType<Assembly>()];
     }
@@ -316,7 +335,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         .Select(MetadataReaderExtensions.ToName)
         ];
 
-    private List<Assembly>? CachedRequiredAssMappings { get; set; } = null;
+    private static List<Assembly>? CachedRequiredAssMappings { get; set; } = null;
     public List<Assembly> RequiredAssMappings
     {
         get => CachedRequiredAssMappings
@@ -360,7 +379,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         {
             // this is why i put the Seen gate on this and the file scan
             string title = ass.ToName();
+            if (title.Contains("RazorSharp") == true)
+            {
+                Console.WriteLine(title);
+            }
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
+
             var contract = new PluginContract(
                 Title: title,
                 InstallPath: ass.Location, // Will be empty string in Single-File
@@ -399,6 +423,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         // Fallback: If Location is empty (Single File), use the Simple Name
         string location = assembly.Location;
         string title = assembly.ToName();
+        if (title.Contains("Hosting") == true)
+        {
+            Console.WriteLine(title);
+        }
 
         Console.WriteLine("Assembly loaded: " + title + " : " + location);
         StoredAssemblies.TryAdd(title, assembly);
@@ -409,8 +437,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         else
 #endif
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
-
-        if (Seen.Contains(assembly)) return;
 
         Task.Run(async () =>
         {
@@ -439,6 +465,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     private static void TryFindingInterestingTypes(Assembly ass)
     {
+        if (ass.FullName?.Contains("RazorSharp") == true)
+        {
+            Console.WriteLine(ass.ToName());
+        }
         lock (Seen)
         {
             if (Seen.Contains(ass))
@@ -460,6 +490,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         {
             try
             {
+
                 if (typeof(LayoutComponentBase).IsAssignableFrom(type)
                     && type != typeof(LayoutComponentBase)
                     && !Layouts.Contains(type))
@@ -532,13 +563,23 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 IsBootstrapping = false;
 
             var title = Path.GetFileNameWithoutExtension(file);
+            if (title.Contains("RazorSharp") == true)
+            {
+                Console.WriteLine(title);
+            }
+            if (title.Contains("Hosting") == true)
+            {
+                Console.WriteLine(title);
+            }
 
 #if !BROWSER
             if (Preferences.Default.Get("PluginEnabled" + title, false))
             {
                 Enable(title, false);
-                if(StoredAssemblies.TryGetValue(title, out var ass))
+                if (StoredAssemblies.TryGetValue(title, out var ass))
                     TryFindingInterestingTypes(ass);
+                else
+                    Console.WriteLine("Assembly enabled but types not loaded: " + title);
             }
             else 
 #endif
@@ -670,6 +711,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 Console.WriteLine("Assembly loaded: " + title + " : " + ass.Location);
                 StoredAssemblies.TryAdd(title, ass);
                 if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) continue;
+                if (title.Contains("RazorSharp") == true)
+                {
+                    Console.WriteLine(title);
+                }
                 TryFindingInterestingTypes(ass);
             }
             catch (Exception ex)

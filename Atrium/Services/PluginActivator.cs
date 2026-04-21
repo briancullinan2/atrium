@@ -1,8 +1,32 @@
 ﻿
 
+using Atrium.Components;
 using System.Reflection.Metadata.Ecma335;
 
 namespace Atrium.Services;
+
+
+internal static class InjectionExtensions
+{
+    public static void InjectService(this object? serviceComponent, ICompositeProvider? Composite)
+    {
+        var componentType = serviceComponent?.GetType();
+        var properties = componentType?.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+            .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
+
+        foreach (var prop in properties ?? [])
+        {
+
+            var service = Composite?.GetService(prop.PropertyType);
+            if (service != null)
+            {
+                prop.SetValue(serviceComponent, service);
+            }
+
+        }
+
+    }
+}
 
 
 public class PluginActivator(ICompositeProvider Composite) : IComponentActivator, ISingleUser //, IHasCurrent<PluginActivator> // Current is null
@@ -17,32 +41,14 @@ public class PluginActivator(ICompositeProvider Composite) : IComponentActivator
             return componentType.
         }*/
 
-        if(Composite.IsService(componentType))
-        {
+        var serviceComponent = Composite.IsService(componentType)
+            ? (IComponent)Composite.GetRequiredService(componentType)
+            : (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
 
-            var serviceComponent = (IComponent)Composite.GetRequiredService(componentType);
-            return serviceComponent;
-        }
-
-        var instance = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
-
-        var properties = componentType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-            .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
-
-        foreach (var prop in properties)
-        {
-           
-            var service = Composite.GetService(prop.PropertyType);
-            if (service != null)
-            {
-                prop.SetValue(instance, service);
-            }
-            
-        }
-
+        serviceComponent.InjectService(Composite);
         // TODO: IHasCurrent, always use Current IComponent instead of creating a new one
 
-        return instance;
+        return serviceComponent;
     }
 
 }
@@ -115,10 +121,16 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
             if (PluginContainers.Count <= 1)
                 Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!Plugins is null!!!!!!!!!!!!!!");
 
-            return CreateService(serviceType)!;
+            if(serviceType == typeof(PluginsPage))
+            {
+                Console.WriteLine("Plugins created");
+            }
 
+            var serviceComponent = CreateService(serviceType)!;
+            serviceComponent.InjectService(this);
+            return serviceComponent;
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine(ex);
             throw;

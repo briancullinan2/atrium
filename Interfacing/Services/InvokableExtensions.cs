@@ -35,7 +35,8 @@ public static class InvokableExtensions
                 }
                 catch { }
             }
-            else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable())
+            else if (args?.ElementAtOrDefault(i) == null && parameters[i].IsNullable()
+                && !parameters[i].IsService())
             {
                 parameterValues[i] = null;
             }
@@ -83,11 +84,23 @@ public static class InvokableExtensions
 
 
 
+
+    public static bool IsServiceable(this ParameterInfo type)
+    {
+        return type.ParameterType.IsConcrete() && type.ParameterType.GetInterfaces().Any(IsService);
+    }
+
+
     public static bool IsServiceable(this Type type)
     {
         return type.IsConcrete() && type.GetInterfaces().Any(IsService);
     }
 
+
+    public static bool IsService(this ParameterInfo type)
+    {
+        return type.ParameterType.IsService() || type.ParameterType.GetInterfaces().Any(IsService);
+    }
 
     public static bool IsService(this Type t)
     {

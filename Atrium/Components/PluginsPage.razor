@@ -26,12 +26,13 @@
 
 
 
-    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite)
+    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, bool wait = true)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
         if (gatherTrust == null) return;
-        if (gatherTrust.LastUpdate == null 
+        if (!wait 
+            || gatherTrust.LastUpdate == null 
             || (DateTime.Now - gatherTrust.LastUpdate.Value).TotalMilliseconds > 200)
         {
             gatherTrust.Scanning = file;
@@ -60,7 +61,7 @@
         foreach (var plugin in gatherTrust.MyList ?? [])
         {
             List<string>? requiredBy = null;
-            Composite?.GetService<TrustedLoader>()?.DependedAssemblies.TryGetValue(plugin.Title, out requiredBy);
+            gatherTrust.Depended?.TryGetValue(plugin.Title, out requiredBy);
             RenderPluginContract(plugin, requiredBy, GetActive(Composite, plugin.Title))(__builder);
 
         }
@@ -77,12 +78,14 @@
         public List<Type>? AllRoutes { get; set; }
         public bool? IsBootstrapping { get; set; }
         public string? Error { get; set; }
-        public List<PluginContract>? MyList { get; set; }
+        List<PluginContract>? SetList;
+        public List<PluginContract>? MyList { get => SetList; set => SetList = value; }
         public DateTime? LastUpdate { get; set; }
         public string? Scanning { get; set; }
         public string? ScanningRendered { get; set; }
         public string? PluginControls { get; set; }
         public Action<PluginContract?>? NotifyDelegate = null;
+        public Dictionary<string, List<string>>? Depended { get; set; }
         public void Dispose()
         {
             Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
@@ -108,6 +111,7 @@
         Plugin.GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
         Plugin.GatheredTrust?.Error = TrustedLoader.Error;
         Plugin.GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
+        Plugin.GatheredTrust?.Depended = Trust?.DependedAssemblies.ToDictionary();
         if (Plugin.GatheredTrust?.NotifyDelegate == null)
         {
             Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
@@ -130,6 +134,20 @@
 
     protected TrustedState? GatheredTrust { get; set; } = null;
 
+    public async Task OnSettled()
+    {
+        var Trust = Composite?.GetService<TrustedLoader>();
+        Trust?.OnSettledAsync += OnSettled;
+
+        GatherTrust(Composite, this, Trust);
+        if (GatheredTrust == null) return;
+
+        await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
+
+        OnChanged?.Invoke(this);
+    }
+
+
     public async Task<Delegate?> Render(
         ICompositeProvider? Composite
     )
@@ -137,23 +155,10 @@
         var Trust = Composite?.GetService<TrustedLoader>();
         var Logo = Composite?.GetService<IHasClass>();
         // prevent concurrency errors while printing the view
-        GatheredTrust = GatherTrust(Composite, this, Trust);
+        GatherTrust(Composite, this, Trust);
+        Trust?.OnSettledAsync += OnSettled;
 
         if (GatheredTrust == null) return null;
-
-        Func<Task>? OnSettled = null;
-        OnSettled = async () =>
-        {
-            Trust?.OnSettledAsync += OnSettled;
-
-            GatheredTrust = GatherTrust(Composite, this, Trust);
-            if (GatheredTrust == null) return;
-
-            GatheredTrust.PluginControls = await RenderPluginListControls(
-                Composite, GatheredTrust).ToHtml(Composite);
-
-            OnChanged?.Invoke(this);
-        };
 
         if (GatheredTrust.ScanningRendered == null)
             await RenderAssemblyScannedFile("", GatheredTrust, Composite);
