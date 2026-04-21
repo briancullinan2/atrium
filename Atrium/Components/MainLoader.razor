@@ -11,21 +11,11 @@
 @code
 {
 
-    public event Action<object?>? OnChanged;
 
     void IComponent.Attach(RenderHandle renderHandle)
     {
         var renderField = typeof(ComponentBase).GetField("_renderHandle", BindingFlags.Instance | BindingFlags.NonPublic);
         renderField?.SetValue(this, renderHandle);
-    }
-
-
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        //if(Plugins?.HasChanged(Composite) is Task task) await task;
-        //PluginContent = Plugins?.ChildContent;
-        Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
     }
 
 
@@ -70,8 +60,16 @@
             </script>
         };
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
 
+        Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
+    }
 
+    public MainLoader()
+    {
+    }
 
     public Delegate Render(ICompositeProvider? Composite) => RenderMain(Composite);
 
@@ -100,50 +98,31 @@
             </div>
         };
 
-    public async Task HasChanged(ICompositeProvider? Composite)
+    protected override async Task OnParametersSetAsync()
     {
-        if (FirstTimeLoad && Composite?.GetService<PluginsPage>() is PluginsPage Plugins)
-            PluginContent = await (await Plugins.Render(Composite) as RenderFragment)!.ToHtml(Composite);
-        ChildContent = await ((RenderFragment)Render(Composite)).ToHtml(Composite);
-        if (ChildContent?.Contains("id=\"page\"") == true
-            && Composite?.GetService<PageManager>()?.Module?
-            .InvokeVoidAsync("replaceChildren", "app", ChildContent) is ValueTask task) await task;
-        OnChanged?.Invoke(this);
+        await base.OnParametersSetAsync();
+        Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
+        var Events = Composite.GetService<IHasEvents>();
+        if (Events == null) return;
+        await Events.EnsureInitialized();
+        ChildContent = await RenderMain(Composite).ToHtml(Composite);
+        var Plugins = Composite.GetService<PluginsPage>();
+        if (Plugins == null) return;
+        RenderFragment? render = await Plugins.Render(Composite) as RenderFragment;
+        if (render == null) return;
+        PluginContent = await render.ToHtml(Composite);
     }
-
-    public void HasChanged(object? state)
-    {
-        _ = HasChanged(Composite);
-    }
-
 
     public bool FirstTimeLoad = true;
-
     public string? ChildContent = null;
     public string? PluginContent = null;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
-        Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
-        var Events = Composite.GetService<IHasEvents>();
-        if (Events?.EnsureInitialized() is ValueTask task)
-            await task;
-        if (firstRender)
-        {
-            var Trust = Composite.GetService<TrustedLoader>();
-            Events?.Subscribe(PageAction.TogglePlugin, PluginsPage.OnEnabled);
-            var Plugins = Composite.GetService<PluginsPage>();
-            Plugins?.OnChanged += HasChanged;
-            await HasChanged(Composite);
-        }
-    }
+
 
 
     public void Dispose()
     {
         var Plugins = Composite.GetService<PluginsPage>();
-        Plugins?.OnChanged -= HasChanged;
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
         GC.SuppressFinalize(this);
     }

@@ -118,7 +118,6 @@ public interface IHasCover
 
 public interface IAsyncRender
 {
-    event Action<object?>? OnChanged;
     Task<Delegate?> Render(
         ICompositeProvider? Composite
     );
@@ -126,7 +125,6 @@ public interface IAsyncRender
 
 public interface IHasRender
 {
-    event Action<object?>? OnChanged;
     Delegate Render(
         ICompositeProvider? Composite
     );
@@ -135,7 +133,6 @@ public interface IHasRender
 
 public interface IHasRender<T> where T : class
 {
-    event Action<object?>? OnChanged;
     static abstract Task<Delegate?> RenderMain(
         ICompositeProvider? Composite,
         T? Myself

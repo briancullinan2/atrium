@@ -94,21 +94,51 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
         {
             Console.WriteLine(ex);
         }
-            
+
     }
 
 
+
+
+    public async Task Replace(string? id, string? content)
+    {
+        await EnsureInitialized();
+        await Module.InvokeVoidAsync("replace", id, content);
+    }
+
+
+
+    public async Task Insert(string? id, string? content)
+    {
+        await EnsureInitialized();
+        await Module.InvokeVoidAsync("insert", id, content);
+    }
 
 
     public async ValueTask TriggerEvent(string eventName, object? detail = null)
     {
         await EnsureInitialized();
         OnPageEvent(eventName, detail);
-        if(Module?.InvokeVoidAsync("dispatchEvent", eventName, detail) is ValueTask task) await task;
+        await Module.InvokeVoidAsync("dispatchEvent", eventName, detail);
     }
 
     private TaskCompletionSource<bool> _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    internal IJSObjectReference? Module = null;
+
+    IJSObjectReference? _module;
+    public IJSObjectReference Module
+    {
+        get
+        {
+            if (!_restartRequired.Task.IsCompleted || _module == null)
+            {
+                throw new InvalidOperationException("Module is not available. Must await EnsureInitialized() before refering to JS module.");
+            }
+            return _module;
+        }
+        private set => _module = value;
+    }
+
+
     private DotNetObjectReference<PageManager>? dotNetHelper;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
 
@@ -134,15 +164,12 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
                     _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             };
-            if (((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/connect.js") is ValueTask<IJSObjectReference> task)
-                Module = await task;
+            _module = await ((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/connect.js");
             dotNetHelper = DotNetObjectReference.Create(this);
             var methods = GetType().GetMethods()
                 .Select(m => m.Name)
                 .ToArray();
-            if (Module?.InvokeVoidAsync("register", GetType().FullName, dotNetHelper, methods, true) is ValueTask task2)
-                await task2;
-
+            await _module.InvokeVoidAsync("register", GetType().FullName, dotNetHelper, methods, true);
             _restartRequired.TrySetResult(true);
         }
         catch (Exception ex)
@@ -165,8 +192,7 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
     {
         await EnsureInitialized();
         OnPageEvent(eventName, detail);
-        if(Module?.InvokeVoidAsync("dispatchEvent", eventName.ToString(), detail) is ValueTask task)
-            await task;
+        await Module.InvokeVoidAsync("dispatchEvent", eventName.ToString(), detail);
     }
 
     [JSInvokable] public void OnPageEvent(string id, object? detail = null) => UpdateStateDebouncer(id.TryParse<PageAction>() ?? PageAction.Action, "window", detail);

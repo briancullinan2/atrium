@@ -7,7 +7,6 @@
 
 @code {
 
-    public event Action<object?>? OnChanged;
 
 
     public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
@@ -37,55 +36,71 @@
         {
             gatherTrust.Scanning = file;
             gatherTrust.LastUpdate = DateTime.Now;
-            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust.IsBootstrapping, gatherTrust.Error, gatherTrust.Scanning).ToHtml(Composite);
-            gatherTrust.PluginControls = await RenderPluginListControls(Composite, gatherTrust).ToHtml(Composite);
+            gatherTrust.ScanningRendered = await RenderPluginStatus(
+                gatherTrust.IsBootstrapping, 
+                gatherTrust.Error, 
+                gatherTrust.Scanning).ToHtml(Composite);
+            gatherTrust.PluginSelect = await RenderPluginSelect(
+                gatherTrust.Layouts,
+                gatherTrust.Routable,
+                gatherTrust.CatchAll,
+                gatherTrust.Roots,
+                gatherTrust.AllRoutes).ToHtml(Composite);
+
+            var Page = Composite?.GetService<PageManager>();
+            if (Page == null) return;
+            await Page.Replace("#plugin-status", gatherTrust.ScanningRendered);
+            await Page.Replace(".plugin-controls", gatherTrust.PluginSelect);
+            var newItems = gatherTrust.MyList?.Where(c => gatherTrust.Previous?.Contains(c.Title) == false);
+            gatherTrust.Previous = gatherTrust.MyList?.Select(c => c.Title).ToList();
+            var listItems = await RenderPluginList(Composite, gatherTrust, newItems).ToHtml(Composite);
+            await Page.Insert("#plugins-list", listItems);
         }
     }
 
 
 
-    protected static RenderFragment RenderPluginListControls(
+    protected static RenderFragment RenderPluginList(
         ICompositeProvider? Composite,
-        TrustedState? gatherTrust
+        TrustedState? gatherTrust,
+        IEnumerable<PluginContract>? MyList
     ) => __builder =>
     {
         if (gatherTrust == null) return;
 
-        RenderPluginSelect(
-            gatherTrust.Layouts,
-            gatherTrust.Routable,
-            gatherTrust.CatchAll,
-            gatherTrust.Roots,
-            gatherTrust.AllRoutes)(__builder);
-
-        foreach (var plugin in gatherTrust.MyList ?? [])
+        foreach (var plugin in MyList ?? gatherTrust.MyList ?? [])
         {
             List<string>? requiredBy = null;
             gatherTrust.Depended?.TryGetValue(plugin.Title, out requiredBy);
             RenderPluginContract(plugin, requiredBy, GetActive(Composite, plugin.Title))(__builder);
-
         }
     };
 
 
-    public class TrustedState(TrustedLoader? _trust) : IDisposable
+    public class TrustedState : IDisposable
     {
-        public TrustedLoader? Trust { get; set; } = _trust;
-        public List<Type>? Layouts { get; set; }
-        public List<Assembly>? Routable { get; set; }
-        public List<Type>? CatchAll { get; set; }
-        public List<Type>? Roots { get; set; }
-        public List<Type>? AllRoutes { get; set; }
+        // TODO: make json compatible by using the based types needed for output
+        [JsonIgnore]
+        public TrustedLoader? Trust { get; set; }
+        public Dictionary<string, string>? Layouts { get; set; }
+        public List<string>? Routable { get; set; }
+        public Dictionary<string, string>? CatchAll { get; set; }
+        public Dictionary<string, string>? Roots { get; set; }
+        public Dictionary<string, string>? AllRoutes { get; set; }
         public bool? IsBootstrapping { get; set; }
         public string? Error { get; set; }
-        List<PluginContract>? SetList;
-        public List<PluginContract>? MyList { get => SetList; set => SetList = value; }
+        public List<string>? Previous { get; set; }
+        public List<PluginContract>? MyList { get; set; }
         public DateTime? LastUpdate { get; set; }
         public string? Scanning { get; set; }
         public string? ScanningRendered { get; set; }
-        public string? PluginControls { get; set; }
+        public string? PluginSelect { get; set; }
         public Action<PluginContract?>? NotifyDelegate = null;
         public Dictionary<string, List<string>>? Depended { get; set; }
+        public TrustedState(TrustedLoader? _trust)
+        {
+            Trust = _trust;
+        }
         public void Dispose()
         {
             Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
@@ -101,13 +116,17 @@
 
         if (Plugin == null) return null;
 
-        Plugin.GatheredTrust ??= new TrustedState(Trust);
+        if (Plugin.GatheredTrust == null)
+        {
+            Plugin.GatheredTrust = new TrustedState(Trust);
+            Composite?.GetService<IHasEvents>()?.Subscribe(PageAction.TogglePlugin, PluginsPage.OnEnabled);
+        }
 
-        Plugin.GatheredTrust?.Layouts = TrustedLoader.Layouts.ToList();
-        Plugin.GatheredTrust?.Routable = TrustedLoader.Routable.ToList();
-        Plugin.GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToList();
-        Plugin.GatheredTrust?.Roots = TrustedLoader.Roots.ToList();
-        Plugin.GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToList();
+        Plugin.GatheredTrust?.Layouts = TrustedLoader.Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        Plugin.GatheredTrust?.Routable = TrustedLoader.Routable.Select(ass => ass.ToName()).ToList();
+        Plugin.GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        Plugin.GatheredTrust?.Roots = TrustedLoader.Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        Plugin.GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
         Plugin.GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
         Plugin.GatheredTrust?.Error = TrustedLoader.Error;
         Plugin.GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
@@ -117,7 +136,6 @@
             Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
                 {
                     await RenderAssemblyScannedFile(file?.InstallPath, Plugin.GatheredTrust, Composite);
-                    Plugin.HasChanged();
                 };
 
             Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
@@ -126,11 +144,6 @@
         return Plugin.GatheredTrust;
     }
 
-
-    protected void HasChanged()
-    {
-        OnChanged?.Invoke(this);
-    }
 
     protected TrustedState? GatheredTrust { get; set; } = null;
 
@@ -143,8 +156,6 @@
         if (GatheredTrust == null) return;
 
         await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
-
-        OnChanged?.Invoke(this);
     }
 
 
@@ -163,7 +174,7 @@
         if (GatheredTrust.ScanningRendered == null)
             await RenderAssemblyScannedFile("", GatheredTrust, Composite);
 
-        if (GatheredTrust.PluginControls == null)
+        if (GatheredTrust.PluginSelect == null)
             await OnSettled();
 
         return RenderMainBody(Logo, GatheredTrust);
@@ -171,19 +182,19 @@
 
 
     public static RenderFragment RenderMainBody(IHasClass? Logo, TrustedState? State)
-    => __builder =>
+        => __builder =>
         {
 
             <article class="content course-container">
 
                 @Logo?.LogoContent
 
-                <table>
+                <table id="plugins-list">
                     <tbody>
 
                         @(new MarkupString(State?.ScanningRendered ?? string.Empty))
 
-                        @(new MarkupString(State?.PluginControls ?? string.Empty))
+                        @(new MarkupString(State?.PluginSelect ?? string.Empty))
 
                     </tbody>
                 </table>
@@ -197,7 +208,7 @@
     public static RenderFragment RenderPluginContract(PluginContract? plugin, List<string>? requiredBy, bool? Checked)
         => __builder =>
         {
-            <tr>
+            <tr data-id="@plugin?.Title">
                 <td class="name-col">
                     <strong>@plugin?.Title</strong><br />
                     <span class="product-tag">@plugin?.Metadata.Product</span>
@@ -242,7 +253,7 @@
 
        return __builder =>
        {
-           <tr>
+           <tr id="plugin-status">
                <td colspan="3" class="status-container">
                    <button class="cta">Save and Continue</button><br />
                    <span class="box-status">
@@ -255,11 +266,11 @@
 
 
     public static RenderFragment RenderPluginSelect(
-        List<Type>? Layouts, 
-        List<Assembly>? Routable,
-        List<Type>? CatchAll,
-        List<Type>? Roots,
-        List<Type>? AllRoutes)
+        Dictionary<string, string>? Layouts, 
+        List<string>? Routable,
+        Dictionary<string, string>? CatchAll,
+        Dictionary<string, string>? Roots,
+        Dictionary<string, string>? AllRoutes)
         => __builder =>
         {
 
@@ -270,7 +281,7 @@
 
             @if (Routable?.Count > 0)
             {
-                @RenderSelectAssembly(Routable, "Routable")
+                @RenderSelectTypes(Routable.Select(ass => KeyValuePair.Create(ass, ass)).ToList(), "Routable")
             }
 
             @if (CatchAll?.Count > 0)
@@ -280,23 +291,23 @@
 
             @if (Roots?.Count > 0 || AllRoutes?.Count > 0)
             {
-                @RenderSelectTypes([.. Roots ?? [], .. AllRoutes ?? []], "Root Component")
+                @RenderSelectTypes((Roots ?? []).Concat((AllRoutes ?? []).Except(Roots ?? [])), "Root Component")
             }
 
         };
 
 
-    public static RenderFragment RenderSelectTypes(IEnumerable<Type>? selectTypes, string? label)
+    public static RenderFragment RenderSelectTypes(IEnumerable<KeyValuePair<string, string>>? selectTypes, string? label)
         => __builder =>
         {
-            <tr>
+            <tr class="plugin-controls">
                 <td colspan="3">
                     <span>@label</span><br />
                     <select onchange="">
                         <option value="">No @label</option>
                         @foreach (var layoutType in selectTypes ?? [])
                         {
-                            <option value="@layoutType.AssemblyQualifiedName">@(layoutType.Name ?? layoutType.FullName)</option>
+                            <option value="@layoutType.Key">@(layoutType.Value)</option>
                         }
                     </select>
                 </td>
@@ -304,24 +315,6 @@
         };
 
         
-    public static RenderFragment RenderSelectAssembly(IEnumerable<Assembly>? selectTypes, string? label)
-        => __builder =>
-        {
-            <tr>
-                <td colspan="3">
-                    <span>@label</span><br />
-                    <select onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', this.value)">
-                        <option value="">No @label</option>
-                        @foreach (var layoutType in selectTypes ?? [])
-                        {
-                            var name = layoutType.GetName().Name ?? layoutType.GetName().FullName;
-                            <option value="@name">@name</option>
-                        }
-                    </select>
-                </td>
-            </tr>
-        };
-
 
     public static bool GetActive(ICompositeProvider? Composite, string? title)
     {

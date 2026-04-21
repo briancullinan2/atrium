@@ -1,7 +1,6 @@
 ﻿
 
 using Atrium.Components;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Atrium.Services;
 
@@ -11,7 +10,8 @@ internal static class InjectionExtensions
     public static void InjectService(this object? serviceComponent, ICompositeProvider? Composite)
     {
         var componentType = serviceComponent?.GetType();
-        var properties = componentType?.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+        var properties = componentType?
+            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
             .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
 
         foreach (var prop in properties ?? [])
@@ -108,14 +108,15 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
         if (serviceType == typeof(IServiceScopeFactory))
             return this;
 
-        // The "Wizard" logic: check plugin first, then fallback
+
         try
         {
             foreach(var container in PluginContainers)
             {
-                if(container.GetService(serviceType) is object service)
+                var isService = container.GetService<IServiceProviderIsService>();
+                if (isService?.IsService(serviceType) == true)
                 {
-                    return service;
+                    return container.GetRequiredService(serviceType);
                 }
             }
             if (PluginContainers.Count <= 1)
