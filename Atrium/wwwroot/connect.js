@@ -126,46 +126,65 @@ export function dispatchEvent(eventName, detail) {
 
 // ahhh now i remember. in study sauce i rendered the html in a hidden container, then i can replace elements with elements
 
-export function replace(id, content) {
-    debugger
-    const container = document.querySelector(id);
-    const fragment = document.createDocumentFragment();
+export function replace(selector, content) {
+    const container = document.querySelector(selector);
+    if (!container) return;
 
-    // Build your new structure in memory
-    const newContent = document.createElement(container.tagName);
-    newContent.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
-    fragment.appendChild(newContent);
+    // 1. Sanitize and parse
+    const sanitizedHtml = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
+    const template = document.createElement('template');
+    template.innerHTML = sanitizedHtml;
 
-    // Perform a single swap
-    if (container)
-        container.replaceWith(fragment.children);
-
+    // 2. Perform the swap
+    // Use spread operator to pass individual nodes to replaceWith
+    container.replaceWith(...template.content.childNodes);
 }
 
 
 export function insert(id, content) {
-    debugger
     const container = document.querySelector(id)
-    const fragment = document.createDocumentFragment()
+    if (!container) return;
 
-    // Build your new structure in memory
-    const newContent = document.createElement(container.tagName)
-    newContent.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
-    fragment.appendChild(newContent)
+    const template = document.createElement('template');
+    template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
 
-    var ids = container.children.map(el => el.getAttribute('data-id'))
-    var newIds = fragment.children.map(el => el.getAttribute('data-id'))
-    var allIds = ids.concat(newIds).sort()
-    var children = fragment.children.sort(el => el.getAttribute('data-id'))
+    const existingNodes = Array.from(container.children).map(n => n.getAttribute('data-id'));
+    const newNodes = Array.from(template.content.children).map(n => n.getAttribute('data-id'));
 
-    for (var i = 0; i < children.length; i++) {
-        var el = childre[i]
+    // Combine them and sort
+    const allNodes = existingNodes.concat(newNodes).sort((a, b) => {
+        const idA = a || "";
+        const idB = b || "";
+
+        // If one is empty/null and the other is not
+        if ((idA === "") !== (idB === "")) {
+            // TODO: eventually this will make headers stick to top, could also check for th, or properly scope table > tbody > sorted
+            return idA === "" ? -1 : 1; // Put the empty one at the top
+        }
+
+        // If both have IDs, sort alphabetically
+        return idA.localeCompare(idB);
+    });
+
+    // sort new incoming nodes by name so we insert the last one first
+    //   this allows us to add new elements to container.children without
+    //   corrupting the sorting indexes above as we insert the new elements
+    const sortedElements = Array.from(template.content.children).sort((a, b) => {
+        const idA = a.getAttribute('data-id') || "";
+        const idB = b.getAttribute('data-id') || "";
+        return idA.localeCompare(idB);
+    });
+
+    // when inserting nodes, start from the bottom up,
+    //   this has a side effect of not interfering with scroll
+    for (var i = sortedElements.length - 1; i >=0 ; i--) {
+        var el = sortedElements[i]
         var id = el.getAttribute('data-id')
-        var insertAt = allIds.indexOf(id)
-        if (insertAt == allIds.length - 1)
+        var insertAt = allNodes.indexOf(id)
+        if (insertAt == allNodes.length - 1)
             container.appendChild(el)
         else
-            container.insertBefore(el, container.children[insertAt+1])
+            container.insertBefore(el, container.children[insertAt-i]) // tricksy math
     }
 
 }

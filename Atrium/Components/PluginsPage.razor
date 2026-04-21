@@ -51,7 +51,9 @@
             if (Page == null) return;
             await Page.Replace("#plugin-status", gatherTrust.ScanningRendered);
             await Page.Replace(".plugin-controls", gatherTrust.PluginSelect);
-            var newItems = gatherTrust.MyList?.Where(c => gatherTrust.Previous?.Contains(c.Title) == false);
+            var newItems = gatherTrust.MyList
+                ?.Where(c => gatherTrust.Previous?.Contains(c.Title) != true)
+                .ToList();
             gatherTrust.Previous = gatherTrust.MyList?.Select(c => c.Title).ToList();
             var listItems = await RenderPluginList(Composite, gatherTrust, newItems).ToHtml(Composite);
             await Page.Insert("#plugins-list", listItems);

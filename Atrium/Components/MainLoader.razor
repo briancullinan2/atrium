@@ -102,15 +102,17 @@
     {
         await base.OnParametersSetAsync();
         Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
-        var Events = Composite.GetService<IHasEvents>();
-        if (Events == null) return;
-        await Events.EnsureInitialized();
+        if (Composite.GetService<IHasEvents>() is PageManager Page)
+            await Page.EnsureInitialized();
+        else
+        {
+            ChildContent = "No page manager.";
+            return;
+        }
+        if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
+            && await Plugins.Render(Composite) is RenderFragment Render)
+            PluginContent = await Render.ToHtml(Composite);
         ChildContent = await RenderMain(Composite).ToHtml(Composite);
-        var Plugins = Composite.GetService<PluginsPage>();
-        if (Plugins == null) return;
-        RenderFragment? render = await Plugins.Render(Composite) as RenderFragment;
-        if (render == null) return;
-        PluginContent = await render.ToHtml(Composite);
     }
 
     public bool FirstTimeLoad = true;

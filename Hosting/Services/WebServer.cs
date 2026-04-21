@@ -78,7 +78,7 @@ public class WebServer(
             webBuilder.Environment.EnvironmentName = Environments.Production;
             //#endif
 
-            webBuilder.Services.AddDirectoryBrowser();
+            //TODO: make this optional webBuilder.Services.AddDirectoryBrowser();
             webBuilder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
