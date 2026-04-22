@@ -139,15 +139,22 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
     }
 
+    static Dictionary<Type, List<Type>>? services;
+
+    static CompositeServiceProvider()
+    {
+        lock (TrustedLoader.StoredServiceable)
+            services = TrustedLoader.StoredServiceable.ToDictionary();
+    }
+
 
 
     public object? CreateService(Type serviceType)
     {
         var collection = new ServiceCollection();
 
-        Dictionary<Type, List<Type>> services;
-        lock(TrustedLoader.Serviceable)
-            services = TrustedLoader.Serviceable.ToDictionary();
+        lock(TrustedLoader.StoredServiceable)
+            services = TrustedLoader.StoredServiceable.ToDictionary();
 
         var baseType = services.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
             ?? services.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
@@ -233,6 +240,9 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
     public bool IsService(Type serviceType)
     {
+        //if (services?.ContainsKey(serviceType) == true
+        //    || services?.Any(s => s.Value.Contains(serviceType)) == true)
+        //    return true;
         foreach (var container in PluginContainers)
         {
             if (container.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true)

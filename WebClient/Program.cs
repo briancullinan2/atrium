@@ -3,6 +3,7 @@
 internal class Program
 {
     private static WebAssemblyHost? _app;
+    private static List<Type>? builtIn;
 
     public static ServiceProvider? Services { get; private set; }
 
@@ -32,6 +33,7 @@ internal class Program
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress.Trim('/'))
         };
 
+        Type? mainLoader = null;
         MethodInfo? serviceBuilder = null;
         //MethodInfo? assemblyReader = null;
         Console.WriteLine("Adding Atrium: ");
@@ -39,10 +41,24 @@ internal class Program
 
         try
         {
-            var extensions = asses.Select(ass => ass.GetType("Atrium.Extensions.BuilderExtensions")).FirstOrDefault() 
+            var atrium = asses.FirstOrDefault(ass => ass.ToName() == "Atrium")
+                ?? throw new InvalidOperationException("Can't find Atrium, this probably won't work.");
+
+            var extensions = atrium.GetType("Atrium.Extensions.BuilderExtensions")
                 ?? throw new InvalidOperationException("Can't find BuilderExtensions, this probably won't work.");
-            serviceBuilder = extensions.GetMethods("BuildServices", null, [typeof(IServiceCollection), typeof(List<Type>), typeof(string), typeof(List<Type>), typeof(bool)]).FirstOrDefault()
+            serviceBuilder = extensions.GetMethods("BuildServices", null, [typeof(IServiceCollection), typeof(List<Type>), typeof(string), typeof(IServiceProviderIsService), typeof(bool)]).FirstOrDefault()
                 ?? throw new InvalidOperationException("Can't find BuilderExtensions.BuildServices, this probably won't work.");
+            
+            mainLoader = atrium.GetType("Atrium.Components.MainLoader")
+                ?? throw new InvalidOperationException("Can't find MainLoader, this probably won't work.");
+
+            var componentBuilder = atrium.GetType("Atrium.Services.CompositeServiceProvider")
+                ?? throw new InvalidOperationException("Can't find CompositeServiceProvider, this probably won't work.");
+
+            builtIn = componentBuilder.GetProperty("BuiltIn", BindingFlags.Public | BindingFlags.Static)
+                ?.GetValue(null) as List<Type>
+                ?? throw new InvalidOperationException("Can't find CompositeServiceProvider.BuiltIn, this probably won't work.");
+
             //var extensions2 = ass.GetType("Atrium.Extensions.MetadataReaderExtensions")
             //   ?? throw new InvalidOperationException("Can't find MetadataReaderExtensions, this probably won't work.");
             //assemblyReader = extensions2.GetMethods("GetAssemblyReferences", null, [typeof(byte[])]).FirstOrDefault()
@@ -73,7 +89,7 @@ internal class Program
 
         Console.WriteLine("Services: " + JsonSerializer.Serialize(serviceTypes.Select(t => t.Name).ToList()));
 
-        serviceBuilder?.Invoke(null, [builder.Services, serviceTypes, null, new List<Type>(), false]);
+        serviceBuilder?.Invoke(null, [builder.Services, builtIn, null, new List<Type>(), false]);
 
         builder.Services.RemoveAll<IQueryManager>();
         //builder.Services.AddSingleton<IQueryManager, RemoteManager>();
@@ -81,7 +97,8 @@ internal class Program
 
         builder.Services.AddSingleton<Lazy<WebAssemblyHost?>>(sp => new Lazy<WebAssemblyHost?>(_app));
 
-        builder.RootComponents.Add<WebClient.Components.Routes>("#app");
+        if(mainLoader != null)
+            builder.RootComponents.Add(mainLoader, "#app");
 
         Console.WriteLine("Building app with " + builder.Services.Count + " services: " + JsonSerializer.Serialize(builder.Services.Select(t => t.ServiceType.Name).ToList()));
 

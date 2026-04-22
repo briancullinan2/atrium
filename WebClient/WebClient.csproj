@@ -11,11 +11,6 @@
 	<ItemGroup>
 		<ServiceWorker Include="wwwroot\service-worker.published.js" PublishedContent="wwwroot\service-worker.published.js" />
 	</ItemGroup>
-
-	<ItemGroup>
-	  <!--<BlazorWebAssemblyLazyLoad Include="Atrium.dll" />
-	  <BlazorWebAssemblyLazyLoad Include="Hosting.dll" />-->
-	</ItemGroup>
 	
 	
   <ItemGroup>

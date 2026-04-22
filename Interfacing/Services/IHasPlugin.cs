@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
-
+﻿
 namespace Interfacing.Services;
 
 public interface IHasBuilder
@@ -87,7 +84,7 @@ public interface ITrustProvider
     void Disable(string ass);
     Dictionary<string, List<string>> DependedAssemblies { get; }
     Dictionary<string, PluginContract> DiscoveredStatus { get; }
-    void BuildServices(IServiceCollection collection, List<Type>? types);
+    Dictionary<Type, List<Type>> Serviceable { get; }
     Type? SetRoot { get; }
 }
 
@@ -117,7 +114,9 @@ public static class TrustedExtensions
     public static Type? DefaultRoot<T>(this T Trust) where T : ITrustStatic
     {
         if (Trust.SetRoot != null) return Trust.SetRoot;
-        if (T.Roots.Count > 0) return T.Roots.First();
+        if (T.Roots.Count > 0 
+            && !T.Roots.First().Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)) 
+            return T.Roots.First();
         if (T.CatchAll.Count > 0) return T.CatchAll.First();
         lock (T.AllRoutes)
             if (T.AllRoutes

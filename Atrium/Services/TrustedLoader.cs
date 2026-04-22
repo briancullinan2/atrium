@@ -162,21 +162,6 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 #endif
 
 
-    public void BuildServices(IServiceCollection collection, List<Type>? types)
-    {
-        if (types == null)
-        {
-            var mappings = EnabledAssMappings
-                .Concat(DependedAssMappings)
-                .Concat(RequiredAssMappings)
-                .Where(MetadataReaderExtensions.IsMine)
-                .ToList();
-            var currents = mappings.SelectMany(BuilderExtensions.GetAssTypesSafely).GetServiceable().ToList();
-            collection.BuildServices(currents);
-        }
-        else
-            collection.BuildServices(types);
-    }
 
     static readonly SemaphoreSlim _entry = new(1, 1);
     static readonly List<Assembly> PileUp = [];
@@ -414,8 +399,11 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
     public static bool IsBootstrapping { get; set; } = false;
     static ConcurrentDictionary<string, PluginContract> CachedPluginContracts { get; } = new();
     public Dictionary<string, PluginContract> DiscoveredStatus { get => CachedPluginContracts.ToDictionary(); }
-    public static Dictionary<Type,List<Type>> Serviceable { get; } = [];
+    public static Dictionary<Type,List<Type>> StoredServiceable { get; } = [];
+    public Dictionary<Type, List<Type>> Serviceable { get => StoredServiceable; }
     public static List<Type> AllPlugins { get; } = [];
+
+    
 
     [RequiresAssemblyFiles("Uses Location for plugin tracking")]
     private static void CurrentDomainOnAssemblyLoad(object? sender, AssemblyLoadEventArgs args)
@@ -512,9 +500,9 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                     && !AllPlugins.Contains(type))
                     AllPlugins.Add(type);
 
-                if (type.IsServiceable() && !Serviceable.ContainsKey(type))
-                    lock(Serviceable)
-                        Serviceable.TryAdd(type, [..type.GetInterfaces()]);
+                if (type.IsServiceable() && !StoredServiceable.ContainsKey(type))
+                    lock(StoredServiceable)
+                            StoredServiceable.TryAdd(type, [..type.GetInterfaces()]);
 
                 if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
                     && type != typeof(Atrium.Components.PluginsPage)

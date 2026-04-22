@@ -2,6 +2,7 @@
 #if !BROWSER
 using Extensions.QueryableChaos;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Maui;
 #endif
@@ -162,10 +163,10 @@ public partial class CircuitProvider
 
 #if !BROWSER
     public static async Task OnExecuteAsync(
-        IHttpContextAccessor Context,
-        IFileManager FileManager,
-        ICircuitProvider Circuit,
-        IFormFactor Form)
+        [FromServices] IHttpContextAccessor Context,
+        [FromServices] IFileManager FileManager,
+        [FromServices] ICircuitProvider Circuit,
+        [FromServices] IFormFactor Form)
     {
         if (Context.HttpContext == null) return;
         try

@@ -50,9 +50,13 @@ internal class WindowManager(
     public bool IsSplashMode { get; set; }
 
 
-    public async Task<nint> GetWindowHwnd()
+    public Task<nint> GetWindowHwnd()
     {
-        var tcs = new TaskCompletionSource<nint>();
+            if (tcs == null || tcs.Task.IsCompleted)
+                tcs = new TaskCompletionSource<nint>();
+            else
+                return tcs.Task;
+
 #if !BROWSER
 #if WINDOWS
 
@@ -98,14 +102,17 @@ internal class WindowManager(
     });
 #endif
 #endif
-        return await tcs.Task;
+        return tcs.Task;
     }
 
 
 
-    private async Task<Tuple<double, double, double, double, double>> GetWindowSizeAsync()
+    private Task<Tuple<double, double, double, double, double>> GetWindowSizeAsync()
     {
-        var tcs = new TaskCompletionSource<Tuple<double, double, double, double, double>>();
+        if(sizeTcs == null || sizeTcs.Task.IsCompleted)
+            sizeTcs = new TaskCompletionSource<Tuple<double, double, double, double, double>>();
+        else
+            return sizeTcs.Task;
 
 #if !BROWSER
         MainThread.BeginInvokeOnMainThread(() =>
@@ -125,17 +132,17 @@ internal class WindowManager(
                 }
 
                 // Signal that we are done and pass the data back
-                tcs.SetResult(Tuple.Create(display.Width, display.Height, width, height, density));
+                sizeTcs.SetResult(Tuple.Create(display.Width, display.Height, width, height, density));
             }
             catch (Exception ex)
             {
-                tcs.SetException(ex);
+                sizeTcs.SetException(ex);
             }
         });
 #endif
 
         // The background thread pauses here until tcs.SetResult is called
-        return await tcs.Task;
+        return sizeTcs.Task;
     }
 
 
@@ -191,6 +198,8 @@ internal class WindowManager(
     }
 
     internal static string? _title;
+    private TaskCompletionSource<nint>? tcs = null;
+    private TaskCompletionSource<Tuple<double, double, double, double, double>>? sizeTcs = null;
 
     event Action<string?>? InternalTitleChanged;
     public event Action<string?>? OnTitleChanged

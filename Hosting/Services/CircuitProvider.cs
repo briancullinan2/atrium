@@ -273,16 +273,13 @@ public static class HttpContextExtensions
         return accessor.HttpContext?.IsSignalCircuit() == true;
     }
 
-    public static void MapFullCircuits(this IEndpointRouteBuilder endpoints)
+    public static void MapFullCircuits(this IEndpointRouteBuilder endpoints, IServiceCollection services)
     {
         try
         {
             endpoints.MapHub<CircuitHub>(CircuitProvider.HubAddress);
 
-            var serviceable = Assembly.GetCallingAssembly().GetAssemblies()
-                .Where(TypeExtensions.IsMine)
-                .SelectMany(TypeExtensions.GetAssTypesSafely)
-                .GetServiceable();
+            var serviceable = services.Select(s => s.ServiceType);
 
             Services = serviceable
                 .SelectMany(TypeExtensions.Routes)

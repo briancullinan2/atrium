@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using System.Reflection.Metadata.Ecma335;
+using System.ServiceProcess;
 #endif
 
 namespace Hosting.Services;
@@ -27,6 +29,35 @@ public class WebServer(
     public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
 
     //public static IServiceProvider Services => _private.Services;
+    private static readonly Func<string?, bool> FILTER_MICROSOFT_DLLS_BY_NAME;
+    private static readonly MethodInfo serviceBuilder;
+    private static readonly Type? mainLoader;
+    private static readonly List<Type> builtIn;
+
+    static WebServer()
+    {
+        FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
+
+        var atrium = Assembly.GetExecutingAssembly()
+            .GetAssemblies().FirstOrDefault(ass => ass.ToName() == "Atrium");
+
+        var extensions = atrium?.GetType("Atrium.Extensions.BuilderExtensions")
+            ?? throw new InvalidOperationException("Can't find BuilderExtensions, this probably won't work.");
+
+        serviceBuilder = extensions.GetMethods("BuildServices", null, [typeof(IServiceCollection), typeof(List<Type>), typeof(string), typeof(IServiceProviderIsService), typeof(bool)]).FirstOrDefault()
+            ?? throw new InvalidOperationException("Can't find BuilderExtensions.BuildServices, this probably won't work.");
+
+        mainLoader = atrium.GetType("Atrium.Components.MainLoader")
+            ?? throw new InvalidOperationException("Can't find MainLoader, this probably won't work.");
+
+        var componentBuilder = atrium.GetType("Atrium.Services.CompositeServiceProvider")
+            ?? throw new InvalidOperationException("Can't find CompositeServiceProvider, this probably won't work.");
+
+        builtIn = componentBuilder.GetProperty("BuiltIn", BindingFlags.Public | BindingFlags.Static)
+            ?.GetValue(null) as List<Type>
+            ?? throw new InvalidOperationException("Can't find CompositeServiceProvider.BuiltIn, this probably won't work.");
+
+    }
 
     public async ValueTask EnsureInitialized()
     {
@@ -44,13 +75,12 @@ public class WebServer(
         await _renderTcs.Task;
     }
 
-    private static readonly Func<string?, bool> FILTER_MICROSOFT_DLLS_BY_NAME;
-    static WebServer()
-    {
-        FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
-    }
+
+
 
 #if WINDOWS
+
+
     public static WebApplication? StartWebServer(ITrustProvider? Trust)
     {
         try
@@ -103,7 +133,7 @@ public class WebServer(
             // TODO: try to get every service from the existing container instead of building a new one:
             // TODO: this disctinction will become the multi-tenant feature
 
-            Trust?.BuildServices(webBuilder.Services, null);
+            serviceBuilder?.Invoke(null, [webBuilder.Services, builtIn, null, null, false]);
 
             DatabaseBuilder.BuildServices(webBuilder.Services);
 
@@ -268,17 +298,22 @@ public class WebServer(
             //webApp.MapBlazorHub();
             webApp.UseExceptionHandler("/error", createScopeForErrors: true);
 
-            webApp.MapFullCircuits();
+            webApp.MapFullCircuits(webBuilder.Services);
 
             //webApp.MapHub<Hub>("/_blazor");
+            var mapRazor = typeof(RazorComponentsEndpointRouteBuilderExtensions)
+                .GetMethod(nameof(RazorComponentsEndpointRouteBuilderExtensions.MapRazorComponents))
+                ?.MakeGenericMethod(mainLoader!)
+                ?? throw new InvalidOperationException("Failed to render MapRazorComponents.");
 
-            webApp.MapRazorComponents<WebClient.Components.App>()
-                .AddInteractiveServerRenderMode()
+            var builder = mapRazor.Invoke(null, [webApp]) as RazorComponentsEndpointConventionBuilder;
+
+            builder?.AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(
                 //typeof(FlashCard._Imports).Assembly,
                 //typeof(Merchantry._Imports).Assembly,
-                //typeof(UserModel._Imports).Assembly,
+                typeof(Hosting.Pages._Imports).Assembly,
                 typeof(RazorSharp._Imports).Assembly
                 )
                 .DisableAntiforgery();
@@ -311,15 +346,19 @@ public class WebServer(
         // Run the Web Server in the background
         try
         {
-            IsStarting = false;
-            _renderTcs.SetResult(true);
-            await _private.RunAsync();
-
+            using (_private.Lifetime.ApplicationStarted.Register(() => _renderTcs.SetResult(true)))
+            {
+                _ = _private.RunAsync();
+                await _renderTcs.Task;
+            }
         }
         catch (Exception ex)
         {
-            IsStarting = false;
             _renderTcs.SetException(ex);
+        }
+        finally
+        {
+            IsStarting = false;
         }
 #endif
     }
