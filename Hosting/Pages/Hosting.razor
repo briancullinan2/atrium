@@ -30,6 +30,8 @@
                 if (_timer == null)
                     _timer = TaskExtensions.Timer(Hosting.PollTunnelStatusAsync, 60 * 3 * 1000);
             }
+            var Page = Composite?.GetService<IHasEvents>();
+            Page?.Subscribe(PageAction.ToggleHosting, EnableHosting);
             var Status = Composite?.GetService<IHostingService>();
             var Window = Composite?.GetService<IWindowManager>();
             Parallel.ForEachAsync(new List<Task?> {

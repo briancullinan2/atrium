@@ -1,19 +1,24 @@
 ﻿#if WINDOWS
 using Atrium.Platforms.Windows;
 #endif
-using Interfacing.Services;
+
 #if !BROWSER
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Devices;
 #endif
 
+using System.ComponentModel.DataAnnotations;
+using static System.Net.WebRequestMethods;
+
 namespace Atrium.Services;
 
-internal class WindowManager
+internal class WindowManager(
+    ICompositeProvider? Composite
 #if !BROWSER
-    (Lazy<Application?>? App = null)
+    , Lazy<Application?>? App = null
 #endif
-    : IWindowManager
+) : IWindowManager, ITitleService, IHasName
 {
 
     // TODO: make this an includeable module that triggers
@@ -133,19 +138,87 @@ internal class WindowManager
         return await tcs.Task;
     }
 
-    public async Task UpdateTitle(string? title)
+
+    public virtual async Task<string?> SetDefaultTitle(Type? controlType)
     {
+        var title = controlType?.GetCustomAttributes<DisplayAttribute>()
+            .FirstOrDefault();
+        if (title is DisplayAttribute attr)
+        {
+            return await UpdateTitle(attr.Name);
+            //await InvokeAsync(StateHasChanged);
+        }
+        return await UpdateTitle(null);
+    }
+
+
+    public virtual async Task<string?> UpdateTitle(string? title)
+    {
+        if (title == null)
+        {
+            _title = AppName;
+        }
+        else
+        {
+            _title = title;
+        }
+
+        var Form = Composite?.GetService<IFormFactor>();
+        // TODO: just saw an error javascript cannot be set when statically rendering
+        if (Form?.IsWebContext == true)
+            // TODO: set title in header
+            return _title + " - " + AppName;
+
         // shouldn't end up here, but interesting service patterns emerge
 #if !BROWSER
         MainThread.BeginInvokeOnMainThread(() =>
         {
             foreach (var window in App?.Value?.Windows ?? [])
             {
-                window.Title = title; // This is now safe
+                window.Title = _title + " - " + AppName; // This is now safe
             }
         });
+#else
+        //var Page = Composite?.GetService<IPageState>();
+        var Rendered = Composite?.GetService<IRenderState>();
+        if (Rendered == null) return _title + " - " + AppName;
+        await Rendered.EnsureInitialized();
+        // thats craaaaazyy that microsoft thinks anything about this framework is an improvement
+        await ((IJSRuntime)Rendered.Runtime)!.InvokeVoidAsync("eval", "document.title = " 
+            + JsonSerializer.Serialize(_title + " - " + AppName));
 #endif
+        return _title + " - " + AppName;
     }
+
+    internal static string? _title;
+
+    event Action<string?>? InternalTitleChanged;
+    public event Action<string?>? OnTitleChanged
+    {
+        add
+        {
+            if (value == null) return;
+            InternalTitleChanged += value;
+            if (_title != null)
+                value?.Invoke(_title);
+        }
+        remove
+        {
+            if (value == null) return;
+            InternalTitleChanged -= value;
+        }
+    }
+
+
+
+
+    public static string? AppName
+    {
+        get => Assembly.GetEntryAssembly()?
+            .GetCustomAttributes<AssemblyProductAttribute>().FirstOrDefault()
+            ?.Product;
+    }
+
 
 
     public async Task ExpandWindow(bool expanding)

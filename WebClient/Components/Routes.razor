@@ -84,7 +84,6 @@
             StoredAppAssembly = assembly;
             Ready = "layout"; // Explicitly move to layout
             //await InvokeAsync(StateHasChanged);
-            await ProbablyUpdateTitle();
             await SaveState();
         }
     }
@@ -129,14 +128,6 @@
         await base.OnInitializedAsync();
     }
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-
-        _ = ProbablyUpdateTitle();
-    }
-
-
     protected async Task SaveState()
     {
         if (CurrentControl != null)
@@ -149,7 +140,6 @@
             if (controlType != typeof(RazorSharp.Pages.Landing.Default))
             {
                 Composite.GetService<IFormFactor>()?.RequestControl = controlType;
-                _ = ProbablyUpdateTitle(controlType);
             }
         }
         if (!OperatingSystem.IsBrowser())
@@ -171,7 +161,6 @@
     {
         if (firstRender)
         {
-            Trust.OnSettledAsync += () => ProbablyUpdateTitle();
             Rendered?.NotifyRendered(Runtime);
         }
 
@@ -194,7 +183,6 @@
         ]);
 
         Composite.GetService<IFormFactor>()?.RequestControl = controlType;
-        _ = ProbablyUpdateTitle(controlType);
     }
 
     public object[] GetChildComponents() => [.. ComponentExtensions.GetChildComponents(this).Cast<object>()];
@@ -215,31 +203,6 @@
     }
 
 
-    // type shit goes away
-    private async Task ProbablyUpdateTitle(Type? controlType = null)
-    {
-        //await Css.ListenUp();
-        if (IsClosing) return;
-        var components = this
-            .GetChildComponents()
-            .Select(comp => comp.GetType())
-            .Concat(controlType != null ? [controlType] : [])
-            .OrderBy(type => type == controlType ? -2 : type != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
-            .ToList();
-        var title = components
-            .SelectMany(comp => comp.GetCustomAttributes<DisplayAttribute>())
-            .FirstOrDefault() 
-            ?? controlType?.GetCustomAttributes<DisplayAttribute>()
-            .FirstOrDefault();
-        if (title is DisplayAttribute attr)
-        {
-            var Title = Service.GetService<ITitleService>();
-            Title?.UpdateTitle(attr.Name);
-            //await InvokeAsync(StateHasChanged);
-        }
-    }
-
-
     [JsonPropertyName(nameof(CurrentControl))]
     public string? CurrentControl { get; set; }
 
@@ -256,9 +219,6 @@
 
             Css.SetRoute(controlType);
             Service.GetService<IFormFactor>()?.RequestControl = controlType;
-
-            _ = ProbablyUpdateTitle(controlType);
-
 
         } catch {}
     }

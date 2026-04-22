@@ -1,20 +1,17 @@
 #if !BROWSER
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Infrastructure;
-using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
 using Microsoft.Maui.Storage;
+#else
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 #endif
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.JSInterop;
-using System.Runtime.InteropServices.JavaScript;
 
 namespace Hosting.Services;
 
@@ -51,46 +48,8 @@ public abstract class BaseFormFactor(
     }
     */
 
-    public static string? AppName
-    {
-        get => Assembly.GetEntryAssembly()?
-            .GetCustomAttributes<AssemblyProductAttribute>().FirstOrDefault()
-            ?.Product;
-    }
     public int OffsetInMinutes { get; private set; }
     public bool PageNotFound { get; private set; }
-
-    internal static string? _title;
-
-    event Action<string?>? InternalTitleChanged;
-    public event Action<string?>? OnTitleChanged
-    {
-        add
-        {
-            if (value == null) return;
-            InternalTitleChanged += value;
-            if (_title != null)
-                value?.Invoke(_title);
-        }
-        remove
-        {
-            if (value == null) return;
-            InternalTitleChanged -= value;
-        }
-    }
-    public virtual async Task<string?> UpdateTitle(string? title)
-    {
-        if (title == null)
-        {
-            _title = AppName;
-        }
-        else
-        {
-            _title = title;
-        }
-        InternalTitleChanged?.Invoke(title);
-        return _title + " - " + AppName;
-    }
 
     public virtual void NotFound()
     {
@@ -107,15 +66,20 @@ public abstract class BaseFormFactor(
 
     public async Task<int> GetTimezoneOffset()
     {
+        if(IsWebContext)
+            return OffsetInMinutes = (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.Now).TotalMinutes;
         var Rendered = Service.GetService<IRenderState>();
         if (Rendered == null) return 0;
         await Rendered.EnsureInitialized();
-        OffsetInMinutes = await (Rendered.Runtime as IJSRuntime)!
+        var DateTimeFromPage = await (Rendered.Runtime as IJSRuntime)!
             // this is in my complaint to microsoft. if they made proper use of typescript awareness, they could easily
             //   make this go away, and make a runtime evaluator that converts C# to javascript
-            .InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+            .InvokeAsync<DateTime>("Date.prototype.constructor");
+
+        OffsetInMinutes = (int)TimeZoneInfo.Local.GetUtcOffset(DateTimeFromPage).TotalMinutes;
         return OffsetInMinutes;
     }
+
 
 
     // TODO: ?
@@ -170,7 +134,7 @@ public abstract class BaseFormFactor(
 #if BROWSER
 
 public partial class FormFactor : BaseFormFactor
-    , IFormFactor, ISingleUser, ITitleService, IPageState, ISettings, IDisposable
+    , IFormFactor, ISingleUser, IPageState, ISettings, IDisposable
 {
     public override bool IsBrowser => true;
     public override bool IsWebContext => true;
@@ -193,7 +157,7 @@ public partial class FormFactor : BaseFormFactor
     public List<IFile> CurrentFormFiles = [];
     private readonly Lazy<WebAssemblyHost?>? App;
     private readonly IJSRuntime JS;
-    private readonly IPageEvents Page;
+    private readonly IHasEvents Page;
     private Type? _routeHint;
 
     public override Type? RequestControl
@@ -224,14 +188,14 @@ public partial class FormFactor : BaseFormFactor
     NavigationManager nav
     , ICompositeProvider service
     , IJSRuntime js 
-    , IPageEvents page
+    , IHasEvents page
     , Lazy<WebAssemblyHost?>? app = null
     ) : base(service, nav)
     {
         App = app;
         JS = js;
         Page = page;
-        Page.Subscribe((PageAction.Upload, "window"), SwapFileListAsync);
+        Page.Subscribe(PageAction.Upload, "window", SwapFileListAsync);
     }
     
 
@@ -243,17 +207,10 @@ public partial class FormFactor : BaseFormFactor
 
     public void Dispose()
     {
-        Page.Unsubscribe((PageAction.Upload, "window"), SwapFileListAsync);
+        Page.Unsubscribe(PageAction.Upload, "window", SwapFileListAsync);
         GC.SuppressFinalize(this);
     }
 
-
-    public override async Task<string?> UpdateTitle(string? title)
-    {
-        var _title = await base.UpdateTitle(title);
-        Page?.SetPageTitle(_title);
-        return _title;
-    }
 
     public override async Task StopAsync()
     {
@@ -280,7 +237,7 @@ public partial class FormFactor(
     , Lazy<WebApplication?>? App = null
 
 ) : BaseFormFactor(service, nav)
-    , IFormFactor, ISingleUser, ITitleService, IPageState, ISettings
+    , IFormFactor, ISingleUser, IPageState, ISettings
 {
     private Type? _routeHint;
 
@@ -426,38 +383,6 @@ public partial class FormFactor(
         //return await base.GetSessionCookie(name);
     }
 
-    public override async Task<string?> UpdateTitle(string? title)
-    {
-        var _title = await base.UpdateTitle(title); // sets title bar on html page
-
-        if (PageNotFound) return _title;
-
-        try
-        {
-            var Page = provider.GetService<IPageEvents>();
-            // TODO: just saw an error javascript cannot be set when statically rendering
-            if (Current?.HttpContext?.Response.HasStarted != true
-                && Current?.HttpContext?.Response != null)
-                // TODO: set title in header
-                return _title;
-            if (Page != null)
-                await Page.SetPageTitle(_title);
-        } 
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
-
-        if (IsWebContext) return _title; // dont update app container from web context... yet.
-
-        if (Windows != null)
-            _ = Windows.ExpandWindow(true); // don't wait on animations
-
-        if (Windows != null && Windows.IsSplashMode != true)
-            await Windows.UpdateTitle(_title);
-
-        return _title;
-    }
 
     public override async Task StopAsync()
     {

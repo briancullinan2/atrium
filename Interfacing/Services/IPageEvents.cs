@@ -48,8 +48,8 @@ public interface IPageEvents : IHasModule, IAsyncDisposable
     event Action<string> OnReconnect;
 
     //Delegate? this[PageAction action, string id] { get; set; }
-    void Subscribe((PageAction Action, string Id) key, Delegate? value);
-    void Unsubscribe((PageAction Action, string Id) key, Delegate? value);
+    //void Subscribe((PageAction Action, string Id) key, Delegate? value);
+    //void Unsubscribe((PageAction Action, string Id) key, Delegate? value);
 
     Task<bool> IsAtBottomAsync(string id);
     Task ScrollSlightlyAsync(string id, int amount = 10);

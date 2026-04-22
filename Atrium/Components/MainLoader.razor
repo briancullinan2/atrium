@@ -101,6 +101,8 @@
             var Classy = Composite?.GetService<IHasClass>();
             Classy?.SetRoute(StoredDefaultRoot);
             await RenderHeader(Classy);
+            if (Composite?.GetService<ITitleService>() is ITitleService Title)
+                await Title.SetDefaultTitle(StoredDefaultRoot);
             Body = await StoredDefaultRoot.ToHtml(Composite);
             await Page.Replace("#page > main:not(.cover-page) > article", Body);
         }

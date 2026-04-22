@@ -26,6 +26,7 @@ public interface ITitleService
 {
     event Action<string?>? OnTitleChanged;
     Task<string?> UpdateTitle(string? title);
+    Task<string?> SetDefaultTitle(Type? controlType);
 }
 
 public interface IHasName
@@ -34,10 +35,9 @@ public interface IHasName
 }
 
 
-public interface IWindowManager : IHasInstall
+public interface IWindowManager : IHasInstall, ITitleService
 {
     Task ExpandWindow(bool expanding);
-    Task UpdateTitle(string? _title);
     Task<nint> GetWindowHwnd();
     Task CreateTrayIcon();
     bool IsSplashMode { get; }

@@ -516,12 +516,6 @@ public static class PageFormExtensions
     }
 
 
-    public static async Task SetPageTitle(this IPageEvents? Page, string? title)
-    {
-        if (Page is not PageManager Cast) return;
-        await Cast.EnsureInitialized();
-        await Cast.Runtime!.InvokeVoidAsync("eval", "document.title = " + JsonSerializer.Serialize(title));
-    }
-
+    
 }
 
