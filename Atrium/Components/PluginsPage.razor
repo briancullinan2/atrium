@@ -46,12 +46,13 @@
                 gatherTrust.CatchAll,
                 gatherTrust.Roots,
                 gatherTrust.AllRoutes).ToHtml(Composite);
+            gatherTrust.PreviousRendered = await RenderPluginList(
+                Composite, gatherTrust, gatherTrust.MyList).ToHtml(Composite);
 
             var Page = Composite?.GetService<PageManager>();
             if (Page == null) return;
-            await Page.Replace("#plugin-status", gatherTrust.ScanningRendered);
-            await Page.Replace(".plugin-controls", gatherTrust.PluginSelect);
-            gatherTrust?.PreviousRendered = await RenderPluginList(Composite, gatherTrust, gatherTrust.MyList).ToHtml(Composite);
+            if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
+            await Page.Replace(".plugin-status, .plugin-controls", gatherTrust.ScanningRendered + gatherTrust.PluginSelect);
             await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
         }
     }
@@ -258,7 +259,7 @@
 
        return __builder =>
        {
-           <tr id="plugin-status">
+           <tr class="plugin-status">
                <td colspan="3" class="status-container">
                    <button class="cta">Save and Continue</button><br />
                    <span class="box-status">

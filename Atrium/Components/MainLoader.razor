@@ -6,8 +6,7 @@
 @inject ICompositeProvider Composite
 @inject IJSRuntime Runtime
 
-
-@RenderMain(Composite)
+<div id="page"></div>
 
 @code
 {
@@ -77,13 +76,21 @@
         base.OnInitialized();
 
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-        Composite.GetService<TrustedLoader>()?.OnSettled += TryRenderingDefault;
+        Composite.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
     }
 
-    protected async void TryRenderingDefault()
+    protected async Task TryRenderingDefault()
     {
+        if (IsClosing == true) return;
+
         var Trust = Composite.GetService<TrustedLoader>();
-        Trust?.OnSettled += TryRenderingDefault; // try again
+        Trust?.OnSettledAsync += TryRenderingDefault; // try again
+
+        if(MainContent == null)
+        {
+            await InitializeRender(Composite, Runtime);
+        }
+
         var Page = Composite?.GetService<PageManager>();
         if (Page == null) return;
         if (StoredDefaultRoot == null)
@@ -104,11 +111,12 @@
     public Delegate Render(ICompositeProvider? Composite) => RenderMain(Composite);
 
 
-    protected RenderFragment RenderMain(ICompositeProvider? Composite)
+    protected static RenderFragment RenderMain(ICompositeProvider? Composite)
         => (RenderTreeBuilder __builder) =>
         {
             var Css = Composite?.GetService<IHasClass>();
             var Rendered = Composite?.GetService<IRenderState>();
+            var Main = Composite?.GetService<MainLoader>();
 
             @RenderStaticHeader(Css)
             
@@ -123,11 +131,19 @@
 
             <div id="page" class="page @(string.Join(" ", Css?.ClassNames ?? []))">
 
-                @if (FirstTimeLoad)
+                @if (Main?.FirstTimeLoad == true)
                 {
                     <div class="cover-container"></div>
                     <main class="cover-page">
-                        @(new MarkupString(PluginContent ?? string.Empty))
+                        @if (Main?.PluginContent != null)
+                        {
+                            @(new MarkupString(Main.PluginContent))
+                        }
+                        else
+                        {
+                            <article></article>
+                        }
+
                     </main>
                 }
 
@@ -138,32 +154,46 @@
             </div>
         };
 
-    protected override async Task OnParametersSetAsync()
+
+    public static async Task InitializeRender(ICompositeProvider? Composite, IJSRuntime? Runtime)
     {
-        await base.OnParametersSetAsync();
+        if (Composite == null) return;
         Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
         var Page = Composite.GetService<PageManager>();
         if (Page == null) return;
         await Page.EnsureInitialized();
+        var Main = Composite.GetService<MainLoader>();
+
 
         if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
             && await Plugins.Render(Composite) is RenderFragment Render)
         {
-            await Page.Replace("#page > .cover-page > article", PluginContent = await Render.ToHtml(Composite));
+            var newContent = await Render.ToHtml(Composite);
+            Main?.PluginContent = newContent;
         }
+        
+        var newMain = await RenderMain(Composite).ToHtml(Composite);
+        Main?.MainContent = newMain;
+
+
+        await Page.Replace("#page", newMain);
+        await Page.Replace("#page > .cover-page > article", Main?.PluginContent);
+
     }
 
     public bool FirstTimeLoad = true;
     public string? PluginContent = null;
-
+    public string? MainContent = null;
+    public bool? IsClosing = false;
 
 
 
     public void Dispose()
     {
+        IsClosing = true;
         var Plugins = Composite.GetService<PluginsPage>();
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-        Composite.GetService<TrustedLoader>()?.OnSettled -= TryRenderingDefault;
+        Composite.GetService<TrustedLoader>()?.OnSettledAsync -= TryRenderingDefault;
         GC.SuppressFinalize(this);
     }
 

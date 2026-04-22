@@ -126,95 +126,145 @@ export function dispatchEvent(eventName, detail) {
 
 // ahhh now i remember. in study sauce i rendered the html in a hidden container, then i can replace elements with elements
 
-export function replace(selector, content) {
-    const container = document.querySelector(selector);
-    if (!container) return;
+let isProcessing = false;
+const queue = [];
 
-    // 1. Sanitize and parse
-    const sanitizedHtml = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
-    const template = document.createElement('template');
-    template.innerHTML = sanitizedHtml;
+export async function replace(selector, content) {
+    // If already processing, queue the request
+    if (isProcessing) {
+        return new Promise(resolve => queue.push(() => resolve(replace(selector, content))));
+    }
 
-    // 2. Perform the swap
-    // Use spread operator to pass individual nodes to replaceWith
-    container.replaceWith(...template.content.childNodes);
+    isProcessing = true;
+
+    try {
+        const nodesToRemove = document.querySelectorAll(selector);
+
+        if (nodesToRemove.length > 5 || selector == '.plugin-status') {
+            debugger
+        }
+
+        if (nodesToRemove.length == 0) return;
+
+
+        const template = document.createElement('template');
+        template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
+        const fragment = document.createDocumentFragment();
+        const newNodes = Array.from(template.content.children)
+            .filter(n => n.nodeType === 1)
+        if (newNodes.length == 0) return;
+
+        newNodes.forEach(node => fragment.appendChild(node));
+
+        const firstNode = nodesToRemove[0];
+        firstNode.parentNode.insertBefore(fragment, firstNode);
+        nodesToRemove.forEach(oldNode => oldNode.remove());
+
+    } finally {
+        isProcessing = false;
+        // Process next in queue
+        if (queue.length > 0) {
+            const next = queue.shift();
+            next();
+        }
+    }
 }
 
 
+let isInserting = false;
+const insertQueue = [];
+
+
 export function insert(id, content) {
-    // allow "containers" to be a list of nodes next to each other not only a wrapper element, i.e. table#id or table > tr
-    const container = Array.from(document.querySelectorAll(id))
-    if (!container || container.length == 0) return;
-    var singular = (id.indexOf('#') > -1 && id.indexOf(' ') == -1) || container.length == 1; // TODO: too much default?
-    var childNodes = singular ? Array.from(container[0].children) : container;
-
-    const template = document.createElement('template');
-    template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
-
-    // prevent duplicates
-    const existingNodeIds = childNodes.map(n => n.getAttribute('data-id'));
-    const newNodes = Array.from(template.content.children)
-        .filter(n => existingNodeIds.indexOf(n.getAttribute('data-id')) == -1); // TODO: data-update? to force update when records change
-    const newNodeIds = newNodes
-        .map(n => n.getAttribute('data-id'));
-
-    // Combine them and sort
-    const allNodes = existingNodeIds.concat(newNodeIds).sort((a, b) => {
-        const idA = a || "";
-        const idB = b || "";
-
-        // If one is empty/null and the other is not
-        if ((idA === "") !== (idB === "")) {
-            // TODO: eventually this will make headers stick to top, could also check for th, or properly scope table > tbody > sorted
-            return idA === "" ? -1 : 1; // Put the empty one at the top
-        }
-
-        // If both have IDs, sort alphabetically
-        return idA.localeCompare(idB);
-    });
-
-    // sort new incoming nodes by name so we insert the last one first
-    //   this allows us to add new elements to container.children without
-    //   corrupting the sorting indexes above as we insert the new elements
-    const sortedElements = newNodes.sort((a, b) => {
-        const idA = a.getAttribute('data-id') || "";
-        const idB = b.getAttribute('data-id') || "";
-        return idA.localeCompare(idB);
-    });
-
-    // when inserting nodes, start from the bottom up,
-    //   this has a side effect of not interfering with scroll
-
-    // Iterate bottom-up (reverse)
-    for (let i = sortedElements.length - 1; i >= 0; i--) {
-        const el = sortedElements[i];
-        const id = el.getAttribute('data-id');
-
-        // Find the correct insertion point by finding the first existing child 
-        // that belongs after our current element in the sorted order.
-        // We look at the actual DOM children, ignoring non-data-id nodes if necessary.
-        const currentChildren = singular ? Array.from(container[0].children) : childNodes;
-
-        const nextSibling = currentChildren.find(child => {
-            const childId = child.getAttribute('data-id');
-            // Logic: Is this child's ID "greater" than our new ID?
-            return childId && (childId.localeCompare(id) > 0);
-        });
-
-        const targetParent = nextSibling ? nextSibling.parentNode : (singular ? container[0] : childNodes[0].parentNode);
-
-        if (nextSibling) {
-
-            if (nextSibling.previousSibling?.getAttribute('data-id') == id)
-                nextSibling.previousSibling.remove()
-
-            targetParent.insertBefore(el, nextSibling);
-        } else {
-            // No next sibling? Append to the end of the parent.
-            targetParent.appendChild(el);
-        }
+    if (isInserting) {
+        return new Promise(resolve => insertQueue.push(() => resolve(replace(id, content))));
     }
 
+    isInserting = true;
+
+    try {
+
+        // allow "containers" to be a list of nodes next to each other not only a wrapper element, i.e. table#id or table > tr
+        const container = Array.from(document.querySelectorAll(id))
+        if (!container || container.length == 0) return;
+        var singular = (id.indexOf('#') > -1 && id.indexOf(' ') == -1) || container.length == 1; // TODO: too much default?
+        var childNodes = singular ? Array.from(container[0].children) : container;
+
+        const template = document.createElement('template');
+        template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
+
+        // prevent duplicates
+        const existingNodeIds = childNodes.map(n => n.getAttribute('data-id'));
+        const newNodes = Array.from(template.content.children)
+            .filter(n => n.nodeType === 1)
+            .filter(n => existingNodeIds.indexOf(n.getAttribute('data-id')) == -1); // TODO: data-update? to force update when records change
+        const newNodeIds = newNodes
+            .map(n => n.getAttribute('data-id'));
+
+        // Combine them and sort
+        const allNodes = existingNodeIds.concat(newNodeIds).sort((a, b) => {
+            const idA = a || "";
+            const idB = b || "";
+
+            // If one is empty/null and the other is not
+            if ((idA === "") !== (idB === "")) {
+                // TODO: eventually this will make headers stick to top, could also check for th, or properly scope table > tbody > sorted
+                return idA === "" ? -1 : 1; // Put the empty one at the top
+            }
+
+            // If both have IDs, sort alphabetically
+            return idA.localeCompare(idB);
+        });
+
+        // sort new incoming nodes by name so we insert the last one first
+        //   this allows us to add new elements to container.children without
+        //   corrupting the sorting indexes above as we insert the new elements
+        const sortedElements = newNodes.sort((a, b) => {
+            const idA = a.getAttribute('data-id') || "";
+            const idB = b.getAttribute('data-id') || "";
+            return idA.localeCompare(idB);
+        });
+
+        // when inserting nodes, start from the bottom up,
+        //   this has a side effect of not interfering with scroll
+
+        // Iterate bottom-up (reverse)
+        for (let i = sortedElements.length - 1; i >= 0; i--) {
+            const el = sortedElements[i];
+            const id = el.getAttribute('data-id');
+
+            // Find the correct insertion point by finding the first existing child 
+            // that belongs after our current element in the sorted order.
+            // We look at the actual DOM children, ignoring non-data-id nodes if necessary.
+            const currentChildren = singular ? Array.from(container[0].children) : childNodes;
+
+            const nextSibling = currentChildren.find(child => {
+                const childId = child.getAttribute('data-id');
+                // Logic: Is this child's ID "greater" than our new ID?
+                return childId && (childId.localeCompare(id) > 0);
+            });
+
+            const targetParent = nextSibling ? nextSibling.parentNode : (singular ? container[0] : childNodes[0].parentNode);
+
+            if (nextSibling) {
+
+                if (nextSibling.previousElementSibling?.getAttribute('data-id') === id)
+                    nextSibling.previousElementSibling.remove()
+
+                targetParent.insertBefore(el, nextSibling);
+            } else {
+                // No next sibling? Append to the end of the parent.
+                targetParent.appendChild(el);
+            }
+        }
+    } finally {
+        isInserting = false;
+        // Process next in queue
+        if (insertQueue.length > 0) {
+            const next = insertQueue.shift();
+            next();
+        }
+    }
 }
 
 // returns results from multiple queries added together

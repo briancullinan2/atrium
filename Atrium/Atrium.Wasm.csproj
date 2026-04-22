@@ -45,7 +45,6 @@
   </ItemGroup>
 	
   <ItemGroup>
-    <Content Remove="Components\MainLoader.razor" />
     <Content Remove="wwwroot\index.html" />
   </ItemGroup>
 	
