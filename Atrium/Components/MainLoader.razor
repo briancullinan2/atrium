@@ -83,7 +83,7 @@
     protected async void TryRenderingDefault()
     {
         var Trust = Composite.GetService<TrustedLoader>();
-        Trust?.OnSettled += TryRenderingDefault;
+        Trust?.OnSettled += TryRenderingDefault; // try again
         var Page = Composite?.GetService<PageManager>();
         if (Page == null) return;
         if (StoredDefaultRoot == null)
@@ -95,7 +95,7 @@
             Classy?.SetRoute(StoredDefaultRoot);
             await RenderHeader(Classy);
             Body = await StoredDefaultRoot.ToHtml(Composite);
-            await Page.Replace("#page > article", Body);
+            await Page.Replace("#page > main:not(.cover-page) > article", Body);
         }
     }
 
@@ -131,7 +131,9 @@
                     </main>
                 }
 
-                <article></article>
+                <main><article>
+                    
+                </article></main>
 
             </div>
         };

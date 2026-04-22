@@ -1,11 +1,17 @@
 ﻿namespace Interfacing.Services;
 
-public interface IHostingService
+public interface IHasInstall
+{
+    Task<bool?> CheckInstalled();
+}
+
+
+
+public interface IHostingService : IHasInstall
 {
     Task<string?> GetToken();
     string? GetHost();
     Task<string?> CheckTunnel(string? Account = null, string? Tunnel = null, string? Api = null);
-    Task<bool?> CheckInstalled();
     Task<bool?> IsWorking();
     StatusResponse CheckStatus();
     Task<StatusResponse?> CheckRemoteStatus(string? domain);

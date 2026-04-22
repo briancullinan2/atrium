@@ -110,7 +110,10 @@ public abstract class BaseFormFactor(
         var Rendered = Service.GetService<IRenderState>();
         if (Rendered == null) return 0;
         await Rendered.EnsureInitialized();
-        OffsetInMinutes = await (Rendered.Runtime as IJSRuntime)!.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+        OffsetInMinutes = await (Rendered.Runtime as IJSRuntime)!
+            // this is in my complaint to microsoft. if they made proper use of typescript awareness, they could easily
+            //   make this go away, and make a runtime evaluator that converts C# to javascript
+            .InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
         return OffsetInMinutes;
     }
 

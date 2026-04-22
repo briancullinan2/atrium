@@ -34,7 +34,7 @@ public interface IHasName
 }
 
 
-public interface IWindowManager
+public interface IWindowManager : IHasInstall
 {
     Task ExpandWindow(bool expanding);
     Task UpdateTitle(string? _title);

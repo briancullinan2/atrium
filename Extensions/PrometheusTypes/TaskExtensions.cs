@@ -35,6 +35,12 @@ public static partial class TaskExtensions
         return task.ContinueWith(t => then(t)).Unwrap();
     }
 
+    // Chaining Task (No Result) to another async Task
+    public static Task Then(this Task task, Func<Task> then)
+    {
+        return task.ContinueWith(t => then()).Unwrap();
+    }
+
     // Chaining Task<T> to an async process that returns Task (No Result)
     public static Task Then<T>(this Task<T> task, Action<T> then)
     {

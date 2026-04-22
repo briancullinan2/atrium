@@ -204,6 +204,10 @@ export function insert(id, content) {
         const targetParent = nextSibling ? nextSibling.parentNode : (singular ? container[0] : childNodes[0].parentNode);
 
         if (nextSibling) {
+
+            if (nextSibling.previousSibling?.getAttribute('data-id') == id)
+                nextSibling.previousSibling.remove()
+
             targetParent.insertBefore(el, nextSibling);
         } else {
             // No next sibling? Append to the end of the parent.

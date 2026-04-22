@@ -122,7 +122,7 @@ public static class TrustedExtensions
         lock (T.AllRoutes)
             if (T.AllRoutes
             .OrderBy(r => r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase)
-                || r.Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)
+                || !r.Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)
                 ? -1 : 0)
             .FirstOrDefault() is Type any)
                 return any;
@@ -171,6 +171,15 @@ public interface IHasRender
         ICompositeProvider? Composite
     );
 }
+
+
+public interface IHasStaticRender
+{
+    static abstract Delegate RenderStatic(
+        ICompositeProvider? Composite
+    );
+}
+
 
 
 public interface IHasRender<T> where T : class

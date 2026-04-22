@@ -15,6 +15,21 @@ public interface IHasEvents : IHasModule
 
 
 
+public interface IHasInterconnect
+{
+
+    Task Replace(string? id, string? content);
+
+
+
+    Task Insert(string? id, string? content);
+
+
+    ValueTask TriggerEvent(string eventName, object? detail = null);
+}
+
+
+
 public interface IPageEvents : IHasModule, IAsyncDisposable
 {
 
@@ -129,6 +144,11 @@ public enum PageAction
 
     // content merchantry
     AnkiSelected = 300,
+
+    ToggleHosting = 400,
+    ToggleService = 401,
+    ToggleStartup = 402,
+    HostingStatus = 405,
 
     // auth
     Login = 500,

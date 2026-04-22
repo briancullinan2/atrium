@@ -221,6 +221,17 @@ internal class WindowManager
     }
 
 
+    public async Task<bool?> CheckInstalled()
+    {
+#if WINDOWS
+        return TrayIcon.IsTrayIconRegisteredByGuid();
+#else
+        return false; // TODO: how to do the persistent notification tray on android for web server like ip webcam?
+#endif
+    }
+
+
+
     public async Task CreateTrayIcon()
     {
 #if WINDOWS

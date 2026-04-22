@@ -2,11 +2,92 @@
 
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace RazorSharp.Extensions;
 
 public static partial class ComponentExtensions
 {
+
+    // oh good, component singleton means this will work
+
+
+    public static async Task<string> ToHtml(this IComponent? service)
+    {
+        if (service == null) return string.Empty;
+        var composite = service.Renderer()?.Service()?.GetService<ICompositeProvider>();
+        if (service is IHasRender Render)
+        {
+            return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
+        }
+        RenderFragment Fragment = __builder =>
+        {
+            __builder.OpenComponent(0, service.GetType());
+            __builder.CloseComponent();
+        };
+        return await Fragment.ToHtml(composite);
+    }
+
+
+    // and this
+
+
+    public static async Task<string> ToHtml(this Type? service, IServiceProvider? serviceProvider)
+    {
+        if (service == null || !service.Extends(typeof(IComponent))) return string.Empty;
+        var composite = serviceProvider?.GetService<ICompositeProvider>();
+        if (service.Extends(typeof(IHasRender))
+            && serviceProvider?.GetService(service) is IHasRender Render)
+        {
+            return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
+        }
+        if (service.Extends(typeof(IAsyncRender))
+            && serviceProvider?.GetService(service) is IAsyncRender Render2)
+        {
+            if (await Render2.Render(composite) is RenderFragment task)
+                return await task.ToHtml(composite);
+        }
+        RenderFragment Fragment = __builder =>
+        {
+            __builder.OpenComponent(0, service);
+            __builder.CloseComponent();
+        };
+        return await Fragment.ToHtml(serviceProvider);
+    }
+
+
+
+    public static async Task<string> ToHtml(this RenderFragment? fragment, IServiceProvider? serviceProvider)
+    {
+        if (fragment == null) return string.Empty;
+        serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();
+        // TODO: prefer composite?
+        serviceProvider = serviceProvider.GetService<ICompositeProvider>() ?? serviceProvider;
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+
+        using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            // Use the private wrapper defined below
+            var output = await renderer.RenderComponentAsync<FragmentWrapper>(
+                ParameterView.FromDictionary(new Dictionary<string, object?>
+                {
+                { nameof(FragmentWrapper.Content), fragment }
+                })
+            );
+
+            return output.ToHtmlString();
+        });
+    }
+
+    // Private helper to satisfy the IComponent requirement
+    private class FragmentWrapper : ComponentBase
+    {
+        [Parameter] public RenderFragment Content { get; set; } = default!;
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+            => builder.AddContent(0, Content);
+    }
 
 #pragma warning disable BL0006 // Do not use RenderTree types
     public static Renderer? Renderer(this IComponent component)

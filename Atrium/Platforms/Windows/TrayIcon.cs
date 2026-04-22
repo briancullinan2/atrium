@@ -66,7 +66,7 @@ internal static class TrayIcon
 
             // We tell the shell: "Ignore the HWND, use the GUID instead"
             uFlags = NIF_GUID,
-            guidItem = myAppGuid ?? BlipAppGuid ?? new Guid()
+            guidItem = myAppGuid ?? BlipAppGuid
         };
 
         // NIM_MODIFY (1) will return true only if this specific GUID 
@@ -88,7 +88,7 @@ internal static class TrayIcon
         return Shell32.Shell_NotifyIcon(1, ref nid);
     }
 
-    private static readonly Guid? BlipAppGuid = new("4A9C1D3E-8B2F-4E9A-A5D1-C67B80F42C91");
+    private static readonly Guid BlipAppGuid = new("4A9C1D3E-8B2F-4E9A-A5D1-C67B80F42C91");
 
     public static unsafe Shell32.NOTIFYICONDATA? RunBlip(string iconPath, string tooltip, nint? nativeHwnd)
     {
@@ -114,33 +114,18 @@ internal static class TrayIcon
 
         // 3. Register the Tray Icon
         Shell32.NOTIFYICONDATA nid;
-        if (BlipAppGuid != null)
-        {
-            if (IsTrayIconRegisteredByGuid(BlipAppGuid.Value))
-                return null;
+        if (IsTrayIconRegisteredByGuid(BlipAppGuid))
+            return null;
 
-            nid = new Shell32.NOTIFYICONDATA
-            {
-                cbSize = (uint)sizeof(Shell32.NOTIFYICONDATA),
-                hWnd = hwnd,
-                uFlags = NIF_GUID | 0x01 | 0x02 | 0x04, // NIF_GUID | NIF_MESSAGE | NIF_ICON
-                guidItem = BlipAppGuid.Value,
-                hIcon = hIcon,
-                uCallbackMessage = 0x0400 + 1
-            };
-        }
-        else
+        nid = new Shell32.NOTIFYICONDATA
         {
-            nid = new()
-            {
-                cbSize = (uint)sizeof(Shell32.NOTIFYICONDATA),
-                hWnd = hwnd,
-                uID = 1,
-                uFlags = 0x01 | 0x02 | 0x04, // NIF_MESSAGE | NIF_ICON | NIF_TIP
-                uCallbackMessage = 0x0400 + 1, // WM_USER + 1
-                hIcon = hIcon
-            };
-        }
+            cbSize = (uint)sizeof(Shell32.NOTIFYICONDATA),
+            hWnd = hwnd,
+            uFlags = NIF_GUID | 0x01 | 0x02 | 0x04, // NIF_GUID | NIF_MESSAGE | NIF_ICON
+            guidItem = BlipAppGuid,
+            hIcon = hIcon,
+            uCallbackMessage = 0x0400 + 1
+        };
 
         var destSpan = MemoryMarshal.CreateSpan(ref nid.szTip[0], 128);
         tooltip.AsSpan().CopyTo(destSpan);

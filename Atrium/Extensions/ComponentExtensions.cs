@@ -39,6 +39,12 @@ internal static class ComponentExtensions
         {
             return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
         }
+        if (service.Extends(typeof(IAsyncRender))
+            && serviceProvider?.GetService(service) is IAsyncRender Render2)
+        {
+            if(await Render2.Render(composite) is RenderFragment task)
+                return await task.ToHtml(composite);
+        }
         RenderFragment Fragment = __builder =>
         {
             __builder.OpenComponent(0, service);

@@ -5,7 +5,7 @@ using System.ComponentModel;
 
 namespace Atrium.Services;
 
-public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : IHasEvents
+public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : IHasEvents, IHasInterconnect
 {
     private readonly Dictionary<(PageAction Action, string? Id), object?> _states = [];
 

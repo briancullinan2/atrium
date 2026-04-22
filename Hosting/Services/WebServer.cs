@@ -3,7 +3,6 @@ using DataShared.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 #endif
 
@@ -52,7 +51,7 @@ public class WebServer(
     }
 
 #if WINDOWS
-    public static WebApplication? StartWebServer(ITrustProvider Trust)
+    public static WebApplication? StartWebServer(ITrustProvider? Trust)
     {
         try
         {
@@ -104,7 +103,7 @@ public class WebServer(
             // TODO: try to get every service from the existing container instead of building a new one:
             // TODO: this disctinction will become the multi-tenant feature
 
-            Trust.BuildServices(webBuilder.Services, null);
+            Trust?.BuildServices(webBuilder.Services, null);
 
             DatabaseBuilder.BuildServices(webBuilder.Services);
 
