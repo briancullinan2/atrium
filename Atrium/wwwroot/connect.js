@@ -142,17 +142,24 @@ export function replace(selector, content) {
 
 
 export function insert(id, content) {
-    const container = document.querySelector(id)
-    if (!container) return;
+    // allow "containers" to be a list of nodes next to each other not only a wrapper element, i.e. table#id or table > tr
+    const container = Array.from(document.querySelectorAll(id))
+    if (!container || container.length == 0) return;
+    var singular = (id.indexOf('#') > -1 && id.indexOf(' ') == -1) || container.length == 1; // TODO: too much default?
+    var childNodes = singular ? Array.from(container[0].children) : container;
 
     const template = document.createElement('template');
     template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
 
-    const existingNodes = Array.from(container.children).map(n => n.getAttribute('data-id'));
-    const newNodes = Array.from(template.content.children).map(n => n.getAttribute('data-id'));
+    // prevent duplicates
+    const existingNodeIds = childNodes.map(n => n.getAttribute('data-id'));
+    const newNodes = Array.from(template.content.children)
+        .filter(n => existingNodeIds.indexOf(n.getAttribute('data-id')) == -1); // TODO: data-update? to force update when records change
+    const newNodeIds = newNodes
+        .map(n => n.getAttribute('data-id'));
 
     // Combine them and sort
-    const allNodes = existingNodes.concat(newNodes).sort((a, b) => {
+    const allNodes = existingNodeIds.concat(newNodeIds).sort((a, b) => {
         const idA = a || "";
         const idB = b || "";
 
@@ -169,7 +176,7 @@ export function insert(id, content) {
     // sort new incoming nodes by name so we insert the last one first
     //   this allows us to add new elements to container.children without
     //   corrupting the sorting indexes above as we insert the new elements
-    const sortedElements = Array.from(template.content.children).sort((a, b) => {
+    const sortedElements = newNodes.sort((a, b) => {
         const idA = a.getAttribute('data-id') || "";
         const idB = b.getAttribute('data-id') || "";
         return idA.localeCompare(idB);
@@ -177,14 +184,31 @@ export function insert(id, content) {
 
     // when inserting nodes, start from the bottom up,
     //   this has a side effect of not interfering with scroll
-    for (var i = sortedElements.length - 1; i >=0 ; i--) {
-        var el = sortedElements[i]
-        var id = el.getAttribute('data-id')
-        var insertAt = allNodes.indexOf(id)
-        if (insertAt == allNodes.length - 1)
-            container.appendChild(el)
-        else
-            container.insertBefore(el, container.children[insertAt-i]) // tricksy math
+
+    // Iterate bottom-up (reverse)
+    for (let i = sortedElements.length - 1; i >= 0; i--) {
+        const el = sortedElements[i];
+        const id = el.getAttribute('data-id');
+
+        // Find the correct insertion point by finding the first existing child 
+        // that belongs after our current element in the sorted order.
+        // We look at the actual DOM children, ignoring non-data-id nodes if necessary.
+        const currentChildren = singular ? Array.from(container[0].children) : childNodes;
+
+        const nextSibling = currentChildren.find(child => {
+            const childId = child.getAttribute('data-id');
+            // Logic: Is this child's ID "greater" than our new ID?
+            return childId && (childId.localeCompare(id) > 0);
+        });
+
+        const targetParent = nextSibling ? nextSibling.parentNode : (singular ? container[0] : childNodes[0].parentNode);
+
+        if (nextSibling) {
+            targetParent.insertBefore(el, nextSibling);
+        } else {
+            // No next sibling? Append to the end of the parent.
+            targetParent.appendChild(el);
+        }
     }
 
 }

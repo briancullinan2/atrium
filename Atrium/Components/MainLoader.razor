@@ -2,15 +2,17 @@
 @implements IHasRender
 @implements IDisposable
 @implements IComponent
+@implements IHasHeader
 @inject ICompositeProvider Composite
 @inject IJSRuntime Runtime
 
 
-@(new MarkupString(ChildContent ?? string.Empty))
+@RenderMain(Composite)
 
 @code
 {
-
+    protected Type? StoredDefaultRoot { get; set; } = null;
+    protected string? Body { get; set; } = null;
 
     void IComponent.Attach(RenderHandle renderHandle)
     {
@@ -30,18 +32,28 @@
         return parameters;
     }
 
-    public static RenderFragment RenderHeader(IHasClass? Css, IRenderState? Rendered)
+
+    public async Task RenderHeader(IHasClass? Classy)
+    {
+        var Form = Composite.GetService<IFormFactor>();
+        // TODO: check if response started and update with method below
+        var Page = Composite.GetService<PageManager>();
+        if (Page == null) return;
+        //IJSRuntime Runtime = Rendered?.Runtime as IJSRuntime;
+        var Header = await MainLoader.RenderStaticHeader(Classy).ToHtml(Composite);
+        await Page.Insert("link[data-id]", Header);
+    }
+
+
+    public static RenderFragment RenderStaticHeader(IHasClass? Css)
          => (RenderTreeBuilder __builder) =>
         {
-            foreach (var cssUrl in Css?.Registry ?? [])
+            <link data-id="cover.css" rel="stylesheet" href="/css/cover.css" />
+            @foreach (var cssUrl in Css?.Registry ?? [])
             {
-                <link rel="stylesheet" href="@cssUrl" />
+                <link data-id="@cssUrl.Split('/').Last()" rel="stylesheet" href="@cssUrl" />
             }
 
-            foreach (var item in Rendered?.State ?? [])
-            {
-                <input type="hidden" name="state_@item.Key" value="@item.Value" />
-            }
 
         };
 
@@ -65,13 +77,32 @@
         base.OnInitialized();
 
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
+        Composite.GetService<TrustedLoader>()?.OnSettled += TryRenderingDefault;
     }
 
-    public MainLoader()
+    protected async void TryRenderingDefault()
     {
+        var Trust = Composite.GetService<TrustedLoader>();
+        Trust?.OnSettled += TryRenderingDefault;
+        var Page = Composite?.GetService<PageManager>();
+        if (Page == null) return;
+        if (StoredDefaultRoot == null)
+        {
+            // TODO: make this a page event from plugins like RootReady so on normal startup its a streamlined process
+            StoredDefaultRoot = Trust?.DefaultRoot();
+            if (StoredDefaultRoot == null) return;
+            var Classy = Composite?.GetService<IHasClass>();
+            Classy?.SetRoute(StoredDefaultRoot);
+            await RenderHeader(Classy);
+            Body = await StoredDefaultRoot.ToHtml(Composite);
+            await Page.Replace("#page > article", Body);
+        }
     }
+
+
 
     public Delegate Render(ICompositeProvider? Composite) => RenderMain(Composite);
+
 
     protected RenderFragment RenderMain(ICompositeProvider? Composite)
         => (RenderTreeBuilder __builder) =>
@@ -79,10 +110,15 @@
             var Css = Composite?.GetService<IHasClass>();
             var Rendered = Composite?.GetService<IRenderState>();
 
-            @RenderHeader(Css, Rendered)
-    #if DEBUG
+            @RenderStaticHeader(Css)
+            
+            foreach (var item in Rendered?.State ?? [])
+            {
+                <input type="hidden" name="state_@item.Key" value="@item.Value" />
+            }
+#if DEBUG
             @RenderDebugInvocationLogger()
-    #endif
+#endif
 
 
             <div id="page" class="page @(string.Join(" ", Css?.ClassNames ?? []))">
@@ -95,6 +131,8 @@
                     </main>
                 }
 
+                <article></article>
+
             </div>
         };
 
@@ -102,21 +140,18 @@
     {
         await base.OnParametersSetAsync();
         Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
-        if (Composite.GetService<IHasEvents>() is PageManager Page)
-            await Page.EnsureInitialized();
-        else
-        {
-            ChildContent = "No page manager.";
-            return;
-        }
+        var Page = Composite.GetService<PageManager>();
+        if (Page == null) return;
+        await Page.EnsureInitialized();
+
         if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
             && await Plugins.Render(Composite) is RenderFragment Render)
-            PluginContent = await Render.ToHtml(Composite);
-        ChildContent = await RenderMain(Composite).ToHtml(Composite);
+        {
+            await Page.Replace("#page > .cover-page > article", PluginContent = await Render.ToHtml(Composite));
+        }
     }
 
     public bool FirstTimeLoad = true;
-    public string? ChildContent = null;
     public string? PluginContent = null;
 
 
@@ -126,6 +161,7 @@
     {
         var Plugins = Composite.GetService<PluginsPage>();
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
+        Composite.GetService<TrustedLoader>()?.OnSettled -= TryRenderingDefault;
         GC.SuppressFinalize(this);
     }
 

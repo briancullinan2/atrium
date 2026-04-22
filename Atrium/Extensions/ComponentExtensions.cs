@@ -1,23 +1,60 @@
-﻿using Atrium.Components;
-using Interfacing.Services;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
+﻿using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
 
 namespace Atrium.Extensions;
 
 internal static class ComponentExtensions
 {
-    
+
+    // oh good, component singleton means this will work
+
+
+    public static async Task<string> ToHtml(this IComponent? service)
+    {
+        if (service == null) return string.Empty;
+        var composite = service.Renderer()?.Service()?.GetService<ICompositeProvider>();
+        if (service is IHasRender Render)
+        {
+            return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
+        }
+        RenderFragment Fragment = __builder =>
+        {
+            __builder.OpenComponent(0, service.GetType());
+            __builder.CloseComponent();
+        };
+        return await Fragment.ToHtml(composite);
+    }
+
+
+    // and this
+
+
+    public static async Task<string> ToHtml(this Type? service, IServiceProvider? serviceProvider)
+    {
+        if (service == null || !service.Extends(typeof(IComponent))) return string.Empty;
+        var composite = serviceProvider?.GetService<ICompositeProvider>();
+        if (service.Extends(typeof(IHasRender))
+            && serviceProvider?.GetService(service) is IHasRender Render)
+        {
+            return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
+        }
+        RenderFragment Fragment = __builder =>
+        {
+            __builder.OpenComponent(0, service);
+            __builder.CloseComponent();
+        };
+        return await Fragment.ToHtml(serviceProvider);
+    }
+
+
+
     public static async Task<string> ToHtml(this RenderFragment? fragment, IServiceProvider? serviceProvider)
     {
         if (fragment == null) return string.Empty;
         serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();
+        // TODO: prefer composite?
+        serviceProvider = serviceProvider.GetService<ICompositeProvider>() ?? serviceProvider;
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
         using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
@@ -59,6 +96,14 @@ internal static class ComponentExtensions
 
         if (handleField?.GetValue(component) is not RenderHandle handle) return null;
         return handle;
+    }
+
+
+    public static ICompositeProvider? Service(this Renderer renderer)
+    {
+        var servicesProperty = renderer.GetType().GetField("_serviceProvider", BindingFlags.NonPublic);
+
+        return servicesProperty?.GetValue(renderer) as ICompositeProvider;
     }
 
 

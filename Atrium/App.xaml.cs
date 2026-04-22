@@ -10,9 +10,15 @@ using Microsoft.Maui.Devices;
 
 namespace Atrium;
 
+
+// i am such a dumbass. i try to get this IHasCurrent thing working for extra singleton singletons, and 
+//   i somehow manage to give the service container permission to create applications at will, that
+//   absolute fucking opposite of what i intended is my default go to, imagine if this dumbass 
+//   machine was allowed to run it's entire life this way.
+
 public partial class App
 #if !BROWSER
-    : Microsoft.Maui.Controls.Application //, IHasCurrent<Application>
+    : Microsoft.Maui.Controls.Application //, IHasCurrent<App>
 #endif
 {
 #if !BROWSER

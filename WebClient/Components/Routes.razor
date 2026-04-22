@@ -121,7 +121,7 @@
             var controlType = CurrentControl.ToType();
             if (controlType != null) {
                 //StoredAppAssembly = controlType.Assembly;
-                await Css.ListenUp(controlType, DefaultLayout);
+                Css.SetRoute(controlType);
                 Service.GetService<IFormFactor>()?.RequestControl = controlType;
             }
         }
@@ -142,7 +142,7 @@
         if (CurrentControl != null)
         {
             var controlType = CurrentControl.ToType();
-            await Css.ListenUp(controlType, DefaultLayout);
+            Css.SetRoute(controlType);
             Service.GetService<IFormFactor>()?.RequestControl = controlType;
 
             Console.WriteLine("Current route 2: " + CurrentControl + " - " + controlType);
@@ -187,11 +187,11 @@
             controlType = TypeExtensions.IdentifyNavigation(Nav.Uri).ComponentType;
         } catch {}
 
-        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Css.SetPageClasses(["Home"], controlType);
-        else Css.SetPageClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
-    .Split('/')
-    .Select(seg => seg.ToSafe())
-        ], controlType);
+        if (string.IsNullOrWhiteSpace(Nav.Uri.Trim('/'))) Css.SetClasses(["Home"]);
+        else Css.SetClasses([..Nav.ToBaseRelativePath(Nav.Uri.Split('?')[0])
+            .Split('/')
+            .Select(seg => seg.ToSafe())
+        ]);
 
         Composite.GetService<IFormFactor>()?.RequestControl = controlType;
         _ = ProbablyUpdateTitle(controlType);
@@ -214,6 +214,8 @@
         GC.SuppressFinalize(this);
     }
 
+
+    // type shit goes away
     private async Task ProbablyUpdateTitle(Type? controlType = null)
     {
         //await Css.ListenUp();
@@ -224,8 +226,11 @@
             .Concat(controlType != null ? [controlType] : [])
             .OrderBy(type => type == controlType ? -2 : type != typeof(RazorSharp.Pages.Landing.Default) ? -1 : 0)
             .ToList();
-        var title = components.SelectMany(comp => comp.GetCustomAttributes<DisplayAttribute>())
-            .FirstOrDefault() ?? controlType?.GetCustomAttributes<DisplayAttribute>().FirstOrDefault();
+        var title = components
+            .SelectMany(comp => comp.GetCustomAttributes<DisplayAttribute>())
+            .FirstOrDefault() 
+            ?? controlType?.GetCustomAttributes<DisplayAttribute>()
+            .FirstOrDefault();
         if (title is DisplayAttribute attr)
         {
             var Title = Service.GetService<ITitleService>();
@@ -249,7 +254,7 @@
 
             if (controlType == typeof(RazorSharp.Pages.Landing.Default)) return;
 
-            await Css.ListenUp(controlType, DefaultLayout);
+            Css.SetRoute(controlType);
             Service.GetService<IFormFactor>()?.RequestControl = controlType;
 
             _ = ProbablyUpdateTitle(controlType);

@@ -1,5 +1,6 @@
 ﻿
 #if !BROWSER
+using Atrium.Components;
 using Atrium.Services;
 #endif
 
@@ -34,6 +35,10 @@ public class MauiProgram : IHasCurrent<MauiApp>
             });
 
         BuilderExtensions.BuildServices(builder.Services, CompositeServiceProvider.BuiltIn, null, null, true);
+
+
+        //builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
+        builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
 
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG

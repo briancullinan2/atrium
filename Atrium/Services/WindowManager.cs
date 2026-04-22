@@ -177,6 +177,8 @@ internal class WindowManager
 
             for (int i = 1; i <= totalFrames; i++)
             {
+                await Task.Delay(1000 / fps, token);
+
                 if (token.IsCancellationRequested) return;
 
                 double t = (double)i / totalFrames;
@@ -197,6 +199,10 @@ internal class WindowManager
 #if !BROWSER
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
+                    if(App?.Value != Application.Current)
+                    {
+                        Console.WriteLine("wtf?");
+                    }
                     if (App?.Value?.Windows.Count > 0)
                     {
                         var window = App.Value.Windows[0];
@@ -209,7 +215,6 @@ internal class WindowManager
                     }
                 });
 #endif
-                await Task.Delay(1000 / fps, token);
             }
         }
         catch (TaskCanceledException) { }

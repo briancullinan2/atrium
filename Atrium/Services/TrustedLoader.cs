@@ -1,8 +1,8 @@
 ﻿
 #if !BROWSER
+using Atrium.Components;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.Storage;
-using Atrium.Components;
 #endif
 
 
@@ -11,9 +11,11 @@ using System.Runtime.InteropServices;
 using Atrium.Platforms.Windows;
 #endif
 
+using System.Text.Json.Serialization;
+
 namespace Atrium.Services;
 
-public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
+public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<AppDomain>, IDisposable
 {
     public static AppDomain Current { get => AppDomain.CurrentDomain; }
     private static event Action? InternalOnSettled;
@@ -176,7 +178,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             collection.BuildServices(types);
     }
 
-    static SemaphoreSlim _entry = new(1, 1);
+    static readonly SemaphoreSlim _entry = new(1, 1);
     static readonly List<Assembly> PileUp = [];
 
     private static async Task SettleServices(Assembly? newAss)
@@ -455,13 +457,21 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     }
 
+    [JsonPropertyName(nameof(StoredRoot))]
+    public string? StoredRoot = null;
 
-    static public readonly List<Type> Layouts = [];
-    static readonly List<Assembly> Seen = [];
-    static public readonly List<Assembly> Routable = [];
-    static public readonly List<Type> CatchAll = [];
-    static public readonly List<Type> Roots = [];
-    static public readonly List<Type> AllRoutes = [];
+    public Type? SetRoot
+    {
+        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
+        set => StoredRoot = value?.AssemblyQualifiedName;
+    }
+
+    static public List<Type> Layouts { get; } = [];
+    static public List<Assembly> Seen { get; } = [];
+    static public List<Assembly> Routable { get; } = [];
+    static public List<Type> CatchAll { get; } = [];
+    static public List<Type> Roots { get; } = [];
+    static public List<Type> AllRoutes { get; } = [];
 
     private static void TryFindingInterestingTypes(Assembly ass)
     {
@@ -486,6 +496,8 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
         var routable = false;
 
+
+        lock (CachedPluginContracts)
         foreach (var type in allTypes)
         {
             try

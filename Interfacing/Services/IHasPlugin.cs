@@ -19,7 +19,7 @@ public interface ICompositeProvider : IServiceProvider, IServiceProviderIsServic
     List<IServiceProvider> PluginContainers { get; }
 }
 
-
+// for the very staticy stuff
 public interface IHasCurrent<T>
 {
     static abstract T? Current { get; }
@@ -88,7 +88,49 @@ public interface ITrustProvider
     Dictionary<string, List<string>> DependedAssemblies { get; }
     Dictionary<string, PluginContract> DiscoveredStatus { get; }
     void BuildServices(IServiceCollection collection, List<Type>? types);
+    Type? SetRoot { get; }
 }
+
+public interface ITrustStatic : ITrustProvider // dumbass DI compile error
+{
+    static abstract List<Type> Layouts { get; }
+    static abstract List<Assembly> Seen { get; }
+    static abstract List<Assembly> Routable { get; }
+    static abstract List<Type> CatchAll { get; }
+    static abstract List<Type> Roots { get; }
+    static abstract List<Type> AllRoutes { get; }
+
+}
+
+public static class TrustedExtensions
+{
+    // type shit
+    public static Type? DefaultRoot(this ITrustStatic Trust)
+    {
+        var defaultRoot = typeof(TrustedExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(m => m.Name == nameof(DefaultRoot) && m.IsGenericMethod)
+            ?? throw new InvalidOperationException("Cannot render DefaultRoot method.");
+        var defaultConcrete = defaultRoot.MakeGenericMethod(Trust.GetType());
+        return defaultConcrete.Invoke(null, [Trust]) as Type;
+    }
+
+    public static Type? DefaultRoot<T>(this T Trust) where T : ITrustStatic
+    {
+        if (Trust.SetRoot != null) return Trust.SetRoot;
+        if (T.Roots.Count > 0) return T.Roots.First();
+        if (T.CatchAll.Count > 0) return T.CatchAll.First();
+        lock (T.AllRoutes)
+            if (T.AllRoutes
+            .OrderBy(r => r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase)
+                || r.Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)
+                ? -1 : 0)
+            .FirstOrDefault() is Type any)
+                return any;
+        return null;
+    }
+}
+
+
 
 public record AssemblyInfo(string? Product, string? Company, string? Publisher, string? Package, LevelOfTrust TrustLevel = LevelOfTrust.Untrusted);
 

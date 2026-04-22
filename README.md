@@ -269,6 +269,12 @@ control flow.
  single line meaningful without me".
 
 
+ It's a turning point when i stop posting screen shots of progress and instead post IDE errors. microsoft technology has and always
+ will be hell for developers. stay the fuck away.
+
+ ![VS bugs](./Docs/Screenshot%202026-04-21%20121131.png?raw=true)
+
+
 
 
 #### 4/19/2026

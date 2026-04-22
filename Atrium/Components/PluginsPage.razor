@@ -51,12 +51,8 @@
             if (Page == null) return;
             await Page.Replace("#plugin-status", gatherTrust.ScanningRendered);
             await Page.Replace(".plugin-controls", gatherTrust.PluginSelect);
-            var newItems = gatherTrust.MyList
-                ?.Where(c => gatherTrust.Previous?.Contains(c.Title) != true)
-                .ToList();
-            gatherTrust.Previous = gatherTrust.MyList?.Select(c => c.Title).ToList();
-            var listItems = await RenderPluginList(Composite, gatherTrust, newItems).ToHtml(Composite);
-            await Page.Insert("#plugins-list", listItems);
+            gatherTrust?.PreviousRendered = await RenderPluginList(Composite, gatherTrust, gatherTrust.MyList).ToHtml(Composite);
+            await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
         }
     }
 
@@ -91,7 +87,7 @@
         public Dictionary<string, string>? AllRoutes { get; set; }
         public bool? IsBootstrapping { get; set; }
         public string? Error { get; set; }
-        public List<string>? Previous { get; set; }
+        public string? PreviousRendered { get; set; }
         public List<PluginContract>? MyList { get; set; }
         public DateTime? LastUpdate { get; set; }
         public string? Scanning { get; set; }
@@ -121,6 +117,8 @@
         if (Plugin.GatheredTrust == null)
         {
             Plugin.GatheredTrust = new TrustedState(Trust);
+            // this is a fancy service injector that i would have expected from microsoft dumbass compiler rewriting factory
+            //  event handlers in javascript, wtf? Expression.ToString()? ever going to make that work like IQueryable?
             Composite?.GetService<IHasEvents>()?.Subscribe(PageAction.TogglePlugin, PluginsPage.OnEnabled);
         }
 
@@ -158,6 +156,9 @@
         if (GatheredTrust == null) return;
 
         await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
+
+        // in case something loaded not from use input/page event
+        TriggerExpand(Composite);
     }
 
 
@@ -189,7 +190,7 @@
 
             <article class="content course-container">
 
-                @Logo?.LogoContent
+                @*@Logo?.LogoContent*@
 
                 <table id="plugins-list">
                     <tbody>
@@ -197,6 +198,8 @@
                         @(new MarkupString(State?.ScanningRendered ?? string.Empty))
 
                         @(new MarkupString(State?.PluginSelect ?? string.Empty))
+
+                        @(new MarkupString(State?.PreviousRendered ?? string.Empty))
 
                     </tbody>
                 </table>
@@ -356,7 +359,8 @@
     protected static void TriggerExpand(ICompositeProvider? Composite)
     {
 
-        if (Composite?.GetService<TrustedLoader>()?.EnabledAssemblies.Count == 0)
+        if (Composite?.GetService<TrustedLoader>()?.EnabledAssemblies.Count == 0
+            && TrustedLoader.SystemEnabledAssemblies.Count == 0)
             _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(false);
         else
             _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(true);

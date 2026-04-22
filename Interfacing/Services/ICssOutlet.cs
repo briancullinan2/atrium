@@ -84,72 +84,60 @@ public partial class ClassyService : IHasClass, IDisposable
     };
 
     public Type? RouteHint { get; private set; } = null;
-    private Type? layout = null;
     private bool IsClosing = false;
     public List<string> Registry { get => [.. RealRegistry.SelectMany(list => list.Value).Distinct()]; }
-    protected readonly ConcurrentDictionary<Type, List<string>> RealRegistry = [];
+    protected readonly List<Type> LoadedTypes = [];
+    protected Dictionary<Type, List<string>>? StoredRegistry = null;
+    protected Dictionary<Type, List<string>> RealRegistry
+    {
+        get
+        {
+            if (StoredRegistry != null) return StoredRegistry;
+            StoredRegistry = [];
+            foreach (var type in LoadedTypes)
+            {
+                if (type == null) continue;
+
+                var includes = type.GetInterfaces()
+                    .Concat(type.BaseType != null ? [type, type.BaseType] : [type])
+                    .SelectMany(TypeToIncludes)
+                    .ToList();
+
+                if (StoredRegistry.TryGetValue(type, out var list))
+                {
+                    foreach (var inc in includes)
+                        if (!list.Contains(inc))
+                        {
+                            list.Add(inc);
+                        }
+                }
+                else
+                {
+                    StoredRegistry[type] = includes;
+                }
+            }
+            return StoredRegistry;
+        }
+    }
+
     private readonly Dictionary<string, string> _filePresence = [];
 
-    public virtual async Task ListenUp(Type? typeHint = null, Type? _layout = null)
+    public void SetRoute(Type? typeHint = null)
     {
-        if (typeHint != null)
-            RouteHint = typeHint;
-        if (_layout != null)
-            layout = _layout;
-
-
-        if (IsClosing) return;
-        if (typeHint == null)
+        if (typeHint != null && !LoadedTypes.Contains(typeHint))
         {
-            await Task.Delay(800); // wait for layout to insert the component
-
-            if (IsClosing) return;
+            LoadedTypes.Add(typeHint);
+            StoredRegistry = null;
+            Console.WriteLine("Registry updated: " + JsonSerializer.Serialize(Registry));
+            _ = TryLoadingStylesText();
         }
 
-        List<Type?> components = [
-            RouteHint,
-            layout,
-            //Rendered._container?.GetType(),
-            //..Rendered._container?.GetChildComponents().Select(c => c.GetType()) ?? []
-        ];
-
-        var HasChanged = false;
-        var Starting = Registry.ToList();
-
-        foreach (var type in components.OfType<Type>())
-        {
-            if (type == null) continue;
-
-            var includes = type.GetInterfaces()
-                .Concat(type.BaseType != null ? [type, type.BaseType] : [type])
-                .SelectMany(TypeToIncludes)
-                .ToList();
-
-            if (RealRegistry.TryGetValue(type, out var list))
-            {
-                foreach (var inc in includes)
-                    if (!list.Contains(inc))
-                    {
-                        list.Add(inc);
-                        HasChanged = true;
-                    }
-            }
-            else
-            {
-                RealRegistry[type] = includes;
-                HasChanged = true;
-            }
-        }
+    }
 
 
-        foreach (var component in RealRegistry)
-        {
-            if (!components.Contains(component.Key))
-            {
-                //RealRegistry.TryRemove(component);
-            }
-            // don't trigger removals, just let them happen
-        }
+    protected async Task TryLoadingStylesText()
+    {
+
 
         foreach (var style in RealRegistry)
         {
@@ -170,15 +158,8 @@ public partial class ClassyService : IHasClass, IDisposable
         }
 
 
-        var Ending = Registry.ToList();
-        if (HasChanged && Ending.Except(Starting).Any()) // adds
-        {
-            //var Container = loader ?? Service.GetService<>()?.Container;
-            //if (Container?.HasChanged() is Task task) await task;
-            Console.WriteLine("Registry updated: " + JsonSerializer.Serialize(Registry));
-        }
-
     }
+
 
     public void Dispose()
     {
@@ -210,12 +191,9 @@ public partial class ClassyService : IHasClass, IDisposable
 
 
     // TODO: move this to main loader classes along side SetTitle
-    public void SetPageClasses(List<string> classes, Type? typeHint = null)
+    public void SetClasses(List<string>? classes)
     {
         PageClasses = classes;
-        if (typeHint != null)
-            RouteHint = typeHint;
-
     }
 
     public void SetTheme(string? classes)

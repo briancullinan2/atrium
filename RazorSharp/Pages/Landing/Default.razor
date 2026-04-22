@@ -2,196 +2,44 @@
 @page "/index.html"
 @page "/app.html"
 @page "/{*notFound}"
-@inject IHasClass Classy
-@inject IRenderState? Rendered
-
-@foreach (var item in Rendered?.State ?? [])
-{
-    <input type="hidden" name="state_@item.Key" value="@item.Value" />
-}
-
-@if (DefaultRoot != null && DefaultRoot != typeof(Pages.Landing.Default))
-{
-    __builder.OpenComponent(0, DefaultRoot);
-    __builder.CloseComponent();
-}
-else if (!String.IsNullOrWhiteSpace(notFound))
-{
-    <NotFoundControl />
-}
-else
-{
-    <div class="flash-card animate-in">
-        TODO: Find a home page.
-    </div>
-}
-
+@implements IHasRender
 
 @code
 {
-    // TODO: find the best home page based on the plugins loaded.
 
-    public string? StoredRoot = null;
-
-    [JsonPropertyName(nameof(SetRoot))]
-    [CascadingParameter(Name = nameof(DefaultRoot))]
-    public Type? SetRoot
-    {
-        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
-        set => StoredRoot = value?.AssemblyQualifiedName;
-    }
-
-    public Type? DefaultRoot { 
-        get
-        {
-            // TODO: don't lose track of this bullshit again
-            if(!string.IsNullOrWhiteSpace(notFound))
-            {
-                try
-                {
-                    var controlType = TypeExtensions.IdentifyNavigation(notFound).ComponentType;
-                    return controlType;
-                } catch {}
-            }
-            if (SetRoot != null) return SetRoot;
-            if (Roots.Count > 0) return Roots.First();
-            if (CatchAll.Count > 0) return CatchAll.First();
-            lock (AllRoutes)
-                if (AllRoutes
-                .OrderBy(r => FirstTimeLoad && r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase) ? -1 : 0)
-                .FirstOrDefault() is Type any)
-                    return any;
-            return null;
-        }
-        set
-        {
-            SetRoot = value;
-            if(!OperatingSystem.IsBrowser())
-                if (Rendered?.SetState(this) == true)
-                    InvokeAsync(StateHasChanged);
-        }
-    }
     [Parameter] public string? notFound { get; set; }
 
-    [CascadingParameter(Name = nameof(FirstTimeLoad))] 
-    [JsonPropertyName(nameof(FirstTimeLoad))]
-    public bool FirstTimeLoad { get; set; }
-
-    protected override void OnInitialized()
-    {
-        // TODO: find a page animation       
-
-    }
 
 
-
-
-    protected async Task TryLoading()
-    {
-        var asses = (Assembly.GetEntryAssembly() 
-            ?? Assembly.GetExecutingAssembly())
-            .GetAssemblies().GetMine().ToList();
-        await Parallel.ForEachAsync(asses, async (s, _) =>
+    public static RenderFragment RenderDefaultRoute(ICompositeProvider? Composite, string? notFound)
+        => __builder =>
         {
-            await TryFindingInterestingTypes(s);
-        });
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-
-        if (OperatingSystem.IsBrowser() && Rendered != null)
-            await Rendered.RestoreState(this);
-
-        global::System.Console.WriteLine("Default root: " + DefaultRoot);
-        if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
-            await TryLoading();
-
-        await Classy.ListenUp(DefaultRoot, typeof(MainLayout));
-
-        await base.OnInitializedAsync();
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-
-        await base.OnParametersSetAsync();
-    }
-
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-        if (!OperatingSystem.IsBrowser())
-            if (Rendered?.SetState(this) == true)
-                InvokeAsync(StateHasChanged);
-
-
-        if (AllRoutes.Count == 0 && string.IsNullOrWhiteSpace(notFound))
-            _ = TryLoading();
-        else if (DefaultRoot == null && AllRoutes.Count > 0)
-            StateHasChanged();
-    }
-
-    public readonly List<Type> Layouts = [];
-    readonly List<Assembly> Seen = [];
-    public readonly List<Assembly> Routable = [];
-    public readonly List<Type> CatchAll = [];
-    public readonly List<Type> Roots = [];
-    public readonly List<Type> AllRoutes = [];
-
-    private async Task TryFindingInterestingTypes(Assembly ass)
-    {
-        lock (Seen) {
-
-            if (Seen.Contains(ass))
-                return;
-
-            Seen.Add(ass);
-
-        }
-
-        var allTypes = ass.GetAssTypesSafely();
-
-        var routable = false;
-
-        foreach (var type in allTypes)
-        {
-            try
+            var DefaultRoot = (Composite?.GetService<ITrustProvider>() as ITrustStatic)?.DefaultRoot();
+            var Classy = Composite?.GetService<IHasClass>();
+            var Header = Composite?.GetService<IHasHeader>();
+            @if (DefaultRoot != null && DefaultRoot != typeof(Pages.Landing.Default))
             {
-                if (typeof(LayoutComponentBase).IsAssignableFrom(type)
-                    && type != typeof(LayoutComponentBase)
-                    && type != typeof(MainLayout)
-                    && type != typeof(Default))
-                    Layouts.Add(type);
-
-                if (type != typeof(Default)
-                    && type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr)
-                {
-                    routable = true;
-                    if (attr.Template.StartsWith("/*")
-                        || attr.Template.StartsWith("/{*")
-                        || attr.Template.StartsWith('*'))
-                        CatchAll.Add(type);
-
-                    if (attr.Template == "/")
-                        Roots.Add(type);
-
-                    lock (AllRoutes)
-                        AllRoutes.Add(type);
-                }
+                Classy?.SetRoute(DefaultRoot);
+                Header?.RenderHeader(Classy);
+                __builder.OpenComponent(0, DefaultRoot);
+                __builder.CloseComponent();
             }
-            catch (Exception ex)
+            else if (!String.IsNullOrWhiteSpace(notFound))
             {
-                System.Console.WriteLine(ex);
+                <NotFoundControl />
             }
-        }
+            else
+            {
+                <div class="flash-card animate-in">
+                    TODO: Find a home page.
+                </div>
+            }
 
-        if (routable)
-            Routable.Add(ass);
+        };
 
-        if (DefaultRoot == null && (Roots.Count > 0 || CatchAll.Count > 0))
-            await InvokeAsync(StateHasChanged);
-        else if (FirstTimeLoad && AllRoutes.Count > 0)
-            await InvokeAsync(StateHasChanged);
-    }
+
+
+    public Delegate Render(ICompositeProvider? Composite)
+        => RenderDefaultRoute(Composite, notFound);
+
 }

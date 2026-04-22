@@ -70,18 +70,24 @@ public interface IHasErrors<T> : IHasErrors
 public interface IHasClass
 {
     ClassNameCollection ClassNames { get; }
-    void SetPageClasses(List<string> classes, Type? typeHint = null);
+    void SetClasses(List<string>? classes);
     void SetTheme(string? classes);
     void SetSidebar(string? classes);
     void SetUri(string uri);
     string? Sidebar { get; }
     Action<object> LogoContent { get; }
 
-    Task ListenUp(Type? typeHint, Type? layout);
+    void SetRoute(Type? typeHint);
 
     Type? RouteHint { get; }
     List<string> Registry { get; }
 
+}
+
+
+public interface IHasHeader
+{
+    Task RenderHeader(IHasClass? Classy);
 }
 
 
