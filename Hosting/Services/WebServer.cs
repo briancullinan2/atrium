@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
-using System.Reflection.Metadata.Ecma335;
-using System.ServiceProcess;
 #endif
 
 namespace Hosting.Services;
@@ -47,8 +45,8 @@ public class WebServer(
         serviceBuilder = extensions.GetMethods("BuildServices", null, [typeof(IServiceCollection), typeof(List<Type>), typeof(string), typeof(IServiceProviderIsService), typeof(bool)]).FirstOrDefault()
             ?? throw new InvalidOperationException("Can't find BuilderExtensions.BuildServices, this probably won't work.");
 
-        mainLoader = atrium.GetType("Atrium.Components.MainLoader")
-            ?? throw new InvalidOperationException("Can't find MainLoader, this probably won't work.");
+        mainLoader = atrium.GetType("Atrium.Components.RootComponent")
+            ?? throw new InvalidOperationException("Can't find RootComponent, this probably won't work.");
 
         var componentBuilder = atrium.GetType("Atrium.Services.CompositeServiceProvider")
             ?? throw new InvalidOperationException("Can't find CompositeServiceProvider, this probably won't work.");
@@ -133,7 +131,7 @@ public class WebServer(
             // TODO: try to get every service from the existing container instead of building a new one:
             // TODO: this disctinction will become the multi-tenant feature
 
-            serviceBuilder?.Invoke(null, [webBuilder.Services, builtIn, null, null, false]);
+            serviceBuilder?.Invoke(null, [webBuilder.Services, builtIn.Concat([typeof(FormFactor)]).ToList(), null, null, false]);
 
             DatabaseBuilder.BuildServices(webBuilder.Services);
 

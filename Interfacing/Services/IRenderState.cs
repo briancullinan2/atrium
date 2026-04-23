@@ -181,14 +181,12 @@ public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, ID
 
     public void NotifyEmptied(object? runtime)
     {
-        if(_runtime == null)
-            _runtime = runtime; // if !null then its OnInitialize
+        _runtime ??= runtime; // if !null then its OnInitialize
 
-        if (_runtime == null && !_renderTcs.Task.IsCompleted)
-        {
-            _renderTcs.TrySetResult(false);
+        if (_renderTcs.Task.IsCompleted)
+            //_renderTcs.TrySetResult(false);
+        //else
             _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        }
         OnEmptied?.Invoke();
         OnEmptied = null;
     }

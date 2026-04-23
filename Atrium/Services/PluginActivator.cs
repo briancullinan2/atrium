@@ -1,36 +1,21 @@
 ﻿
 
 using Atrium.Components;
+using static Microsoft.AspNetCore.Components.Web.RenderMode;
 
 namespace Atrium.Services;
 
 
-internal static class InjectionExtensions
+
+public class PluginActivator(ICompositeProvider Composite, IServiceProvider Service) : IComponentActivator //, ISingleUser //, IHasCurrent<PluginActivator> // Current is null
 {
-    public static void InjectService(this object? serviceComponent, ICompositeProvider? Composite)
+    private static readonly FieldInfo? renderMode;
+
+    static PluginActivator()
     {
-        var componentType = serviceComponent?.GetType();
-        var properties = componentType?
-            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-            .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
-
-        foreach (var prop in properties ?? [])
-        {
-
-            var service = Composite?.GetService(prop.PropertyType);
-            if (service != null)
-            {
-                prop.SetValue(serviceComponent, service);
-            }
-
-        }
+        renderMode = typeof(ComponentBase).GetField("_renderMode", BindingFlags.Instance | BindingFlags.NonPublic);
 
     }
-}
-
-
-public class PluginActivator(ICompositeProvider Composite) : IComponentActivator, ISingleUser //, IHasCurrent<PluginActivator> // Current is null
-{
 
     // TODO: replace Presentation with an extended type selected by main layout or query string
 
@@ -41,9 +26,22 @@ public class PluginActivator(ICompositeProvider Composite) : IComponentActivator
             return componentType.
         }*/
 
-        var serviceComponent = Composite.IsService(componentType)
-            ? (IComponent)Composite.GetRequiredService(componentType)
-            : (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+        IComponent? serviceComponent = null;
+        //var scoped = Composite.CreateScope().ServiceProvider;
+        if(Service.GetService<IServiceProviderIsService>()?.IsService(componentType) == true)
+            serviceComponent = (IComponent)Service.GetRequiredService(componentType);
+
+        else if (Composite.IsService(componentType))
+            serviceComponent = (IComponent)Composite.GetRequiredService(componentType);
+
+        else
+            serviceComponent = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+
+        if (serviceComponent is ComponentBase baseComponent
+                && Composite.GetService<IFormFactor>()?.IsWebContext == true)
+        {
+            renderMode?.SetValue(baseComponent, new ValueTuple<IComponentRenderMode?, bool>(InteractiveServer, true));
+        }
 
         serviceComponent.InjectService(Composite);
         // TODO: IHasCurrent, always use Current IComponent instead of creating a new one
@@ -67,10 +65,9 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
     public static List<Type> BuiltIn { get; } = [
         typeof(PluginActivator),
-        typeof(CompositeServiceProvider)
-#if !BROWSER
-        , typeof(Atrium.Components.MainLoader)
-#endif
+        typeof(CompositeServiceProvider),
+        typeof(RenderStateProvider),
+        typeof(Atrium.Components.MainLoader)
     ];
 
 
@@ -111,7 +108,9 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
         try
         {
-            foreach(var container in PluginContainers)
+            List<IServiceProvider>? MyPlugins = null;
+            lock (PluginContainers) MyPlugins = [..PluginContainers];
+            foreach(var container in MyPlugins ?? [])
             {
                 var isService = container.GetService<IServiceProviderIsService>();
                 if (isService?.IsService(serviceType) == true)
@@ -184,7 +183,8 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
 
         var Services = collection.BuildServiceProvider();
-        PluginContainers.Add(Services);
+        lock(PluginContainers)
+            PluginContainers.Add(Services);
         var service2 = Services.GetService(serviceType);
         
         return service2;
@@ -251,5 +251,28 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
             }
         }
         return false;
+    }
+}
+
+internal static class InjectionExtensions
+{
+    public static void InjectService(this object? serviceComponent, IServiceProvider? Composite)
+    {
+        var componentType = serviceComponent?.GetType();
+        var properties = componentType?
+            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+            .Where(p => p.GetCustomAttribute<InjectAttribute>() != null);
+
+        foreach (var prop in properties ?? [])
+        {
+
+            var service = Composite?.GetService(prop.PropertyType);
+            if (service != null)
+            {
+                prop.SetValue(serviceComponent, service);
+            }
+
+        }
+
     }
 }

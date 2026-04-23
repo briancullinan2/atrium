@@ -1,0 +1,48 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+
+@RenderStaticPageWrapper()
+
+@code
+{
+    
+
+    public static RenderFragment RenderStaticPageWrapper()
+    => __builder =>
+    {
+
+        <!DOCTYPE html>
+        <html lang="en">
+
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <base href="/" />
+            <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
+            <link rel="stylesheet" href="/css/app.css" />
+            <link rel="icon" type="image/png" href="favicon.ico" />
+            <AntiforgeryToken />
+        </head>
+
+        <body>
+
+            <script src="/_content/RazorSharp/main.js"></script>
+            <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", startBlazor);
+
+                manageServiceWorker();
+
+            </script>
+
+            <div id="app">
+                    <MainLoader @rendermode="InteractiveServer" />
+            </div>
+
+        </body>
+
+        </html>
+
+    };
+}

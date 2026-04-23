@@ -119,6 +119,7 @@ internal class WindowManager(
         {
             try
             {
+                if (sizeTcs == null || sizeTcs.Task.IsCompleted) return;
                 var display = DeviceDisplay.Current.MainDisplayInfo;
                 double density = display.Density;
 

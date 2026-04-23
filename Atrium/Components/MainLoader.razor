@@ -1,24 +1,39 @@
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 
 @implements IHasRender
 @implements IDisposable
 @implements IComponent
 @implements IHasHeader
 @inject ICompositeProvider Composite
+@inject IServiceProvider Service
 @inject IJSRuntime Runtime
 
-<div id="page"></div>
+@{
+    ((RenderFragment)Render(Composite))(__builder);
+}
 
 @code
 {
     protected Type? StoredDefaultRoot { get; set; } = null;
     protected string? Body { get; set; } = null;
 
+    public static int ServiceCount = 0;
+    public int ServiceId { get; }
+
+    public MainLoader() : base()
+    {
+        // trying to debug something, and then it wouldn't increment 
+        ServiceId = Interlocked.Increment(ref ServiceCount);
+    }
+
+
     void IComponent.Attach(RenderHandle renderHandle)
     {
         var renderField = typeof(ComponentBase).GetField("_renderHandle", BindingFlags.Instance | BindingFlags.NonPublic);
         renderField?.SetValue(this, renderHandle);
     }
+
 
 
     public static Dictionary<string, string> Query(string uri)
@@ -56,47 +71,7 @@
 
 
         };
-        
 
-    public static RenderFragment RenderStaticPageWrapper()
-    => __builder =>
-    {
-        
-        <!DOCTYPE html>
-        <html lang="en">
-
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <base href="/" />
-            <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
-            <link rel="stylesheet" href="/css/app.css" />
-            <link rel="icon" type="image/png" href="favicon.ico" />
-            <AntiforgeryToken />
-
-        </head>
-
-        <body>
-
-            <script src="/_content/RazorSharp/main.js"></script>
-            <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
-
-            <script>
-                document.addEventListener("DOMContentLoaded", startBlazor);
-        
-                manageServiceWorker();
-
-            </script>
-
-            <div id="app">
-                    <div id="page"></div>
-            </div>
-
-        </body>
-
-    </html>
-
-    };
 
 
     public static RenderFragment RenderDebugInvocationLogger()
@@ -118,19 +93,34 @@
         base.OnInitialized();
 
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-        Composite.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
+        //Composite.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
     }
+    /*
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        //if(firstRender)
+        await TryRenderingDefault();
+}*/
 
     protected async Task TryRenderingDefault()
     {
         if (IsClosing == true) return;
 
+        var Form = Composite.GetService<IFormFactor>();
+        if (Form?.IsWebContext == true) return;
+
         var Trust = Composite.GetService<TrustedLoader>();
         Trust?.OnSettledAsync += TryRenderingDefault; // try again
 
+        var Rendered = Composite.GetService<IRenderState>();
+        if(Rendered?.IsReady != true)
+            Rendered?.NotifyRendered(Runtime);
+
         if(MainContent == null)
         {
-            await InitializeRender(Composite, Runtime);
+            await InitializeRender(Composite, Service, Runtime);
         }
 
         var Page = Composite?.GetService<PageManager>();
@@ -152,15 +142,36 @@
 
 
 
-    public Delegate Render(ICompositeProvider? Composite) => RenderMain(Composite);
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        await TryRenderingDefault();
+
+    }
 
 
-    protected static RenderFragment RenderMain(ICompositeProvider? Composite)
+    public Delegate Render(ICompositeProvider? Composite)
+    {
+        Composite?.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
+        //var Form = Service?.GetService<IFormFactor>();
+        //if(Form?.IsWebContext == true)
+        //{
+        //    var fragment = RenderStaticPageWrapper();
+        //    return fragment;
+        //}
+        //else
+        return RenderMain(Composite, Service);
+    }
+
+
+    protected static RenderFragment RenderMain(ICompositeProvider? Composite, IServiceProvider? Service)
         => (RenderTreeBuilder __builder) =>
         {
             var Css = Composite?.GetService<IHasClass>();
             var Rendered = Composite?.GetService<IRenderState>();
-            var Main = Composite?.GetService<MainLoader>();
+            var Main = Service?.GetService<MainLoader>();
+
 
             @RenderStaticHeader(Css)
             
@@ -199,14 +210,10 @@
         };
 
 
-    public static async Task InitializeRender(ICompositeProvider? Composite, IJSRuntime? Runtime)
+    public static async Task InitializeRender(ICompositeProvider? Composite, IServiceProvider? Service, IJSRuntime? Runtime)
     {
-        if (Composite == null) return;
-        Composite.GetService<IRenderState>()?.NotifyRendered(Runtime);
-        var Page = Composite.GetService<PageManager>();
-        if (Page == null) return;
-        await Page.EnsureInitialized();
-        var Main = Composite.GetService<MainLoader>();
+        if (Service == null || Composite == null) return;
+        var Main = Service.GetService<MainLoader>();
 
 
         if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
@@ -216,10 +223,12 @@
             Main?.PluginContent = newContent;
         }
         
-        var newMain = await RenderMain(Composite).ToHtml(Composite);
+        var newMain = await RenderMain(Composite, Service).ToHtml(Composite);
         Main?.MainContent = newMain;
 
-
+        var Page = Composite.GetService<PageManager>();
+        if (Page == null) return;
+        await Page.EnsureInitialized();
         await Page.Replace("#page", newMain);
         await Page.Replace("#page > .cover-page > article", Main?.PluginContent);
 
@@ -235,6 +244,7 @@
     public void Dispose()
     {
         IsClosing = true;
+        StoredDefaultRoot = null;
         var Plugins = Composite.GetService<PluginsPage>();
         Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
         Composite.GetService<TrustedLoader>()?.OnSettledAsync -= TryRenderingDefault;

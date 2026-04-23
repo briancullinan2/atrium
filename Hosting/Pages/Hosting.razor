@@ -45,14 +45,15 @@
                         await Hosting.ReplaceSettings(Composite);
                 });
 
+            <article>
+                @RenderSettings()
 
-             @RenderSettings()
+                @RenderInstructions()
 
-             @RenderInstructions()
-
-             @RenderStatusHeader()
+                @RenderStatusHeader()
              
-             @RenderStatus()
+                @RenderStatus()
+            </article>
         };
 
 

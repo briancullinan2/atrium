@@ -174,8 +174,8 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
         }
         catch (Exception ex)
         {
-            if(Module != null)
-                await Module.DisposeAsync();
+            if(_module != null)
+                await _module.DisposeAsync();
             dotNetHelper = null;
             Console.WriteLine(ex);
             throw;

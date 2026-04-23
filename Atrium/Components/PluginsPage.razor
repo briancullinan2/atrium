@@ -4,6 +4,7 @@
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
 @inject ICompositeProvider Composite
+@inject IServiceProvider Service
 
 @code {
 
@@ -25,7 +26,7 @@
 
 
 
-    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, bool wait = true)
+    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, IServiceProvider? Service, bool wait = true)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
@@ -51,7 +52,7 @@
 
             var Page = Composite?.GetService<PageManager>();
             if (Page == null) return;
-            if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
+            if (Service?.GetService<Components.MainLoader>()?.MainContent == null) return;
             await Page.Replace(".plugin-status, .plugin-controls", gatherTrust.ScanningRendered + gatherTrust.PluginSelect);
             await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
         }
@@ -108,7 +109,7 @@
 
 
 
-    public static TrustedState? GatherTrust(ICompositeProvider? Composite, PluginsPage? Plugin, TrustedLoader? Trust)
+    public static TrustedState? GatherTrust(ICompositeProvider? Composite, IServiceProvider? Service, PluginsPage? Plugin, TrustedLoader? Trust)
     {
         Plugin ??= Composite?.GetService<PluginsPage>();
         Trust ??= Composite?.GetService<TrustedLoader>();
@@ -136,7 +137,7 @@
         {
             Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
                 {
-                    await RenderAssemblyScannedFile(file?.InstallPath, Plugin.GatheredTrust, Composite);
+                    await RenderAssemblyScannedFile(file?.InstallPath, Plugin.GatheredTrust, Composite, Service);
                 };
 
             Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
@@ -153,10 +154,10 @@
         var Trust = Composite?.GetService<TrustedLoader>();
         Trust?.OnSettledAsync += OnSettled;
 
-        GatherTrust(Composite, this, Trust);
+        GatherTrust(Composite, Service, this, Trust);
         if (GatheredTrust == null) return;
 
-        await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
+        await RenderAssemblyScannedFile("", GatheredTrust, Composite, Service, false /*no wait*/);
 
         // in case something loaded not from use input/page event
         TriggerExpand(Composite);
@@ -170,13 +171,13 @@
         var Trust = Composite?.GetService<TrustedLoader>();
         var Logo = Composite?.GetService<IHasClass>();
         // prevent concurrency errors while printing the view
-        GatherTrust(Composite, this, Trust);
+        GatherTrust(Composite, Service, this, Trust);
         Trust?.OnSettledAsync += OnSettled;
 
         if (GatheredTrust == null) return null;
 
         if (GatheredTrust.ScanningRendered == null)
-            await RenderAssemblyScannedFile("", GatheredTrust, Composite);
+            await RenderAssemblyScannedFile("", GatheredTrust, Composite, Service);
 
         if (GatheredTrust.PluginSelect == null)
             await OnSettled();

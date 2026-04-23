@@ -148,7 +148,7 @@ export async function replace(selector, content) {
 
 
         const template = document.createElement('template');
-        template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
+        template.innerHTML = (content || '').replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '');
         const fragment = document.createDocumentFragment();
         const newNodes = Array.from(template.content.children)
             .filter(n => n.nodeType === 1)
@@ -191,7 +191,7 @@ export function insert(id, content) {
         var childNodes = singular ? Array.from(container[0].children) : container;
 
         const template = document.createElement('template');
-        template.innerHTML = content.replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
+        template.innerHTML = (content || '').replaceAll(/<script[^>\s\S]*?>[\s\S]*?<\/script>/igm, '')
 
         // prevent duplicates
         const existingNodeIds = childNodes.map(n => n.getAttribute('data-id'));

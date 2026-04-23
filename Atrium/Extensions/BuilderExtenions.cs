@@ -1,4 +1,5 @@
 ﻿
+using Atrium.Components;
 using Atrium.Services;
 
 namespace Atrium.Extensions;
@@ -73,6 +74,11 @@ public static class BuilderExtensions
                 if (iHasSingleUser != null)
                 {
                     Console.WriteLine("single user? " + isSingleUser);
+                }
+                if(service == typeof(MainLoader))
+                {
+                    Console.WriteLine("scoped? " + (currentType != null || iHasService != null || iHasSingleton != null
+                    || (iHasSingleUser != null && isSingleUser)));
                 }
                 // IHasCurrent<Application> the container is also automagically a singleton, for IHasCurrent<WebServer> to work too
                 // static Current {get;} are inherently singletons
