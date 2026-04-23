@@ -217,7 +217,7 @@
 
 
         if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
-            && await Plugins.Render(Composite) is RenderFragment Render)
+            && await Plugins.Render(Composite, Service) is RenderFragment Render)
         {
             var newContent = await Render.ToHtml(Composite);
             Main?.PluginContent = newContent;

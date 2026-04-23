@@ -44,7 +44,7 @@ public static partial class ComponentExtensions
         if (service.Extends(typeof(IAsyncRender))
             && serviceProvider?.GetService(service) is IAsyncRender Render2)
         {
-            if (await Render2.Render(composite) is RenderFragment task)
+            if (await Render2.Render(composite, serviceProvider) is RenderFragment task)
                 return await task.ToHtml(composite);
         }
         RenderFragment Fragment = __builder =>

@@ -3,8 +3,6 @@
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
-@inject ICompositeProvider Composite
-@inject IServiceProvider Service
 
 @code {
 
@@ -77,7 +75,7 @@
     };
 
 
-    public class TrustedState : IDisposable
+    public partial class TrustedState : IDisposable
     {
         // TODO: make json compatible by using the based types needed for output
         [JsonIgnore]
@@ -149,10 +147,10 @@
 
     protected TrustedState? GatheredTrust { get; set; } = null;
 
-    public async Task OnSettled()
+    public async Task OnSettled(ICompositeProvider? Composite, IServiceProvider? Service)
     {
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += OnSettled;
+        Trust?.OnSettledAsync += () => OnSettled(Composite, Service);
 
         GatherTrust(Composite, Service, this, Trust);
         if (GatheredTrust == null) return;
@@ -165,14 +163,15 @@
 
 
     public async Task<Delegate?> Render(
-        ICompositeProvider? Composite
+        ICompositeProvider? Composite,
+        IServiceProvider? Service
     )
     {
         var Trust = Composite?.GetService<TrustedLoader>();
         var Logo = Composite?.GetService<IHasClass>();
         // prevent concurrency errors while printing the view
         GatherTrust(Composite, Service, this, Trust);
-        Trust?.OnSettledAsync += OnSettled;
+        Trust?.OnSettledAsync += () => OnSettled(Composite, Service);
 
         if (GatheredTrust == null) return null;
 
@@ -180,7 +179,7 @@
             await RenderAssemblyScannedFile("", GatheredTrust, Composite, Service);
 
         if (GatheredTrust.PluginSelect == null)
-            await OnSettled();
+            await OnSettled(Composite, Service);
 
         return RenderMainBody(Logo, GatheredTrust);
     }
