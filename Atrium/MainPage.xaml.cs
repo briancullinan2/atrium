@@ -30,8 +30,9 @@ public partial class MainPage : ContentPage
         {
             try
             {
+                window.document.getElementById("title").innerHTML = "Hello from C# also";
 
-                (window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
+                //(window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
 
                 window.addEventListener("popstate", (e) => window.postMessage(new
                 {

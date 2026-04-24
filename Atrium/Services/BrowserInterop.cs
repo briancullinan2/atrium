@@ -147,7 +147,10 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
         task?.Wait();
 
         // Map the result back to C#
-        result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"{Path}.{Name}", returnType);
+        if(Name == "getElementById")
+            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
+        else
+            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"{Path}.{Name}", returnType);
         return true;
     }
 
