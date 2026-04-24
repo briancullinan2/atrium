@@ -29,6 +29,11 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
 {
     protected string Path { get; } = _jsPath;
 
+    public T As<T>()
+    {
+        return InteropExtensions.As<T>(this);
+    }
+
 
     static JsProxy()
     {
@@ -49,8 +54,8 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
             var targetType = proxyType?.GetProperty(propertyName)?.PropertyType;
             var baseProxy = new JsProxy($"{Path}['{propertyName}']", targetType);
             return targetType != null
-                ? CreateProxy.MakeGenericMethod(targetType).Invoke(null, [baseProxy])
-                : baseProxy;
+                ? CreateProxy.MakeGenericMethod(targetType).Invoke(null, [baseProxy]) as IJsProxy
+                : (IJsProxy)baseProxy;
         }
         set
         {
@@ -360,31 +365,22 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     }
 
 
-    public override async Task<string?> ExecuteJsAsync(string script)
+    public override Task<string?> ExecuteJsAsync(string script)
     {
-        //VerifyThread(); // Enforcement gate
-        if (Environment.CurrentManagedThreadId != App.Bridge?.CreateId)
+        TaskCompletionSource<string?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Context.Post(async _ =>
         {
-            TaskCompletionSource<string> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Context.Post(async _ =>
+            try
             {
-                try
-                {
-                    var result = await core.ExecuteScriptWithResultAsync(script);
-                    tcs.SetResult(result.ResultAsJson);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
-                }
-            }, null);
-            return await tcs.Task;
-        }
-        else
-        {
-            var result = await core.ExecuteScriptWithResultAsync(script);
-            return result.ResultAsJson;
-        }
+                var result = await core.ExecuteScriptWithResultAsync(script);
+                tcs.SetResult(result.ResultAsJson);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
+            }
+        }, null);
+        return tcs.Task;
     }
 
 
@@ -434,41 +430,30 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     }
 
 
-    public override async Task<string?> ExecuteJsAsync(string script)
+    public override Task<string?> ExecuteJsAsync(string script)
     {
         //VerifyThread(); // Enforcement gate
         // Wrap the script to return JSON so we can deserialize it consistently
         var wrappedScript = $"JSON.stringify({script})";
-        if (Environment.CurrentManagedThreadId != App.Bridge?.CreateId)
+        TaskCompletionSource<string?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Context.Post(async _ =>
         {
-            TaskCompletionSource<string?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Context.Post(async _ =>
+            try
             {
-                try
-                {
 
-                    var result = await webView.EvaluateJavaScriptAsync(wrappedScript);
+                var result = await webView.EvaluateJavaScriptAsync(wrappedScript);
 
-                    if (result is NSString nsStr)
-                        tcs.SetResult(nsStr.ToString());
-                    else
-                        tcs.SetResult(null);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
-                }
-            }, null);
-            return await tcs.Task;
-        }
-        else
-        {
-            var result = await webView.EvaluateJavaScriptAsync(wrappedScript);
-
-            if (result is NSString nsStr)
-                return nsStr.ToString();
-            return null;
-        }
+                if (result is NSString nsStr)
+                    tcs.SetResult(nsStr.ToString());
+                else
+                    tcs.SetResult(null);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
+            }
+        }, null);
+        return tcs.Task;
     }
 
 
@@ -505,30 +490,22 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     }
 
     
-    public override async Task<string?> ExecuteJsAsync(string script)
+    public override Task<string?> ExecuteJsAsync(string script)
     {
         //VerifyThread(); // Enforcement gate
-        var tcs = new TaskCompletionSource<string>();
-        if (Environment.CurrentManagedThreadId != App.Bridge?.CreateId)
+        var tcs = new TaskCompletionSource<string?>();
+        Context.Post(async _ =>
         {
-            Context.Post(async _ =>
+            try
             {
-                try
-                {
-                    _webView.EvaluateJavascript(script, new JsCallback(tcs));
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
-                }
-            }, null);
-            return await tcs.Task;
-        }
-        else
-        {
-            _webView.EvaluateJavascript(script, new JsCallback(tcs));
-            return await tcs.Task;
-        }
+                _webView.EvaluateJavascript(script, new JsCallback(tcs));
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex); // Crucial: don't swallow errors on the UI thread
+            }
+        }, null);
+        return tcs.Task;
     }
 
 
@@ -539,7 +516,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     }
 
     // Helper class to handle the Android JS callback
-    private class JsCallback(TaskCompletionSource<string> tcs) : Java.Lang.Object, IValueCallback
+    private class JsCallback(TaskCompletionSource<string?> tcs) : Java.Lang.Object, IValueCallback
     {
         public void OnReceiveValue(Java.Lang.Object? value)
         {

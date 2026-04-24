@@ -29,6 +29,8 @@ public class JsProxyInterceptor : DispatchProxy
         if (name.StartsWith("get_"))
         {
             string propName = name[4..];
+            if(propName == "Item")
+                return _proxy![(string)args![0]!];
             // Return the proxy for the next level in the chain
             return _proxy![propName];
         }
@@ -38,7 +40,10 @@ public class JsProxyInterceptor : DispatchProxy
         {
             string propName = name[4..];
             // Assign the value using the indexer we implemented earlier
-            _proxy![propName] = args![0];
+            if (propName == "Item")
+                _proxy![(string)args![0]!] = args![1];
+            else
+                _proxy![propName] = args![0];
             return null;
         }
 
@@ -61,6 +66,8 @@ public interface IJsProxy
     // Allows dynamic access to JS properties via indexer: proxy["color"] = "red"
     object? this[string propertyName] { get; set; }
     bool TryInvokeMember(string Name, Type returnType, object?[]? args, out object? result);
+    T As<T>();
+
 }
 
 
@@ -159,7 +166,7 @@ public interface ICSSStyleDeclaration : IJsProxy
 
 public interface IStorage : IJsProxy
 {
-        void setItem(string key, string value);
+    void setItem(string key, string value);
     string getItem(string key);
     void removeItem(string key);
     public void clear();
@@ -408,7 +415,8 @@ public abstract class WebViewBase : IWebViewBridge
     {
         if (message == "DOM_READY")
         {
-            InvokeAsync(async () =>
+            /*InvokeAsync*/
+            Task.Run(async () =>
             {
                 lock (_lock)
                 {
@@ -421,7 +429,8 @@ public abstract class WebViewBase : IWebViewBridge
             });
             return;
         }
-        InvokeAsync(async () =>
+        /*InvokeAsync*/
+        Task.Run(async () =>
         {
             InternalMessage?.Invoke(message);
             InternalMessageAsync?.Invoke(message);
@@ -497,6 +506,13 @@ public static class InteropExtensions
             ?? throw new InvalidOperationException("Could not find JsProxyInterceptor.Create");
     }
 
+    public static T As<T>(this IJsProxy proxy)
+    {
+        // We use your DispatchProxy interceptor to satisfy the interface 
+        // while routing all calls back to the original JsProxy
+        return JsProxyInterceptor.Create<T>(proxy);
+    }
+
 
     public static object? MapToDotNet(string? json, string? currentPath, Type? expectedType)
     {
@@ -540,6 +556,7 @@ public static class InteropExtensions
         UnaryExpression u => $"{(u.NodeType == ExpressionType.Not ? "!" : u.NodeType == ExpressionType.Negate ? "-" : "")}{u.Operand.ToJS()}",
 
         // --- Object & Member Access ---
+        MethodCallExpression m when m.Method.Name == "As" => m.Arguments[0].ToJS(),
         MethodCallExpression m when m.Method.Name == "get_Item" => $"{m.Object.ToJS()}['{m.Arguments[0].ToJS().Trim('\'')}']",
 
         // For assignments (if you handle set_Item)

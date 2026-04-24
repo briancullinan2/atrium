@@ -16,7 +16,7 @@ public partial class MainPage : ContentPage
         //htmlViewer.HandlerChanged += OnWebViewHandlerChanged;
         var htmlSource = new HtmlWebViewSource
         {
-            Html = @"<html><body><h1>Hello from MAUI!</h1></body></html>"
+            Html = @"<html><body><h1 id=""title"">Hello from MAUI!</h1></body></html>"
         };
         htmlViewer.Source = htmlSource;
     }
@@ -26,21 +26,24 @@ public partial class MainPage : ContentPage
     // lol https://github.com/briancullinan2/studysauce3/blob/main/src/Admin/Bundle/Controller/AdminController.php#L1181
     public static void InjectApp(Interfacing.Services.IWindow window)
     {
-        try
+        App.Bridge?.InvokeAsync(async () =>
         {
-
-            window.document.innerHTML = "<html><body><h1>Hello from C#</h1></body></html>";
-
-            window.addEventListener("popstate", (e) => window.postMessage(new
+            try
             {
-                id = "Atrium.Services.Navigation.OnPopState",
-                data = JSON.stringify(e.state)
-            }, "*"));
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
+
+                (window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
+
+                window.addEventListener("popstate", (e) => window.postMessage(new
+                {
+                    id = "Atrium.Services.Navigation.OnPopState",
+                    data = JSON.stringify(e.state)
+                }, "*"));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        });
     }
     
 
