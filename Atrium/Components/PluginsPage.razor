@@ -24,7 +24,7 @@
 
 
 
-    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, IServiceProvider? Service, bool wait = true)
+    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, bool wait = true)
     {
         // 1. Immediate Throttled UI Update (Max every 200ms)
         // This keeps the UX fluid without flooding the RenderTree
@@ -50,7 +50,7 @@
 
             var Page = Composite?.GetService<PageManager>();
             if (Page == null) return;
-            if (Service?.GetService<Components.MainLoader>()?.MainContent == null) return;
+            if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
             await Page.Replace(".plugin-status, .plugin-controls", gatherTrust.ScanningRendered + gatherTrust.PluginSelect);
             await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
         }
@@ -107,79 +107,75 @@
 
 
 
-    public static TrustedState? GatherTrust(ICompositeProvider? Composite, IServiceProvider? Service, PluginsPage? Plugin, TrustedLoader? Trust)
+    public static TrustedState? GatherTrust(ICompositeProvider? Composite, TrustedState? GatheredTrust, TrustedLoader? Trust)
     {
-        Plugin ??= Composite?.GetService<PluginsPage>();
         Trust ??= Composite?.GetService<TrustedLoader>();
 
-        if (Plugin == null) return null;
-
-        if (Plugin.GatheredTrust == null)
+        if (GatheredTrust == null)
         {
-            Plugin.GatheredTrust = new TrustedState(Trust);
+            GatheredTrust = new TrustedState(Trust);
             // this is a fancy service injector that i would have expected from microsoft dumbass compiler rewriting factory
             //  event handlers in javascript, wtf? Expression.ToString()? ever going to make that work like IQueryable?
             Composite?.GetService<IHasEvents>()?.Subscribe(PageAction.TogglePlugin, PluginsPage.OnEnabled);
         }
 
-        Plugin.GatheredTrust?.Layouts = TrustedLoader.Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        Plugin.GatheredTrust?.Routable = TrustedLoader.Routable.Select(ass => ass.ToName()).ToList();
-        Plugin.GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        Plugin.GatheredTrust?.Roots = TrustedLoader.Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        Plugin.GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        Plugin.GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
-        Plugin.GatheredTrust?.Error = TrustedLoader.Error;
-        Plugin.GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
-        Plugin.GatheredTrust?.Depended = Trust?.DependedAssemblies.ToDictionary();
-        if (Plugin.GatheredTrust?.NotifyDelegate == null)
+        GatheredTrust?.Layouts = TrustedLoader.Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        GatheredTrust?.Routable = TrustedLoader.Routable.Select(ass => ass.ToName()).ToList();
+        GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        GatheredTrust?.Roots = TrustedLoader.Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
+        GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
+        GatheredTrust?.Error = TrustedLoader.Error;
+        GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
+        GatheredTrust?.Depended = Trust?.DependedAssemblies.ToDictionary();
+        if (GatheredTrust?.NotifyDelegate == null)
         {
-            Plugin.GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
+            GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
                 {
-                    await RenderAssemblyScannedFile(file?.InstallPath, Plugin.GatheredTrust, Composite, Service);
+                    await RenderAssemblyScannedFile(file?.InstallPath, GatheredTrust, Composite);
                 };
 
-            Trust?.OnAssemblyLoaded += Plugin.GatheredTrust?.NotifyDelegate;
+            Trust?.OnAssemblyLoaded += GatheredTrust?.NotifyDelegate;
         }
 
-        return Plugin.GatheredTrust;
+        return GatheredTrust;
     }
 
 
-    protected TrustedState? GatheredTrust { get; set; } = null;
-
-    public async Task OnSettled(ICompositeProvider? Composite, IServiceProvider? Service)
+    public static async Task OnSettled(ICompositeProvider? Composite)
     {
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += () => OnSettled(Composite, Service);
+        Trust?.OnSettledAsync += () => OnSettled(Composite);
 
-        GatherTrust(Composite, Service, this, Trust);
+        GatherTrust(Composite, GatheredTrust, Trust);
         if (GatheredTrust == null) return;
 
-        await RenderAssemblyScannedFile("", GatheredTrust, Composite, Service, false /*no wait*/);
+        await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
 
         // in case something loaded not from use input/page event
         TriggerExpand(Composite);
     }
 
 
+    public static TrustedState? GatheredTrust = null;
+
     public async Task<Delegate?> Render(
-        ICompositeProvider? Composite,
-        IServiceProvider? Service
+        ICompositeProvider? Composite
     )
     {
         var Trust = Composite?.GetService<TrustedLoader>();
         var Logo = Composite?.GetService<IHasClass>();
         // prevent concurrency errors while printing the view
-        GatherTrust(Composite, Service, this, Trust);
-        Trust?.OnSettledAsync += () => OnSettled(Composite, Service);
+        GatheredTrust = GatherTrust(Composite, GatheredTrust, Trust);
+        Trust?.OnSettledAsync += () => OnSettled(Composite);
 
         if (GatheredTrust == null) return null;
 
         if (GatheredTrust.ScanningRendered == null)
-            await RenderAssemblyScannedFile("", GatheredTrust, Composite, Service);
+            await RenderAssemblyScannedFile("", GatheredTrust, Composite);
 
         if (GatheredTrust.PluginSelect == null)
-            await OnSettled(Composite, Service);
+            await OnSettled(Composite);
 
         return RenderMainBody(Logo, GatheredTrust);
     }

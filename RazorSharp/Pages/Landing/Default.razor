@@ -20,7 +20,7 @@
             @if (DefaultRoot != null && DefaultRoot != typeof(Pages.Landing.Default))
             {
                 Classy?.SetRoute(DefaultRoot);
-                Header?.RenderHeader(Classy);
+                Header?.RenderHeader(Composite, Classy);
                 __builder.OpenComponent(0, DefaultRoot);
                 __builder.CloseComponent();
             }

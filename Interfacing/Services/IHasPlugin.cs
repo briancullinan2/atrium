@@ -160,8 +160,7 @@ public interface IHasCover
 public interface IAsyncRender
 {
     Task<Delegate?> Render(
-        ICompositeProvider? Composite,
-        IServiceProvider? Service
+        ICompositeProvider? Composite
     );
 }
 

@@ -7,11 +7,6 @@
     xmlns:local="clr-namespace:Atrium.Components"
     BackgroundColor="{DynamicResource PageBackgroundColor}">
 
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/app.html" StartPath="/app.html">
-        <BlazorWebView.RootComponents>
-            <RootComponent ComponentType="{x:Type local:MainLoader}" Selector="#app" />
-            <!--<RootComponent ComponentType="{x:Type shared:Routes}" Selector="#app" />-->
-        </BlazorWebView.RootComponents>
-    </BlazorWebView>
+    <WebView x:Name="htmlViewer" />
 
 </ContentPage>

@@ -2,16 +2,7 @@
 @using Microsoft.AspNetCore.Components.Web
 
 @implements IHasRender
-@implements IDisposable
 @implements IComponent
-@implements IHasHeader
-@inject ICompositeProvider Composite
-@inject IServiceProvider Service
-@inject IJSRuntime Runtime
-
-@{
-    ((RenderFragment)Render(Composite))(__builder);
-}
 
 @code
 {
@@ -20,6 +11,8 @@
 
     public static int ServiceCount = 0;
     public int ServiceId { get; }
+
+
 
     public MainLoader() : base()
     {
@@ -48,11 +41,11 @@
     }
 
 
-    public async Task RenderHeader(IHasClass? Classy)
+    public static async Task RenderHeader(ICompositeProvider? Composite, IHasClass? Classy)
     {
-        var Form = Composite.GetService<IFormFactor>();
+        var Form = Composite?.GetService<IFormFactor>();
         // TODO: check if response started and update with method below
-        var Page = Composite.GetService<PageManager>();
+        var Page = Composite?.GetService<PageManager>();
         if (Page == null) return;
         //IJSRuntime Runtime = Rendered?.Runtime as IJSRuntime;
         var Header = await MainLoader.RenderStaticHeader(Classy).ToHtml(Composite);
@@ -88,39 +81,26 @@
             </script>
         };
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
 
-        Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-        //Composite.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
-    }
-    /*
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
 
-        //if(firstRender)
-        await TryRenderingDefault();
-}*/
-
-    protected async Task TryRenderingDefault()
+    protected async Task TryRenderingDefault(ICompositeProvider? Composite)
     {
         if (IsClosing == true) return;
 
-        var Form = Composite.GetService<IFormFactor>();
+        var Form = Composite?.GetService<IFormFactor>();
         if (Form?.IsWebContext == true) return;
 
-        var Trust = Composite.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += TryRenderingDefault; // try again
+        var Trust = Composite?.GetService<TrustedLoader>();
+        Trust?.OnSettledAsync += () => TryRenderingDefault(Composite); // try again
 
-        var Rendered = Composite.GetService<IRenderState>();
+        var Rendered = Composite?.GetService<IRenderState>();
+        var Runtime = Composite?.GetService<IJSRuntime>();
         if(Rendered?.IsReady != true)
             Rendered?.NotifyRendered(Runtime);
 
         if(MainContent == null)
         {
-            await InitializeRender(Composite, Service, Runtime);
+            await InitializeRender(Composite, Runtime);
         }
 
         var Page = Composite?.GetService<PageManager>();
@@ -132,7 +112,7 @@
             if (StoredDefaultRoot == null) return;
             var Classy = Composite?.GetService<IHasClass>();
             Classy?.SetRoute(StoredDefaultRoot);
-            await RenderHeader(Classy);
+            await RenderHeader(Composite, Classy);
             if (Composite?.GetService<ITitleService>() is ITitleService Title)
                 await Title.SetDefaultTitle(StoredDefaultRoot);
             Body = await StoredDefaultRoot.ToHtml(Composite);
@@ -142,18 +122,9 @@
 
 
 
-    protected override async Task OnParametersSetAsync()
-    {
-        await base.OnParametersSetAsync();
-
-        await TryRenderingDefault();
-
-    }
-
-
     public Delegate Render(ICompositeProvider? Composite)
     {
-        Composite?.GetService<TrustedLoader>()?.OnSettledAsync += TryRenderingDefault;
+        Composite?.GetService<TrustedLoader>()?.OnSettledAsync += () => TryRenderingDefault(Composite);
         //var Form = Service?.GetService<IFormFactor>();
         //if(Form?.IsWebContext == true)
         //{
@@ -161,16 +132,18 @@
         //    return fragment;
         //}
         //else
-        return RenderMain(Composite, Service);
+        return RenderMain(Composite);
     }
 
 
-    protected static RenderFragment RenderMain(ICompositeProvider? Composite, IServiceProvider? Service)
+    protected static RenderFragment RenderMain(ICompositeProvider? Composite)
         => (RenderTreeBuilder __builder) =>
         {
             var Css = Composite?.GetService<IHasClass>();
             var Rendered = Composite?.GetService<IRenderState>();
-            var Main = Service?.GetService<MainLoader>();
+            var Main = Composite?.GetService<MainLoader>();
+            var Runtime = Composite?.GetService<IJSRuntime>();
+            Composite?.GetService<IRenderState>()?.NotifyEmptied(Runtime);
 
 
             @RenderStaticHeader(Css)
@@ -210,20 +183,20 @@
         };
 
 
-    public static async Task InitializeRender(ICompositeProvider? Composite, IServiceProvider? Service, IJSRuntime? Runtime)
+    public static async Task InitializeRender(ICompositeProvider? Composite, IJSRuntime? Runtime)
     {
-        if (Service == null || Composite == null) return;
-        var Main = Service.GetService<MainLoader>();
+        if (Composite == null) return;
+        var Main = Composite.GetService<MainLoader>();
 
 
         if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
-            && await Plugins.Render(Composite, Service) is RenderFragment Render)
+            && await Plugins.Render(Composite) is RenderFragment Render)
         {
             var newContent = await Render.ToHtml(Composite);
             Main?.PluginContent = newContent;
         }
         
-        var newMain = await RenderMain(Composite, Service).ToHtml(Composite);
+        var newMain = await RenderMain(Composite).ToHtml(Composite);
         Main?.MainContent = newMain;
 
         var Page = Composite.GetService<PageManager>();
@@ -240,51 +213,5 @@
     public bool? IsClosing = false;
 
 
-
-    public void Dispose()
-    {
-        IsClosing = true;
-        StoredDefaultRoot = null;
-        var Plugins = Composite.GetService<PluginsPage>();
-        Composite.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-        Composite.GetService<TrustedLoader>()?.OnSettledAsync -= TryRenderingDefault;
-        GC.SuppressFinalize(this);
-    }
-
-
-#if false
-    @if (FirstTimeLoad || DefaultLayout == null || StoredAppAssembly == null)
-    {
-    }
-
-
-
-    private RenderFragment CreatePermissionContent(RouteData routeData) => builder =>
-    {
-        if (PermissionType == null) throw new InvalidOperationException("CreatePermissionContent was called without auth setup");
-        builder.OpenComponent(0, PermissionType);
-
-        // Pass the standard parameters
-        builder.AddAttribute(1, "RouteData", routeData);
-        builder.AddAttribute(2, "NotAuthorizedLayout", DefaultLayout);
-        builder.AddAttribute(3, "LoadingLayout", DefaultLayout);
-
-        // Pass the nested content (RouteView and FocusOnNavigate)
-        builder.AddAttribute(4, "ChildContent", (RenderFragment)((childBuilder) =>
-        {
-            childBuilder.OpenComponent<RouteView>(0);
-            childBuilder.AddAttribute(1, "RouteData", routeData);
-            childBuilder.AddAttribute(2, "DefaultLayout", DefaultLayout);
-            childBuilder.CloseComponent();
-
-            childBuilder.OpenComponent<FocusOnNavigate>(3);
-            childBuilder.AddAttribute(4, "RouteData", routeData);
-            childBuilder.AddAttribute(5, "Selector", "h1");
-            childBuilder.CloseComponent();
-        }));
-
-        builder.CloseComponent();
-    };
-#endif
 
 }

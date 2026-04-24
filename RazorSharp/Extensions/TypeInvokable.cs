@@ -32,20 +32,19 @@ public static partial class ComponentExtensions
     // and this
 
 
-    public static async Task<string> ToHtml(this Type? service, IServiceProvider? serviceProvider)
+    public static async Task<string> ToHtml(this Type? service, ICompositeProvider? serviceProvider)
     {
         if (service == null || !service.Extends(typeof(IComponent))) return string.Empty;
-        var composite = serviceProvider?.GetService<ICompositeProvider>();
         if (service.Extends(typeof(IHasRender))
             && serviceProvider?.GetService(service) is IHasRender Render)
         {
-            return await ((RenderFragment)Render.Render(composite)).ToHtml(composite);
+            return await ((RenderFragment)Render.Render(serviceProvider)).ToHtml(serviceProvider);
         }
         if (service.Extends(typeof(IAsyncRender))
             && serviceProvider?.GetService(service) is IAsyncRender Render2)
         {
-            if (await Render2.Render(composite, serviceProvider) is RenderFragment task)
-                return await task.ToHtml(composite);
+            if (await Render2.Render(serviceProvider) is RenderFragment task)
+                return await task.ToHtml(serviceProvider);
         }
         RenderFragment Fragment = __builder =>
         {

@@ -87,7 +87,7 @@ public interface IHasClass
 
 public interface IHasHeader
 {
-    Task RenderHeader(IHasClass? Classy);
+    Task RenderHeader(ICompositeProvider? Composite, IHasClass? Classy);
 }
 
 

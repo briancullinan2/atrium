@@ -27,23 +27,6 @@ internal class WindowManager(
     public const int SPLASH_WIDTH = 550;
 
     // TODO: WINDOWS ONLY?
-#if !BROWSER
-    public static Microsoft.Maui.Controls.Window CreateWindow()
-    {
-        var window = new Microsoft.Maui.Controls.Window(new MainPage()) { Title = "Atrium" };
-
-        // Get display dimensions
-        var displayInfo = DeviceDisplay.Current.MainDisplayInfo;
-
-        // Calculate center (convert pixels to density-independent units)
-        window.X = (displayInfo.Width / displayInfo.Density - SPLASH_WIDTH) / 2;
-        window.Y = (displayInfo.Height / displayInfo.Density - SPLASH_HEIGHT) / 2;
-
-        window.Width = SPLASH_WIDTH;
-        window.Height = SPLASH_HEIGHT;
-        return window;
-    }
-#endif
 
     private CancellationTokenSource? _animationCts;
 

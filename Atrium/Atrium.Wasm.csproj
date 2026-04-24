@@ -40,20 +40,21 @@
 	
 	
   <ItemGroup>
-    <Compile Remove="App.xaml.cs" />
     <Compile Remove="Components\MainLoader.razor.cs" />
   </ItemGroup>
 	
   <ItemGroup>
     <Content Remove="wwwroot\index.html" />
   </ItemGroup>
-	
-  <ItemGroup>
-    <None Remove="App.xaml" />
-  </ItemGroup>
 
 	<ItemGroup>
 	  <Folder Include="Platforms\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="App.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </None>
 	</ItemGroup>
 
 </Project>

@@ -18,12 +18,10 @@ namespace Hosting.Services;
 // TODO: designed to shut down both services at the same time
 
 public abstract class BaseFormFactor(
-    ICompositeProvider _service,
-    NavigationManager? nav = null)
+    ICompositeProvider _service)
 {
     public virtual ICompositeProvider Service { get; } = _service;
-    public virtual NavigationManager? Navigation { get; } = nav;
-    public virtual Dictionary<string, string>? QueryParameters { get => Navigation?.Uri.Query(); }
+    public virtual Dictionary<string, string>? QueryParameters { get ; }
     //public IPageManager? Page { get; }
 
     public abstract bool IsBrowser { get; }
@@ -173,8 +171,8 @@ public partial class FormFactor : BaseFormFactor
 
             try
             {
-                var nav = Service.GetRequiredService<NavigationManager>();
-                return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
+                //var nav = Service.GetRequiredService<NavigationManager>();
+                //return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
             }
             catch { }
             return null;
@@ -185,12 +183,11 @@ public partial class FormFactor : BaseFormFactor
     public override List<IFile> Files { get => CurrentFormFiles; }
 
     public FormFactor(
-    NavigationManager nav
-    , ICompositeProvider service
+    ICompositeProvider service
     , IJSRuntime js 
     , IHasEvents page
     , Lazy<WebAssemblyHost?>? app = null
-    ) : base(service, nav)
+    ) : base(service)
     {
         App = app;
         JS = js;
@@ -229,13 +226,12 @@ public partial class FormFactor : BaseFormFactor
 public partial class FormFactor(
     ICompositeProvider service,
     IServiceProvider provider,
-    NavigationManager nav,
     IWindowManager? Windows = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
 
-) : BaseFormFactor(service, nav)
+) : BaseFormFactor(service)
     , IFormFactor, ISingleUser, IPageState, ISettings
 {
     private Type? _routeHint;
@@ -268,7 +264,7 @@ public partial class FormFactor(
 
             try
             {
-                return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
+                //return TypeExtensions.IdentifyNavigation(Navigation?.Uri).ComponentType;
             }
             catch { }
 
@@ -300,15 +296,15 @@ public partial class FormFactor(
             // 1. Prioritize NavigationManager (The Interactive Source of Truth)
             try
             {
-                if (Navigation != null)
-                {
-                    var uri = new Uri(Navigation.Uri);
-                    var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-                    foreach (var kvp in query)
-                    {
-                        queryParams[kvp.Key] = kvp.Value.FirstOrDefault() ?? string.Empty;
-                    }
-                }
+                //if (Navigation != null)
+                //{
+                //    var uri = new Uri(Navigation.Uri);
+                //    var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                //    foreach (var kvp in query)
+                //    {
+                //        queryParams[kvp.Key] = kvp.Value.FirstOrDefault() ?? string.Empty;
+                //    }
+                //}
             }
             catch { /* Fallback to HttpContext if Nav is uninitialized during Prerender */ }
 

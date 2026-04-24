@@ -1,12 +1,9 @@
-﻿#if WINDOWS
-using Atrium.Platforms.Windows;
-#endif
+﻿
 #if !BROWSER
-using Atrium.Services;
-using Interfacing.Services;
-using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 #endif
+
+using Atrium.Services;
 
 namespace Atrium;
 
@@ -21,16 +18,41 @@ public partial class App
     : Microsoft.Maui.Controls.Application //, IHasCurrent<App>
 #endif
 {
+
+    public static WebViewBridge? Bridge { get; set; }
+
+
 #if !BROWSER
     public App()
     {
         InitializeComponent();
     }
 
+    public const int SPLASH_HEIGHT = 350;
+    public const int SPLASH_WIDTH = 550;
+
+
     // TODO: WINDOWS ONLY?
     protected override Microsoft.Maui.Controls.Window CreateWindow(IActivationState? activationState)
     {
-        return WindowManager.CreateWindow();
+        return CreateWindow();
+    }
+
+
+    public static Microsoft.Maui.Controls.Window CreateWindow()
+    {
+        var window = new Microsoft.Maui.Controls.Window(new MainPage()) { Title = "Atrium" };
+
+        // Get display dimensions
+        var displayInfo = DeviceDisplay.Current.MainDisplayInfo;
+
+        // Calculate center (convert pixels to density-independent units)
+        window.X = (displayInfo.Width / displayInfo.Density - SPLASH_WIDTH) / 2;
+        window.Y = (displayInfo.Height / displayInfo.Density - SPLASH_HEIGHT) / 2;
+
+        window.Width = SPLASH_WIDTH;
+        window.Height = SPLASH_HEIGHT;
+        return window;
     }
 #endif
 

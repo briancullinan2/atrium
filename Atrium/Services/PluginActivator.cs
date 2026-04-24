@@ -173,7 +173,7 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
             .Select(kvp => kvp.Key)
             .ToList();
 
-        List<Type> existingTypes = [.. BuiltIn.Concat(SingleUser).Concat(UserTypes).Distinct()];
+        List<Type> existingTypes = [.. BuiltIn.Concat(UserTypes).Distinct()];
         AddExisting(this, collection, existingTypes);
         collection.BuildServices([baseType, .. moreServices, .. existingTypes], null, this, true);
 

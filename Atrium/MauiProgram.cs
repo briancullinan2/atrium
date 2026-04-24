@@ -40,10 +40,6 @@ public class MauiProgram : IHasCurrent<MauiApp>
         //builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
 
-        builder.Services.AddMauiBlazorWebView();
-#if DEBUG
-        builder.Services.AddBlazorWebViewDeveloperTools();
-#endif
 
         var mauiApp = builder.Build();
 

@@ -1,6 +1,6 @@
-﻿#if WINDOWS
-using Windows.ApplicationModel.DataTransfer;
-#endif
+﻿
+using Atrium.Services;
+
 
 namespace Atrium;
 
@@ -8,79 +8,73 @@ namespace Atrium;
 
 public partial class MainPage : ContentPage
 {
-
-
     public MainPage()
     {
         InitializeComponent();
+
+        // Subscribe to the handler change to capture the native control
+        //htmlViewer.HandlerChanged += OnWebViewHandlerChanged;
+        var htmlSource = new HtmlWebViewSource
+        {
+            Html = @"<html><body><h1>Hello from MAUI!</h1></body></html>"
+        };
+        htmlViewer.Source = htmlSource;
     }
+
+
+    // lol this may be even funnier than php-babel, or that shit i wrote long before php-babel
+    // lol https://github.com/briancullinan2/studysauce3/blob/main/src/Admin/Bundle/Controller/AdminController.php#L1181
+    public static void InjectApp(Interfacing.Services.IWindow window)
+    {
+        try
+        {
+
+            window.document.innerHTML = "<html><body><h1>Hello from C#</h1></body></html>";
+
+            window.addEventListener("popstate", (e) => window.postMessage(new
+            {
+                id = "Atrium.Services.Navigation.OnPopState",
+                data = JSON.stringify(e.state)
+            }, "*"));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+    }
+    
+
 
     protected override void OnHandlerChanged()
     {
-        base.OnHandlerChanged();
+        var PlatformView = htmlViewer.Handler?.PlatformView;
 #if WINDOWS
-        if (blazorWebView.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.WebView2 webView)
+        if (PlatformView is Microsoft.UI.Xaml.Controls.WebView2 nativeWebView)
         {
-            // Don't access webView.CoreWebView2 here; it's likely null.
-            webView.CoreWebView2Initialized += (s, e) =>
+            nativeWebView?.CoreWebView2Initialized += (s, args) =>
             {
-                var core = s.CoreWebView2;
-
-                // 3. Optional: Prevent the browser from actually opening the file if dropped
-                core.Settings.IsWebMessageEnabled = true;
-                _ = core.AddScriptToExecuteOnDocumentCreatedAsync(
-                    "window.addEventListener('dragover', e => e.preventDefault()); " +
-                    "window.addEventListener('drop', e => e.preventDefault());");
+                App.Bridge = new WebViewBridge(s.CoreWebView2);
+                App.Bridge?.OnDocument += InjectApp;
             };
+        }
+#elif ANDROID
+        if (PlatformView is Android.Webkit.WebView nativeWebView)
+        {
+            App.Bridge = new WebViewBridge(nativeWebView);
+            App.Bridge?.OnDocument += InjectApp;
+        }
 
-#if false
-            // These events exist on the Control level, not the Core level
-            webView.DragEnter += (s, e) =>
-            {
-                // Check the data package for file paths
-                if (e.DataView.Contains(StandardDataFormats.StorageItems))
-                {
-                    // This turns the Red Circle into a Green Plus
-                    e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        using var scope = _services?.CreateScope();
-                        var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                        manager?.SetDragging(true);
-                    });
-                }
-            };
-
-            webView.DragLeave += (s, e) =>
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    using var scope = _services?.CreateScope();
-                    var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                    manager?.SetDragging(false);
-                });
-            };
-
-            webView.Drop += async (s, e) =>
-            {
-                if (e.DataView.Contains(StandardDataFormats.StorageItems))
-                {
-                    var items = await e.DataView.GetStorageItemsAsync();
-                    foreach (var item in items)
-                    {
-                        // Here is your absolute path for the .apkg!
-                        string path = item.Path;
-                        using var scope = _services?.CreateScope();
-                        var manager = scope?.ServiceProvider.GetRequiredService<FlashCard.Services.IFileManager>();
-                        manager?.UploadFile(path);
-                    }
-                }
-            };
-#endif
+#elif IOS || MACCATALYST
+        if (PlatformView is WebKit.WKWebView wkView)
+        {
+            App.Bridge = new WebViewBridge(wkView);
+            App.Bridge?.OnDocument += InjectApp;
         }
 #endif
     }
+
 }
 
 #endif
+
+

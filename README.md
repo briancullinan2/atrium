@@ -41,6 +41,77 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/23/2026
+
+Just looking at my commit makes me hate this framework. So let's go back and write it out. When Vitale came over i realized i needed
+to put my project parts in seperate project files so i could switch things like user-identities on an off. I have an app that starts
+up like a utility in single user mode "install for only me". or an app that comes up in multi-user mode. and i can do this with a
+switch or a plugin. so i spend a whole week decoupling and using interfaces to rebuild the project.
+
+then i get clever and thing, I can put attributes on my classes for page titles and no have to change my page title in 3 different
+places, i'll just had the menu, the tab title, the &lt;title&gt; tag, and the javascript page transition all refer to the singular
+attribute. this is when the fuckery starts because the only time to reliably get a route from the router is after the page already
+started rendering. 
+
+> &lt;Router OnNavigateAsync="HandleNavigation" 
+>            AppAssembly="@StoredAppAssembly"
+>            AdditionalAssemblies="@EntryAsses"&gt;
+>            &lt;Found Context="routeData"&gt;
+>               @{
+>                   var controlType = routeData.PageType.AssemblyQualifiedName;
+>                   if(CurrentControl != controlType)
+>                   {
+>                       CurrentControl = controlType;
+>                       _ = SaveState();
+>                       InvokeAsync(StateHasChanged);
+>                   }
+>               }
+
+
+i wish someday the devs would at least read, "this was never a thing in javascript". and realize their mistake. so my plan for previous
+week, i'll rewrite all those components that are failing me in stasis and only use blazor's rendertreebuilder and nothing more.
+so i still end up screwing with service containers more than programming real features. I still can't get the title to reliably
+set on page load. i rediscover the blazor circuit and it will only start with @rendermode="InteractiveServer" and i can't set that
+setting on the root component for zero reasons or all arbitrary from my perspective as a user. 
+
+
+yesterday i spent the whole day trying to reconnect the httpcontext and the web assembly context to my new static based, container 
+passing design. trying to get events to show up correctly. here's what i discovered that frustrates me about blazor. 
+i can get scoped services out of unscoped containers. still not sure why every container does consistently throw the "scoped inside
+singleton" error, because that i probably burned 2 hours hunting down last night. 
+
+refreshing a page is full of anti-patterns. if you refresh a page in a web context, you might expect the server to run through an
+entire waterfall of code to generate an updated version of that page. blazor somehow ruins this entire principal. in an http context
+it will run through your code, recreate a new service container, instantiate new objects, but on desktop it appears to only destroy
+your scoped container, fine that makes sense. but then it starts back up after disposing and thats where i discovered my first
+bug. i an using static events handlers so my desktop page render was also being affected by my web context page load, which is 
+what i intended in this specific place. the bug was rendermode not recreating the instance after the circuit started up, i couldn't 
+figure out why my interactions just disappeared after render. so i finally found an error that told me i have to put my rendered 
+wrapper inside a different control, it was very specific, so that it could render the state and then update the controls inside
+it. 
+
+so that is one weird discovery, the interaction between a page refresh, a desktop dev refresh, and blazor circuit starting up is full of
+anti-patterns. i'm wondering now if i can trick the circuit into using the same instance and container between a single page load
+and the circuit starting. so when a user touches the page, they can one memory container for themselves and that is all.
+
+a lot of this problem extends from not being able to see the scoped container except from inside my control. so now i have to ensure that
+and control created that uses a service that requires a container from inside blazor, i tried to report just the IJSRuntime to a 
+service outside the container that can use a pages runtime, but that apparently needs work. i will probably figure out some sort
+of static list. I wanted to get to the point where i could see a list of circuit connected client and pick from that list a js runtime
+and basically send messages over the page interaction circuit to them from a service that sits outside of the http context but we'll
+see if that is possible.
+
+this morning was the most annoying, i'm trying to fix this bug where the httpcontext would render the page, dispose of the entire 
+scoped container, then when that page starts inside the browser and the circuit starts up it works fine the first time, but now
+when i hit refresh it says "cannot access a disposed IServiceProvider. like i'm spending more time battling service containers
+and trying to get it to inject the right object instance into my code than i do actually writing the fucking code i want.
+
+so now i am pretty much fully fed up with the whole entire @inject, i tried abandoning the who blazor life cycle and it
+almost refuses to let me go, i tried just relying on a single page load like a true SPA, and just importing the page i want
+to display statically. and not even that is working now. i wish somebody could see how awful microsoft is from my perspective.
+
+
+
 #### 4/21/2026
 
 I hate that I reach a point where either the Title breaks, the most basic feature of a page, or I have to repeat myself a dozen times

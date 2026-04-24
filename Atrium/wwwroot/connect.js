@@ -12,6 +12,7 @@ export function register(path, dotnetHelper, methodNames = [], servicable) {
     //if (this.activeReapers[path] && this.activeReapers[path].id === componentId) {
     //    return;
     //}
+
     if (window.GetService == null && servicable) {
         window.GetService = async s => {
             var path = await dotnetHelper.invokeMethodAsync('GetService', s)
