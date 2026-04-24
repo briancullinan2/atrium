@@ -6,6 +6,39 @@ namespace Extensions.QueryableChaos;
 public static class XNodeExtensions
 {
 
+    public static object? Evaluate(this MemberExpression node)
+    {
+        var objectMember = Expression.Convert(node, typeof(object));
+        var getterLambda = Expression.Lambda<Func<object>>(objectMember);
+        var getter = getterLambda.Compile();
+        var value = getter();
+        return value;
+    }
+
+
+    public static bool IsClosure(this MemberExpression node)
+    {
+        var root = GetRootExpression(node);
+        if (root is ConstantExpression constant && constant.Value != null)
+        {
+            var typeName = constant.Value.GetType().Name;
+            // Matches the "BS" naming convention for C# closures
+            return typeName.Contains("<>c__DisplayClass") || typeName.Contains("DisplayClass");
+        }
+        return false;
+    }
+
+    public static Expression GetRootExpression(this Expression node)
+    {
+        while (node is MemberExpression member)
+        {
+            if (member.Expression == null) return node;
+
+            node = member.Expression!;
+        }
+        return node;
+    }
+
 
     private static readonly int _maxDepth = 2;
     private static readonly int _maxExpressionDepth = 20;

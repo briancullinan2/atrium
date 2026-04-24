@@ -26,7 +26,7 @@ public class PluginActivator(ICompositeProvider Composite, IServiceProvider Serv
             return componentType.
         }*/
 
-        IComponent? serviceComponent = null;
+        IComponent? serviceComponent;
         //var scoped = Composite.CreateScope().ServiceProvider;
         if(Service.GetService<IServiceProviderIsService>()?.IsService(componentType) == true)
             serviceComponent = (IComponent)Service.GetRequiredService(componentType);
@@ -53,44 +53,35 @@ public class PluginActivator(ICompositeProvider Composite, IServiceProvider Serv
 
 
 
-public partial class CompositeServiceProvider(IServiceProvider _provider)
-    : IServiceProvider
+public partial class CompositeServiceProvider(IServiceCollection _provider, bool _scoped = false) : List<ServiceDescriptor>
+    , IServiceProvider
     , ISupportRequiredService
     , IHasService
     , IServiceScopeFactory
     , IServiceProviderIsService
     , ICompositeProvider
     , IServiceScope
+    , IServiceCollection
 {
 
-    public static List<Type> BuiltIn { get; } = [
-        typeof(PluginActivator),
-        typeof(CompositeServiceProvider),
-        typeof(RenderStateProvider),
-        typeof(Atrium.Components.MainLoader)
-    ];
+
+    public new IEnumerator<ServiceDescriptor> GetEnumerator()
+    {
+        // Return a concatenated stream of all descriptors in all plugin containers
+        return PluginContainers
+            .SelectMany(container => container)
+            .GetEnumerator();
+    }
 
 
-    public List<Type> SingleUser { get; } = [
-        typeof(HttpClient),
-        typeof(NavigationManager),
-        typeof(IJSRuntime),
-        typeof(IConfiguration),
-        //{typeof(ILogger<>), typeof(Logger<>)  },
-        typeof(ILoggerFactory),
-#if !BROWSER
-        typeof(Lazy<Atrium.Components.MainLoader?>),
-        typeof(Lazy<Application?>),
-        typeof(Microsoft.Extensions.Hosting.IHostEnvironment),
-#endif
-    ];
-
+    public new void Add(ServiceDescriptor item) => throw new InvalidOperationException("Use PluginContainers to add services.");
+    public new void Clear() => throw new InvalidOperationException("Clear individual plugin containers instead.");
 
     public List<Type> UserTypes { get; } = [];
 
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy
-    public List<IServiceProvider> PluginContainers { get; } = [_provider];
+    public List<IServiceCollection> PluginContainers { get; } = [_provider];
 
     public object GetService(Type serviceType)
     {
@@ -108,16 +99,24 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
         try
         {
-            List<IServiceProvider>? MyPlugins = null;
+            List<IServiceCollection>? MyPlugins = null;
             lock (PluginContainers) MyPlugins = [..PluginContainers];
+
             foreach(var container in MyPlugins ?? [])
             {
-                var isService = container.GetService<IServiceProviderIsService>();
-                if (isService?.IsService(serviceType) == true)
+                var isService = container.FirstOrDefault(s => s.ServiceType == serviceType
+                    || s.ImplementationType == serviceType)
+                    ?? container.FirstOrDefault(s => s.ServiceType.Extends(serviceType)
+                    || s.ImplementationType.Extends(serviceType));
+                if(isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
                 {
-                    return container.GetRequiredService(serviceType);
+                    throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
                 }
+                var result = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+                if (result != null)
+                    return result;
             }
+
             if (PluginContainers.Count <= 1)
                 Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!Plugins is null!!!!!!!!!!!!!!");
 
@@ -145,6 +144,7 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
         lock (TrustedLoader.StoredServiceable)
             services = TrustedLoader.StoredServiceable.ToDictionary();
     }
+
 
 
 
@@ -182,12 +182,10 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
                 UserTypes.Add(t.ServiceType);
 
 
-        var Services = collection.BuildServiceProvider();
         lock(PluginContainers)
-            PluginContainers.Add(Services);
-        var service2 = Services.GetService(serviceType);
-        
-        return service2;
+            PluginContainers.Add(collection);
+        var isService = InjectionExtensions.FindService(collection, serviceType);
+        return InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
     }
 
 
@@ -228,7 +226,7 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
 
     public IServiceScope CreateScope()
     {
-        var scoped = new CompositeServiceProvider(_provider.CreateScope().ServiceProvider);
+        var scoped = new CompositeServiceProvider(this, true);
         scoped.PluginContainers.Add(this);
         return scoped;
     }
@@ -245,13 +243,36 @@ public partial class CompositeServiceProvider(IServiceProvider _provider)
         //    return true;
         foreach (var container in PluginContainers)
         {
-            if (container.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true)
+            if (InjectionExtensions.FindService(container, serviceType) != null)
             {
                 return true;
             }
         }
         return false;
     }
+
+    public static List<Type> BuiltIn { get; } = [
+        typeof(PluginActivator),
+        typeof(CompositeServiceProvider),
+        typeof(RenderStateProvider),
+        typeof(Atrium.Components.MainLoader)
+    ];
+
+
+    public List<Type> SingleUser { get; } = [
+        typeof(HttpClient),
+        typeof(NavigationManager),
+        typeof(IJSRuntime),
+        typeof(IConfiguration),
+        //{typeof(ILogger<>), typeof(Logger<>)  },
+        typeof(ILoggerFactory),
+#if !BROWSER
+        typeof(Lazy<Atrium.Components.MainLoader?>),
+        typeof(Lazy<Application?>),
+        typeof(Microsoft.Extensions.Hosting.IHostEnvironment),
+#endif
+    ];
+
 }
 
 internal static class InjectionExtensions
@@ -275,4 +296,47 @@ internal static class InjectionExtensions
         }
 
     }
+
+
+
+    public static ServiceDescriptor? FindService(this IServiceCollection container, Type serviceType)
+    {
+        var isService = container.FirstOrDefault(s => s.ServiceType == serviceType
+        || s.ImplementationType == serviceType)
+        ?? container.FirstOrDefault(s => s.ServiceType.Extends(serviceType)
+        || s.ImplementationType.Extends(serviceType));
+        return isService;
+    }
+
+
+
+    public static object? CreateFromDescriptor(this ServiceDescriptor? isService, IServiceProvider service, bool transient)
+    {
+        if (!transient && isService?.ImplementationInstance != null)
+        {
+            return isService.ImplementationInstance;
+        }
+        else if (!transient && isService?.KeyedImplementationInstance != null)
+        {
+            return isService.KeyedImplementationInstance;
+        }
+        else if (isService?.ImplementationFactory != null)
+        {
+            return isService.ImplementationFactory(service);
+        }
+        else if (isService?.KeyedImplementationFactory != null)
+        {
+            return isService.KeyedImplementationFactory(service, isService.ServiceKey);
+        }
+        else if (isService?.ImplementationType != null)
+        {
+            return ActivatorUtilities.CreateInstance(service, isService.ImplementationType);
+        }
+        else if (isService?.ServiceType.IsConcrete() == true)
+        {
+            return ActivatorUtilities.CreateInstance(service, isService.ServiceType);
+        }
+        return null;
+    }
+
 }

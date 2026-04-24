@@ -1,6 +1,8 @@
 ﻿
-using Atrium.Services;
 
+
+using Atrium.Services;
+using System.Linq.Expressions;
 
 namespace Atrium;
 
@@ -22,16 +24,31 @@ public partial class MainPage : ContentPage
     }
 
 
+    static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> ElementIdInterop =
+        (window, element) => element.dataset["atriumId"] == null
+                    ? window.setAtriumId(element)
+                    : window.parseInt(element.dataset["atriumId"])!.Value;
+
+    static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> SetElementIdInterop =
+    (window, element)
+        => window.AtriumRegistry.set(window.parseInt(window.Object.assign(element.dataset, new { atriumId = window.Object.assign(window, new { AtriumIdCounter = window.AtriumIdCounter + 1 }).AtriumIdCounter })["atriumId"])!.Value, element)
+            != null ? window.AtriumIdCounter : -1;
+
     // lol this may be even funnier than php-babel, or that shit i wrote long before php-babel
     // lol https://github.com/briancullinan2/studysauce3/blob/main/src/Admin/Bundle/Controller/AdminController.php#L1181
     public static void InjectApp(Interfacing.Services.IWindow window)
     {
         App.Bridge?.InvokeAsync(async () =>
         {
+            //var (document, console) = window;
             try
             {
                 window.document.getElementById("title").innerHTML = "Hello from C# also";
-
+                window["AtriumRegistry"] = new Dictionary<object,object?>();
+                window["AtriumIdCounter"] = 0;
+                window["getAtriumId"] = ElementIdInterop;
+                window["setAtriumId"] = SetElementIdInterop;
+                
                 //(window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
 
                 window.addEventListener("popstate", (e) => window.postMessage(new
@@ -43,6 +60,7 @@ public partial class MainPage : ContentPage
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+                //console.log(ex.ToString());
             }
         });
     }

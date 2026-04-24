@@ -27,7 +27,7 @@ using IWindow = Interfacing.Services.IWindow;
 
 public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
 {
-    protected string Path { get; } = _jsPath;
+    public string Path { get; } = _jsPath;
 
     public T As<T>()
     {
@@ -61,7 +61,13 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
         {
             VerifyThread(); // Enforcement gate
             // Trigger the execution logic manually
-            string script = $"{Path}['{propertyName}'] = {JsonSerializer.Serialize(value)};";
+            string script;
+            if(value is Expression expr)
+            {
+                script = $"{Path}['{propertyName}'] = {expr.ToJS()};";
+            }
+            else
+                script = $"{Path}['{propertyName}'] = {JsonSerializer.Serialize(value)};";
 //#if !BROWSER
 //            _core?.ExecuteJsAsync(script).Wait();
 //#else
@@ -150,7 +156,7 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
         if(Name == "getElementById")
             result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
         else
-            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"{Path}.{Name}", returnType);
+            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), script, returnType);
         return true;
     }
 
@@ -313,6 +319,10 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     [JSImport("globalThis.eval")]
     internal static partial string Eval(string script);
 
+
+    protected override Expression<Action<IWindow>> Callback { get; }
+        = (globalThis) => globalThis.Atrium.PostMessage("DOM_READY");
+
     public WebViewBridge()
     {
         
@@ -335,7 +345,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
         document.open();
         document.write({JsonSerializer.Serialize(html)});
         document.close();
-        {DomReadyScript}"; // Re-attach your bridge listeners!
+        {DomReadyWrapped}"; // Re-attach your bridge listeners!
         _ = ExecuteJsAsync(script);
     }
 
@@ -347,7 +357,8 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
 public partial class WebViewBridge : WebViewBase, IWebViewBridge
 {
     private readonly CoreWebView2 core;
-    protected override string Callback { get; } = "window.chrome.webview.postMessage";
+    protected override Expression<Action<IWindow>> Callback { get; } 
+        = (window) => window.chrome.webview.postMessage("DOM_READY");
 
     public WebViewBridge(CoreWebView2 _core)
     {
@@ -358,7 +369,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
 #endif
 
         core.WebMessageReceived += (s2, e2) => OnMessaged(e2.TryGetWebMessageAsString());
-        _ = core.AddScriptToExecuteOnDocumentCreatedAsync(DomReadyScript);
+        _ = core.AddScriptToExecuteOnDocumentCreatedAsync(DomReadyWrapped);
 
         //core.DOMContentLoaded += async (s3, e3) =>
         //{
@@ -400,7 +411,9 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     private readonly WKWebView webView;
     private readonly ScriptHandler handler;
 
-    protected override string Callback { get; } = "window.webkit.messageHandlers.bridge.postMessage";
+
+    protected override Expression<Action<IWindow>> Callback { get; } 
+        = (window) => window.webkit.messageHandlers[nameof(WebViewBridge)].postMessage("DOM_READY");
 
     public class ScriptHandler(Action<string> callback) : NSObject, IWKScriptMessageHandler
     {
@@ -419,11 +432,11 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
         handler = new ScriptHandler(OnMessaged);
     
         // 1. Register the handler
-        webView.Configuration.UserContentController.AddScriptMessageHandler(handler, "bridge");
+        webView.Configuration.UserContentController.AddScriptMessageHandler(handler, nameof(WebViewBridge));
     
         // 3. Create the UserScript
         var userScript = new WKUserScript(
-            new NSString(DomReadyScript), 
+            new NSString(DomReadyWrapped), 
             WKUserScriptInjectionTime.AtDocumentEnd, // Injects after DOM is built
             true // For all frames
         );
@@ -468,9 +481,15 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
 
 #elif ANDROID
 
+
+
 public partial class WebViewBridge : WebViewBase, IWebViewBridge
 {
     private readonly Android.Webkit.WebView _webView;
+
+    protected override Expression<Action<IWindow>> Callback => (window) => window.NativeBridge.postMessage("DOM_READY");
+
+
     public class JsBridge(Action<string> callback) : Java.Lang.Object
     {
         [Android.Webkit.JavascriptInterface]
@@ -486,7 +505,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
         _webView.AddJavascriptInterface(new JsBridge(OnMessaged), "NativeBridge");
 
         // Assign the client to handle script re-injection automatically
-        _webView.SetWebViewClient(new BridgeWebViewClient(DomReadyScript));
+        _webView.SetWebViewClient(new BridgeWebViewClient(DomReadyWrapped));
 #if DEBUG
         Android.Webkit.WebView.SetWebContentsDebuggingEnabled(true);
 #endif

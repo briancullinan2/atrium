@@ -13,7 +13,7 @@ public interface IHasService
 
 public interface ICompositeProvider : IServiceProvider, IServiceProviderIsService, IHasService, IDisposable
 {
-    List<IServiceProvider> PluginContainers { get; }
+    //List<IServiceProvider> PluginContainers { get; }
 }
 
 // for the very staticy stuff

@@ -11,44 +11,19 @@ public class ClosureEvaluatorVisitor : ExpressionVisitor
     {
         if (TryEvaluate(node) is Expression expr) return expr;
 
-        if (ClosureEvaluatorVisitor.IsClosure(node))
+        if (node.IsClosure())
         {
             // Evaluate the member access chain into a real value
-            var objectMember = Expression.Convert(node, typeof(object));
-            var getterLambda = Expression.Lambda<Func<object>>(objectMember);
-            var getter = getterLambda.Compile();
-            var value = getter();
+            
 
             // Replace the complex 'u.Username.Equals(value(DisplayClass).claim.Value)' 
             // with 'u.Username.Equals("Brian")'
-            return Expression.Constant(value, node.Type);
+            return Expression.Constant(node.Evaluate(), node.Type);
         }
 
         return base.VisitMember(node);
     }
 
-    private static bool IsClosure(MemberExpression node)
-    {
-        var root = ClosureEvaluatorVisitor.GetRootExpression(node);
-        if (root is ConstantExpression constant && constant.Value != null)
-        {
-            var typeName = constant.Value.GetType().Name;
-            // Matches the "BS" naming convention for C# closures
-            return typeName.Contains("<>c__DisplayClass") || typeName.Contains("DisplayClass");
-        }
-        return false;
-    }
-
-    private static Expression GetRootExpression(Expression node)
-    {
-        while (node is MemberExpression member)
-        {
-            if (member.Expression == null) return node;
-
-            node = member.Expression!;
-        }
-        return node;
-    }
 
 
     protected override Expression VisitIndex(IndexExpression node) =>
