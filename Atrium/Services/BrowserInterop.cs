@@ -281,6 +281,17 @@ public partial class WebViewBridge : WebViewBase
 {
     Interfacing.Services.IWindow? _window = null;
 
+    public static readonly Expression<Func<IWindow, object?, string>> InjectToJson
+        = (window, result) => result is Node ? JSON.stringify(new
+        {
+            type = "node",
+            id = window.getAtriumId((Node)result),
+            path = window.AtriumRegistry.get(window.getAtriumId((Node)result))
+        }) : JSON.stringify(new { type = "value", value = result });
+
+
+    //public static readonly Expression<Func<IWindow, string, string>> CallInjectToJson = 
+    //    (window, script) => InjectToJson.Compile().Invoke(window, script);
 
 
     public override Interfacing.Services.IWindow window

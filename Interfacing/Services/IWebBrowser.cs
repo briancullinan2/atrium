@@ -75,7 +75,7 @@ public interface IJsProxy
 
 
 #pragma warning disable IDE1006 // matches js
-public interface IDocument : IJsProxy
+public interface IDocument : IObject, IJsProxy
 {
 
     string innerHTML { get; set; }
@@ -108,7 +108,7 @@ public interface INativeBridge : IJsProxy
 }
 
 
-public interface IMap<TKey, TValue> : IDictionary<TKey, TValue>
+public interface IMap<TKey, TValue> : IDictionary<TKey, TValue>, IJsProxy
 {
     TValue? get(TKey key);
     IMap<TKey, TValue> set(TKey key, TValue? value);
@@ -145,7 +145,7 @@ public interface IObjectStatic
     void freeze(IObject obj);
 }
 
-public interface IObject
+public interface IObject : IJsProxy
 {
     // Property Access
     object? get(string key);
@@ -163,7 +163,7 @@ public interface IObject
     string toLocaleString();
     object valueOf();
 }
-public interface IPrototype
+public interface IPrototype : IJsProxy
 {
     // The link to the next object in the chain
     IPrototype? parent { get; }
@@ -185,6 +185,10 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
     IAtrium Atrium { get; set; }
 
     IObjectStatic Object { get; }
+    INode Node { get; }
+
+    object? eval(string? script);
+
 
     // Natural Browser Objects
     IDocument document { get; }
@@ -199,8 +203,8 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
 
     IMap<int, IElement> AtriumRegistry { get; }
     int AtriumIdCounter { get; set; }
-    int getAtriumId(IElement element);
-    int setAtriumId(IElement element);
+    int getAtriumId(INode element);
+    int setAtriumId(INode element);
     int? parseInt(string? test);
 
     void addEventListener(string type, string dotnetCallbackNamespace);
@@ -222,8 +226,25 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
     void Deconstruct(out IDocument document, out IConsole console);
 }
 
-public interface IElement : IJsProxy
+public interface Node : INode
 {
+}
+
+
+public interface INode : IObject, IJsProxy
+{
+    string nodeName { get; }
+    int nodeType { get; }
+    INode? parentNode { get; }
+    INode[] childNodes { get; }
+
+    void appendChild(INode child);
+    void removeChild(INode child);
+}
+
+public interface IElement : INode, IJsProxy
+{
+    string tagName { get; }
     string innerText { get; set; }
     string className { get; set; }
     ICSSStyleDeclaration style { get; }
@@ -261,7 +282,7 @@ public interface ICSSStyleDeclaration : IJsProxy
     new object? this[string propertyName] { get; set; }
 }
 
-public interface IStorage : IJsProxy
+public interface IStorage : IObject, IJsProxy
 {
     void setItem(string key, string value);
     string getItem(string key);
@@ -269,13 +290,13 @@ public interface IStorage : IJsProxy
     public void clear();
 }
 
-public interface INavigator : IJsProxy
+public interface INavigator : IObject, IJsProxy
 {
     public string userAgent { get; }
     public bool onLine { get; }
 }
 
-public interface ILocation : IJsProxy
+public interface ILocation : IObject, IJsProxy
 {
     public string href { get; set; }
     public string hostname { get; }
@@ -293,7 +314,7 @@ public interface IUtility : IJsProxy
     object evaluateDom(string select, object ctx);
 }
 
-public interface IPopStateEvent : IJsProxy
+public interface IPopStateEvent : IObject, IJsProxy
 {
     // The state object passed to pushState()
     object? state { get; }
@@ -396,7 +417,7 @@ public interface IMessageHandlerRegistry : IJsProxy
     string[] GetAvailableHandlers();
 }
 
-public interface IMessageHandler : IJsProxy
+public interface IMessageHandler : IObject, IJsProxy
 {
     // The core 'postMessage' functionality
     // Note: We use object data here so your JSON serializer can handle complex types
@@ -411,7 +432,7 @@ public interface IMessageHandler : IJsProxy
     // Check if the handler is ready to receive
     bool IsConnected { get; }
 }
-public interface IChromeHostObjects
+public interface IChromeHostObjects : IObject, IJsProxy
 {
     // If you inject your "Atrium" services here, they appear under window.chrome.webview.hostObjects
     // This allows JS to call C# methods as if they were local functions
@@ -425,7 +446,7 @@ public interface IChromeHostObjects
 }
 
 
-public interface IChromeWebView
+public interface IChromeWebView : IJsProxy
 {
     // The core messaging method
     void postMessage(object message);
@@ -580,6 +601,10 @@ public abstract class WebViewBase : IWebViewBridge
     {
         return (T)InteropExtensions.MapToDotNet(await ExecuteJsAsync(script), "tempObj", typeof(T));
     }
+    public virtual async Task<T?> ExecuteJsAsync<T>(Expression script)
+    {
+        return (T)InteropExtensions.MapToDotNet(await ExecuteJsAsync(script.ToJS()), "tempObj", typeof(T));
+    }
 
 
     public abstract void SetHtml(string html);
@@ -715,6 +740,9 @@ public static class InteropExtensions
     }
 
 
+    public static Func<Expression, bool> FILTER_WINDOW = a => a is not ParameterExpression param || param.Name != "window";
+
+
     public static string ToJS(this Expression? node) => node switch
     {
         null => "",
@@ -738,18 +766,23 @@ public static class InteropExtensions
         MethodCallExpression m when m.Method.Name == "set_Item" => $"{m.Object.ToJS()}['{m.Arguments[0].ToJS().Trim('\'')}'] = {m.Arguments[1].ToJS()}",
         MethodCallExpression m when m.Method.Name == "querySelector" => $"{m.Object.ToJS()}.querySelector({m.Arguments[0].ToJS()})",
         MethodCallExpression m when m.Method.Name == "querySelectorAll" => $"Array.from({m.Object.ToJS()}.querySelectorAll({m.Arguments[0].ToJS()}))",
+
+        MethodCallExpression m when m.Object is MethodCallExpression compile 
+            && compile.Method.Name == "Compile" && m.Method.Name == "Invoke"
+            => $"{compile.Object.ToJS()}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).Select(a => a.ToJS()))})",
         MethodCallExpression m when m.Method.GetParameters().Any(p => p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0) 
-            => $"{(m.Object != null ? (m.Object.ToJS() + ".") : "")}{m.Method.Name}({string.Join(", ", m.Arguments.SelectMany((a, I) 
+            => $"{(m.Object != null ? (m.Object.ToJS() + ".") : "")}{m.Method.Name}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).SelectMany((a, I) 
                 => m.Method.GetParameters().ElementAt(I).GetCustomAttributes<ParamArrayAttribute>().Any() 
                     && a is NewArrayExpression na ? na.Expressions.Select(e => e.ToJS()) : [a.ToJS()]))})",
-        MethodCallExpression m when IsRootWindow(m.Object) => $"window.{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
-        MethodCallExpression m when m.Object != null => $"{m.Object.ToJS()}.{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
-        MethodCallExpression m => $"{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
+        MethodCallExpression m when IsRootWindow(m.Object) => $"window.{m.Method.Name}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).Select(a => a.ToJS()))})",
+        MethodCallExpression m when m.Object != null => $"{m.Object.ToJS()}.{m.Method.Name}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).Select(a => a.ToJS()))})",
+        
+        MethodCallExpression m => $"{m.Method.Name}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).Select(a => a.ToJS()))})",
 
         //MethodCallExpression m => $"{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
-        NewExpression n when IsAnonymousType(n.Type) => $"{{ {string.Join(", ", (n.Members ?? []).Select((m, i) => $"{m.Name}: {n.Arguments[i].ToJS()}"))} }}",
+        NewExpression n when IsAnonymousType(n.Type) => $"({{ {string.Join(", ", (n.Members ?? []).Select((m, i) => $"{m.Name}: {n.Arguments[i].ToJS()}"))} }})",
         //    : $"new {ne.Type.Name}({string.Join(", ", ne.Arguments.Select(a => a.ToJS()))})",
-        NewExpression n => $"{{ {string.Join(", ", n.Arguments.Select((a, i) => $"{n.Members![i].Name}: {a.ToJS()}"))} }}",
+        NewExpression n => $"({{ {string.Join(", ", n.Arguments.Select((a, i) => $"{n.Members![i].Name}: {a.ToJS()}"))} }})",
         MemberExpression m when m.Member.Name == "Value" && m.Expression?.Type.IsGenericType == true
             && m.Expression.Type.GetGenericTypeDefinition() == typeof(Nullable<>) => m.Expression.ToJS(),
         MemberExpression m when IsRootWindow(m) => $"window.{m.Member.Name}",
@@ -761,12 +794,12 @@ public static class InteropExtensions
         //stupid chat bot MemberExpression m => m.Expression?.Type.IsAssignableTo(typeof(ICSSStyleDeclaration)) == true
         //    ? $"{m.Expression.ToJS()}.{m.Member.Name}" // Direct mapping
         //    : $"{m.Expression.ToJS()}.{m.Member.Name}",
-        MemberInitExpression mi => $"{{ {string.Join(", ", mi.Bindings.Select(b => $"{b.Member.Name}: {((MemberAssignment)b).Expression.ToJS()}"))} }}",
+        MemberInitExpression mi => $"({{ {string.Join(", ", mi.Bindings.Select(b => $"{b.Member.Name}: {((MemberAssignment)b).Expression.ToJS()}"))} }})",
 
         // --- Functions & Control ---
-        LambdaExpression l => $"({string.Join(", ", l.Parameters
+        LambdaExpression l => $"(({string.Join(", ", l.Parameters
             .Where(p => p.Name != "window") // hack to get Callback {get;} to work
-            .Select(p => p.Name))}) => {l.Body.ToJS()}",
+            .Select(p => p.Name))}) => {l.Body.ToJS()})",
         ConditionalExpression c => $"{c.Test.ToJS()} ? {c.IfTrue.ToJS()} : {c.IfFalse.ToJS()}",
         InvocationExpression i => $"{i.Expression.ToJS()}({string.Join(", ", i.Arguments.Select(a => a.ToJS()))})",
 
