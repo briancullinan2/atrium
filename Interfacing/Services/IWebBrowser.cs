@@ -531,9 +531,7 @@ public interface IWebViewBridge
     IWindow window { get; }
 
     event Action<IWindow>? OnDocument;
-    event Func<IWindow, Task>? OnDocumentAsync;
     event Action<string?>? OnMessage;
-    event Func<string?, Task>? OnMessageAsync;
 }
 
 #pragma warning restore IDE1006 // matches js
@@ -541,20 +539,21 @@ public interface IWebViewBridge
 
 public abstract class WebViewBase : IWebViewBridge
 {
+
     public abstract IWindow window { get; }
 
     private bool _isDocumentLoaded;
     private readonly Lock _lock = new();
 
-    event Action<IWindow>? InternalDocument;
-    event Func<IWindow, Task>? InternalDocumentAsync;
+    Delegate? InternalDocument;
     public event Action<IWindow>? OnDocument
     {
         add
         {
             lock (_lock)
             {
-                InternalDocument += value;
+                if (InternalDocument?.GetInvocationList().Contains(value) == true) return;
+                InternalDocument = Delegate.Combine(InternalDocument, value);
                 if (_isDocumentLoaded && window != null && value != null)
                 {
                     value(window);
@@ -563,60 +562,31 @@ public abstract class WebViewBase : IWebViewBridge
         }
         remove
         {
-            InternalDocument -= value;
+            if (InternalDocument?.GetInvocationList().Contains(value) != true) return;
+            InternalDocument = Delegate.Remove(InternalDocument, value);
         }
     }
-    public event Func<IWindow, Task>? OnDocumentAsync
-    {
-        add
-        {
-            lock (_lock)
-            {
-                InternalDocumentAsync += value;
-                if (_isDocumentLoaded && window != null && value != null)
-                {
-                    value(window);
-                }
-            }
-        }
-        remove
-        {
-            InternalDocumentAsync -= value;
-        }
-    }
+    
 
 
-
-    event Action<string?>? InternalMessage;
-    event Func<string?, Task>? InternalMessageAsync;
+    Delegate? InternalMessage;
     public event Action<string?>? OnMessage
     {
         add
         {
             lock (_lock)
             {
-                InternalMessage += value;
+                if (InternalMessage?.GetInvocationList().Contains(value) == true) return;
+                InternalMessage = Delegate.Combine(InternalMessage, value);
             }
         }
         remove
         {
-            InternalMessage -= value;
+            if (InternalMessage?.GetInvocationList().Contains(value) != true) return;
+            InternalMessage = Delegate.Remove(InternalMessage, value);
         }
     }
-    public event Func<string?, Task>? OnMessageAsync
-    {
-        add
-        {
-            lock (_lock)
-            {
-                InternalMessageAsync += value;
-            }
-        }
-        remove
-        {
-            InternalMessageAsync -= value;
-        }
-    }
+    
 
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<string>> _pendingTasks = new();
@@ -661,6 +631,7 @@ public abstract class WebViewBase : IWebViewBridge
         return (T)InteropExtensions.MapToDotNet(await ExecuteJsAsync(script.ToJS()), "tempObj", typeof(T));
     }
 
+    protected abstract void InjectApp(Interfacing.Services.IWindow window);
 
     public abstract void SetHtml(string html);
 
@@ -676,17 +647,21 @@ public abstract class WebViewBase : IWebViewBridge
                     _isDocumentLoaded = true;
                 }
 
-                InternalDocument?.Invoke(window);
-                _ = InternalDocumentAsync?.Invoke(window);
-
+                InjectApp(window);
+                foreach(var action in InternalDocument?.GetInvocationList() ?? [])
+                {
+                    action.InvokeService(Composite, window, message);
+                }
             });
             return;
         }
         /*InvokeAsync*/
         Task.Run(async () =>
         {
-            InternalMessage?.Invoke(message);
-            InternalMessageAsync?.Invoke(message);
+            foreach (var action in InternalMessage?.GetInvocationList() ?? [])
+            {
+                action.InvokeService(Composite, window, message);
+            }
         });
     }
 
@@ -695,11 +670,13 @@ public abstract class WebViewBase : IWebViewBridge
 
     public Task Task { get; private set; }
     public int ThreadId { get; private set; }
+    public ICompositeProvider Composite { get; }
     public int CreateId { get; private set; }
     public SynchronizationContext Context { get; }
 
-    public WebViewBase()
+    public WebViewBase(ICompositeProvider _composite)
     {
+        Composite = _composite;
         CreateId = Environment.CurrentManagedThreadId;
         Context = SynchronizationContext.Current
             ?? throw new InvalidOperationException("UiDispatcher must be initialized on the UI thread.");

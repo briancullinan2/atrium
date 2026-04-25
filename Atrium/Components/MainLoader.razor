@@ -108,6 +108,44 @@
 #endif
 
 
+    public static RenderFragment RenderStaticPageWrapper(MainContentState? Main, IHasClass Css)
+    => __builder =>
+    {
+
+        <!DOCTYPE html>
+        <html lang="en">
+
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <base href="/" />
+            <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
+            <link rel="stylesheet" href="/css/app.css" />
+            <link rel="icon" type="image/png" href="favicon.ico" />
+            <AntiforgeryToken />
+        </head>
+
+        <body>
+
+            <script src="/_content/RazorSharp/main.js"></script>
+            <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", startBlazor);
+
+                manageServiceWorker();
+
+            </script>
+
+            <div id="app">
+                @RenderMain(Css, Main)
+            </div>
+
+        </body>
+
+    </html>
+
+    };
 
     protected static async Task TryRenderingDefault(
         ICompositeProvider? Composite,
@@ -118,14 +156,15 @@
         if (Main?.IsClosing == true) return;
 
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += () => TryRenderingDefault(Composite, Main); // try again
+        Trust?.Subscribe(TryRenderingDefault); // try again
         var Classy = Composite?.GetService<IHasClass>();
         
         var newMain = await RenderMain(Classy, Main).ToHtml(Composite);
         Main?.MainContent = newMain;
 
+        // TODO: not this
         if (Composite?.GetService<PluginsPage>() is PluginsPage Plugins
-            && await PluginsPage.OnSettled(Composite) is RenderFragment Render)
+            && ((Delegate)PluginsPage.OnSettled).InvokeService(Composite) is RenderFragment Render)
         {
             var newContent = await Render.ToHtml(Composite);
             Main?.PluginContent = newContent;

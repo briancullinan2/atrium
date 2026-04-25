@@ -1,9 +1,11 @@
 
 
-internal class Program
+internal class Program : IHasCurrent<WebAssemblyHost>
 {
     private static WebAssemblyHost? _app;
     private static List<Type>? builtIn;
+
+    public static WebAssemblyHost Current { get => _app ?? throw new InvalidOperationException("Create an app before accessing Program.Current."); }
 
     public static ServiceProvider? Services { get; private set; }
 

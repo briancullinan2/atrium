@@ -294,6 +294,48 @@ public partial class WebViewBridge : WebViewBase
     //    (window, script) => InjectToJson.Compile().Invoke(window, script);
 
 
+    static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> ElementIdInterop =
+        (window, element) => element.dataset["atriumId"] == null
+                    ? window.setAtriumId(element)
+                    : window.parseInt(element.dataset["atriumId"])!.Value;
+
+    static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> SetElementIdInterop =
+    (window, element)
+        => window.AtriumRegistry.set(window.parseInt(window.Object.assign(element.dataset, new { atriumId = window.Object.assign(window, new { AtriumIdCounter = window.AtriumIdCounter + 1 }).AtriumIdCounter })["atriumId"])!.Value, element)
+            != null ? window.AtriumIdCounter : -1;
+
+    // lol this may be even funnier than php-babel, or that shit i wrote long before php-babel
+    // lol https://github.com/briancullinan2/studysauce3/blob/main/src/Admin/Bundle/Controller/AdminController.php#L1181
+    protected override void InjectApp(Interfacing.Services.IWindow window)
+    {
+        App.Bridge?.InvokeAsync(async () =>
+        {
+            //var (document, console) = window;
+            try
+            {
+                window.document.getElementById("title").innerHTML = "Hello from C# also";
+                window["AtriumRegistry"] = new Dictionary<object, object?>();
+                window["AtriumIdCounter"] = 0;
+                window["getAtriumId"] = ElementIdInterop;
+                window["setAtriumId"] = SetElementIdInterop;
+
+                //(window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
+
+                window.addEventListener("popstate", (e) => window.postMessage(new
+                {
+                    id = "Atrium.Services.Navigation.OnPopState",
+                    data = JSON.stringify(e.state)
+                }, "*"));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                //console.log(ex.ToString());
+            }
+        });
+    }
+
+
     public override Interfacing.Services.IWindow window
     {
         get
@@ -329,12 +371,22 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     // Import the native browser 'eval' function
     [JSImport("globalThis.eval")]
     internal static partial string Eval(string script);
+    static readonly Type? Program;
+    static readonly IServiceProvider? Service;
+
+    static WebViewBridge()
+    {
+        lock (TrustedLoader.CachedState)
+            Program = TrustedLoader.CachedState.Programs.FirstOrDefault();
+
+        Service = Program?.GetProperty(nameof(IHasProgram.Service), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as IServiceProvider;
+    }
 
 
     protected override Expression<Action<IWindow>> Callback { get; }
         = (globalThis) => globalThis.Atrium.PostMessage("DOM_READY");
 
-    public WebViewBridge()
+    public WebViewBridge() : base(Service!.GetRequiredService<ICompositeProvider>())
     {
         
     }
@@ -371,7 +423,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     protected override Expression<Action<IWindow>> Callback { get; } 
         = (window) => window.chrome.webview.postMessage("DOM_READY");
 
-    public WebViewBridge(CoreWebView2 _core)
+    public WebViewBridge(CoreWebView2 _core) : base(MauiProgram.Current.Services.GetRequiredService<ICompositeProvider>())
     {
         core = _core;
         core.Settings.IsWebMessageEnabled = true;
@@ -437,7 +489,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     }
 
 
-   public WebViewBridge(WebKit.WKWebView _webView)
+   public WebViewBridge(WebKit.WKWebView _webView) : base(MauiProgram.Current.Services.GetRequiredService<ICompositeProvider>())
     {
         webView = _webView;
         handler = new ScriptHandler(OnMessaged);
@@ -507,7 +559,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
         [Java.Interop.Export("postMessage")]
         public void PostMessage(string message) => callback(message);
     }
-    public WebViewBridge(Android.Webkit.WebView webView)
+    public WebViewBridge(Android.Webkit.WebView webView) : base(MauiProgram.Current.Services.GetRequiredService<ICompositeProvider>())
     {
         _webView = webView;
         _webView.Settings.JavaScriptEnabled = true;

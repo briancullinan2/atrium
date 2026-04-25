@@ -4,7 +4,7 @@ namespace RazorSharp.Services;
 
 
 
-public class MenuService(IServiceProvider Service, ITrustProvider Trust) : IMenuService
+public class MenuService(IServiceProvider Service, TrustedState Trust) : IMenuService
 {
 
     // TODO: make this a static interface on IHasMenu to make it ask for types up front

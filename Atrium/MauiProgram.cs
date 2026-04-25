@@ -9,11 +9,13 @@ namespace Atrium;
 // TODO: maybe turn this into an addressable service interface on client soon
 
 #if !BROWSER
-public class MauiProgram : IHasCurrent<MauiApp>
+public class MauiProgram : IHasCurrent<MauiApp>, IHasProgram
 {
 
     private static readonly MauiApp _myApp = CreateMauiApp();
     public static MauiApp Current => _myApp;
+
+    public static IServiceProvider Service { get => _myApp.Services; }
 
     private static MauiApp CreateMauiApp()
     {

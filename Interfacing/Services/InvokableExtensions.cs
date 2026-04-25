@@ -9,20 +9,19 @@ namespace Interfacing.Services;
 public static class InvokableExtensions
 {
 
-    public static object? InvokeService(this Delegate? myDelegate, IServiceProvider service, params object?[]? args)
+    public static object? InvokeService(this Delegate? myDelegate, IServiceProvider? service, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         return myDelegate.Method.InvokeService(service, myDelegate.Target, args);
     }
 
-    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider service, object? thisObject = null, params object?[]? args)
+    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider? service, object? thisObject = null, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
-        var formFactor = service.GetService(typeof(IFormFactor)) as IFormFactor;
+        var formFactor = service?.GetService(typeof(IFormFactor)) as IFormFactor;
         var parameters = myDelegate.GetParameters();
         var parameterValues = new object?[parameters.Length];
-        var Scope = service.CreateScope();
-        var rendered = Scope.ServiceProvider.GetRequiredService<IRenderState>();
+        var Scope = service?.CreateScope();
         for (int i = 0; i < parameters.Length; i++)
         {
             var realType = Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType;
@@ -51,14 +50,13 @@ public static class InvokableExtensions
                 parameterValues[i] = Convert.ChangeType(obj2, realType);
             }
             else if (!string.IsNullOrEmpty(parameters[i].Name)
-                && rendered.IsReady // don't touch NavigationManager until its ready or it will complain
                 && formFactor?.QueryParameters?.TryGetValue(parameters[i].Name!, out var param) == true)
             {
                 parameterValues[i] = Convert.ChangeType(param, realType);
             }
             else
             {
-                parameterValues[i] = Scope.ServiceProvider.GetService(realType);
+                parameterValues[i] = Scope?.ServiceProvider.GetService(realType);
             }
         }
 

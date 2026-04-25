@@ -38,7 +38,7 @@
             {
                 // try to make the first one hit AFTER the dll to run it has loaded
                 // this also runs the first time
-                Composite?.GetService<ITrustProvider>()?.OnSettledAsync += Hosting.PollTunnelStatusAsync;
+                Composite?.GetService<ITrustProvider>()?.Subscribe(Hosting.PollTunnelStatusAsync);
                 if (CurrentStatus._timer == null)
                     CurrentStatus._timer = TaskExtensions.Timer(Hosting.PollTunnelStatusAsync, 60 * 3 * 1000);
             }
@@ -218,7 +218,7 @@
 
     }
 
-    protected static async Task EnableStartup(ChangeEventArgs args)
+    protected static async Task EnableStartup(ICompositeProvider Composite, ChangeEventArgs args)
     {
 #if WINDOWS
         var Window = Composite.GetService<IWindowManager>();
@@ -272,7 +272,12 @@
     }
 
 
-    protected ICompositeProvider Composite;
+    [Inject] protected ICompositeProvider? Composite { get; set; }
+
+    public Hosting()
+    {
+        
+    }
 
     public Hosting(ICompositeProvider composite)
     {

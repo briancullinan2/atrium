@@ -224,18 +224,17 @@ public partial class FormFactor : BaseFormFactor
 #else
 
 public partial class FormFactor(
-    ICompositeProvider service,
-    IServiceProvider provider,
+    ICompositeProvider _service,
     IWindowManager? Windows = null
     , Lazy<Application?>? Desktop = null
     , Lazy<MauiApp?>? Maui = null
     , Lazy<WebApplication?>? App = null
 
-) : BaseFormFactor(service)
+) : BaseFormFactor(_service)
     , IFormFactor, ISingleUser, IPageState, ISettings
 {
     private Type? _routeHint;
-    public IHttpContextAccessor? Current { get => service.GetService<IHttpContextAccessor>(); }
+    public IHttpContextAccessor? Current { get => Service.GetService<IHttpContextAccessor>(); }
     public override bool IsBrowser => OperatingSystem.IsBrowser();
     public override bool IsWebContext => Current?.HttpContext != null;
     public override bool IsMauiContext => (Current?.HttpContext == null || App == null) && (Maui != null || Windows != null);

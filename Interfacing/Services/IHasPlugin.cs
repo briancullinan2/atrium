@@ -22,6 +22,11 @@ public interface IHasCurrent<T>
     static abstract T? Current { get; }
 }
 
+public interface IHasProgram
+{
+    static abstract IServiceProvider Service { get; }
+}
+
 public interface IHasPlugins
 {
     // this is the name of the setting indicating its installed or null for not
@@ -73,7 +78,9 @@ public interface ITrustProvider
 {
     event Action<PluginContract> OnAssemblyLoaded;
     event Action? OnSettled;
-    event Func<Task>? OnSettledAsync;
+    void Subscribe(Delegate? value);
+    void Unsubscribe(Delegate? value);
+
     void Enable(string ass);
     void Disable(string ass);
     TrustedState State { get; }
@@ -97,6 +104,7 @@ public partial class TrustedState(ITrustProvider? _trust) : IDisposable
     public List<Type> CatchAll { get; set; } = [];
     [JsonIgnore]
     public List<Type> Roots { get; set; } = [];
+    public List<Type> Programs { get; set; } = [];
     [JsonIgnore]
     public List<Type> AllRoutes { get; set; } = [];
     [JsonPropertyName(nameof(DisplayLayouts))]

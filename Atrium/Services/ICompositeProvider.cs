@@ -102,8 +102,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
     static CompositeServiceProvider()
     {
-        lock (TrustedLoader.StoredServiceable)
-            serviceTypes = TrustedLoader.StoredServiceable.ToDictionary();
+        lock (TrustedLoader.CachedState)
+            serviceTypes = TrustedLoader.CachedState.StoredServiceable.ToDictionary();
     }
 
 
@@ -113,8 +113,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     {
         var collection = new ServiceCollection();
 
-        lock(TrustedLoader.StoredServiceable)
-            serviceTypes = TrustedLoader.StoredServiceable.ToDictionary();
+        lock(TrustedLoader.CachedState)
+            serviceTypes = TrustedLoader.CachedState.StoredServiceable.ToDictionary();
 
         var baseType = serviceTypes.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
             ?? serviceTypes.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;

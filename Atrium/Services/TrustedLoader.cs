@@ -21,8 +21,11 @@ namespace Atrium.Services;
 
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
-    private static readonly TrustedState CachedState = new(null);
-    private static readonly TrustedState WorkingState = new(null);
+    internal static readonly TrustedState CachedState = new(null);
+    internal static readonly TrustedState WorkingState = new(null);
+
+
+
     public TrustedState State
     {
         get
@@ -37,7 +40,7 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
     // TODO: move this event into the state since it could be tied to a page
     //   then call the event delegate inside every trustedstate subscribed to this instance?
-    private static event Action? InternalOnSettled;
+    private static Delegate? InternalOnSettled;
     public event Action? OnSettled
     {
         add
@@ -45,38 +48,40 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             if (value == null) return;
             // incase anything forgets this bool setOnce = false pattern
             if (InternalOnSettled?.GetInvocationList().Contains(value) == true) return;
-            InternalOnSettled += value;
+            InternalOnSettled = Delegate.Combine(InternalOnSettled, value);
             if (WorkingState.IsRebuilding || WorkingState.IsBootstrapping) return; // allow subscribers in without immediately retriggering
             _ = SettleServices(null);
         }
         remove
         {
-            InternalOnSettled -= value;
+            InternalOnSettled = Delegate.Remove(InternalOnSettled, value);
         }
     }
 
     // TODO: use a ConcurrentDictionary and actually await the calls?
     // fires at least once for everybody even if services aren't rebuilt
-    private static event Func<Task>? InternalOnSettledAsync;
-    public event Func<Task>? OnSettledAsync
+    public void Subscribe(Delegate? value)
     {
-        add
-        {
-            if (value == null) return;
-            // incase anything forgets this bool setOnce = false pattern
-            if (InternalOnSettledAsync?.GetInvocationList().Contains(value) == true) return;
-            InternalOnSettledAsync += value;
-            if (WorkingState.IsRebuilding || WorkingState.IsBootstrapping) return; // allow subscribers in without immediately retriggering
-            _ = SettleServices(null);
-        }
-        remove
-        {
-            InternalOnSettledAsync -= value;
-        }
+        if (value == null) return;
+        // incase anything forgets this bool setOnce = false pattern
+        if (InternalOnSettled?.GetInvocationList().Contains(value) == true) return;
+        InternalOnSettled = Delegate.Combine(InternalOnSettled, value);
+        if (WorkingState.IsRebuilding || WorkingState.IsBootstrapping) return; // allow subscribers in without immediately retriggering
+        _ = SettleServices(null);
+    }
+
+    public void Unsubscribe(Delegate? value)
+    {
+        InternalOnSettled = Delegate.Remove(InternalOnSettled, value);
     }
 
 
     private static readonly Func<string?, bool> FILTER_MICROSOFT_DLLS_BY_NAME;
+
+
+
+    static readonly Type? Program;
+
     static TrustedLoader()
     {
         FILTER_MICROSOFT_DLLS_BY_NAME = title => string.IsNullOrEmpty(title) || title.StartsWith("System.") || title.StartsWith("Microsoft.") || title.StartsWith("WinRT.");
@@ -84,6 +89,9 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         AppDomain.CurrentDomain.AssemblyLoad += CurrentDomainOnAssemblyLoad;
 
         ReloadAppDomain();
+
+        lock (CachedState)
+            Program = CachedState.Programs.FirstOrDefault();
     }
 
 
@@ -233,11 +241,22 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             lock (CachedState)
             {
                 var old = InternalOnSettled;
-                var oldAsync = InternalOnSettledAsync;
                 InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
-                InternalOnSettledAsync = null;
-                old?.Invoke();
-                _ = oldAsync?.Invoke();
+                foreach(var invocation in InternalOnSettled?.GetInvocationList() ?? [])
+                {
+                    try
+                    {
+#if !BROWSER
+                        invocation.InvokeService(MauiProgram.Current.Services);
+#else
+                        invocation.InvokeService(Program?.GetProperty(nameof(IHasProgram.Service), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as IServiceProvider);
+#endif
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex);
+                    }
+                }
                 CachedState.IsRebuilding = false;
             }
         }
@@ -247,12 +266,10 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         }
         finally
         {
-
             lock (_entry)
             {
                 WorkingState.IsRebuilding = false;
             }
-
         }
     }
 

@@ -84,7 +84,7 @@
         string? file)
     {
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += OnSettled;
+        Trust?.Subscribe(OnSettled);
 
 
         if (Plugins?.ScanningRendered != null
@@ -298,7 +298,7 @@
             Trust?.Enable(title);
 
 
-        Trust?.OnSettledAsync += OnSettled;
+        Trust?.Subscribe(OnSettled);
 
         return State?.Error;
     }
