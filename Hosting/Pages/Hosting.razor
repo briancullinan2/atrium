@@ -7,17 +7,6 @@
 
 @code
 {
-    [Inject] public ICompositeProvider? Composite { get; set; }
-
-
-    public Delegate Render(ICompositeProvider? Composite)
-    => RenderStaticMain(Composite);
-
-
-    public static Delegate RenderStatic(ICompositeProvider? Composite)
-         => RenderStaticMain(Composite);
-
-
     public static RenderFragment RenderStaticMain(ICompositeProvider? Composite)
         => __builder =>
         {
@@ -220,16 +209,6 @@
         }
 #endif
 
-    }
-
-
-    public Hosting(ICompositeProvider? _composite)
-    {
-        Composite ??= _composite;
-    }
-    
-    public Hosting()
-    {
     }
 
 

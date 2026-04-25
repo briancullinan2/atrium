@@ -70,7 +70,7 @@ public interface IJsProxy
     T As<T>();
 
     string? Path { get; }
-    string ToString();
+    string? ToString();
 
 }
 

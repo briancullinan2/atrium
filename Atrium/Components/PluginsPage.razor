@@ -6,179 +6,43 @@
 
 @code {
 
-
-
-    public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
+    public static async Task OnSettled(ICompositeProvider? Composite)
     {
-        var likelyRootAss = TrustedLoader.Routable
-            .FirstOrDefault(ass => Trust?.EnabledAssemblies.ContainsKey(ass.ToName()) == true)
-            ?? TrustedLoader.Routable.FirstOrDefault();
-
-        var likelyRoute = TrustedLoader.Roots[0].AssemblyQualifiedName
-            ?? TrustedLoader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName
-            ?? TrustedLoader.AllRoutes[0].AssemblyQualifiedName;
-
-        return (Assembly: likelyRootAss, RoutableType: likelyRoute);
-    }
-
-
-
-
-    protected static async Task RenderAssemblyScannedFile(string? file, TrustedState? gatherTrust, ICompositeProvider? Composite, bool wait = true)
-    {
-        // 1. Immediate Throttled UI Update (Max every 200ms)
-        // This keeps the UX fluid without flooding the RenderTree
-        if (gatherTrust == null) return;
-        if (!wait 
-            || gatherTrust.LastUpdate == null 
-            || (DateTime.Now - gatherTrust.LastUpdate.Value).TotalMilliseconds > 200)
+        var Trust = Composite?.GetService<TrustedLoader>();
+        Trust?.OnSettledAsync += () =>
         {
+
+            if (ScanningRendered != null
+                && (gatherTrust.LastUpdate != null
+                && gatherTrust.LastUpdate.Value > (DateTime.Now - TimeSpan.FromMilliseconds(200))))
+                return;
+
             gatherTrust.Scanning = file;
             gatherTrust.LastUpdate = DateTime.Now;
-            gatherTrust.ScanningRendered = await RenderPluginStatus(
-                gatherTrust.IsBootstrapping, 
-                gatherTrust.Error, 
-                gatherTrust.Scanning).ToHtml(Composite);
-            gatherTrust.PluginSelect = await RenderPluginSelect(
-                gatherTrust.Layouts,
-                gatherTrust.Routable,
-                gatherTrust.CatchAll,
-                gatherTrust.Roots,
-                gatherTrust.AllRoutes).ToHtml(Composite);
-            gatherTrust.PreviousRendered = await RenderPluginList(
-                Composite, gatherTrust, gatherTrust.MyList).ToHtml(Composite);
+            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust).ToHtml(Composite);
+            gatherTrust.PluginSelect = await RenderPluginSelect(gatherTrust).ToHtml(Composite);
+            gatherTrust.PreviousRendered = await RenderPluginList(gatherTrust).ToHtml(Composite);
+
 
             var Page = Composite?.GetService<PageManager>();
             if (Page == null) return;
             if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
             await Page.Replace(".plugin-status, .plugin-controls", gatherTrust.ScanningRendered + gatherTrust.PluginSelect);
             await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
-        }
-    }
 
+        };
 
-
-    protected static RenderFragment RenderPluginList(
-        ICompositeProvider? Composite,
-        TrustedState? gatherTrust,
-        IEnumerable<PluginContract>? MyList
-    ) => __builder =>
-    {
-        if (gatherTrust == null) return;
-
-        foreach (var plugin in MyList ?? gatherTrust.MyList ?? [])
-        {
-            List<string>? requiredBy = null;
-            gatherTrust.Depended?.TryGetValue(plugin.Title, out requiredBy);
-            RenderPluginContract(plugin, requiredBy, GetActive(Composite, plugin.Title))(__builder);
-        }
-    };
-
-
-    public partial class TrustedState : IDisposable
-    {
-        // TODO: make json compatible by using the based types needed for output
-        [JsonIgnore]
-        public TrustedLoader? Trust { get; set; }
-        public Dictionary<string, string>? Layouts { get; set; }
-        public List<string>? Routable { get; set; }
-        public Dictionary<string, string>? CatchAll { get; set; }
-        public Dictionary<string, string>? Roots { get; set; }
-        public Dictionary<string, string>? AllRoutes { get; set; }
-        public bool? IsBootstrapping { get; set; }
-        public string? Error { get; set; }
-        public string? PreviousRendered { get; set; }
-        public List<PluginContract>? MyList { get; set; }
-        public DateTime? LastUpdate { get; set; }
-        public string? Scanning { get; set; }
-        public string? ScanningRendered { get; set; }
-        public string? PluginSelect { get; set; }
-        public Action<PluginContract?>? NotifyDelegate = null;
-        public Dictionary<string, List<string>>? Depended { get; set; }
-        public TrustedState(TrustedLoader? _trust)
-        {
-            Trust = _trust;
-        }
-        public void Dispose()
-        {
-            Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
-        }
-    }
-
-
-
-    public static TrustedState? GatherTrust(ICompositeProvider? Composite, TrustedState? GatheredTrust, TrustedLoader? Trust)
-    {
-        Trust ??= Composite?.GetService<TrustedLoader>();
-
-        if (GatheredTrust == null)
-        {
-            GatheredTrust = new TrustedState(Trust);
-            // this is a fancy service injector that i would have expected from microsoft dumbass compiler rewriting factory
-            //  event handlers in javascript, wtf? Expression.ToString()? ever going to make that work like IQueryable?
-            Composite?.GetService<IHasEvents>()?.Subscribe(PageAction.TogglePlugin, PluginsPage.OnEnabled);
-        }
-
-        GatheredTrust?.Layouts = TrustedLoader.Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        GatheredTrust?.Routable = TrustedLoader.Routable.Select(ass => ass.ToName()).ToList();
-        GatheredTrust?.CatchAll = TrustedLoader.CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        GatheredTrust?.Roots = TrustedLoader.Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        GatheredTrust?.AllRoutes = TrustedLoader.AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name);
-        GatheredTrust?.IsBootstrapping = TrustedLoader.IsBootstrapping;
-        GatheredTrust?.Error = TrustedLoader.Error;
-        GatheredTrust?.MyList = Trust?.DiscoveredStatus.Values.OrderBy(p => p.Title).ToList();
-        GatheredTrust?.Depended = Trust?.DependedAssemblies.ToDictionary();
-        if (GatheredTrust?.NotifyDelegate == null)
-        {
-            GatheredTrust?.NotifyDelegate ??= async (PluginContract? file) =>
-                {
-                    await RenderAssemblyScannedFile(file?.InstallPath, GatheredTrust, Composite);
-                };
-
-            Trust?.OnAssemblyLoaded += GatheredTrust?.NotifyDelegate;
-        }
-
-        return GatheredTrust;
-    }
-
-
-    public static async Task OnSettled(ICompositeProvider? Composite)
-    {
-        var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += () => OnSettled(Composite);
-
-        GatherTrust(Composite, GatheredTrust, Trust);
-        if (GatheredTrust == null) return;
-
-        await RenderAssemblyScannedFile("", GatheredTrust, Composite, false /*no wait*/);
 
         // in case something loaded not from use input/page event
         TriggerExpand(Composite);
-    }
 
-
-    public static TrustedState? GatheredTrust = null;
-
-    public async Task<Delegate?> Render(
-        ICompositeProvider? Composite
-    )
-    {
-        var Trust = Composite?.GetService<TrustedLoader>();
         var Logo = Composite?.GetService<IHasClass>();
-        // prevent concurrency errors while printing the view
-        GatheredTrust = GatherTrust(Composite, GatheredTrust, Trust);
-        Trust?.OnSettledAsync += () => OnSettled(Composite);
 
-        if (GatheredTrust == null) return null;
-
-        if (GatheredTrust.ScanningRendered == null)
-            await RenderAssemblyScannedFile("", GatheredTrust, Composite);
-
-        if (GatheredTrust.PluginSelect == null)
-            await OnSettled(Composite);
-
+        
         return RenderMainBody(Logo, GatheredTrust);
+        
     }
+
 
 
     public static RenderFragment RenderMainBody(IHasClass? Logo, TrustedState? State)
@@ -205,42 +69,50 @@
 
         };
 
+        
 
 
     public static RenderFragment RenderPluginContract(PluginContract? plugin, List<string>? requiredBy, bool? Checked)
         => __builder =>
         {
-            <tr data-id="@plugin?.Title">
-                <td class="name-col">
-                    <strong>@plugin?.Title</strong><br />
-                    <span class="product-tag">@plugin?.Metadata.Product</span>
-                </td>
+            @foreach (var plugin in MyList ?? gatherTrust.MyList ?? [])
+            {
+                List<string>? requiredBy = null;
+                gatherTrust.Depended?.TryGetValue(plugin.Title, out requiredBy);
+                var isChecked = GetActive(Composite, plugin.Title);
 
-                <td class="meta-col">
-                    <small>Pkg: @plugin?.Metadata.Package</small><br />
-                    <small>Pub: @plugin?.Metadata.Company @plugin?.Metadata.Publisher</small>
-                </td>
+                <tr data-id="@plugin?.Title">
+                    <td class="name-col">
+                        <strong>@plugin?.Title</strong><br />
+                        <span class="product-tag">@plugin?.Metadata.Product</span>
+                    </td>
 
-                <td class="enable-col">
-                    @if (requiredBy != null && requiredBy.Count > 0)
-                    {
-                        <label class="switch" aria-disabled="true">
-                            <input type="checkbox" disabled="disabled" checked="checked" />
-                        </label>
-                        <span>Required By:</span><br />
-                        @foreach (var required in requiredBy)
+                    <td class="meta-col">
+                        <small>Pkg: @plugin?.Metadata.Package</small><br />
+                        <small>Pub: @plugin?.Metadata.Company @plugin?.Metadata.Publisher</small>
+                    </td>
+
+                    <td class="enable-col">
+                        @if (requiredBy != null && requiredBy.Count > 0)
                         {
-                            <span>@required</span><br />
+                            <label class="switch" aria-disabled="true">
+                                <input type="checkbox" disabled="disabled" checked="checked" />
+                            </label>
+                            <span>Required By:</span><br />
+                            @foreach (var required in requiredBy)
+                            {
+                                <span>@required</span><br />
+                            }
                         }
-                    }
-                    else
-                    {
-                        <label class="switch">
-                            <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', ['@plugin?.Title', !!this.value])" checked="@Checked" />
-                        </label>
-                    }
-                </td>
-            </tr>
+                        else
+                        {
+                            <label class="switch">
+                                <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', ['@plugin?.Title', !!this.value])" checked="@Checked" />
+                            </label>
+                        }
+                    </td>
+                </tr>
+            }
         };
 
 
@@ -318,13 +190,15 @@
 
         
 
-    public static bool GetActive(ICompositeProvider? Composite, string? title)
+    public static bool GetActive(
+        Dictionary<string, Assembly> LoadedAssemblies,
+        Dictionary<string, bool> EnabledAssemblies, 
+        string? title)
     {
         if (title == null) return false;
-        var Trust = Composite?.GetService<TrustedLoader>();
-        if (Trust?.EnabledAssemblies.ContainsKey(title) == true)
+        if (EnabledAssemblies.ContainsKey(title) == true)
             return true;
-        if (Trust?.LoadedAssemblies.ContainsKey(title) == true)
+        if (LoadedAssemblies.ContainsKey(title) == true)
             return true;
 #if !BROWSER
         // TODO: use ISettings
@@ -335,7 +209,7 @@
     }
 
     public static async Task<string?> OnEnabled(
-        ICompositeProvider? Composite,
+        IWindowManager? Window,
         TrustedLoader? Trust,
         string? title,
         bool? isChecked)
@@ -347,20 +221,29 @@
         else
             Trust?.Enable(title);
 
-        Trust?.OnSettled += () => TriggerExpand(Composite);
+        var expand = Trust?.EnabledAssemblies.Count == 0
+            && TrustedLoader.SystemEnabledAssemblies.Count == 0;
+
+        Trust?.OnSettled += () => TriggerExpand(Window, expand);
 
         return TrustedLoader.Error;
     }
 
 
-    protected static void TriggerExpand(ICompositeProvider? Composite)
+    protected static void TriggerExpand(IWindowManager? Window, bool expand)
+        => Window?.ExpandWindow(expand);
+        
+    public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
     {
+        var likelyRootAss = TrustedLoader.Routable
+            .FirstOrDefault(ass => Trust?.EnabledAssemblies.ContainsKey(ass.ToName()) == true)
+            ?? TrustedLoader.Routable.FirstOrDefault();
 
-        if (Composite?.GetService<TrustedLoader>()?.EnabledAssemblies.Count == 0
-            && TrustedLoader.SystemEnabledAssemblies.Count == 0)
-            _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(false);
-        else
-            _ = Composite?.GetService<IWindowManager>()?.ExpandWindow(true);
+        var likelyRoute = TrustedLoader.Roots[0].AssemblyQualifiedName
+            ?? TrustedLoader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName
+            ?? TrustedLoader.AllRoutes[0].AssemblyQualifiedName;
+
+        return (Assembly: likelyRootAss, RoutableType: likelyRoute);
     }
 
 

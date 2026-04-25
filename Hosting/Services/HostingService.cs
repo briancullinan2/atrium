@@ -1,8 +1,8 @@
 ﻿#if !BROWSER
-using Hosting.Platforms.Windows;
 using Microsoft.AspNetCore.Http;
 #endif
 #if WINDOWS
+using Hosting.Platforms.Windows;
 using System.ServiceProcess;
 #endif
 

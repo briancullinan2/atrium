@@ -1,12 +1,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 
-@implements IHasRender
-
 @code
 {
-    protected Type? StoredDefaultRoot { get; set; } = null;
-    protected string? Body { get; set; } = null;
 
     public static int ServiceCount = 0;
     public int ServiceId { get; }
@@ -34,51 +30,49 @@
 
 
     public static void Insert(IWindow window, string id, string content) {
-        var container = window.document.querySelector(id);
-        var template = window.document.createElement("template");
-        template.innerHTML = content;
-
-        IArray<IElement> newNodes = (IArray<IElement>)window.Array.from(template.content.children.filter(n => n.nodeType == 1));
-        IArray<IElement> existing = window.Array.from(container.children);
-
-        IArray<IElement> combined = newNodes.concat(existing);
-
-        combined.sort((a, b) => (a.getAttribute("data-id"))
-                .localeCompare(b.getAttribute("data-id")))
-                .forEach(node => container.appendChild(node));
-    }
-
-
-
-    public static async Task RenderHeader(ICompositeProvider? Composite, IHasClass? Classy)
-    {
-        var Header = await MainLoader.RenderStaticHeader(Classy).ToHtml();
-        //await Page.Insert("link[data-id]", Header);
-        App.Bridge?.InvokeAsync(async () =>
+        try
         {
-            //var (document, console) = window;
-            try
-            {
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        });
+            var container = window.document.querySelector(id);
+            var template = window.document.createElement("template");
+            template.innerHTML = content;
+
+            IArray<IElement> newNodes = (IArray<IElement>)window.Array.from(template.content.children.filter(n => n.nodeType == 1));
+            IArray<IElement> existing = window.Array.from(container.children);
+
+            IArray<IElement> combined = newNodes.concat(existing);
+
+            combined.sort((a, b) => (a.getAttribute("data-id"))
+                    .localeCompare(b.getAttribute("data-id")))
+                    .forEach(node => container.appendChild(node));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 
 
-    public static RenderFragment RenderStaticHeader(IHasClass? Css)
-         => (RenderTreeBuilder __builder) =>
+
+
+    public static RenderFragment RenderHeader(IRenderState? State, IHasClass? Css)
+    {
+        RenderFragment Header = (RenderTreeBuilder __builder) =>
         {
             <link data-id="cover.css" rel="stylesheet" href="/css/cover.css" />
             @foreach (var cssUrl in Css?.Registry ?? [])
             {
                 <link data-id="@cssUrl.Split('/').Last()" rel="stylesheet" href="@cssUrl" />
             }
-
-
+            
+            foreach (var item in State?.State ?? [])
+            {
+                <input data-id="@item.Key" type="hidden" name="state_@item.Key" value="@item.Value" />
+            }
         };
+        App.Bridge?.InvokeAsync(async () => Insert(App.Bridge.window, "link[data-id], input[type='hidden'][data-id]", await Header.ToHtml()));
+        return Header;
+    }
+
 
 
 #if false
@@ -99,77 +93,67 @@
 #endif
 
 
+    public bool FirstTimeLoad = true;
+    public string? PluginContent = null;
+    public string? MainContent = null;
+    public bool? IsClosing = false;
+    protected Type? StoredDefaultRoot { get; set; } = null;
+    protected string? Body { get; set; } = null;
+
+
 
     protected static async Task TryRenderingDefault(ICompositeProvider? Composite)
     {
+        if (Composite == null) return;
+
         var Main = Composite?.GetService<MainLoader>();
         if (Main?.IsClosing == true) return;
 
-        var Form = Composite?.GetService<IFormFactor>();
-        if (Form?.IsWebContext == true) return;
-
         var Trust = Composite?.GetService<TrustedLoader>();
         Trust?.OnSettledAsync += () => TryRenderingDefault(Composite); // try again
+        var Classy = Composite?.GetService<IHasClass>();
+        
+        var newMain = await RenderMain(Classy, Main).ToHtml(Composite);
+        Main?.MainContent = newMain;
 
-        var Rendered = Composite?.GetService<IRenderState>();
-        var Runtime = Composite?.GetService<IJSRuntime>();
-        if(Rendered?.IsReady != true)
-            Rendered?.NotifyRendered(Runtime);
-
-        if (Main?.MainContent == null)
+        if (Composite?.GetService<PluginsPage>() is PluginsPage Plugins
+            && await Plugins.Render(Composite) is RenderFragment Render)
         {
-            await InitializeRender(Composite, Runtime);
+            var newContent = await Render.ToHtml(Composite);
+            Main?.PluginContent = newContent;
         }
 
-        var Page = Composite?.GetService<PageManager>();
-        if (Page == null) return;
         if (Main?.StoredDefaultRoot == null)
         {
             // TODO: make this a page event from plugins like RootReady so on normal startup its a streamlined process
             Main?.StoredDefaultRoot = Trust?.DefaultRoot();
             if (Main?.StoredDefaultRoot == null) return;
-            var Classy = Composite?.GetService<IHasClass>();
-            Classy?.SetRoute(Main?.StoredDefaultRoot);
-            await RenderHeader(Composite, Classy);
-            if (Composite?.GetService<ITitleService>() is ITitleService Title)
-                await Title.SetDefaultTitle(Main?.StoredDefaultRoot);
-            Main?.Body = await Main?.StoredDefaultRoot.ToHtml(Composite);
-            await Page.Replace("#page > main:not(.cover-page) > article", Main?.Body);
+            Main?.Body = await Main.StoredDefaultRoot.ToHtml(Composite);
         }
+
+
+        Classy?.SetRoute(Main?.StoredDefaultRoot);
+
+        if (Composite?.GetService<ITitleService>() is ITitleService Title)
+            await Title.SetDefaultTitle(Main?.StoredDefaultRoot);
+
+        var State = Composite?.GetService<IRenderState>();
+        RenderHeader(State, Classy);
+
+        var Page = Composite?.GetService<PageManager>();
+        if (Page == null) return;
+        await Page.EnsureInitialized();
+        await Page.Replace("#page", newMain);
+        await Page.Replace("#page > .cover-page > article", Main?.PluginContent);
+        await Page.Replace("#page > main:not(.cover-page) > article", Main?.Body);
+
     }
 
 
 
-    public Delegate Render(ICompositeProvider? Composite)
-    {
-        //var Form = Service?.GetService<IFormFactor>();
-        //if(Form?.IsWebContext == true)
-        //{
-        //    var fragment = RenderStaticPageWrapper();
-        //    return fragment;
-        //}
-        //else
-        return RenderMain(Composite);
-    }
-
-
-    protected static RenderFragment RenderMain(ICompositeProvider? Composite)
+    protected static RenderFragment RenderMain(IHasClass? Css, MainLoader? Main)
         => (RenderTreeBuilder __builder) =>
         {
-            var Css = Composite?.GetService<IHasClass>();
-            var Rendered = Composite?.GetService<IRenderState>();
-            var Main = Composite?.GetService<MainLoader>();
-            var Runtime = Composite?.GetService<IJSRuntime>();
-            Composite?.GetService<IRenderState>()?.NotifyEmptied(Runtime);
-            Composite?.GetService<TrustedLoader>()?.OnSettledAsync += () => TryRenderingDefault(Composite);
-
-
-            @RenderStaticHeader(Css)
-            
-            foreach (var item in Rendered?.State ?? [])
-            {
-                <input type="hidden" name="state_@item.Key" value="@item.Value" />
-            }
 
 #if false
 #if DEBUG
@@ -202,37 +186,6 @@
 
             </div>
         };
-
-
-    public static async Task InitializeRender(ICompositeProvider? Composite, IJSRuntime? Runtime)
-    {
-        if (Composite == null) return;
-        var Main = Composite.GetService<MainLoader>();
-
-
-        if (Composite.GetService<PluginsPage>() is PluginsPage Plugins
-            && await Plugins.Render(Composite) is RenderFragment Render)
-        {
-            var newContent = await Render.ToHtml(Composite);
-            Main?.PluginContent = newContent;
-        }
-        
-        var newMain = await RenderMain(Composite).ToHtml(Composite);
-        Main?.MainContent = newMain;
-
-        var Page = Composite.GetService<PageManager>();
-        if (Page == null) return;
-        await Page.EnsureInitialized();
-        await Page.Replace("#page", newMain);
-        await Page.Replace("#page > .cover-page > article", Main?.PluginContent);
-
-    }
-
-    public bool FirstTimeLoad = true;
-    public string? PluginContent = null;
-    public string? MainContent = null;
-    public bool? IsClosing = false;
-
 
 
 }
