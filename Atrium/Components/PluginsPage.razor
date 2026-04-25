@@ -1,53 +1,124 @@
 @page "/plugins"
-@implements IAsyncRender
 @implements IHasForms
 @implements IHasCover
 @attribute [Display(Name = "System Components", ShortName = "Plugins", GroupName = "Administration", Prompt = "bi-puzzle-fill")]
 
 @code {
 
+    public class PluginsState
+    {
+        [JsonPropertyName(nameof(PreviousRendered))]
+        public string PreviousRendered { get; set; } = string.Empty;
+        [JsonPropertyName(nameof(LastUpdate))]
+        public DateTime? LastUpdate { get; set; } = null;
+        [JsonPropertyName(nameof(ScanningRendered))]
+        public string ScanningRendered { get; set; } = string.Empty;
+        [JsonPropertyName(nameof(PluginSelect))]
+        public string PluginSelect { get; set; } = string.Empty;
+        [JsonPropertyName(nameof(DisplayPlugins))]
+        public Dictionary<string, string> DisplayPlugins { get => EnabledPlugins?.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name) ?? []; }
+        [JsonIgnore]
+        public List<Type>? EnabledPlugins { get; set; } = null;
+
+    }
+
+
+    public static PluginsState CachedState { get; } = new ();
+
+
+    [RequiresAssemblyFiles()]
+    public static async Task CheckStatus(ICompositeProvider? Composite, TrustedState? State)
+    {
+        List<Type>? copy = null;
+
+        lock (CachedState)
+            if (CachedState.EnabledPlugins != null)
+                copy = [.. CachedState.EnabledPlugins];
+
+        if (copy == null)
+        {
+            copy = await GetEnabledPlugins(Composite, State);
+            lock (CachedState)
+                CachedState.EnabledPlugins = copy;
+        }
+
+
+    }
+
+    // TODO: use this on service startup? way to bootstrap another container?
+    public static async Task<List<Type>> GetEnabledPlugins(
+        ICompositeProvider? service,
+        TrustedState? State
+    ) {
+        if (service == null) return [];
+        List<Type>? copy = null;
+            copy = [.. State?.AllPlugins ?? []];
+
+        List<Type> enabledPlugins = [];
+        foreach (var plugin in copy ?? [])
+        {
+            var myDelegate = plugin.GetProperty(nameof(IHasPlugins.Installed), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate;
+            if (myDelegate == null || typeof(Task<string?>).IsAssignableFrom(Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
+                ?? myDelegate?.Method.ReturnType) != true)
+                throw new InvalidOperationException("IHasPlugins.Installed delegate must return a Task<string?> with the name of the setting it used to check if its installed or not" + myDelegate?.Method);
+            var result = myDelegate.InvokeService(service);
+            if (result is Task task)
+            {
+                await task;
+#pragma warning disable IDE0260 // VS fucks up on dynamics
+                if ((result as dynamic)?.Result == true)
+                    enabledPlugins.Add(plugin);
+#pragma warning restore IDE0260 // VS fucks up on dynamics
+            }
+        }
+        return enabledPlugins;
+    }
+
+
     // TODO: now the goal, limit the number of copies of trusted display information we're pulling
 
-    public static async Task OnSettled(ICompositeProvider? Composite)
+    public static async Task OnSettled(
+        ICompositeProvider? Composite, 
+        TrustedState? State,
+        PluginsState? Plugins,
+        string? file)
     {
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += () =>
-        {
-
-            if (ScanningRendered != null
-                && (gatherTrust.LastUpdate != null
-                && gatherTrust.LastUpdate.Value > (DateTime.Now - TimeSpan.FromMilliseconds(200))))
-                return;
-
-            gatherTrust.Scanning = file;
-            gatherTrust.LastUpdate = DateTime.Now;
-            gatherTrust.ScanningRendered = await RenderPluginStatus(gatherTrust).ToHtml(Composite);
-            gatherTrust.PluginSelect = await RenderPluginSelect(gatherTrust).ToHtml(Composite);
-            gatherTrust.PreviousRendered = await RenderPluginList(gatherTrust).ToHtml(Composite);
+        Trust?.OnSettledAsync += OnSettled;
 
 
-            var Page = Composite?.GetService<PageManager>();
-            if (Page == null) return;
-            if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
-            await Page.Replace(".plugin-status, .plugin-controls", gatherTrust.ScanningRendered + gatherTrust.PluginSelect);
-            await Page.Insert("#plugins-list > tbody", gatherTrust?.PreviousRendered);
+        if (Plugins?.ScanningRendered != null
+            && (Plugins?.LastUpdate != null
+            && Plugins?.LastUpdate.Value > (DateTime.Now - TimeSpan.FromMilliseconds(200))))
+            return;
 
-        };
+        Plugins?.LastUpdate = DateTime.Now;
 
+        Plugins?.ScanningRendered = await RenderPluginStatus(State).ToHtml(Composite);
+        Plugins?.PluginSelect = await RenderPluginSelect(State).ToHtml(Composite);
+        Plugins?.PreviousRendered = await RenderPluginContract(State).ToHtml(Composite);
+        var RenderedMain = RenderMainBody(Composite?.GetService<IHasClass>(), Plugins);
 
         // in case something loaded not from use input/page event
-        TriggerExpand(Composite);
+        var Window = Composite?.GetService<IWindowManager>();
+        var expand = State?.EnabledAssemblies.Count == 0
+            && State.SystemEnabledAssemblies.Count == 0;
+        if (Window != null)
+            Window?.ExpandWindow(expand);
 
-        var Logo = Composite?.GetService<IHasClass>();
+        var Page = Composite?.GetService<PageManager>();
+        if (Page == null) return;
+        //if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
+        //await Page.Replace(".plugin-status, .plugin-controls", Plugins?.ScanningRendered + Plugins?.PluginSelect);
+        //await Page.Insert("#plugins-list > tbody", Plugins?.PreviousRendered);
 
         
-        return RenderMainBody(Logo, GatheredTrust);
         
     }
 
 
 
-    public static RenderFragment RenderMainBody(IHasClass? Logo, TrustedState? State)
+    public static RenderFragment RenderMainBody(IHasClass? Logo, PluginsState? State)
         => __builder =>
         {
 
@@ -74,53 +145,58 @@
         
 
 
-    public static RenderFragment RenderPluginContract(PluginContract? plugin, List<string>? requiredBy, bool? Checked)
-        => __builder =>
-        {
-            @foreach (var plugin in MyList ?? gatherTrust.MyList ?? [])
-            {
-                List<string>? requiredBy = null;
-                gatherTrust.Depended?.TryGetValue(plugin.Title, out requiredBy);
-                var isChecked = GetActive(Composite, plugin.Title);
-
-                <tr data-id="@plugin?.Title">
-                    <td class="name-col">
-                        <strong>@plugin?.Title</strong><br />
-                        <span class="product-tag">@plugin?.Metadata.Product</span>
-                    </td>
-
-                    <td class="meta-col">
-                        <small>Pkg: @plugin?.Metadata.Package</small><br />
-                        <small>Pub: @plugin?.Metadata.Company @plugin?.Metadata.Publisher</small>
-                    </td>
-
-                    <td class="enable-col">
-                        @if (requiredBy != null && requiredBy.Count > 0)
-                        {
-                            <label class="switch" aria-disabled="true">
-                                <input type="checkbox" disabled="disabled" checked="checked" />
-                            </label>
-                            <span>Required By:</span><br />
-                            @foreach (var required in requiredBy)
-                            {
-                                <span>@required</span><br />
-                            }
-                        }
-                        else
-                        {
-                            <label class="switch">
-                                <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', ['@plugin?.Title', !!this.value])" checked="@Checked" />
-                            </label>
-                        }
-                    </td>
-                </tr>
-            }
-        };
-
-
-
-    public static RenderFragment RenderPluginStatus(bool? IsBootstrapping, string? Error, string? Scanning)
+    public static RenderFragment RenderPluginContract(
+        TrustedState? Trust
+    ) => __builder =>
     {
+        var copy = Trust?.DiscoveredStatus.Values.ToList() ?? [];
+        @foreach (var plugin in copy)
+        {
+            List<string>? requiredBy = null;
+            Trust?.DependedAssemblies?.TryGetValue(plugin.Title, out requiredBy);
+            var isChecked = GetActive(Trust?.LoadedAssemblies, Trust?.EnabledAssemblies, plugin.Title);
+
+            <tr data-id="@plugin?.Title">
+                <td class="name-col">
+                    <strong>@plugin?.Title</strong><br />
+                    <span class="product-tag">@plugin?.Metadata.Product</span>
+                </td>
+
+                <td class="meta-col">
+                    <small>Pkg: @plugin?.Metadata.Package</small><br />
+                    <small>Pub: @plugin?.Metadata.Company @plugin?.Metadata.Publisher</small>
+                </td>
+
+                <td class="enable-col">
+                    @if (requiredBy != null && requiredBy.Count > 0)
+                    {
+                        <label class="switch" aria-disabled="true">
+                            <input type="checkbox" disabled="disabled" checked="checked" />
+                        </label>
+                        <span>Required By:</span><br />
+                        @foreach (var required in requiredBy)
+                        {
+                            <span>@required</span><br />
+                        }
+                    }
+                    else
+                    {
+                        <label class="switch">
+                            <input type="checkbox" onchange="window.Atrium.Services.PageManager.TriggerEvent('TogglePlugin', ['@plugin?.Title', !!this.value])" checked="@isChecked" />
+                        </label>
+                    }
+                </td>
+            </tr>
+        }
+    };
+
+
+
+    public static RenderFragment RenderPluginStatus(TrustedState? State)
+    {
+        if (State == null) return __builder => { };
+
+        var (IsBootstrapping, Error, Scanning) = State;
         var message = Error != null
             ? Error 
             : IsBootstrapping == true 
@@ -141,14 +217,12 @@
     }
 
 
-    public static RenderFragment RenderPluginSelect(
-        Dictionary<string, string>? Layouts, 
-        List<string>? Routable,
-        Dictionary<string, string>? CatchAll,
-        Dictionary<string, string>? Roots,
-        Dictionary<string, string>? AllRoutes)
+    public static RenderFragment RenderPluginSelect(TrustedState? State)
         => __builder =>
         {
+            if (State == null) return;
+
+            var (Layouts, Routable, CatchAll, Roots, AllRoutes) = State;
 
             @if (Layouts?.Count > 0)
             {
@@ -193,14 +267,14 @@
         
 
     public static bool GetActive(
-        Dictionary<string, Assembly> LoadedAssemblies,
-        Dictionary<string, bool> EnabledAssemblies, 
+        Dictionary<string, Assembly>? LoadedAssemblies,
+        Dictionary<string, bool>? EnabledAssemblies, 
         string? title)
     {
         if (title == null) return false;
-        if (EnabledAssemblies.ContainsKey(title) == true)
+        if (EnabledAssemblies?.ContainsKey(title) == true)
             return true;
-        if (LoadedAssemblies.ContainsKey(title) == true)
+        if (LoadedAssemblies?.ContainsKey(title) == true)
             return true;
 #if !BROWSER
         // TODO: use ISettings
@@ -211,8 +285,8 @@
     }
 
     public static async Task<string?> OnEnabled(
-        IWindowManager? Window,
         TrustedLoader? Trust,
+        TrustedState? State,
         string? title,
         bool? isChecked)
     {
@@ -223,27 +297,22 @@
         else
             Trust?.Enable(title);
 
-        var expand = Trust?.EnabledAssemblies.Count == 0
-            && TrustedLoader.SystemEnabledAssemblies.Count == 0;
 
-        Trust?.OnSettled += () => TriggerExpand(Window, expand);
+        Trust?.OnSettledAsync += OnSettled;
 
-        return TrustedLoader.Error;
+        return State?.Error;
     }
 
-
-    protected static void TriggerExpand(IWindowManager? Window, bool expand)
-        => Window?.ExpandWindow(expand);
         
-    public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedLoader? Trust)
+    public static (Assembly? Assembly, string? RoutableType) TryGetRoots(TrustedState? Trust)
     {
-        var likelyRootAss = TrustedLoader.Routable
+        var likelyRootAss = Trust?.Routable
             .FirstOrDefault(ass => Trust?.EnabledAssemblies.ContainsKey(ass.ToName()) == true)
-            ?? TrustedLoader.Routable.FirstOrDefault();
+            ?? Trust?.Routable.FirstOrDefault();
 
-        var likelyRoute = TrustedLoader.Roots[0].AssemblyQualifiedName
-            ?? TrustedLoader.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName
-            ?? TrustedLoader.AllRoutes[0].AssemblyQualifiedName;
+        var likelyRoute = Trust?.Roots[0].AssemblyQualifiedName
+            ?? Trust?.AllRoutes.FirstOrDefault(t => t.Assembly == likelyRootAss)?.AssemblyQualifiedName
+            ?? Trust?.AllRoutes[0].AssemblyQualifiedName;
 
         return (Assembly: likelyRootAss, RoutableType: likelyRoute);
     }

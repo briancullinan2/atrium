@@ -76,7 +76,107 @@ public interface ITrustProvider
     event Func<Task>? OnSettledAsync;
     void Enable(string ass);
     void Disable(string ass);
+    TrustedState State { get; }
 }
+
+// TODO: putting all this in a separate class because i want to make a single copy in between
+//   threads that might affect lists, so it only has to manage itself instead of be preventative 
+//   for all the implementors
+public partial class TrustedState(ITrustProvider? _trust) : IDisposable
+{
+    // TODO: make json compatible by using the based types needed for output
+    [JsonIgnore]
+    public ITrustProvider? Trust { get; set; } = _trust;
+    [JsonIgnore]
+    public List<Assembly> Seen { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> Layouts { get; set; } = [];
+    [JsonIgnore]
+    public List<Assembly> Routable { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> CatchAll { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> Roots { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> AllRoutes { get; set; } = [];
+    [JsonPropertyName(nameof(DisplayLayouts))]
+    public Dictionary<string, string> DisplayLayouts { get => Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayRoutable))]
+    public List<string> DisplayRoutable { get => [.. Routable.Select(ass => ass.ToName())]; }
+    [JsonPropertyName(nameof(DisplayCatchAll))]
+    public Dictionary<string, string> DisplayCatchAll { get => CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayRoots))]
+    public Dictionary<string, string> DisplayRoots { get => Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayAllRoutes))]
+    public Dictionary<string, string> DisplayAllRoutes { get => AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(IsBootstrapping))]
+    public bool IsBootstrapping { get; set; } = true;
+    [JsonPropertyName(nameof(Error))]
+    public string Error { get; set; } = string.Empty;
+    [JsonPropertyName(nameof(PluginFiles))]
+    public string[] PluginFiles { get; set; } = [];
+    [JsonIgnore]
+    public Action<PluginContract?>? NotifyDelegate = null;
+    [JsonPropertyName(nameof(EnabledAssemblies))]
+    public Dictionary<string, bool> EnabledAssemblies { get; } = [];
+    [JsonPropertyName(nameof(SystemEnabledAssemblies))]
+    public Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
+
+    [JsonPropertyName(nameof(EnabledAssMappings))]
+    public List<Assembly>? EnabledAssMappings { get; set; } = null;
+    [JsonPropertyName(nameof(DependedAssemblies))]
+    public Dictionary<string, List<string>>? DependedAssemblies { get; set; }
+    [JsonIgnore]
+    public List<Assembly>? DependedAssMappings { get; set; } = null;
+    [JsonIgnore]
+    public Dictionary<string, Assembly> LoadedAssemblies = [];
+    [JsonPropertyName(nameof(RequiredAssMappings))]
+    public List<Assembly>? RequiredAssMappings { get; set; } = [];
+    [JsonPropertyName(nameof(DiscoveredStatus))]
+    public Dictionary<string, PluginContract> DiscoveredStatus { get; set; } = [];
+    [JsonIgnore]
+    public Dictionary<Type, List<Type>> StoredServiceable { get; set; } = [];
+    [JsonPropertyName(nameof(Scanning))]
+    public string Scanning { get; set; } = string.Empty;
+    [JsonIgnore]
+    public List<Type> AllPlugins { get; } = [];
+    [JsonPropertyName(nameof(IsRebuilding))]
+    public bool IsRebuilding { get; set; } = false;
+    [JsonPropertyName(nameof(StoredRoot))]
+    public string? StoredRoot = null;
+    [JsonIgnore]
+    public Type? SetRoot
+    {
+        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
+        set => StoredRoot = value?.AssemblyQualifiedName;
+    }
+    public void Dispose()
+    {
+        Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
+        GC.SuppressFinalize(this);
+    }
+    public void Deconstruct(out bool? isBootstrapping, out string? error, out string? scanning)
+    {
+        isBootstrapping = IsBootstrapping;
+        error = Error;
+        scanning = Scanning;
+    }
+
+    public void Deconstruct(out Dictionary<string, string>? layouts,
+        out List<string>? routable,
+        out Dictionary<string, string>? catchAll,
+        out Dictionary<string, string>? roots,
+        out Dictionary<string, string>? allRoutes)
+    {
+        layouts = DisplayLayouts;
+        routable = DisplayRoutable;
+        catchAll = DisplayCatchAll;
+        roots = DisplayRoots;
+        allRoutes = DisplayAllRoutes;
+    }
+}
+
+
 
 public interface ITrustStatic : ITrustProvider // dumbass DI compile error
 {
@@ -101,15 +201,15 @@ public static class TrustedExtensions
         return defaultConcrete.Invoke(null, [Trust]) as Type;
     }
 
-    public static Type? DefaultRoot<T>(this T Trust) where T : ITrustStatic
+    public static Type? DefaultRoot(this TrustedState Trust)
     {
         if (Trust.SetRoot != null) return Trust.SetRoot;
-        if (T.Roots.Count > 0 
-            && !T.Roots.First().Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)) 
-            return T.Roots.First();
-        if (T.CatchAll.Count > 0) return T.CatchAll.First();
-        lock (T.AllRoutes)
-            if (T.AllRoutes
+        if (Trust.Roots.Count > 0 
+            && !Trust.Roots.First().Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)) 
+            return Trust.Roots.First();
+        if (Trust.CatchAll.Count > 0) return Trust.CatchAll.First();
+        lock (Trust.AllRoutes)
+            if (Trust.AllRoutes
             .OrderBy(r => r.Name.Contains("plugins", StringComparison.InvariantCultureIgnoreCase)
                 || !r.Name.Contains("default", StringComparison.InvariantCultureIgnoreCase)
                 ? -1 : 0)
@@ -177,4 +277,24 @@ public interface IHasRender<T> where T : class
         ICompositeProvider? Composite,
         T? Myself
     );
+}
+
+internal static class TrustedInterfaceExtensions
+{
+
+    public static string ToName(this Assembly ass)
+    {
+        var file = Path.GetFileNameWithoutExtension(ass.Location);
+        return string.IsNullOrWhiteSpace(file) ?
+                    ass.FullName?.Split(',')[0]
+                    ?? ass.GetName().Name
+                    ?? ass.GetName().FullName.Split(',')[0]
+                    : file;
+    }
+
+    public static string ToName(this AssemblyName ass)
+    {
+        return ass.Name ?? ass.FullName.Split(',')[0];
+    }
+
 }

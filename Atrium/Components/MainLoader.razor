@@ -4,15 +4,30 @@
 @code
 {
 
-    public static int ServiceCount = 0;
-    public int ServiceId { get; }
+    public class MainContentState
+    {
 
+        public static int ServiceCount = 0;
+        public int ServiceId { get; internal set; }
+
+        public bool FirstTimeLoad { get; internal set; }  = true;
+        public string? PluginContent { get; internal set; }  = null;
+        public string? MainContent { get; internal set; }  = null;
+        public bool? IsClosing { get; internal set; }  = false;
+        public Type? StoredDefaultRoot { get; internal set; } = null;
+        public string? Body { get; internal set; } = null;
+
+    }
+
+
+    protected MainContentState State { get; }
 
 
     public MainLoader() : base()
     {
+        State = new();
         // trying to debug something, and then it wouldn't increment 
-        ServiceId = Interlocked.Increment(ref ServiceCount);
+        State.ServiceId = Interlocked.Increment(ref MainContentState.ServiceCount);
     }
 
 
@@ -93,31 +108,24 @@
 #endif
 
 
-    public bool FirstTimeLoad = true;
-    public string? PluginContent = null;
-    public string? MainContent = null;
-    public bool? IsClosing = false;
-    protected Type? StoredDefaultRoot { get; set; } = null;
-    protected string? Body { get; set; } = null;
 
-
-
-    protected static async Task TryRenderingDefault(ICompositeProvider? Composite)
-    {
+    protected static async Task TryRenderingDefault(
+        ICompositeProvider? Composite,
+        MainContentState? Main
+    ) {
         if (Composite == null) return;
 
-        var Main = Composite?.GetService<MainLoader>();
         if (Main?.IsClosing == true) return;
 
         var Trust = Composite?.GetService<TrustedLoader>();
-        Trust?.OnSettledAsync += () => TryRenderingDefault(Composite); // try again
+        Trust?.OnSettledAsync += () => TryRenderingDefault(Composite, Main); // try again
         var Classy = Composite?.GetService<IHasClass>();
         
         var newMain = await RenderMain(Classy, Main).ToHtml(Composite);
         Main?.MainContent = newMain;
 
         if (Composite?.GetService<PluginsPage>() is PluginsPage Plugins
-            && await Plugins.Render(Composite) is RenderFragment Render)
+            && await PluginsPage.OnSettled(Composite) is RenderFragment Render)
         {
             var newContent = await Render.ToHtml(Composite);
             Main?.PluginContent = newContent;
@@ -126,7 +134,7 @@
         if (Main?.StoredDefaultRoot == null)
         {
             // TODO: make this a page event from plugins like RootReady so on normal startup its a streamlined process
-            Main?.StoredDefaultRoot = Trust?.DefaultRoot();
+            Main?.StoredDefaultRoot = Trust?.State.DefaultRoot();
             if (Main?.StoredDefaultRoot == null) return;
             Main?.Body = await Main.StoredDefaultRoot.ToHtml(Composite);
         }
@@ -151,7 +159,7 @@
 
 
 
-    protected static RenderFragment RenderMain(IHasClass? Css, MainLoader? Main)
+    protected static RenderFragment RenderMain(IHasClass? Css, MainContentState? Main)
         => (RenderTreeBuilder __builder) =>
         {
 

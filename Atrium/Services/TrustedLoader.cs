@@ -18,104 +18,12 @@ using System.Text.Json.Serialization;
 
 namespace Atrium.Services;
 
-// TODO: putting all this in a separate class because i want to make a single copy in between
-//   threads that might affect lists, so it only has to manage itself instead of be preventative 
-//   for all the implementors
-public partial class TrustedState(TrustedLoader? _trust) : IDisposable
-{
-    // TODO: make json compatible by using the based types needed for output
-    [JsonIgnore]
-    public TrustedLoader? Trust { get; set; } = _trust;
-    [JsonIgnore]
-    public List<Assembly> Seen { get; set; } = [];
-    [JsonIgnore]
-    public List<Type> Layouts { get; set; } = [];
-    [JsonIgnore]
-    public List<Assembly> Routable { get; set; } = [];
-    [JsonIgnore]
-    public List<Type> CatchAll { get; set; } = [];
-    [JsonIgnore]
-    public List<Type> Roots { get; set; } = [];
-    [JsonIgnore]
-    public List<Type> AllRoutes { get; set; } = [];
-    [JsonPropertyName(nameof(DisplayLayouts))]
-    public Dictionary<string, string> DisplayLayouts { get => Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
-    [JsonPropertyName(nameof(DisplayRoutable))]
-    public List<string> DisplayRoutable { get => [..Routable.Select(ass => ass.ToName())]; }
-    [JsonPropertyName(nameof(DisplayCatchAll))]
-    public Dictionary<string, string> DisplayCatchAll { get => CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
-    [JsonPropertyName(nameof(DisplayRoots))]
-    public Dictionary<string, string> DisplayRoots { get => Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
-    [JsonPropertyName(nameof(DisplayAllRoutes))]
-    public Dictionary<string, string> DisplayAllRoutes { get => AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
-    [JsonPropertyName(nameof(IsBootstrapping))]
-    public bool IsBootstrapping { get; set; } = true;
-    [JsonPropertyName(nameof(Error))]
-    public string Error { get; set; } = string.Empty;
-    [JsonPropertyName(nameof(PluginFiles))]
-    public string[] PluginFiles { get; set; } = [];
-    [JsonPropertyName(nameof(PreviousRendered))]
-    public string PreviousRendered { get; set; } = string.Empty;
-    [JsonPropertyName(nameof(LastUpdate))]
-    public DateTime LastUpdate { get; set; }
-    [JsonPropertyName(nameof(Scanning))]
-    public string Scanning { get; set; } = string.Empty;
-    [JsonPropertyName(nameof(ScanningRendered))]
-    public string ScanningRendered { get; set; } = string.Empty;
-    [JsonPropertyName(nameof(PluginSelect))]
-    public string PluginSelect { get; set; } = string.Empty;
-    [JsonIgnore]
-    public Action<PluginContract?>? NotifyDelegate = null;
-    [JsonPropertyName(nameof(DisplayPlugins))]
-    public Dictionary<string, string> DisplayPlugins { get => EnabledPlugins.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
-    [JsonIgnore]
-    public List<Type>? EnabledPlugins { get; set; } = null;
-    [JsonPropertyName(nameof(EnabledAssemblies))]
-    public Dictionary<string, bool> EnabledAssemblies { get; } = [];
-    [JsonPropertyName(nameof(SystemEnabledAssemblies))]
-    public Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
-
-    [JsonPropertyName(nameof(EnabledAssMappings))]
-    public List<Assembly>? EnabledAssMappings { get; set; } = null;
-    [JsonPropertyName(nameof(DependedAssemblies))]
-    public Dictionary<string, List<string>>? DependedAssemblies { get; set; }
-    [JsonIgnore]
-    public List<Assembly>? DependedAssMappings { get; set; } = null;
-    [JsonIgnore]
-    public ConcurrentDictionary<string, Assembly> LoadedAssemblies = [];
-    [JsonPropertyName(nameof(RequiredAssMappings))]
-    public List<Assembly>? RequiredAssMappings { get; set; } = [];
-    [JsonPropertyName(nameof(DiscoveredStatus))]
-    public Dictionary<string, PluginContract> DiscoveredStatus { get; set; } = [];
-    [JsonIgnore]
-    public Dictionary<Type, List<Type>> StoredServiceable { get; set; } = [];
-    [JsonIgnore]
-    public List<Type> AllPlugins { get; } = [];
-    [JsonPropertyName(nameof(IsRebuilding))]
-    public bool IsRebuilding { get; set; } = false;
-    [JsonPropertyName(nameof(StoredRoot))]
-    public string? StoredRoot = null;
-    [JsonIgnore]
-    public Type? SetRoot
-    {
-        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
-        set => StoredRoot = value?.AssemblyQualifiedName;
-    }
-    public void Dispose()
-    {
-        Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
-        GC.SuppressFinalize(this);
-    }
-}
-
-
-
 
 public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
 {
     private static readonly TrustedState CachedState = new(null);
     private static readonly TrustedState WorkingState = new(null);
-    public static TrustedState State
+    public TrustedState State
     {
         get
         {
@@ -489,8 +397,11 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
                 Metadata: ass.GetAssemblyInfo()
             );
 
-            lock(CachedState)
+            lock (CachedState)
+            {
                 CachedState.DiscoveredStatus.TryAdd(title, contract);
+                CachedState.Scanning = ass.Location;
+            }
             OnAssemblyLoaded?.Invoke(contract);
         }).ContinueWith((_) => SettleServices(null), TaskContinuationOptions.NotOnFaulted);
 
@@ -756,68 +667,6 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
 
 
     
-
-    [RequiresAssemblyFiles()]
-    public async Task CheckStatus(ICompositeProvider? Composite)
-    {
-        List<Type>? copy = null;
-
-        lock (CachedState)
-            if(CachedState.EnabledPlugins != null)
-                copy = [..CachedState.EnabledPlugins];
-
-        if(copy == null)
-        {
-            copy = await GetEnabledPlugins(Composite);
-            lock (CachedState)
-                CachedState.EnabledPlugins = copy;
-        }
-
-
-        foreach (var plugin in copy ?? [])
-        {
-            var title = plugin.Assembly.ToName();
-            var newContract = new PluginContract(
-                    Title: plugin.AssemblyQualifiedName ?? plugin.FullName ?? plugin.Name,
-                    InstallPath: plugin.Assembly.Location,
-                    IsTrusted: false, //metadata?.IsTrusted ?? false,
-                    Metadata: plugin.GetAssemblyInfo()
-                );
-            lock(CachedState)
-                CachedState.DiscoveredStatus.TryAdd(title, newContract);
-            OnAssemblyLoaded?.Invoke(newContract);
-        }
-    }
-
-    // TODO: use this on service startup? way to bootstrap another container?
-    public static async Task<List<Type>> GetEnabledPlugins(ICompositeProvider? service)
-    {
-        if (service == null) return [];
-        List<Type>? copy = null;
-        lock(CachedState)
-            copy = [..CachedState.AllPlugins];
-
-        List<Type> enabledPlugins = [];
-        foreach (var plugin in copy ?? [])
-        {
-            var myDelegate = plugin.GetProperty(nameof(IHasPlugins.Installed), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate;
-            if (myDelegate == null || typeof(Task<string?>).IsAssignableFrom(Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
-                ?? myDelegate?.Method.ReturnType) != true)
-                throw new InvalidOperationException("IHasPlugins.Installed delegate must return a Task<string?> with the name of the setting it used to check if its installed or not" + myDelegate?.Method);
-            var result = myDelegate.InvokeService(service);
-            if (result is Task task)
-            {
-                await task;
-#pragma warning disable IDE0260 // VS fucks up on dynamics
-                if ((result as dynamic)?.Result == true)
-                    enabledPlugins.Add(plugin);
-#pragma warning restore IDE0260 // VS fucks up on dynamics
-            }
-        }
-        return enabledPlugins;
-    }
-
-
 
     private static void ReloadAppDomain()
     {
