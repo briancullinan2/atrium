@@ -15,7 +15,7 @@ namespace Atrium;
 
 public partial class App
 #if !BROWSER
-    : Microsoft.Maui.Controls.Application //, IHasCurrent<App>
+    : Microsoft.Maui.Controls.Application, IHasCurrent<Application>
 #endif
 {
 

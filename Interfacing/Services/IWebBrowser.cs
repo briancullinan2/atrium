@@ -70,6 +70,7 @@ public interface IJsProxy
     T As<T>();
 
     string? Path { get; }
+    string ToString();
 
 }
 
@@ -81,7 +82,7 @@ public interface IDocument : IObject, IJsProxy
     string innerHTML { get; set; }
 
     string title { get; set; }
-
+    IElement createElement(string node);
     IElement querySelector(string sel);
     IElement getElementById(string id);
 }
@@ -121,6 +122,16 @@ public interface IDomStringMap
     // The indexer maps directly to how JS accesses it: dataset['atriumId']
     string? this[string key] { get; set; }
 }
+
+
+public interface IArrayStatic
+{
+    IArray<T> from<T>(IEnumerable<T> list);
+    IArray<T> from<T>(IArray<T> list);
+}
+
+
+
 public interface IObjectStatic
 {
     // Object.assign(target, ...sources)
@@ -176,6 +187,24 @@ public interface IPrototype : IJsProxy
     object? getFromChain(string key);
 }
 
+public interface IDocumentFragment : INode, IObject
+{
+    // A DocumentFragment acts like an INode container 
+    // but doesn't have a parent in the DOM tree until it's appended.
+    IArray<INode> children { get; }
+}
+public interface IStringStatic : IJsProxy
+{
+    // String.fromCharCode(code)
+    string fromCharCode(params int[] codes);
+
+    // String.fromCodePoint(code)
+    string fromCodePoint(params int[] codes);
+
+    // String.raw`template` (mapped to a method)
+    string raw(object callSite, params object[] substitutions);
+}
+
 public interface IWindow : IUtility, IPluginManager, IJsProxy
 {
 
@@ -183,8 +212,10 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
     IWebKit webkit { get; } // ios/catalyst
     IChromeHostObjects chrome { get; } // windows
     IAtrium Atrium { get; set; }
+    IArrayStatic Array { get; }
 
     IObjectStatic Object { get; }
+    IStringStatic String { get; }
     INode Node { get; }
 
     object? eval(string? script);
@@ -236,13 +267,22 @@ public interface INode : IObject, IJsProxy
     string nodeName { get; }
     int nodeType { get; }
     INode? parentNode { get; }
-    INode[] childNodes { get; }
+    INodeCollection childNodes { get; }
 
     void appendChild(INode child);
     void removeChild(INode child);
 }
+public interface IString : IObject, IJsProxy
+{
+    // These methods map directly to the JavaScript String.prototype
+    int localeCompare(string compareString);
+    int localeCompare(IString compareString);
+    string replace(string searchValue, string replaceValue);
+    int indexOf(string searchString);
+    string substring(int indexStart, int? indexEnd = null);
+}
 
-public interface IElement : INode, IJsProxy
+public interface IElement : IObject, INode, IJsProxy
 {
     string tagName { get; }
     string innerText { get; set; }
@@ -250,17 +290,48 @@ public interface IElement : INode, IJsProxy
     ICSSStyleDeclaration style { get; }
     void addEventListener(string type, object listener);
     void setAttribute(string name, string value);
-    string getAttribute(string name);
+    IString getAttribute(string name);
     string id { get; set; }
     string innerHTML { get; set; }
+    IElementCollection children { get; }
+    IDocumentFragment content { get; }
 
     // Core DOM methods
     void addEventListener(string type, Action<object> listener);
     IElement querySelector(string selector);
-    IElement[] querySelectorAll(string selector);
+    IElementCollection querySelectorAll(string selector);
 
     IDomStringMap dataset { get; }
 }
+
+public interface IElementCollection : IArray<IElement>
+{
+    // This interface now supports both collection-based access 
+    // and the native JS array methods (sort, forEach, etc.)
+    new IElement this[int index] { get; }
+}
+public interface INodeCollection : IArray<IElement>
+{
+    // This interface now supports both collection-based access 
+    // and the native JS array methods (sort, forEach, etc.)
+    new INode this[int index] { get; }
+}
+
+
+
+public interface IArray<T> : IObject, IJsProxy
+{
+    T this[int index] { get; }
+    // JavaScript Array methods
+    IArray<T> sort(Func<T, T, int> comparer);
+    void forEach(Action<T> action);
+    IArray<T> map<TResult>(Func<T, TResult> mapper);
+    IArray<T> filter(Func<T, bool> predicate);
+    IArray<T> concat(IArray<T> other);
+    IArray<T> concat(IEnumerable<T> other);
+    int length { get; }
+}
+
 
 public interface ICSSStyleDeclaration : IJsProxy
 {
@@ -397,41 +468,25 @@ public static class JSON
 
 public interface IWebKit : IJsProxy
 {
-    // Allows you to inspect if the bridge is even available
-    bool HasMessageHandler(string handlerName);
 
-    // Gives you access to the message handler registry
     IMessageHandlerRegistry messageHandlers { get; }
-
-    // Useful for debugging current webview process stats
-    string GetProcessInfo();
 }
 
 public interface IMessageHandlerRegistry : IJsProxy
 {
-    // Allows dynamic lookup: window.webkit.messageHandlers['bridge']
     new IMessageHandler this[string name] { get; }
-
-
-    // Returns an array of available handler names
-    string[] GetAvailableHandlers();
 }
 
 public interface IMessageHandler : IObject, IJsProxy
 {
-    // The core 'postMessage' functionality
-    // Note: We use object data here so your JSON serializer can handle complex types
     void postMessage(object data);
 
-    // Metadata about the handler
-    string HandlerName { get; }
-
-    // Useful for tracking how many messages have been dispatched
-    long MessageCount { get; }
-
-    // Check if the handler is ready to receive
-    bool IsConnected { get; }
+    void postMessage(object message, Expression<Action<object>> replyHandler);
 }
+
+
+
+
 public interface IChromeHostObjects : IObject, IJsProxy
 {
     // If you inject your "Atrium" services here, they appear under window.chrome.webview.hostObjects
@@ -740,7 +795,7 @@ public static class InteropExtensions
     }
 
 
-    public static Func<Expression, bool> FILTER_WINDOW = a => a is not ParameterExpression param || param.Name != "window";
+    public static Func<Expression, bool> FILTER_WINDOW { get; } = a => a is not ParameterExpression param || param.Name != "window";
 
 
     public static string ToJS(this Expression? node) => node switch
@@ -766,6 +821,10 @@ public static class InteropExtensions
         MethodCallExpression m when m.Method.Name == "set_Item" => $"{m.Object.ToJS()}['{m.Arguments[0].ToJS().Trim('\'')}'] = {m.Arguments[1].ToJS()}",
         MethodCallExpression m when m.Method.Name == "querySelector" => $"{m.Object.ToJS()}.querySelector({m.Arguments[0].ToJS()})",
         MethodCallExpression m when m.Method.Name == "querySelectorAll" => $"Array.from({m.Object.ToJS()}.querySelectorAll({m.Arguments[0].ToJS()}))",
+        MethodCallExpression m when typeof(IString).IsAssignableFrom(m.Object?.Type) 
+            => $"({m.Object.ToJS()}.{m.Method.Name} || \"\")({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
+        MethodCallExpression m when typeof(IString).IsAssignableFrom(m.Method.ReturnType)
+            => $"({m.Object.ToJS()}.{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))}) || \"\")",
 
         MethodCallExpression m when m.Object is MethodCallExpression compile 
             && compile.Method.Name == "Compile" && m.Method.Name == "Invoke"

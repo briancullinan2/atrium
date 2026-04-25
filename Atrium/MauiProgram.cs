@@ -36,10 +36,11 @@ public class MauiProgram : IHasCurrent<MauiApp>
 
         BuilderExtensions.BuildServices(builder.Services, CompositeServiceProvider.BuiltIn, null, null, true);
 
-
         //builder.Services.AddSingleton<Lazy<MainLoader?>>(sp => new Lazy<MainLoader?>(() => MainLoader.Current));
         builder.Services.AddSingleton<Lazy<Application?>>(sp => new Lazy<Application?>(() => Microsoft.Maui.Controls.Application.Current));
 
+        // lol, continually breaking patterns with patterns
+        builder.Services.AddSingleton<IServiceCollection>(sp => builder.Services);
 
         var mauiApp = builder.Build();
 

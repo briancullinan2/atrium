@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.Components.Web
 
 @implements IHasRender
-@implements IComponent
 
 @code
 {
@@ -21,13 +20,6 @@
     }
 
 
-    void IComponent.Attach(RenderHandle renderHandle)
-    {
-        var renderField = typeof(ComponentBase).GetField("_renderHandle", BindingFlags.Instance | BindingFlags.NonPublic);
-        renderField?.SetValue(this, renderHandle);
-    }
-
-
 
     public static Dictionary<string, string> Query(string uri)
     {
@@ -41,15 +33,38 @@
     }
 
 
+    public static void Insert(IWindow window, string id, string content) {
+        var container = window.document.querySelector(id);
+        var template = window.document.createElement("template");
+        template.innerHTML = content;
+
+        IArray<IElement> newNodes = (IArray<IElement>)window.Array.from(template.content.children.filter(n => n.nodeType == 1));
+        IArray<IElement> existing = window.Array.from(container.children);
+
+        IArray<IElement> combined = newNodes.concat(existing);
+
+        combined.sort((a, b) => (a.getAttribute("data-id"))
+                .localeCompare(b.getAttribute("data-id")))
+                .forEach(node => container.appendChild(node));
+    }
+
+
+
     public static async Task RenderHeader(ICompositeProvider? Composite, IHasClass? Classy)
     {
-        var Form = Composite?.GetService<IFormFactor>();
-        // TODO: check if response started and update with method below
-        var Page = Composite?.GetService<PageManager>();
-        if (Page == null) return;
-        //IJSRuntime Runtime = Rendered?.Runtime as IJSRuntime;
-        var Header = await MainLoader.RenderStaticHeader(Classy).ToHtml(Composite);
-        await Page.Insert("link[data-id]", Header);
+        var Header = await MainLoader.RenderStaticHeader(Classy).ToHtml();
+        //await Page.Insert("link[data-id]", Header);
+        App.Bridge?.InvokeAsync(async () =>
+        {
+            //var (document, console) = window;
+            try
+            {
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        });
     }
 
 
@@ -66,26 +81,29 @@
         };
 
 
+#if false
 
-    public static RenderFragment RenderDebugInvocationLogger()
-        => (RenderTreeBuilder __builder) =>
-        {
+            public static RenderFragment RenderDebugInvocationLogger()
+            => (RenderTreeBuilder __builder) =>
+            {
             <script>
-                (function() {
-                const originalInvoke = DotNet.invokeMethodAsync;
-                DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
-                console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
-                return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
-                };
-                })();
+            (function() {
+            const originalInvoke = DotNet.invokeMethodAsync;
+            DotNet.invokeMethodAsync = function(assemblyName, methodName, ...args) {
+            console.log(`[JS Interop] Calling: ${methodName} in ${assemblyName}`, "Args:", args);
+            return originalInvoke.apply(this, [assemblyName, methodName, ...args]);
+            };
+            })();
             </script>
-        };
+            };
+#endif
 
 
 
-    protected async Task TryRenderingDefault(ICompositeProvider? Composite)
+    protected static async Task TryRenderingDefault(ICompositeProvider? Composite)
     {
-        if (IsClosing == true) return;
+        var Main = Composite?.GetService<MainLoader>();
+        if (Main?.IsClosing == true) return;
 
         var Form = Composite?.GetService<IFormFactor>();
         if (Form?.IsWebContext == true) return;
@@ -98,25 +116,25 @@
         if(Rendered?.IsReady != true)
             Rendered?.NotifyRendered(Runtime);
 
-        if(MainContent == null)
+        if (Main?.MainContent == null)
         {
             await InitializeRender(Composite, Runtime);
         }
 
         var Page = Composite?.GetService<PageManager>();
         if (Page == null) return;
-        if (StoredDefaultRoot == null)
+        if (Main?.StoredDefaultRoot == null)
         {
             // TODO: make this a page event from plugins like RootReady so on normal startup its a streamlined process
-            StoredDefaultRoot = Trust?.DefaultRoot();
-            if (StoredDefaultRoot == null) return;
+            Main?.StoredDefaultRoot = Trust?.DefaultRoot();
+            if (Main?.StoredDefaultRoot == null) return;
             var Classy = Composite?.GetService<IHasClass>();
-            Classy?.SetRoute(StoredDefaultRoot);
+            Classy?.SetRoute(Main?.StoredDefaultRoot);
             await RenderHeader(Composite, Classy);
             if (Composite?.GetService<ITitleService>() is ITitleService Title)
-                await Title.SetDefaultTitle(StoredDefaultRoot);
-            Body = await StoredDefaultRoot.ToHtml(Composite);
-            await Page.Replace("#page > main:not(.cover-page) > article", Body);
+                await Title.SetDefaultTitle(Main?.StoredDefaultRoot);
+            Main?.Body = await Main?.StoredDefaultRoot.ToHtml(Composite);
+            await Page.Replace("#page > main:not(.cover-page) > article", Main?.Body);
         }
     }
 
@@ -124,7 +142,6 @@
 
     public Delegate Render(ICompositeProvider? Composite)
     {
-        Composite?.GetService<TrustedLoader>()?.OnSettledAsync += () => TryRenderingDefault(Composite);
         //var Form = Service?.GetService<IFormFactor>();
         //if(Form?.IsWebContext == true)
         //{
@@ -144,6 +161,7 @@
             var Main = Composite?.GetService<MainLoader>();
             var Runtime = Composite?.GetService<IJSRuntime>();
             Composite?.GetService<IRenderState>()?.NotifyEmptied(Runtime);
+            Composite?.GetService<TrustedLoader>()?.OnSettledAsync += () => TryRenderingDefault(Composite);
 
 
             @RenderStaticHeader(Css)
@@ -152,8 +170,11 @@
             {
                 <input type="hidden" name="state_@item.Key" value="@item.Value" />
             }
+
+#if false
 #if DEBUG
             @RenderDebugInvocationLogger()
+#endif
 #endif
 
 

@@ -1,6 +1,7 @@
 ﻿
 
 
+using Atrium.Components;
 using Atrium.Services;
 using System.Linq.Expressions;
 
@@ -23,6 +24,16 @@ public partial class MainPage : ContentPage
         htmlViewer.Source = htmlSource;
     }
 
+
+    static TaskCompletionSource<bool> HasDocument = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    static List<Task> StartupTasks
+    {
+        get => [
+            HasDocument.Task,
+            MauiProgram.Current.Services.GetService<MainLoader>()?.Render(MauiProgram.Current.Services.GetService<ICompositeProvider>())
+        ];
+    }
 
     static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> ElementIdInterop =
         (window, element) => element.dataset["atriumId"] == null
@@ -64,7 +75,13 @@ public partial class MainPage : ContentPage
             }
         });
     }
-    
+
+    Interfacing.Services.IWindow? JsWindow { get; set; }
+    protected void OnDocument(Interfacing.Services.IWindow window)
+    {
+        HasDocument.TrySetResult(true);
+        JsWindow = window;
+    }
 
 
     protected override void OnHandlerChanged()
@@ -76,21 +93,21 @@ public partial class MainPage : ContentPage
             nativeWebView?.CoreWebView2Initialized += (s, args) =>
             {
                 App.Bridge = new WebViewBridge(s.CoreWebView2);
-                App.Bridge?.OnDocument += InjectApp;
+                App.Bridge?.OnDocument += OnDocument;
             };
         }
 #elif ANDROID
         if (PlatformView is Android.Webkit.WebView nativeWebView)
         {
             App.Bridge = new WebViewBridge(nativeWebView);
-            App.Bridge?.OnDocument += InjectApp;
+            App.Bridge?.OnDocument += OnDocument;
         }
 
 #elif IOS || MACCATALYST
         if (PlatformView is WebKit.WKWebView wkView)
         {
             App.Bridge = new WebViewBridge(wkView);
-            App.Bridge?.OnDocument += InjectApp;
+            App.Bridge?.OnDocument += OnDocument;
         }
 #endif
     }

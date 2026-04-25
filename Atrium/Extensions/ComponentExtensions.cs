@@ -54,7 +54,7 @@ internal static class ComponentExtensions
 
 
 
-    public static async Task<string> ToHtml(this RenderFragment? fragment, IServiceProvider? serviceProvider)
+    public static async Task<string> ToHtml(this RenderFragment? fragment, IServiceProvider? serviceProvider = null)
     {
         if (fragment == null) return string.Empty;
         serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();

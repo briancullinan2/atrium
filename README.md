@@ -41,6 +41,31 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 4/24/2026
+
+In college my friend Travis and i had principals like "don't store a data structure inside a data structure. So here is my
+strongly typed interop injection code:
+
+```csharp
+public static readonly Expression<Func<IWindow, object?, string>> InjectToJson
+    = (window, result) => result is Node ? JSON.stringify(new
+    {
+        type = "node",
+        id = window.getAtriumId((Node)result),
+        path = window.AtriumRegistry.get(window.getAtriumId((Node)result))
+    }) : JSON.stringify(new { type = "value", value = result });
+
+```
+
+this project has deteriorated into my version of webview interop where microsoft thankfully did most of the platforming for that 
+to exist. this javascript C# code is to avoid writing javascript and csharp in separate files, now if i have some injectable need
+like all my idb stuff could probably easily fit into this model and then every statement would be scannable from C# essentially.
+i've maybe out-featured some debugging bridge, we'll see when i get to web assembly.
+
+
+
+
+
 #### 4/23/2026
 
 Just looking at my commit makes me hate this framework. So let's go back and write it out. When Vitale came over i realized i needed
