@@ -1,10 +1,13 @@
 ﻿
 #if !BROWSER
-using Atrium.Components;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.Storage;
+
 #endif
 
+using Atrium.Components;
+using System.ComponentModel;
+using Interfacing.Services;
 
 #if WINDOWS
 using System.Runtime.InteropServices;
@@ -15,9 +18,117 @@ using System.Text.Json.Serialization;
 
 namespace Atrium.Services;
 
-public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<AppDomain>, IDisposable
+// TODO: putting all this in a separate class because i want to make a single copy in between
+//   threads that might affect lists, so it only has to manage itself instead of be preventative 
+//   for all the implementors
+public partial class TrustedState(TrustedLoader? _trust) : IDisposable
 {
-    public static AppDomain Current { get => AppDomain.CurrentDomain; }
+    // TODO: make json compatible by using the based types needed for output
+    [JsonIgnore]
+    public TrustedLoader? Trust { get; set; } = _trust;
+    [JsonIgnore]
+    public List<Assembly> Seen { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> Layouts { get; set; } = [];
+    [JsonIgnore]
+    public List<Assembly> Routable { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> CatchAll { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> Roots { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> AllRoutes { get; set; } = [];
+    [JsonPropertyName(nameof(DisplayLayouts))]
+    public Dictionary<string, string> DisplayLayouts { get => Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayRoutable))]
+    public List<string> DisplayRoutable { get => [..Routable.Select(ass => ass.ToName())]; }
+    [JsonPropertyName(nameof(DisplayCatchAll))]
+    public Dictionary<string, string> DisplayCatchAll { get => CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayRoots))]
+    public Dictionary<string, string> DisplayRoots { get => Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(DisplayAllRoutes))]
+    public Dictionary<string, string> DisplayAllRoutes { get => AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonPropertyName(nameof(IsBootstrapping))]
+    public bool IsBootstrapping { get; set; } = true;
+    [JsonPropertyName(nameof(Error))]
+    public string Error { get; set; } = string.Empty;
+    [JsonPropertyName(nameof(PluginFiles))]
+    public string[] PluginFiles { get; set; } = [];
+    [JsonPropertyName(nameof(PreviousRendered))]
+    public string PreviousRendered { get; set; } = string.Empty;
+    [JsonPropertyName(nameof(LastUpdate))]
+    public DateTime LastUpdate { get; set; }
+    [JsonPropertyName(nameof(Scanning))]
+    public string Scanning { get; set; } = string.Empty;
+    [JsonPropertyName(nameof(ScanningRendered))]
+    public string ScanningRendered { get; set; } = string.Empty;
+    [JsonPropertyName(nameof(PluginSelect))]
+    public string PluginSelect { get; set; } = string.Empty;
+    [JsonIgnore]
+    public Action<PluginContract?>? NotifyDelegate = null;
+    [JsonPropertyName(nameof(DisplayPlugins))]
+    public Dictionary<string, string> DisplayPlugins { get => EnabledPlugins.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    [JsonIgnore]
+    public List<Type>? EnabledPlugins { get; set; } = null;
+    [JsonPropertyName(nameof(EnabledAssemblies))]
+    public Dictionary<string, bool> EnabledAssemblies { get; } = [];
+    [JsonPropertyName(nameof(SystemEnabledAssemblies))]
+    public Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
+
+    [JsonPropertyName(nameof(EnabledAssMappings))]
+    public List<Assembly>? EnabledAssMappings { get; set; } = null;
+    [JsonPropertyName(nameof(DependedAssemblies))]
+    public Dictionary<string, List<string>>? DependedAssemblies { get; set; }
+    [JsonIgnore]
+    public List<Assembly>? DependedAssMappings { get; set; } = null;
+    [JsonIgnore]
+    public ConcurrentDictionary<string, Assembly> LoadedAssemblies = [];
+    [JsonPropertyName(nameof(RequiredAssMappings))]
+    public List<Assembly>? RequiredAssMappings { get; set; } = [];
+    [JsonPropertyName(nameof(DiscoveredStatus))]
+    public Dictionary<string, PluginContract> DiscoveredStatus { get; set; } = [];
+    [JsonIgnore]
+    public Dictionary<Type, List<Type>> StoredServiceable { get; set; } = [];
+    [JsonIgnore]
+    public List<Type> AllPlugins { get; } = [];
+    [JsonPropertyName(nameof(IsRebuilding))]
+    public bool IsRebuilding { get; set; } = false;
+    [JsonPropertyName(nameof(StoredRoot))]
+    public string? StoredRoot = null;
+    [JsonIgnore]
+    public Type? SetRoot
+    {
+        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
+        set => StoredRoot = value?.AssemblyQualifiedName;
+    }
+    public void Dispose()
+    {
+        Trust?.OnAssemblyLoaded -= this.NotifyDelegate;
+        GC.SuppressFinalize(this);
+    }
+}
+
+
+
+
+public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDisposable
+{
+    private static readonly TrustedState CachedState = new(null);
+    private static readonly TrustedState WorkingState = new(null);
+    public static TrustedState State
+    {
+        get
+        {
+            var copy = new TrustedState(null);
+            copy.RestoreState(CachedState.SetState());
+            return copy;
+        }
+    }
+    [JsonIgnore]
+    public static AppDomain Current { get; set; } = AppDomain.CurrentDomain;
+
+    // TODO: move this event into the state since it could be tied to a page
+    //   then call the event delegate inside every trustedstate subscribed to this instance?
     private static event Action? InternalOnSettled;
     public event Action? OnSettled
     {
@@ -27,7 +138,7 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
             // incase anything forgets this bool setOnce = false pattern
             if (InternalOnSettled?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettled += value;
-            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
+            if (WorkingState.IsRebuilding || WorkingState.IsBootstrapping) return; // allow subscribers in without immediately retriggering
             _ = SettleServices(null);
         }
         remove
@@ -47,7 +158,7 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
             // incase anything forgets this bool setOnce = false pattern
             if (InternalOnSettledAsync?.GetInvocationList().Contains(value) == true) return;
             InternalOnSettledAsync += value;
-            if (IsRebuilding || IsBootstrapping) return; // allow subscribers in without immediately retriggering
+            if (WorkingState.IsRebuilding || WorkingState.IsBootstrapping) return; // allow subscribers in without immediately retriggering
             _ = SettleServices(null);
         }
         remove
@@ -70,20 +181,29 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
     public void Enable(string ass)
     {
-        if (EnabledAssemblies.ContainsKey(ass))
-            EnabledAssemblies[ass] = true;
+        if (WorkingState.EnabledAssemblies.ContainsKey(ass))
+            WorkingState.EnabledAssemblies[ass] = true;
         else
-            EnabledAssemblies.TryAdd(ass, true);
+            WorkingState.EnabledAssemblies.TryAdd(ass, true);
+        lock (CachedState)
+            if (CachedState.EnabledAssemblies.ContainsKey(ass))
+                CachedState.EnabledAssemblies[ass] = true;
+            else
+                CachedState.EnabledAssemblies.TryAdd(ass, true);
         Enable(ass, false);
     }
 
     public static void Enable(string ass, bool fromLoader)
     {
-        SystemEnabledAssemblies.TryAdd(ass, true);
-        CachedEnabledAssMappings = null;
-        CachedDependedAssemblies = null;
-        CachedDependedAssMappings = null;
-        CachedRequiredAssMappings = null;
+        WorkingState.SystemEnabledAssemblies.TryAdd(ass, true);
+        lock (CachedState)
+        {
+            CachedState.SystemEnabledAssemblies.TryAdd(ass, true);
+            CachedState.EnabledAssMappings = null;
+            CachedState.DependedAssemblies = null;
+            CachedState.DependedAssMappings = null;
+            CachedState.RequiredAssMappings = null;
+        }
 #if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, true);
 #endif
@@ -97,72 +217,41 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 var loaded = AppDomain.CurrentDomain.Load(new AssemblyName(ass));
                 if (loaded == null) return;
                 // temporary whatever
-                StoredAssemblies.TryAdd(ass, loaded);
+                lock(WorkingState)
+                    WorkingState.LoadedAssemblies.TryAdd(ass, loaded);
+                lock(CachedState)
+                    CachedState.LoadedAssemblies.TryAdd(ass, loaded);
                 TryFindingInterestingTypes(loaded);
             }
             catch (Exception ex)
             {
                 // do something statusy
-                Error = ex.Message;
+                WorkingState.Error = ex.Message;
+                lock(CachedState)
+                    CachedState.Error = ex.Message;
             }
         }
     }
 
     public void Disable(string ass)
     {
-        EnabledAssemblies.Remove(ass);
-        CachedEnabledAssMappings = null;
-        CachedDependedAssemblies = null;
-        CachedDependedAssMappings = null;
-        CachedRequiredAssMappings = null;
+        WorkingState.EnabledAssemblies.Remove(ass);
+        lock (CachedState)
+        {
+            CachedState.EnabledAssemblies.Remove(ass);
+            CachedState.EnabledAssMappings = null;
+            CachedState.DependedAssemblies = null;
+            CachedState.DependedAssMappings = null;
+            CachedState.RequiredAssMappings = null;
+        }
 
 #if !BROWSER
         Preferences.Default.Set("PluginEnabled" + ass, false);
 #endif
     }
 
-    private static readonly ConcurrentDictionary<string, string> Tried = [];
 
-#if false
-
-
-    internal static Dictionary<Type, Type?> DefaultTypes { get; } = new () {
-        { typeof(TrustedLoader), null },
-        { typeof(ITrustProvider), typeof(TrustedLoader) },
-        { typeof(PluginActivator), null },
-        { typeof(LogoService), null },
-        { typeof(CssOutlet), null },
-        { typeof(JavascriptOutlet), null },
-        { typeof(WindowManager), null },
-        { typeof(IWindowManager), typeof(WindowManager) },
-        { typeof(CompositeServiceProvider), null },
-        { typeof(IServiceProvider), typeof(ICompositeProvider) },
-        { typeof(ICompositeProvider), typeof(CompositeServiceProvider) },
-        { typeof(IServiceScopeFactory), typeof(CompositeServiceProvider) },
-        { typeof(IComponentActivator), typeof(PluginActivator) },
-        { typeof(IServiceProviderIsService), typeof(PluginActivator) },
-
-
-    };
-
-    internal static void BuildBaseServices(IServiceCollection collection, IServiceProvider existing)
-    {
-
-        //var hasAuth = AllServices.Any(t => t.Extends(typeof(IAuthService)));
-
-        //if (hasAuth)
-        //{
-        //    collection.AddAuthorizationCore();
-        //   collection.AddCascadingAuthenticationState();
-        //}
-
-        collection.BuildServices(DefaultTypes.Keys.ToList());
-    }
-
-#endif
-
-
-
+    static readonly ConcurrentDictionary<string, string> Tried = [];
     static readonly SemaphoreSlim _entry = new(1, 1);
     static readonly List<Assembly> PileUp = [];
 
@@ -177,16 +266,20 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
             lock (_entry)
             {
-                if (IsRebuilding) return;
+                if (WorkingState.IsRebuilding) return;
 
-                IsRebuilding = true; // was trying to decide to put it here or 3 lines down
+                WorkingState.IsRebuilding = true; // was trying to decide to put it here or 3 lines down
+                lock (CachedState)
+                {
+                    CachedState.IsRebuilding = true;
+                    CachedState.DependedAssemblies = null;
+                    CachedState.EnabledAssMappings = null;
+                    CachedState.DependedAssMappings = null;
+                    CachedState.RequiredAssMappings = null;
+                }
             }
 
 
-            CachedDependedAssemblies = null;
-            CachedEnabledAssMappings = null;
-            CachedDependedAssMappings = null;
-            CachedRequiredAssMappings = null;
 
 
             var mappings = PileUp.SelectMany(ass => ass.GetReferencedAssemblies())
@@ -229,7 +322,7 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 return; // might as well duck out now because we know more are coming
             }
 
-            lock (CachedPluginContracts)
+            lock (CachedState)
             {
                 var old = InternalOnSettled;
                 var oldAsync = InternalOnSettledAsync;
@@ -237,6 +330,7 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 InternalOnSettledAsync = null;
                 old?.Invoke();
                 _ = oldAsync?.Invoke();
+                CachedState.IsRebuilding = false;
             }
         }
         catch (Exception ex)
@@ -248,69 +342,81 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
             lock (_entry)
             {
-                IsRebuilding = false;
+                WorkingState.IsRebuilding = false;
             }
 
         }
     }
 
-    public static Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
-    public Dictionary<string, bool> EnabledAssemblies { get; } = [];
-
-    static List<Assembly>? CachedEnabledAssMappings { get; set; } = null;
-    internal List<Assembly> EnabledAssMappings
+    internal static List<Assembly> EnabledAssMappings
     {
-        get => CachedEnabledAssMappings
-            ??= [..EnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
-        .Concat(SystemEnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key))
-        .Select(ass => LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
-        .OfType<Assembly>()];
+        get
+        {
+            lock(CachedState)
+            {
+                // don't need to touch working state here, these are updated intentionally both places with locks
+                return CachedState.EnabledAssMappings ??= [..CachedState.EnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+                .Concat(CachedState.SystemEnabledAssemblies.Where(kvp => kvp.Value).Select(kvp => kvp.Key))
+                .Select(ass => CachedState.LoadedAssemblies.TryGetValue(ass, out var loaded) ? loaded : null)
+                .OfType<Assembly>()];
+            }
+        }
     }
 
     // TODO: reset to null on user input
-    static Dictionary<string, List<string>>? CachedDependedAssemblies { get; set; } = null;
-    public Dictionary<string, List<string>> DependedAssemblies
+    public static Dictionary<string, List<string>> DependedAssemblies
     {
-        get => CachedDependedAssemblies
-            ??= EnabledAssMappings
-        .Concat(RequiredAssMappings)
-
-        .SelectMany(parentAss =>
-            parentAss.GetReferencedAssemblies()
-                .Select(refAss => new
-                {
-                    Parent = parentAss.ToName(),
-                    Dependency = refAss.ToName()
-                }))
-        .Concat(RequiredAssMappings.Select(a => new
+        get
         {
-            Parent = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).ToName(),
-            Dependency = a.ToName()
-        }))
-        // Filter out null names if any
-        .Where(x => x.Parent != null && x.Dependency != null)
-        // Group by the Dependency (The "Required" assembly on the left)
-        .GroupBy(x => x.Dependency)
-        .ToDictionary(
-            g => g.Key, // The Required Assembly (The "Source")
-            g => g.Select(x => x.Parent).Distinct().ToList() // The "Requirees" (The "Dependents")
-        );
+            lock (CachedState)
+            {
+                return CachedState.DependedAssemblies ??= TrustedLoader.EnabledAssMappings
+                .Concat(RequiredAssMappings)
+
+                .SelectMany(parentAss =>
+                    parentAss.GetReferencedAssemblies()
+                        .Select(refAss => new
+                        {
+                            Parent = parentAss.ToName(),
+                            Dependency = refAss.ToName()
+                        }))
+                .Concat(RequiredAssMappings.Select(a => new
+                {
+                    Parent = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).ToName(),
+                    Dependency = a.ToName()
+                }))
+                // Filter out null names if any
+                .Where(x => x.Parent != null && x.Dependency != null)
+                // Group by the Dependency (The "Required" assembly on the left)
+                .GroupBy(x => x.Dependency)
+                .ToDictionary(
+                    g => g.Key, // The Required Assembly (The "Source")
+                    g => g.Select(x => x.Parent).Distinct().ToList() // The "Requirees" (The "Dependents")
+                );
+            }
+
+        }
     }
 
-    static List<Assembly>? CachedDependedAssMappings { get; set; } = null;
-    public List<Assembly> DependedAssMappings
+    public static List<Assembly> DependedAssMappings
     {
-        get => CachedDependedAssMappings
-            ??= [..RequiredAssMappings, ..EnabledAssMappings
-        .Concat(RequiredAssMappings)
-        .SelectMany(parentAss => parentAss.GetReferencedAssemblies())
-        .Select(ass => {
-            if (LoadedAssemblies.TryGetValue(ass.ToName(), out var loaded) == true) return loaded;
-            return null;
-        })
-        .OfType<Assembly>()
-        .Distinct()
-        ];
+        get
+        {
+            lock (CachedState)
+            {
+                return CachedState.DependedAssMappings
+                    ??= [..RequiredAssMappings, ..global::Atrium.Services.TrustedLoader.EnabledAssMappings
+                .Concat(RequiredAssMappings)
+                .SelectMany(parentAss => parentAss.GetReferencedAssemblies())
+                .Select(ass => {
+                    if (CachedState.LoadedAssemblies.TryGetValue(ass.ToName(), out var loaded) == true) return loaded;
+                    return null;
+                })
+                .OfType<Assembly>()
+                .Distinct()
+                ];
+            }
+        }
     }
 
 
@@ -322,34 +428,31 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         .Select(MetadataReaderExtensions.ToName)
         ];
 
-    private static List<Assembly>? CachedRequiredAssMappings { get; set; } = null;
-    public List<Assembly> RequiredAssMappings
+    public static List<Assembly> RequiredAssMappings
     {
-        get => CachedRequiredAssMappings
-            ??= [..RequiredAssemblies
-        .Select(ass => {
-            if (LoadedAssemblies.TryGetValue(ass, out var loaded) == true) return loaded;
-            return null;
-        })
-        .OfType<Assembly>()
-        .Distinct()
-        ];
+        get
+        {
+            lock (CachedState)
+            {
+                return CachedState.RequiredAssMappings ??= [..RequiredAssemblies
+                .Select(ass => {
+                    if (CachedState.LoadedAssemblies.TryGetValue(ass, out var loaded) == true) return loaded;
+                    return null;
+                })
+                .OfType<Assembly>()
+                .Distinct()
+                ];
+            }
+        }
     }
 
-    private static readonly ConcurrentDictionary<string, Assembly> StoredAssemblies = [];
 
 
-    public Dictionary<string, Assembly> LoadedAssemblies { get => StoredAssemblies.ToDictionary(); }
 
 
     [RequiresAssemblyFiles]
-    public TrustedLoader(
-        IComponentActivator? plugin = null,
-        ICompositeProvider? provider = null)
+    public TrustedLoader()
     {
-        Plugin = plugin;
-        Provider = provider;
-
         var parallel = Environment.ProcessorCount - 4;
 
         var options = new ParallelOptions
@@ -358,11 +461,18 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
             MaxDegreeOfParallelism = Math.Max(1, parallel)
         };
 
-        IsBootstrapping = true;
+        lock(WorkingState)
+            WorkingState.IsBootstrapping = true;
+        lock (CachedState)
+            CachedState.IsBootstrapping = true;
 
         _ = CheckPluginFiles();
 
-        _ = Parallel.ForEachAsync(LoadedAssemblies.Values, options, async (ass, ct) =>
+        List<Assembly>? copy = null;
+        lock (WorkingState)
+            copy = [..WorkingState.LoadedAssemblies.Values];
+
+        _ = Parallel.ForEachAsync(copy ?? [], options, async (ass, ct) =>
         {
             // this is why i put the Seen gate on this and the file scan
             string title = ass.ToName();
@@ -378,7 +488,9 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 IsTrusted: true,
                 Metadata: ass.GetAssemblyInfo()
             );
-            DiscoveredStatus.TryAdd(title, contract);
+
+            lock(CachedState)
+                CachedState.DiscoveredStatus.TryAdd(title, contract);
             OnAssemblyLoaded?.Invoke(contract);
         }).ContinueWith((_) => SettleServices(null), TaskContinuationOptions.NotOnFaulted);
 
@@ -396,12 +508,6 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         OnAssemblyLoaded?.Invoke(obj);
     }
 
-    public static bool IsBootstrapping { get; set; } = false;
-    static ConcurrentDictionary<string, PluginContract> CachedPluginContracts { get; } = new();
-    public Dictionary<string, PluginContract> DiscoveredStatus { get => CachedPluginContracts.ToDictionary(); }
-    public static Dictionary<Type,List<Type>> StoredServiceable { get; } = [];
-    public Dictionary<Type, List<Type>> Serviceable { get => StoredServiceable; }
-    public static List<Type> AllPlugins { get; } = [];
 
     
 
@@ -419,7 +525,10 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         }
 
         Console.WriteLine("Assembly loaded: " + title + " : " + location);
-        StoredAssemblies.TryAdd(title, assembly);
+        lock(WorkingState)
+            WorkingState.LoadedAssemblies.TryAdd(title, assembly);
+        lock(CachedState)
+            CachedState.LoadedAssemblies.TryAdd(title, assembly);
 
 #if !BROWSER
         if (Preferences.Default.Get("PluginEnabled" + title, false))
@@ -438,28 +547,15 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 IsTrusted: true,
                 Metadata: assembly.GetAssemblyInfo()
             );
-            CachedPluginContracts.TryAdd(title, contract);
+
+            lock(CachedState)
+                CachedState.DiscoveredStatus.TryAdd(title, contract);
             PrivateAssemblyLoaded?.Invoke(contract);
             await SettleServices(assembly);
         });
 
     }
 
-    [JsonPropertyName(nameof(StoredRoot))]
-    public string? StoredRoot = null;
-
-    public Type? SetRoot
-    {
-        get => StoredRoot != null ? Type.GetType(StoredRoot) : null;
-        set => StoredRoot = value?.AssemblyQualifiedName;
-    }
-
-    static public List<Type> Layouts { get; } = [];
-    static public List<Assembly> Seen { get; } = [];
-    static public List<Assembly> Routable { get; } = [];
-    static public List<Type> CatchAll { get; } = [];
-    static public List<Type> Roots { get; } = [];
-    static public List<Type> AllRoutes { get; } = [];
 
     private static void TryFindingInterestingTypes(Assembly ass)
     {
@@ -467,15 +563,15 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         {
             Console.WriteLine(ass.ToName());
         }
-        lock (Seen)
+        lock (CachedState)
         {
-            if (Seen.Contains(ass))
+            if (CachedState.Seen.Contains(ass))
                 return;
 
-            Seen.Add(ass);
+            CachedState.Seen.Add(ass);
         }
 
-        if(ass.IsMine())
+        if (ass.IsMine())
         {
             Console.WriteLine(ass.ToName());
         }
@@ -485,49 +581,48 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         var routable = false;
 
 
-        lock (CachedPluginContracts)
-        foreach (var type in allTypes)
-        {
-            try
+        lock (CachedState)
+            foreach (var type in allTypes)
             {
-
-                if (typeof(LayoutComponentBase).IsAssignableFrom(type)
-                    && type != typeof(LayoutComponentBase)
-                    && !Layouts.Contains(type))
-                    Layouts.Add(type);
-
-                if (typeof(IHasPlugins).IsAssignableFrom(type)
-                    && !AllPlugins.Contains(type))
-                    AllPlugins.Add(type);
-
-                if (type.IsServiceable() && !StoredServiceable.ContainsKey(type))
-                    lock(StoredServiceable)
-                            StoredServiceable.TryAdd(type, [..type.GetInterfaces()]);
-
-                if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
-                    && type != typeof(Atrium.Components.PluginsPage)
-                    && !AllRoutes.Contains(type)) // we already know about ourselves
+                try
                 {
-                    routable = true;
-                    if (attr.Template.StartsWith("/*")
-                        || attr.Template.StartsWith("/{*")
-                        || attr.Template.StartsWith('*'))
-                        CatchAll.Add(type);
 
-                    if (attr.Template == "/")
-                        Roots.Add(type);
+                    if (typeof(LayoutComponentBase).IsAssignableFrom(type)
+                        && type != typeof(LayoutComponentBase)
+                        && !CachedState.Layouts.Contains(type))
+                        CachedState.Layouts.Add(type);
 
-                    AllRoutes.Add(type);
+                    if (typeof(IHasPlugins).IsAssignableFrom(type)
+                        && !CachedState.AllPlugins.Contains(type))
+                        CachedState.AllPlugins.Add(type);
+
+                    if (type.IsServiceable() && !CachedState.StoredServiceable.ContainsKey(type))
+                        CachedState.StoredServiceable.TryAdd(type, [.. type.GetInterfaces()]);
+
+                    if (type.GetCustomAttributes<RouteAttribute>().FirstOrDefault() is RouteAttribute attr
+                        && type != typeof(Atrium.Components.PluginsPage)
+                        && !CachedState.AllRoutes.Contains(type)) // we already know about ourselves
+                    {
+                        routable = true;
+                        if (attr.Template.StartsWith("/*")
+                            || attr.Template.StartsWith("/{*")
+                            || attr.Template.StartsWith('*'))
+                            CachedState.CatchAll.Add(type);
+
+                        if (attr.Template == "/")
+                            CachedState.Roots.Add(type);
+
+                        CachedState.AllRoutes.Add(type);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
 
-        if (routable && !Routable.Contains(ass))
-            Routable.Add(ass);
+        if (routable && !CachedState.Routable.Contains(ass))
+            CachedState.Routable.Add(ass);
     }
 
 
@@ -543,9 +638,9 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
     protected static async Task CheckPluginFiles()
     {
         // TODO: refresh button
-        PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
+        CachedState.PluginFiles ??= Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
 
-        var counter = PluginFiles.Length;
+        var counter = CachedState.PluginFiles.Length;
         var parallel = Environment.ProcessorCount - 4;
 
         var options = new ParallelOptions
@@ -555,12 +650,18 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
         };
 
         // Process files in parallel batches to speed up metadata extraction
-        await Parallel.ForEachAsync(PluginFiles, options, async (file, ct) =>
+        await Parallel.ForEachAsync(CachedState.PluginFiles, options, async (file, ct) =>
         {
             --counter;
 
-            if (counter <= 1) // notify UX
-                IsBootstrapping = false;
+            if (counter <= 1)
+            {
+                // notify UX
+                lock(WorkingState)
+                    WorkingState.IsBootstrapping = false;
+                lock (CachedState)
+                    CachedState.IsBootstrapping = false;
+            }
 
             var title = Path.GetFileNameWithoutExtension(file);
             if (title.Contains("RazorSharp") == true)
@@ -576,7 +677,11 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
             if (Preferences.Default.Get("PluginEnabled" + title, false))
             {
                 Enable(title, false);
-                if (StoredAssemblies.TryGetValue(title, out var ass))
+                Assembly? ass = null;
+                lock (CachedState)
+                    CachedState.LoadedAssemblies.TryGetValue(title, out ass);
+
+                if (ass != null)
                     TryFindingInterestingTypes(ass);
                 else
                     Console.WriteLine("Assembly enabled but types not loaded: " + title);
@@ -591,7 +696,8 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                 IsTrusted: false,
                 Metadata: new AssemblyInfo("Not Loaded", "", "", Path.GetFileNameWithoutExtension(file), LevelOfTrust.Untrusted)
             );
-            CachedPluginContracts.TryAdd(title, unloadedContract);
+            lock(CachedState)
+                CachedState.DiscoveredStatus.TryAdd(title, unloadedContract);
             PrivateAssemblyLoaded?.Invoke(unloadedContract);
 
             await Task.Delay((counter % parallel) * 100, ct); // burst mode
@@ -610,10 +716,11 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
             );
 
             // Thread-safe update to the UI list
-            if (CachedPluginContracts.ContainsKey(title))
-                CachedPluginContracts[title] = contract;
-            else
-                CachedPluginContracts.TryAdd(title, contract);
+            lock(CachedState)
+                if (CachedState.DiscoveredStatus.ContainsKey(title))
+                    CachedState.DiscoveredStatus[title] = contract;
+                else
+                    CachedState.DiscoveredStatus.TryAdd(title, contract);
 
             // Tell the UI to refresh as each item arrives
             PrivateAssemblyLoaded?.Invoke(contract);
@@ -629,29 +736,45 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                         IsTrusted: (int)trust.Value > 2,
                         Metadata: meta
                     );
-                    if (CachedPluginContracts.ContainsKey(title))
-                        CachedPluginContracts[title] = newContract;
-                    else
-                        CachedPluginContracts.TryAdd(title, newContract);
+                    lock (CachedState)
+                        if (CachedState.DiscoveredStatus.ContainsKey(title))
+                            CachedState.DiscoveredStatus[title] = newContract;
+                        else
+                            CachedState.DiscoveredStatus.TryAdd(title, newContract);
                     PrivateAssemblyLoaded?.Invoke(newContract);
                 }
             }
         });
 
-        IsBootstrapping = false;
+        lock(WorkingState)
+            WorkingState.IsBootstrapping = false;
+        lock (CachedState)
+            CachedState.IsBootstrapping = false;
         await SettleServices(null);
     }
 
 
 
-    public static List<Type> EnabledPlugins { get; private set; } = [];
+    
 
     [RequiresAssemblyFiles()]
-    public async Task CheckStatus()
+    public async Task CheckStatus(ICompositeProvider? Composite)
     {
-        if (Provider == null) return;
-        EnabledPlugins ??= await GetEnabledPlugins(Provider);
-        foreach (var plugin in EnabledPlugins)
+        List<Type>? copy = null;
+
+        lock (CachedState)
+            if(CachedState.EnabledPlugins != null)
+                copy = [..CachedState.EnabledPlugins];
+
+        if(copy == null)
+        {
+            copy = await GetEnabledPlugins(Composite);
+            lock (CachedState)
+                CachedState.EnabledPlugins = copy;
+        }
+
+
+        foreach (var plugin in copy ?? [])
         {
             var title = plugin.Assembly.ToName();
             var newContract = new PluginContract(
@@ -660,16 +783,22 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
                     IsTrusted: false, //metadata?.IsTrusted ?? false,
                     Metadata: plugin.GetAssemblyInfo()
                 );
-            DiscoveredStatus.TryAdd(title, newContract);
+            lock(CachedState)
+                CachedState.DiscoveredStatus.TryAdd(title, newContract);
             OnAssemblyLoaded?.Invoke(newContract);
         }
     }
 
     // TODO: use this on service startup? way to bootstrap another container?
-    public static async Task<List<Type>> GetEnabledPlugins(ICompositeProvider service)
+    public static async Task<List<Type>> GetEnabledPlugins(ICompositeProvider? service)
     {
+        if (service == null) return [];
+        List<Type>? copy = null;
+        lock(CachedState)
+            copy = [..CachedState.AllPlugins];
+
         List<Type> enabledPlugins = [];
-        foreach (var plugin in AllPlugins)
+        foreach (var plugin in copy ?? [])
         {
             var myDelegate = plugin.GetProperty(nameof(IHasPlugins.Installed), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as Delegate;
             if (myDelegate == null || typeof(Task<string?>).IsAssignableFrom(Nullable.GetUnderlyingType(myDelegate.Method.ReturnType)
@@ -689,9 +818,6 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
     }
 
 
-    public static bool IsLoading { get; private set; } = false;
-
-
 
     private static void ReloadAppDomain()
     {
@@ -709,7 +835,10 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
                 var title = ass.ToName();
                 Console.WriteLine("Assembly loaded: " + title + " : " + ass.Location);
-                StoredAssemblies.TryAdd(title, ass);
+                lock(WorkingState)
+                    WorkingState.LoadedAssemblies.TryAdd(title, ass);
+                lock (CachedState)
+                    CachedState.LoadedAssemblies.TryAdd(title, ass);
                 if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) continue;
                 if (title.Contains("RazorSharp") == true)
                 {
@@ -725,8 +854,6 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
     }
 
-    private static string[]? PluginFiles { get; set; } = null;
-    public static string? Error { get; private set; }
 
     // GUID for the Action to verify a file using the Authenticode Policy Provider
 #if WINDOWS
@@ -738,9 +865,6 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
     //private static string MyCertificatePath => Path.Combine(HomeDir, ".credentials\\my-code-signing.pfx");
     //private static X509Certificate2 Mine => X509CertificateLoader.LoadCertificateFromFile(MyCertificatePath);
     private static readonly List<string> Whitelist = ["B1FB6C91198947FC"];
-    private readonly IComponentActivator? Plugin;
-    private readonly ICompositeProvider? Provider;
-    private static bool IsRebuilding = false;
 
     static event Action<PluginContract>? PrivateAssemblyLoaded;
 
@@ -828,14 +952,15 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 
         // TODO: temporary
         AssemblyInfo? meta = null;
-        if (StoredAssemblies.TryGetValue(title, out var ass))
-            meta = new AssemblyInfo(
-                ass.GetProduct(),
-                ass.GetCompany(),
-                ass.GetPublisher(),
-                ass.GetPackage(),
-                level.Value
-            );
+        lock(WorkingState)
+            if (WorkingState.LoadedAssemblies.TryGetValue(title, out var ass))
+                meta = new AssemblyInfo(
+                    ass.GetProduct(),
+                    ass.GetCompany(),
+                    ass.GetPublisher(),
+                    ass.GetPackage(),
+                    level.Value
+                );
         //else if (EnabledAssemblies.TryGetValue(title, out var status) && status)
         //    meta = MetadataReaderExtensions.GetAssemblyInfo(filePath);
 
@@ -886,3 +1011,4 @@ public partial class TrustedLoader : ITrustProvider, ITrustStatic, IHasCurrent<A
 #endif
 
 }
+

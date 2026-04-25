@@ -164,6 +164,8 @@ public class PageManager(ICompositeProvider Composite, IRenderState Rendered) : 
                     _restartRequired = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             };
+
+            // TODO: keep this part, but remove IJSRuntime, use new interop
             _module = await ((IJSRuntime)Rendered.Runtime).InvokeAsync<IJSObjectReference>("import", "/connect.js");
             dotNetHelper = DotNetObjectReference.Create(this);
             var methods = GetType().GetMethods()

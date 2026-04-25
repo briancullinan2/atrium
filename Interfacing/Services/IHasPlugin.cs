@@ -71,21 +71,11 @@ public class Dumbass { }
 
 public interface ITrustProvider
 {
-    //Task<AssemblyInfo?> GetAssemblyInfoAsync(string filepath, string? pubKey = null);
-    //Task<LevelOfTrust?> GetTrustedAsync(string filepath, string? pubKey = null);
     event Action<PluginContract> OnAssemblyLoaded;
     event Action? OnSettled;
     event Func<Task>? OnSettledAsync;
-    //bool IsBootstrapping { get; }
-    //List<string> RequiredAssemblies { get; }
-    Dictionary<string, Assembly> LoadedAssemblies { get; }
-    Dictionary<string, bool> EnabledAssemblies { get; }
     void Enable(string ass);
     void Disable(string ass);
-    Dictionary<string, List<string>> DependedAssemblies { get; }
-    Dictionary<string, PluginContract> DiscoveredStatus { get; }
-    Dictionary<Type, List<Type>> Serviceable { get; }
-    Type? SetRoot { get; }
 }
 
 public interface ITrustStatic : ITrustProvider // dumbass DI compile error

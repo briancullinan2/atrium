@@ -6,52 +6,7 @@ using static Microsoft.AspNetCore.Components.Web.RenderMode;
 namespace Atrium.Services;
 
 
-
-public class PluginActivator(ICompositeProvider Composite, IServiceProvider Service) : IComponentActivator //, ISingleUser //, IHasCurrent<PluginActivator> // Current is null
-{
-    private static readonly FieldInfo? renderMode;
-
-    static PluginActivator()
-    {
-        renderMode = typeof(ComponentBase).GetField("_renderMode", BindingFlags.Instance | BindingFlags.NonPublic);
-
-    }
-
-    // TODO: replace Presentation with an extended type selected by main layout or query string
-
-    public IComponent CreateInstance(Type componentType)
-    {
-        /*if (componentType.GetInterfaces().Any(inter => inter == typeof(IHasCurrent<RenderFragment>)) {
-            var frag = (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as RenderFragment)
-            return componentType.
-        }*/
-
-        IComponent? serviceComponent;
-        //var scoped = Composite.CreateScope().ServiceProvider;
-        if(Service.GetService<IServiceProviderIsService>()?.IsService(componentType) == true)
-            serviceComponent = (IComponent)Service.GetRequiredService(componentType);
-
-        else if (Composite.IsService(componentType))
-            serviceComponent = (IComponent)Composite.GetRequiredService(componentType);
-
-        else
-            serviceComponent = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
-
-        if (serviceComponent is ComponentBase baseComponent
-                && Composite.GetService<IFormFactor>()?.IsWebContext == true)
-        {
-            renderMode?.SetValue(baseComponent, new ValueTuple<IComponentRenderMode?, bool>(InteractiveServer, true));
-        }
-
-        serviceComponent.InjectService(Composite);
-        // TODO: IHasCurrent, always use Current IComponent instead of creating a new one
-
-        return serviceComponent;
-    }
-
-}
-
-
+// step #1. fuck microsoft di
 
 public partial class CompositeServiceProvider(IServiceCollection _provider, bool _scoped = false) : List<ServiceDescriptor>
     , IServiceProvider
@@ -62,6 +17,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     , ICompositeProvider
     , IServiceScope
     , IServiceCollection
+    , IDisposable
 {
 
 
@@ -69,6 +25,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     {
         // Return a concatenated stream of all descriptors in all plugin containers
         return PluginContainers
+            .Concat(DisposableContainers)
             .SelectMany(container => container)
             .GetEnumerator();
     }
@@ -78,10 +35,12 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     public new void Clear() => throw new InvalidOperationException("Clear individual plugin containers instead.");
 
     public List<Type> UserTypes { get; } = [];
+    public List<object> Disposables { get; } = [];
 
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy
     public List<IServiceCollection> PluginContainers { get; } = [_provider];
+    public List<IServiceCollection> DisposableContainers { get; } = [];
 
     public object GetService(Type serviceType)
     {
@@ -100,7 +59,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         try
         {
             List<IServiceCollection>? MyPlugins = null;
-            lock (PluginContainers) MyPlugins = [..PluginContainers];
+            lock (PluginContainers) MyPlugins = [..PluginContainers, ..DisposableContainers];
 
             foreach(var container in MyPlugins ?? [])
             {
@@ -113,11 +72,13 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
                     throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
                 }
                 var result = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+                if(result != null && isService?.Lifetime == ServiceLifetime.Scoped)
+                    Disposables.Add(result);
                 if (result != null)
                     return result;
             }
 
-            if (PluginContainers.Count <= 1)
+            if (PluginContainers.Count <= 1 && DisposableContainers.Count <= 1)
                 Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!Plugins is null!!!!!!!!!!!!!!");
 
             if(serviceType == typeof(PluginsPage))
@@ -137,12 +98,12 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
     }
 
-    static Dictionary<Type, List<Type>>? services;
+    static Dictionary<Type, List<Type>>? serviceTypes;
 
     static CompositeServiceProvider()
     {
         lock (TrustedLoader.StoredServiceable)
-            services = TrustedLoader.StoredServiceable.ToDictionary();
+            serviceTypes = TrustedLoader.StoredServiceable.ToDictionary();
     }
 
 
@@ -153,10 +114,10 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         var collection = new ServiceCollection();
 
         lock(TrustedLoader.StoredServiceable)
-            services = TrustedLoader.StoredServiceable.ToDictionary();
+            serviceTypes = TrustedLoader.StoredServiceable.ToDictionary();
 
-        var baseType = services.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
-            ?? services.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
+        var baseType = serviceTypes.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
+            ?? serviceTypes.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
 
         if (baseType == null) return null;
 
@@ -167,7 +128,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
             .Select(parameter => parameter.ParameterType)
             .ToList();
 
-        var moreServices = services
+        var moreServices = serviceTypes
             .Where(kvp => moreRequirements.Any(req => kvp.Key.Extends(req)
                 || kvp.Value.Any(inter => inter.Extends(req))))
             .Select(kvp => kvp.Key)
@@ -182,8 +143,13 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
                 UserTypes.Add(t.ServiceType);
 
 
-        lock(PluginContainers)
-            PluginContainers.Add(collection);
+        lock (PluginContainers)
+        {
+            if (_scoped)
+                DisposableContainers.Add(collection);
+            else
+                PluginContainers.Add(collection);
+        }
         var isService = InjectionExtensions.FindService(collection, serviceType);
         return InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
     }
@@ -233,6 +199,26 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
     public void Dispose()
     {
+        foreach(var container in DisposableContainers)
+        {
+            if (container is ICompositeProvider composite)
+                composite.Dispose();
+            if (container is IAsyncDisposable asyncTrash)
+                _ = asyncTrash.DisposeAsync(); // i give a f, tasks have always been set and forget to me
+        }
+
+        foreach (var disposable in Disposables)
+        {
+            if (disposable is IAsyncDisposable asyncTrash)
+                _ = asyncTrash.DisposeAsync();
+            if (disposable is IDisposable trash)
+                trash.Dispose();
+        }
+
+        Disposables.Clear();
+        DisposableContainers.Clear();
+        PluginContainers.Clear();
+
         GC.SuppressFinalize(this);
     }
 
@@ -241,7 +227,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         //if (services?.ContainsKey(serviceType) == true
         //    || services?.Any(s => s.Value.Contains(serviceType)) == true)
         //    return true;
-        foreach (var container in PluginContainers)
+        List<IServiceCollection> containers = [.. PluginContainers, .. DisposableContainers];
+        foreach (var container in containers)
         {
             if (InjectionExtensions.FindService(container, serviceType) != null)
             {
@@ -252,17 +239,17 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     }
 
     public static List<Type> BuiltIn { get; } = [
-        typeof(PluginActivator),
+        //typeof(PluginActivator),
         typeof(CompositeServiceProvider),
-        typeof(RenderStateProvider),
+        //typeof(RenderStateProvider),
         typeof(Atrium.Components.MainLoader)
     ];
 
 
     public List<Type> SingleUser { get; } = [
         typeof(HttpClient),
-        typeof(NavigationManager),
-        typeof(IJSRuntime),
+        //typeof(NavigationManager),
+        //typeof(IJSRuntime),
         typeof(IConfiguration),
         //{typeof(ILogger<>), typeof(Logger<>)  },
         typeof(ILoggerFactory),
@@ -340,3 +327,55 @@ internal static class InjectionExtensions
     }
 
 }
+
+
+// step 2. fuck component di
+
+#if false
+
+public class PluginActivator(ICompositeProvider Composite, IServiceProvider Service) : IComponentActivator //, ISingleUser //, IHasCurrent<PluginActivator> // Current is null
+{
+    private static readonly FieldInfo? renderMode;
+
+    static PluginActivator()
+    {
+        renderMode = typeof(ComponentBase).GetField("_renderMode", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    }
+
+    // TODO: replace Presentation with an extended type selected by main layout or query string
+
+    public IComponent CreateInstance(Type componentType)
+    {
+        /*if (componentType.GetInterfaces().Any(inter => inter == typeof(IHasCurrent<RenderFragment>)) {
+            var frag = (GetType().GetProperty("Current", BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as RenderFragment)
+            return componentType.
+        }*/
+
+        IComponent? serviceComponent;
+        //var scoped = Composite.CreateScope().ServiceProvider;
+        if(Service.GetService<IServiceProviderIsService>()?.IsService(componentType) == true)
+            serviceComponent = (IComponent)Service.GetRequiredService(componentType);
+
+        else if (Composite.IsService(componentType))
+            serviceComponent = (IComponent)Composite.GetRequiredService(componentType);
+
+        else
+            serviceComponent = (IComponent)ActivatorUtilities.CreateInstance(Composite, componentType);
+
+        if (serviceComponent is ComponentBase baseComponent
+                && Composite.GetService<IFormFactor>()?.IsWebContext == true)
+        {
+            renderMode?.SetValue(baseComponent, new ValueTuple<IComponentRenderMode?, bool>(InteractiveServer, true));
+        }
+
+        serviceComponent.InjectService(Composite);
+        // TODO: IHasCurrent, always use Current IComponent instead of creating a new one
+
+        return serviceComponent;
+    }
+
+}
+
+
+#endif

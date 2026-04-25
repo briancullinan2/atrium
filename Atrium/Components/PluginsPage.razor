@@ -6,6 +6,8 @@
 
 @code {
 
+    // TODO: now the goal, limit the number of copies of trusted display information we're pulling
+
     public static async Task OnSettled(ICompositeProvider? Composite)
     {
         var Trust = Composite?.GetService<TrustedLoader>();

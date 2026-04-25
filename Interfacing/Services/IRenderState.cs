@@ -117,192 +117,49 @@ public interface ISettings
 }
 
 
-// TODO: add component state saving stuff here because its also agnostic and small
-
-public class RenderStateProvider(ICompositeProvider Provider) : IRenderState, IDisposable
-{
-
-    private object? _runtime = null;
-    public object Runtime
-    {
-        get
-        {
-            if (!_renderTcs.Task.IsCompleted || _runtime == null)
-            {
-                throw new InvalidOperationException("JSRuntime is not available. Ensure that the component is rendered before registering for scroll events.");
-            }
-            return _runtime;
-        }
-        private set => _runtime = value;
-    }
-
-
-    // This is the task your LocalStore will 'Then' off of
-    private Action? _onRendered;
-    public event Action? OnRendered
-    {
-        add
-        {
-            _onRendered += value;
-            // The "Sticky" logic: If the condition is already met, 
-            // fire the callback for this specific subscriber immediately.
-            if (IsReady)
-            {
-                value?.Invoke();
-            }
-        }
-        remove => _onRendered -= value;
-    }
-    public event Action? OnEmptied;
-
-
-
-    private TaskCompletionSource<bool> _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private Dictionary<string, string?>? previousState;
-
-    public async ValueTask EnsureInitialized()
-    {
-        // Capture the current task so we don't await a version that gets swapped mid-stream
-        var currentTask = _renderTcs.Task;
-        await currentTask;
-    }
-
-    public bool IsReady => _renderTcs.Task.IsCompleted && _renderTcs.Task.Result == true;
-
-    public void NotifyRendered(object? runtime)
-    {
-        _runtime = runtime;
-        // Fulfill the promise for everyone currently waiting
-        _renderTcs.TrySetResult(true);
-        //OffsetInMinutes = await Page.GetTimezoneOffset();
-        _onRendered?.Invoke();
-    }
-
-    public void NotifyEmptied(object? runtime)
-    {
-        _runtime ??= runtime; // if !null then its OnInitialize
-
-        if (_renderTcs.Task.IsCompleted)
-            //_renderTcs.TrySetResult(false);
-        //else
-            _renderTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        OnEmptied?.Invoke();
-        OnEmptied = null;
-    }
-
-
-    public void Dispose()
-    {
-        _renderTcs.TrySetResult(false);
-        OnEmptied?.Invoke();
-        OnEmptied = null;
-        GC.SuppressFinalize(this);
-    }
-
-
-    // TODO: move this to IRenderState to free up IPageEvents to only deal with eventing
-
-    public int OffsetInMinutes { get; private set; }
-    public ConcurrentDictionary<string, string?> InFlight { get; } = [];
-
-    public Dictionary<string, string?> State { get; set; } = [];
-
-    public event Action<object?>? OnStateChanged;
-
-    public void ClearRedirect()
-    {
-        var Page = Provider.GetRequiredService<IFormFactor>();
-        if (InFlight.ContainsKey(Page.ConnectionId))
-            InFlight.Remove(Page.ConnectionId, out _);
-    }
-
-
-    // prevent redirect loops
-    public async Task<string?> FilterRedirect(string loginUri)
-    {
-        var Page = Provider.GetRequiredService<IFormFactor>();
-
-        InFlight.TryGetValue(Page.ConnectionId, out var existing);
-
-        InFlight[Page.ConnectionId] = loginUri;
-
-        if (existing?.Contains("login", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            return null;
-        }
-
-        return loginUri;
-        // 'forceLoad: true' triggers a full browser refresh/intercept, 
-        // which is standard for Auth redirects.
-        //Nav.NavigateTo(loginUri, forceLoad: true);
-    }
-
-
-    public virtual bool SetState(object? state)
-    {
-        if (OperatingSystem.IsBrowser())
-        {
-            throw new InvalidOperationException("This probably wont work from the web client.");
-        }
-        if (state == null)
-        {
-            return false;
-        }
-        State.TryGetValue(state.GetType().Name.ToSafe(), out string? before);
-        var after = state.ToSerialized();
-        State[state.GetType().Name.ToSafe()] = after;
-        OnStateChanged?.Invoke(state);
-        return before != after;
-        //var Form = Provider.GetRequiredService<IFormFactor>();
-        //await Form.SetState();
-    }
-
-    public virtual async Task<Dictionary<string, string?>?> RestoreState(object component)
-    {
-        if (!OperatingSystem.IsBrowser())
-        {
-            throw new InvalidOperationException("This probably wont work from server.");
-        }
-        //await EnsureInitialized(); // allow early because reading out of window with IJSRuntime directly
-        var Page = Provider.GetRequiredService<IPageState>();
-        if (_runtime == null)
-            Console.WriteLine("Error: State ran with no runtime. State won't work.");
-        else
-            Console.WriteLine("Note: State ran with runtime. State should work. " + _runtime.GetType().AssemblyQualifiedName);
-
-        var state = await Page.RestoreState(_runtime);
-        state = (state ?? []).Concat(previousState ?? []).DistinctBy(kvp => kvp.Key).ToDictionary();
-        previousState = state;
-        Console.WriteLine("State: " + JsonSerializer.Serialize(state));
-        if (state?.TryGetValue("state_" + component.GetType().Name.ToSafe(), out string? componentState) == true)
-        {
-            Console.WriteLine("Restoring: " + component.GetType().Name);
-            if (componentState == null)
-            {
-                return null;
-            }
-
-            var deserializedState = JsonSerializer.Deserialize<Dictionary<string, string?>>(componentState);
-            Console.WriteLine("Deserializing: " + componentState);
-            if (deserializedState == null)
-            {
-                return null;
-            }
-            component.ToProperties(deserializedState);
-        }
-        return state;
-    }
-
-}
-
-
-internal static partial class StateExtensions
+public static partial class StateExtensions
 {
     [GeneratedRegex(@"[^a-zA-Z0-9]+", RegexOptions.IgnoreCase, "en-US")]
     private static partial Regex SafeRegex();
 
-    public static string ToSafe(this string url)
+    public static string? SetState(this object? state)
+    {
+        // TODO: move this error message to new render state implementer
+        //if (OperatingSystem.IsBrowser())
+        //{
+        //    throw new InvalidOperationException("This probably wont work from the web client.");
+        //}
+        if (state == null)
+        {
+            return null;
+        }
+        return state.ToSerialized();
+    }
+
+    public static Dictionary<string, string?>? RestoreState(this object component, string? componentState)
+    {
+        // TODO: move this error message to new render state implementer
+        //if (!OperatingSystem.IsBrowser())
+        //{
+        //    throw new InvalidOperationException("This probably wont work from server.");
+        //}
+        Console.WriteLine("Restoring: " + component.GetType().Name);
+        if (componentState == null)
+        {
+            return null;
+        }
+
+        var deserializedState = JsonSerializer.Deserialize<Dictionary<string, string?>>(componentState);
+        Console.WriteLine("Deserializing: " + componentState);
+        if (deserializedState == null)
+        {
+            return null;
+        }
+        component.ToProperties(deserializedState);
+        return deserializedState;
+    }
+
+    internal static string ToSafe(this string url)
     {
         if (string.IsNullOrEmpty(url)) return string.Empty;
         string[] words = SafeRegex().Split(url);
@@ -316,7 +173,7 @@ internal static partial class StateExtensions
         return result[..Math.Min(result.Length, 100)];
     }
 
-    public static string ToSerialized<TComponent>(this TComponent component) where TComponent : class
+    internal static string ToSerialized<TComponent>(this TComponent component) where TComponent : class
     {
         Dictionary<string, string?> result = [];
         var props = component.GetType()
@@ -350,7 +207,7 @@ internal static partial class StateExtensions
         return JsonSerializer.Serialize(result);
     }
 
-    public static void ToProperties<TComponent>(this TComponent component, Dictionary<string, string?> pageValues) where TComponent : class
+    internal static void ToProperties<TComponent>(this TComponent component, Dictionary<string, string?> pageValues) where TComponent : class
     {
         var props = component.GetType()
             .GetProperties(BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -411,7 +268,7 @@ internal static partial class StateExtensions
         }
     }
 
-    public static TEnum? TryParse<TEnum>(this string val) where TEnum : struct, Enum
+    internal static TEnum? TryParse<TEnum>(this string val) where TEnum : struct, Enum
     {
         return TryParse<TEnum>((object)val);
     }
@@ -422,7 +279,7 @@ internal static partial class StateExtensions
     //    return TryParse<TEnum>(val);
     //}
 
-    public static TEnum? TryParse<TEnum>(object val) where TEnum : struct, Enum
+    internal static TEnum? TryParse<TEnum>(object val) where TEnum : struct, Enum
     {
         if (val is int love || int.TryParse(val.ToString(), out love))
         {
