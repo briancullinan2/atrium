@@ -83,7 +83,9 @@ public interface IDocument : IObject, IJsProxy
 
     string title { get; set; }
     IElement createElement(string node);
+    IElement createDocumentFragment();
     IElement querySelector(string sel);
+    IArray<IElement> querySelectorAll(string sel);
     IElement getElementById(string id);
 }
 
@@ -268,7 +270,7 @@ public interface INode : IObject, IJsProxy
     int nodeType { get; }
     INode? parentNode { get; }
     INodeCollection childNodes { get; }
-
+    INode insertBefore(INode newNode, INode referenceNode);
     void appendChild(INode child);
     void removeChild(INode child);
 }
@@ -295,7 +297,7 @@ public interface IElement : IObject, INode, IJsProxy
     string innerHTML { get; set; }
     IElementCollection children { get; }
     IDocumentFragment content { get; }
-
+    void remove();
     // Core DOM methods
     void addEventListener(string type, Action<object> listener);
     IElement querySelector(string selector);
@@ -682,7 +684,7 @@ public abstract class WebViewBase : IWebViewBridge
             ?? throw new InvalidOperationException("UiDispatcher must be initialized on the UI thread.");
 
         _cts = new CancellationTokenSource();
-
+        _context = new(Composite);
         Task = System.Threading.Tasks.Task.Factory.StartNew(() =>
         {
             ThreadId = Environment.CurrentManagedThreadId;
@@ -691,16 +693,16 @@ public abstract class WebViewBase : IWebViewBridge
         }, _cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
-    private readonly SingleThreadSynchronizationContext _context = new();
-    public void InvokeAsync(Func<Task> action) => _context.PostTask(action);
+    private readonly SingleThreadSynchronizationContext _context;
+    public void InvokeAsync(Delegate action, params object?[]? parameters) => _context.PostTask(action, parameters);
     public void Stop() => _cts?.Cancel();
 }
 
 
 
-public class SingleThreadSynchronizationContext : SynchronizationContext
+public class SingleThreadSynchronizationContext(ICompositeProvider Composite) : SynchronizationContext
 {
-    private readonly BlockingCollection<Action> _queue = [];
+    private readonly BlockingCollection<Tuple<Delegate, object?>> _queue = [];
 
     // This is the "RunLoop"
     public void Run(CancellationToken token)
@@ -708,16 +710,16 @@ public class SingleThreadSynchronizationContext : SynchronizationContext
         SynchronizationContext.SetSynchronizationContext(this);
         foreach (var action in _queue.GetConsumingEnumerable(token))
         {
-            action();
+            action.Item1.InvokeService(Composite, action.Item2);
         }
     }
 
     public override void Post(SendOrPostCallback d, object? state)
-        => _queue.Add(() => d(state));
+        => _queue.Add(Tuple.Create<Delegate, object?>(d, state));
 
     // Helper for your InvokeAsync
-    public void PostTask(Func<Task> action)
-        => _queue.Add(async () => await action());
+    public void PostTask(Delegate action, params object?[]? parameters)
+        => _queue.Add(Tuple.Create<Delegate, object?>(action, parameters));
 }
 
 

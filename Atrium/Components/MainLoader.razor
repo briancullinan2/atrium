@@ -1,5 +1,3 @@
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Components.Web
 
 @code
 {
@@ -66,7 +64,28 @@
         }
     }
 
+    public static void Replace(IWindow window, string selector, string content)
+    {
+        try
+        {
+            var nodesToRemove = window.document.querySelectorAll(selector);
+            var template = window.document.createElement("template");
 
+            // Direct assignment and fragment injection
+            template.innerHTML = content;
+            var fragment = window.document.createDocumentFragment();
+
+            window.Array.from(template.content.children).forEach(node => fragment.appendChild(node));
+
+            var firstNode = nodesToRemove[0];
+            firstNode.parentNode?.insertBefore(fragment, firstNode);
+            nodesToRemove.forEach(oldNode => oldNode.remove());
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+    }
 
 
     public static RenderFragment RenderHeader(IRenderState? State, IHasClass? Css)
@@ -122,20 +141,9 @@
             <link rel="stylesheet" href="/_content/RazorSharp/css/bootstrap-icons/bootstrap-icons.min.css">
             <link rel="stylesheet" href="/css/app.css" />
             <link rel="icon" type="image/png" href="favicon.ico" />
-            <AntiforgeryToken />
         </head>
 
         <body>
-
-            <script src="/_content/RazorSharp/main.js"></script>
-            <script src="/_content/WebClient/blazor.web.js" autostart="false"></script>
-
-            <script>
-                document.addEventListener("DOMContentLoaded", startBlazor);
-
-                manageServiceWorker();
-
-            </script>
 
             <div id="app">
                 @RenderMain(Css, Main)
@@ -187,12 +195,9 @@
         var State = Composite?.GetService<IRenderState>();
         RenderHeader(State, Classy);
 
-        var Page = Composite?.GetService<PageManager>();
-        if (Page == null) return;
-        await Page.EnsureInitialized();
-        await Page.Replace("#page", newMain);
-        await Page.Replace("#page > .cover-page > article", Main?.PluginContent);
-        await Page.Replace("#page > main:not(.cover-page) > article", Main?.Body);
+        App.Bridge?.InvokeAsync(Replace, "#page", newMain);
+        App.Bridge?.InvokeAsync(Replace, "#page > .cover-page > article", Main?.PluginContent);
+        App.Bridge?.InvokeAsync(Replace, "#page > main:not(.cover-page) > article", Main?.Body);
 
     }
 

@@ -35,7 +35,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
     public new void Clear() => throw new InvalidOperationException("Clear individual plugin containers instead.");
 
     public List<Type> UserTypes { get; } = [];
-    public List<object> Disposables { get; } = [];
+    public Dictionary<Type, object> Disposables { get; } = [];
+    public Dictionary<Type, object> Indisposables { get; } = [];
 
     public IServiceProvider Services => this;
     // something you got to introduce a little... anarchy
@@ -63,17 +64,30 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
             foreach(var container in MyPlugins ?? [])
             {
-                var isService = container.FirstOrDefault(s => s.ServiceType == serviceType
-                    || s.ImplementationType == serviceType)
-                    ?? container.FirstOrDefault(s => s.ServiceType.Extends(serviceType)
-                    || s.ImplementationType.Extends(serviceType));
+                var isService = container.FindService(serviceType);
                 if(isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
                 {
                     throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
                 }
+                if (isService == null) continue;
+
+                if (isService.Lifetime == ServiceLifetime.Scoped)
+                    if (Disposables.TryGetValue(isService.ServiceType, out var existing))
+                        return existing;
+
+                if (isService.Lifetime == ServiceLifetime.Singleton)
+                    if (Indisposables.TryGetValue(isService.ServiceType, out var existing))
+                        return existing;
+
                 var result = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+
+
                 if(result != null && isService?.Lifetime == ServiceLifetime.Scoped)
-                    Disposables.Add(result);
+                    Disposables.Add(isService.ServiceType, result);
+
+                if (result != null && isService?.Lifetime == ServiceLifetime.Singleton)
+                    Indisposables.Add(isService.ServiceType, result);
+
                 if (result != null)
                     return result;
             }
@@ -151,7 +165,19 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
                 PluginContainers.Add(collection);
         }
         var isService = InjectionExtensions.FindService(collection, serviceType);
-        return InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+        if (isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
+        {
+            throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
+        }
+        var serviceObject = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+
+        if (serviceObject != null && isService?.Lifetime == ServiceLifetime.Scoped)
+            Disposables.Add(isService.ServiceType, serviceObject);
+
+        if (serviceObject != null && isService?.Lifetime == ServiceLifetime.Singleton)
+            Indisposables.Add(isService.ServiceType, serviceObject);
+
+        return serviceObject;
     }
 
 
@@ -209,9 +235,9 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
         foreach (var disposable in Disposables)
         {
-            if (disposable is IAsyncDisposable asyncTrash)
+            if (disposable.Value is IAsyncDisposable asyncTrash)
                 _ = asyncTrash.DisposeAsync();
-            if (disposable is IDisposable trash)
+            if (disposable.Value is IDisposable trash)
                 trash.Dispose();
         }
 
@@ -289,9 +315,9 @@ internal static class InjectionExtensions
     public static ServiceDescriptor? FindService(this IServiceCollection container, Type serviceType)
     {
         var isService = container.FirstOrDefault(s => s.ServiceType == serviceType
-        || s.ImplementationType == serviceType)
-        ?? container.FirstOrDefault(s => s.ServiceType.Extends(serviceType)
-        || s.ImplementationType.Extends(serviceType));
+        || s.ImplementationType == serviceType);
+        //?? container.FirstOrDefault(s => s.ServiceType.Extends(serviceType)
+        //|| s.ImplementationType.Extends(serviceType));
         return isService;
     }
 
@@ -299,30 +325,59 @@ internal static class InjectionExtensions
 
     public static object? CreateFromDescriptor(this ServiceDescriptor? isService, IServiceProvider service, bool transient)
     {
-        if (!transient && isService?.ImplementationInstance != null)
+        try
         {
-            return isService.ImplementationInstance;
+            if (!transient && isService?.ImplementationInstance != null)
+            {
+                return isService.ImplementationInstance;
+            }
         }
-        else if (!transient && isService?.KeyedImplementationInstance != null)
+        catch { }
+
+        try
         {
-            return isService.KeyedImplementationInstance;
-        }
-        else if (isService?.ImplementationFactory != null)
+            if (!transient && isService?.KeyedImplementationInstance != null)
+            {
+                return isService.KeyedImplementationInstance;
+            }
+        } catch { }
+
+
+        try
         {
-            return isService.ImplementationFactory(service);
-        }
-        else if (isService?.KeyedImplementationFactory != null)
+            if (isService?.ImplementationFactory != null)
+            {
+                return isService.ImplementationFactory(service);
+            }
+        } catch { }
+
+
+        try
         {
-            return isService.KeyedImplementationFactory(service, isService.ServiceKey);
-        }
-        else if (isService?.ImplementationType != null)
+            if (isService?.KeyedImplementationFactory != null)
+            {
+                return isService.KeyedImplementationFactory(service, isService.ServiceKey);
+            }
+        } catch { }
+
+
+        try
         {
-            return ActivatorUtilities.CreateInstance(service, isService.ImplementationType);
-        }
-        else if (isService?.ServiceType.IsConcrete() == true)
+            if (isService?.ImplementationType != null)
+            {
+                return ActivatorUtilities.CreateInstance(service, isService.ImplementationType);
+            }
+        } catch { }
+
+
+        try
         {
-            return ActivatorUtilities.CreateInstance(service, isService.ServiceType);
-        }
+            if (isService?.ServiceType.IsConcrete() == true)
+            {
+                return ActivatorUtilities.CreateInstance(service, isService.ServiceType);
+            }
+        } catch { }
+
         return null;
     }
 

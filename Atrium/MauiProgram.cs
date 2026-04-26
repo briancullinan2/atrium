@@ -43,6 +43,7 @@ public class MauiProgram : IHasCurrent<MauiApp>, IHasProgram
 
         // lol, continually breaking patterns with patterns
         builder.Services.AddSingleton<IServiceCollection>(sp => builder.Services);
+        builder.Services.AddScoped<Interfacing.Services.IWindow>(sp => App.Bridge!.window);
 
         var mauiApp = builder.Build();
 

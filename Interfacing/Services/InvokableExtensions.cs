@@ -43,16 +43,16 @@ public static class InvokableExtensions
             else if (args?.ElementAtOrDefault(i) is object obj
                 && obj.GetType().Extends(realType))
             {
-                parameterValues[i] = Convert.ChangeType(obj, realType);
+                parameterValues[i] = obj;
             }
             else if (args?.FirstOrDefault(a => a?.GetType().Extends(realType) == true) is object obj2)
             {
-                parameterValues[i] = Convert.ChangeType(obj2, realType);
+                parameterValues[i] = obj2;
             }
             else if (!string.IsNullOrEmpty(parameters[i].Name)
                 && formFactor?.QueryParameters?.TryGetValue(parameters[i].Name!, out var param) == true)
             {
-                parameterValues[i] = Convert.ChangeType(param, realType);
+                parameterValues[i] = param;
             }
             else
             {

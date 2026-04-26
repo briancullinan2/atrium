@@ -22,21 +22,37 @@ public partial class MainPage : ContentPage
             Html = @"<html><body><h1 id=""title"">Hello from MAUI!</h1></body></html>"
         };
         htmlViewer.Source = htmlSource;
+        _ = TryStarting();
     }
 
 
-    static TaskCompletionSource<bool> HasDocument = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    static List<Task> StartupTasks
+    protected async Task TryStarting()
     {
-        get => [
-            HasDocument.Task,
-            ((RenderFragment)((Delegate)MainLoader.RenderStaticPageWrapper).InvokeService(MauiProgram.Current.Services.GetService<ICompositeProvider>())).ToHtml()
-        ];
+        try
+        {
+            await HasDocument.Task;
+
+            string? mainContent = null;
+            if ((((Delegate)MainLoader.RenderStaticPageWrapper).InvokeService(Composite) as RenderFragment)?.ToHtml()
+                    is Task<string> task)
+                mainContent = await task;
+
+            if (mainContent != null)
+                App.Bridge?.SetHtml(mainContent);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
+
+
+    static readonly TaskCompletionSource<bool> HasDocument = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 
     Interfacing.Services.IWindow? JsWindow { get; set; }
+    public ICompositeProvider? Composite { get; private set; }
+
     protected void OnDocument(Interfacing.Services.IWindow window)
     {
         HasDocument.TrySetResult(true);
@@ -46,6 +62,7 @@ public partial class MainPage : ContentPage
 
     protected override void OnHandlerChanged()
     {
+        Composite = MauiProgram.Current.Services.GetService<ICompositeProvider>();
         var PlatformView = htmlViewer.Handler?.PlatformView;
 #if WINDOWS
         if (PlatformView is Microsoft.UI.Xaml.Controls.WebView2 nativeWebView)

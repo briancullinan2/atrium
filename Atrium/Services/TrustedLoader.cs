@@ -458,10 +458,12 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
         lock(CachedState)
             CachedState.LoadedAssemblies.TryAdd(title, assembly);
 
+#if false
 #if !BROWSER
         if (Preferences.Default.Get("PluginEnabled" + title, false))
             Enable(title, true);
         else
+#endif
 #endif
             if (FILTER_MICROSOFT_DLLS_BY_NAME(title)) return;
 
