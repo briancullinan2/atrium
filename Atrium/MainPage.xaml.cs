@@ -39,6 +39,9 @@ public partial class MainPage : ContentPage
 
             if (mainContent != null)
                 App.Bridge?.SetHtml(mainContent);
+
+            var Trust = Composite?.GetService<TrustedLoader>();
+            Trust?.Subscribe(MainLoader.TryRenderingDefault); // try again
         }
         catch (Exception ex)
         {

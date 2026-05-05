@@ -138,25 +138,33 @@ public static partial class StateExtensions
 
     public static Dictionary<string, string?>? RestoreState(this object component, string? componentState)
     {
-        // TODO: move this error message to new render state implementer
-        //if (!OperatingSystem.IsBrowser())
-        //{
-        //    throw new InvalidOperationException("This probably wont work from server.");
-        //}
-        Console.WriteLine("Restoring: " + component.GetType().Name);
-        if (componentState == null)
+        try
         {
-            return null;
-        }
+            // TODO: move this error message to new render state implementer
+            //if (!OperatingSystem.IsBrowser())
+            //{
+            //    throw new InvalidOperationException("This probably wont work from server.");
+            //}
+            Console.WriteLine("Restoring: " + component.GetType().Name);
+            if (componentState == null)
+            {
+                return null;
+            }
 
-        var deserializedState = JsonSerializer.Deserialize<Dictionary<string, string?>>(componentState);
-        Console.WriteLine("Deserializing: " + componentState);
-        if (deserializedState == null)
-        {
-            return null;
+            var deserializedState = JsonSerializer.Deserialize<Dictionary<string, string?>>(componentState);
+            Console.WriteLine("Deserializing: " + componentState);
+            if (deserializedState == null)
+            {
+                return null;
+            }
+            component.ToProperties(deserializedState);
+            return deserializedState;
         }
-        component.ToProperties(deserializedState);
-        return deserializedState;
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            throw;
+        }
     }
 
     internal static string ToSafe(this string url)
@@ -222,48 +230,85 @@ public static partial class StateExtensions
 
         foreach (var (prop, include) in props)
         {
-            var storageName = component.GetType().Name + "." + include!.Name;
-            MethodInfo genericMethod;
-            var generalType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            if (generalType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(generalType))
+            try
             {
-                var genericList = typeof(List<>).MakeGenericType(generalType.GenericTypeArguments[0]);
-                genericMethod = method!.MakeGenericMethod(genericList);
-                // TODO: SetValue(ToCollection) bullshit?
-            }
-            else if (generalType.IsEnum)
-            {
-                genericMethod = typeof(StateExtensions).GetMethod(nameof(StateExtensions.TryParse), 1, [typeof(string)])!.MakeGenericMethod(generalType);
-            }
-            else
-            {
-                genericMethod = method!.MakeGenericMethod(generalType);
-            }
-            // TODO: this needs to be from the page
-            _ = pageValues.TryGetValue(storageName, out string? propSerialized);
-            if (propSerialized == null)
-            {
-                continue;
-            }
-
-            object? success = null;
-            if (generalType.IsEnum)
-            {
-                success = genericMethod.Invoke(null, [JsonSerializer.Deserialize<string>(propSerialized)]);
-            }
-            else
-            {
-                success = genericMethod.Invoke(null, [propSerialized, null]);
-            }
-            if (success != null)
-            {
-                var val = success;
-                Console.WriteLine("Recovered: " + val);
-                if (generalType.IsEnum && val != null && val is not Enum)
+                var storageName = component.GetType().Name + "." + include!.Name;
+                MethodInfo genericMethod;
+                var generalType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                if (generalType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(generalType))
                 {
-                    val = Enum.ToObject(prop.PropertyType, val);
+                    Type genericList;
+                    if (generalType.Extends(typeof(System.Collections.IDictionary)))
+                    {
+                        var kvp = typeof(KeyValuePair<,>).MakeGenericType(generalType.GenericTypeArguments);
+                        genericList = typeof(List<>).MakeGenericType(kvp);
+                    }
+                    else
+                    {
+                        genericList = typeof(List<>).MakeGenericType(generalType.HasElementType ? generalType.GetElementType()! : generalType.GenericTypeArguments[0]);
+                    }
+                    genericMethod = method!.MakeGenericMethod(genericList);
+                    // TODO: SetValue(ToCollection) bullshit?
                 }
-                prop.SetValue(component, val);
+                else if (generalType.IsEnum)
+                {
+                    genericMethod = typeof(StateExtensions).GetMethod(nameof(StateExtensions.TryParse), 1, [typeof(string)])!.MakeGenericMethod(generalType);
+                }
+                else
+                {
+                    genericMethod = method!.MakeGenericMethod(generalType);
+                }
+                // TODO: this needs to be from the page
+                _ = pageValues.TryGetValue(storageName, out string? propSerialized);
+                if (propSerialized == null)
+                {
+                    continue;
+                }
+
+                object? success = null;
+                if (generalType.IsEnum)
+                {
+                    success = genericMethod.Invoke(null, [JsonSerializer.Deserialize<string>(propSerialized)]);
+                }
+                else
+                {
+                    success = genericMethod.Invoke(null, [propSerialized, null]);
+                }
+                if (success != null)
+                {
+                    var val = success;
+                    Console.WriteLine("Recovered: " + val);
+                    if (generalType.IsEnum && val != null && val is not Enum)
+                    {
+                        val = Enum.ToObject(prop.PropertyType, val);
+                    }
+                    else if (generalType.HasElementType)
+                    {
+                        var toArray = typeof(Enumerable)
+                            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .FirstOrDefault(x => x.Name == nameof(Enumerable.ToArray) && x.GetParameters().Length == 1)
+                            ?? throw new InvalidOperationException("Could not render ToDictionary");
+
+                        var generic = toArray.MakeGenericMethod(generalType.GetElementType()!);
+                        val = generic.Invoke(null, [val]);
+                    }
+                    else if (generalType.Extends(typeof(System.Collections.IDictionary)))
+                    {
+                        var toDict = typeof(Enumerable)
+                            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .FirstOrDefault(x => x.Name == nameof(Enumerable.ToDictionary) && x.GetParameters().Length == 1)
+                            ?? throw new InvalidOperationException("Could not render ToDictionary");
+
+                        var generic = toDict.MakeGenericMethod(generalType.GenericTypeArguments);
+                        val = generic.Invoke(null, [val]);
+                    }
+                    prop.SetValue(component, val);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex + prop.Name);
+                continue;
             }
         }
     }

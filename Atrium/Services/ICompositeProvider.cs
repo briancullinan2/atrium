@@ -45,6 +45,11 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
     public object GetService(Type serviceType)
     {
+        return GetService(serviceType, false)!;
+    }
+
+    public object? GetService(Type serviceType, bool noCreate = false)
+    {
         if (serviceType == typeof(CompositeServiceProvider))
             return this;
         if (serviceType == typeof(ICompositeProvider))
@@ -67,7 +72,9 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
                 var isService = container.FindService(serviceType);
                 if(isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
                 {
-                    throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
+                    if (noCreate) return null;
+                    else
+                        throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
                 }
                 if (isService == null) continue;
 
@@ -79,17 +86,13 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
                     if (Indisposables.TryGetValue(isService.ServiceType, out var existing))
                         return existing;
 
-                var result = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
+                if (isService.ImplementationType != null && isService.Lifetime == ServiceLifetime.Scoped)
+                    if (Disposables.TryGetValue(isService.ImplementationType, out var existing))
+                        return existing;
 
-
-                if(result != null && isService?.Lifetime == ServiceLifetime.Scoped)
-                    Disposables.Add(isService.ServiceType, result);
-
-                if (result != null && isService?.Lifetime == ServiceLifetime.Singleton)
-                    Indisposables.Add(isService.ServiceType, result);
-
-                if (result != null)
-                    return result;
+                if (isService.ImplementationType != null && isService.Lifetime == ServiceLifetime.Singleton)
+                    if (Indisposables.TryGetValue(isService.ImplementationType, out var existing))
+                        return existing;
             }
 
             if (PluginContainers.Count <= 1 && DisposableContainers.Count <= 1)
@@ -99,6 +102,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
             {
                 Console.WriteLine("Plugins created");
             }
+
+            if (noCreate) return null;
 
             var serviceComponent = CreateService(serviceType)!;
             serviceComponent.InjectService(this);
@@ -167,7 +172,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         var isService = InjectionExtensions.FindService(collection, serviceType);
         if (isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
         {
-            throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
+            throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first. " + serviceType);
         }
         var serviceObject = InjectionExtensions.CreateFromDescriptor(isService, this, isService?.Lifetime == ServiceLifetime.Transient);
 
@@ -175,22 +180,24 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
             Disposables.Add(isService.ServiceType, serviceObject);
 
         if (serviceObject != null && isService?.Lifetime == ServiceLifetime.Singleton)
-            Indisposables.Add(isService.ServiceType, serviceObject);
+            if (_scoped)
+                (PluginContainers[0] as CompositeServiceProvider)?.Indisposables.Add(isService.ServiceType, serviceObject);
+            else
+                Indisposables.Add(isService.ServiceType, serviceObject);
 
         return serviceObject;
     }
 
 
 
-    protected static void AddExisting(IServiceProvider Provider, IServiceCollection collection, List<Type> checkExisting)
+    protected static void AddExisting(CompositeServiceProvider Provider, IServiceCollection collection, List<Type> checkExisting)
     {
-        var isService = Provider.GetService<IServiceProviderIsService>();
         var types = checkExisting.Concat(checkExisting.SelectMany(e => e.GetInterfaces()));
         foreach (var ass in types)
         {
             try
             {
-                if (isService?.IsService(ass) == true)
+                if (Provider.GetService(ass, true) != null)
                 {
                     if (ass.Extends(typeof(IHasService)))
                         collection.AddSingleton(ass, sp => Provider.GetRequiredService(ass));

@@ -2,7 +2,7 @@
 @code
 {
 
-    public class MainContentState
+    public class MainContentState : IAmStateful
     {
 
         public static int ServiceCount = 0;
@@ -127,7 +127,7 @@
 #endif
 
 
-    public static RenderFragment RenderStaticPageWrapper(MainContentState? Main, IHasClass Css)
+    public static RenderFragment RenderStaticPageWrapper(MainContentState? Main, ICompositeProvider? Composite)
     => __builder =>
     {
 
@@ -146,16 +146,16 @@
         <body>
 
             <div id="app">
-                @RenderMain(Css, Main)
+                @RenderMain(Composite, Main)
             </div>
 
         </body>
 
-    </html>
+        </html>
 
     };
 
-    protected static async Task TryRenderingDefault(
+    internal static async Task TryRenderingDefault(
         ICompositeProvider? Composite,
         MainContentState? Main
     ) {
@@ -165,37 +165,29 @@
 
         var Trust = Composite?.GetService<TrustedLoader>();
         Trust?.Subscribe(TryRenderingDefault); // try again
-        var Classy = Composite?.GetService<IHasClass>();
-        
-        var newMain = await RenderMain(Classy, Main).ToHtml(Composite);
-        Main?.MainContent = newMain;
 
-        // TODO: not this
-        if (Composite?.GetService<PluginsPage>() is PluginsPage Plugins
-            && ((Delegate)PluginsPage.OnSettled).InvokeService(Composite) is RenderFragment Render)
-        {
-            var newContent = await Render.ToHtml(Composite);
-            Main?.PluginContent = newContent;
-        }
 
         if (Main?.StoredDefaultRoot == null)
         {
             // TODO: make this a page event from plugins like RootReady so on normal startup its a streamlined process
             Main?.StoredDefaultRoot = Trust?.State.DefaultRoot();
             if (Main?.StoredDefaultRoot == null) return;
-            Main?.Body = await Main.StoredDefaultRoot.ToHtml(Composite);
+            var scope = Composite?.CreateScope();
+            var Classy = scope?.ServiceProvider.GetService<IHasClass>();
+            Classy?.SetRoute(Main?.StoredDefaultRoot);
+
+            //Main?.Body = await Main.StoredDefaultRoot.ToHtml(Composite);
+            Main?.MainContent = await RenderMain(Composite, Main).ToHtml(Composite);
+
+
+            if (Composite?.GetService<ITitleService>() is ITitleService Title)
+                await Title.SetDefaultTitle(Main?.StoredDefaultRoot);
+
+            var State = Composite?.GetService<IRenderState>();
+            RenderHeader(State, Classy);
+
         }
-
-
-        Classy?.SetRoute(Main?.StoredDefaultRoot);
-
-        if (Composite?.GetService<ITitleService>() is ITitleService Title)
-            await Title.SetDefaultTitle(Main?.StoredDefaultRoot);
-
-        var State = Composite?.GetService<IRenderState>();
-        RenderHeader(State, Classy);
-
-        App.Bridge?.InvokeAsync(Replace, "#page", newMain);
+        App.Bridge?.InvokeAsync(Replace, "#page", Main?.MainContent);
         App.Bridge?.InvokeAsync(Replace, "#page > .cover-page > article", Main?.PluginContent);
         App.Bridge?.InvokeAsync(Replace, "#page > main:not(.cover-page) > article", Main?.Body);
 
@@ -203,16 +195,17 @@
 
 
 
-    protected static RenderFragment RenderMain(IHasClass? Css, MainContentState? Main)
+    protected static RenderFragment RenderMain(ICompositeProvider? Composite, MainContentState? Main)
         => (RenderTreeBuilder __builder) =>
         {
+            var Css = Composite?.GetService<IHasClass>();
 
 #if false
 #if DEBUG
             @RenderDebugInvocationLogger()
 #endif
 #endif
-
+            
 
             <div id="page" class="page @(string.Join(" ", Css?.ClassNames ?? []))">
 
@@ -220,21 +213,15 @@
                 {
                     <div class="cover-container"></div>
                     <main class="cover-page">
-                        @if (Main?.PluginContent != null)
-                        {
-                            @(new MarkupString(Main.PluginContent))
+                        @{
+                            if (((Delegate)PluginsPage.RenderMainBody).InvokeService(Composite) is RenderFragment fragment)
+                                fragment(__builder);
                         }
-                        else
-                        {
-                            <article></article>
-                        }
-
                     </main>
                 }
 
-                <main><article>
-                    
-                </article></main>
+
+                <main><article></article></main>
 
             </div>
         };

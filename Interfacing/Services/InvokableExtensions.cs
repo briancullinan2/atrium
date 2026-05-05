@@ -9,13 +9,13 @@ namespace Interfacing.Services;
 public static class InvokableExtensions
 {
 
-    public static object? InvokeService(this Delegate? myDelegate, IServiceProvider? service, params object?[]? args)
+    public static object? InvokeService(this Delegate? myDelegate, ICompositeProvider? service, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         return myDelegate.Method.InvokeService(service, myDelegate.Target, args);
     }
 
-    public static object? InvokeService(this MethodInfo? myDelegate, IServiceProvider? service, object? thisObject = null, params object?[]? args)
+    public static object? InvokeService(this MethodInfo? myDelegate, ICompositeProvider? service, object? thisObject = null, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
         var formFactor = service?.GetService(typeof(IFormFactor)) as IFormFactor;

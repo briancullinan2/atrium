@@ -242,14 +242,14 @@ public partial class TrustedLoader : ITrustProvider, IHasCurrent<AppDomain>, IDi
             {
                 var old = InternalOnSettled;
                 InternalOnSettled = null; // make the fuckers resubscribe anyways, hit only once
-                foreach(var invocation in InternalOnSettled?.GetInvocationList() ?? [])
+                foreach(var invocation in old?.GetInvocationList() ?? [])
                 {
                     try
                     {
 #if !BROWSER
-                        invocation.InvokeService(MauiProgram.Current.Services);
+                        invocation.InvokeService(MauiProgram.Current.Services.GetService<ICompositeProvider>());
 #else
-                        invocation.InvokeService(Program?.GetProperty(nameof(IHasProgram.Service), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as IServiceProvider);
+                        invocation.InvokeService(Program?.GetProperty(nameof(IHasProgram.Service), BindingFlags.Static | BindingFlags.Public)?.GetValue(null) as ICompositeProvider);
 #endif
                     }
                     catch (Exception ex)

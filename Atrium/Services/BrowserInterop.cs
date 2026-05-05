@@ -313,7 +313,7 @@ public partial class WebViewBridge : WebViewBase
             //var (document, console) = window;
             try
             {
-                window.document.getElementById("title").innerHTML = "Hello from C# also";
+                //window.document.getElementById("title").innerHTML = "Hello from C# also";
                 window["AtriumRegistry"] = new Dictionary<object, object?>();
                 window["AtriumIdCounter"] = 0;
                 window["getAtriumId"] = ElementIdInterop;

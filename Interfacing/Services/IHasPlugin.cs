@@ -11,7 +11,19 @@ public interface IHasService
     IServiceProvider Services { get; }
 }
 
-public interface ICompositeProvider : IServiceProvider, IServiceProviderIsService, IHasService, IDisposable
+public interface IAmStateful
+{
+
+}
+
+public interface ICompositeProvider : IServiceProvider
+    , ISupportRequiredService
+    , IHasService
+    , IServiceScopeFactory
+    , IServiceProviderIsService
+    , IServiceScope
+    , IServiceCollection
+    , IDisposable
 {
     //List<IServiceProvider> PluginContainers { get; }
 }
@@ -108,27 +120,27 @@ public partial class TrustedState(ITrustProvider? _trust) : IDisposable
     [JsonIgnore]
     public List<Type> AllRoutes { get; set; } = [];
     [JsonPropertyName(nameof(DisplayLayouts))]
-    public Dictionary<string, string> DisplayLayouts { get => Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    public Dictionary<string, string> DisplayLayouts { get => Layouts.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); set => Layouts = [.. value.Select(t => Type.GetType(t.Key)).OfType<Type>()]; }
     [JsonPropertyName(nameof(DisplayRoutable))]
-    public List<string> DisplayRoutable { get => [.. Routable.Select(ass => ass.ToName())]; }
+    public List<string> DisplayRoutable { get => [.. Routable.Select(ass => ass.ToName())]; set => Routable = [.. value.Select(t => AppDomain.CurrentDomain.Load(t))]; }
     [JsonPropertyName(nameof(DisplayCatchAll))]
-    public Dictionary<string, string> DisplayCatchAll { get => CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    public Dictionary<string, string> DisplayCatchAll { get => CatchAll.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); set => CatchAll = [.. value.Select(t => Type.GetType(t.Key)).OfType<Type>()]; }
     [JsonPropertyName(nameof(DisplayRoots))]
-    public Dictionary<string, string> DisplayRoots { get => Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    public Dictionary<string, string> DisplayRoots { get => Roots.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); set => Roots = [.. value.Select(t => Type.GetType(t.Key)).OfType<Type>()]; }
     [JsonPropertyName(nameof(DisplayAllRoutes))]
-    public Dictionary<string, string> DisplayAllRoutes { get => AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); }
+    public Dictionary<string, string> DisplayAllRoutes { get => AllRoutes.ToDictionary(t => t.AssemblyQualifiedName ?? t.FullName ?? t.Name, t => t.Name); set => AllRoutes = [.. value.Select(t => Type.GetType(t.Key)).OfType<Type>()]; }
     [JsonPropertyName(nameof(IsBootstrapping))]
     public bool IsBootstrapping { get; set; } = true;
     [JsonPropertyName(nameof(Error))]
     public string Error { get; set; } = string.Empty;
     [JsonPropertyName(nameof(PluginFiles))]
-    public string[] PluginFiles { get; set; } = [];
+    public string[]? PluginFiles { get; set; } = null;
     [JsonIgnore]
     public Action<PluginContract?>? NotifyDelegate = null;
     [JsonPropertyName(nameof(EnabledAssemblies))]
-    public Dictionary<string, bool> EnabledAssemblies { get; } = [];
+    public Dictionary<string, bool> EnabledAssemblies { get; set; } = [];
     [JsonPropertyName(nameof(SystemEnabledAssemblies))]
-    public Dictionary<string, bool> SystemEnabledAssemblies { get; } = [];
+    public Dictionary<string, bool> SystemEnabledAssemblies { get; set; } = [];
 
     [JsonPropertyName(nameof(EnabledAssMappings))]
     public List<Assembly>? EnabledAssMappings { get; set; } = null;
@@ -147,7 +159,7 @@ public partial class TrustedState(ITrustProvider? _trust) : IDisposable
     [JsonPropertyName(nameof(Scanning))]
     public string Scanning { get; set; } = string.Empty;
     [JsonIgnore]
-    public List<Type> AllPlugins { get; } = [];
+    public List<Type> AllPlugins { get; set; } = [];
     [JsonPropertyName(nameof(IsRebuilding))]
     public bool IsRebuilding { get; set; } = false;
     [JsonPropertyName(nameof(StoredRoot))]

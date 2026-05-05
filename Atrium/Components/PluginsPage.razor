@@ -5,7 +5,7 @@
 
 @code {
 
-    public class PluginsState
+    public class PluginsState : IAmStateful
     {
         [JsonPropertyName(nameof(PreviousRendered))]
         public string PreviousRendered { get; set; } = string.Empty;
@@ -97,28 +97,21 @@
         Plugins?.ScanningRendered = await RenderPluginStatus(State).ToHtml(Composite);
         Plugins?.PluginSelect = await RenderPluginSelect(State).ToHtml(Composite);
         Plugins?.PreviousRendered = await RenderPluginContract(State).ToHtml(Composite);
-        var RenderedMain = RenderMainBody(Composite?.GetService<IHasClass>(), Plugins);
+        var RenderedMain = RenderMainBody(Composite?.GetService<IHasClass>(), State);
 
         // in case something loaded not from use input/page event
         var Window = Composite?.GetService<IWindowManager>();
         var expand = State?.EnabledAssemblies.Count == 0
             && State.SystemEnabledAssemblies.Count == 0;
+
         if (Window != null)
             Window?.ExpandWindow(expand);
 
-        var Page = Composite?.GetService<PageManager>();
-        if (Page == null) return;
-        //if (Composite?.GetService<Components.MainLoader>()?.MainContent == null) return;
-        //await Page.Replace(".plugin-status, .plugin-controls", Plugins?.ScanningRendered + Plugins?.PluginSelect);
-        //await Page.Insert("#plugins-list > tbody", Plugins?.PreviousRendered);
-
-        
-        
     }
 
 
 
-    public static RenderFragment RenderMainBody(IHasClass? Logo, PluginsState? State)
+    public static RenderFragment RenderMainBody(IHasClass? Logo, TrustedState? State)
         => __builder =>
         {
 
@@ -129,11 +122,11 @@
                 <table id="plugins-list">
                     <tbody>
 
-                        @(new MarkupString(State?.ScanningRendered ?? string.Empty))
+                        @(RenderPluginStatus(State))
 
-                        @(new MarkupString(State?.PluginSelect ?? string.Empty))
+                        @(RenderPluginSelect(State))
 
-                        @(new MarkupString(State?.PreviousRendered ?? string.Empty))
+                        @(RenderPluginContract(State))
 
                     </tbody>
                 </table>
