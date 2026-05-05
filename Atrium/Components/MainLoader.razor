@@ -75,7 +75,10 @@
             template.innerHTML = content;
             var fragment = window.document.createDocumentFragment();
 
-            window.Array.from(template.content.children).forEach(node => {
+            var children = template.content.children;
+            IArrayStatic array = window.Array;
+            array.from(children).forEach(node =>
+            {
                 fragment.appendChild(node);
             });
 

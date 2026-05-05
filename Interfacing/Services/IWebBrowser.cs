@@ -119,14 +119,14 @@ public interface IMap<TKey, TValue> : IDictionary<TKey, TValue>, IJsProxy
 
 
 
-public interface IDomStringMap
+public interface IDomStringMap : IJsProxy
 {
     // The indexer maps directly to how JS accesses it: dataset['atriumId']
     string? this[string key] { get; set; }
 }
 
 
-public interface IArrayStatic
+public interface IArrayStatic : IJsProxy
 {
     IArray<T> from<T>(IEnumerable<T> list);
     IArray<T> from<T>(IArray<T> list);
@@ -134,7 +134,7 @@ public interface IArrayStatic
 
 
 
-public interface IObjectStatic
+public interface IObjectStatic : IJsProxy
 {
     // Object.assign(target, ...sources)
     T assign<T>(T target, params object[] sources);
@@ -215,10 +215,10 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
     IChromeHostObjects chrome { get; } // windows
     IAtrium Atrium { get; set; }
     IArrayStatic Array { get; }
-
     IObjectStatic Object { get; }
     IStringStatic String { get; }
     INode Node { get; }
+
 
     object? eval(string? script);
 
@@ -260,6 +260,20 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
 }
 
 public interface Node : INode
+{
+}
+
+public interface IFunction : IJsProxy
+{
+    string name { get; }
+    int length { get; }
+    IPrototype prototype { get; set; }
+    object call(object thisArg, params object[] args);
+    object apply(object thisArg, object[] argsArray);
+    IFunction bind(object thisArg, params object[] args);
+}
+
+public interface Function : IFunction
 {
 }
 

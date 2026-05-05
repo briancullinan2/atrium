@@ -1,5 +1,6 @@
 ﻿#if !BROWSER
 using Wasmtime;
+using Function = Wasmtime.Function;
 #endif
 
 namespace Hosting.Platforms.Windows;

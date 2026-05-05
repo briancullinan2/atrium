@@ -22,8 +22,13 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+
 
 using IWindow = Interfacing.Services.IWindow;
+
+
+[JsonConverter(typeof(ProxyConverter))]
 
 public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
 {
@@ -50,6 +55,7 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     {
         get
         {
+            if (propertyName == "Path") return Path;
             VerifyThread(); // Enforcement gate
             var targetType = proxyType?.GetProperty(propertyName)?.PropertyType;
             var baseProxy = new JsProxy($"{Path}['{propertyName}']", targetType);
@@ -144,9 +150,21 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     public bool TryInvokeMember(string Name, Type returnType, object?[]? args, out object? result)
     {
         VerifyThread();
-        // Serialize arguments for JS
-        string jsArgs = string.Join(",", args?.Select(o => o is Expression expr ? expr.ToJS() : JsonSerializer.Serialize(o)) ?? []);
-        string script = $"{Path}.{Name}({jsArgs})";
+
+
+        var parameterValues = new string?[args?.Length ?? 0];
+
+        for(var i = 0; i < args?.Length; i++)
+        {
+            if (args[i] is IJsProxy proxy)
+                parameterValues[i] = proxy.Path;
+            else if (args[i] is Expression expr)
+                parameterValues[i] = expr.ToJS();
+            else
+                parameterValues[i] = JsonSerializer.Serialize(args[i]);
+        }
+
+        string script = $"{Path}.{Name}({string.Join(",", parameterValues)})";
 
         // Execute and get the JSON string back
         var task = _core?.ExecuteJsAsync(script);
@@ -276,6 +294,21 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
 
 }
 
+public class ProxyConverter : JsonConverter<JsProxy>
+{
+    public override JsProxy Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var val = reader.GetString();
+        if (val == null) return default!;
+        return new JsProxy(val, typeToConvert);
+    }
+
+    public override void Write(Utf8JsonWriter writer, JsProxy value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.Path);
+    }
+}
+
 
 public partial class WebViewBridge : WebViewBase
 {
@@ -287,7 +320,10 @@ public partial class WebViewBridge : WebViewBase
             type = "node",
             id = window.getAtriumId((Node)result),
             path = window.AtriumRegistry.get(window.getAtriumId((Node)result))
-        }) : (object)(new { type = "value", value = result });
+        }) 
+        : result is Function 
+        ? (object)(new { type = "func", value = ((Function)result).name }) 
+        : (object)(new { type = "value", value = result });
 
 
     //public static readonly Expression<Func<IWindow, string, string>> CallInjectToJson = 
@@ -304,8 +340,11 @@ public partial class WebViewBridge : WebViewBase
         => window.AtriumRegistry.set(window.parseInt(window.Object.assign(element.dataset, new { atriumId = window.Object.assign(window, new { AtriumIdCounter = window.AtriumIdCounter + 1 }).AtriumIdCounter })["atriumId"])!.Value, element)
             != null ? window.AtriumIdCounter : -1;
 
+
     // lol this may be even funnier than php-babel, or that shit i wrote long before php-babel
     // lol https://github.com/briancullinan2/studysauce3/blob/main/src/Admin/Bundle/Controller/AdminController.php#L1181
+    
+    
     protected override void InjectApp(Interfacing.Services.IWindow window)
     {
         App.Bridge?.InvokeAsync(async () =>
