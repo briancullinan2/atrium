@@ -49,6 +49,7 @@ public static class BuilderExtensions
 
         foreach (var service in AllServices)
         {
+            if (service == null) continue;
             try
             {
 

@@ -75,7 +75,9 @@
             template.innerHTML = content;
             var fragment = window.document.createDocumentFragment();
 
-            window.Array.from(template.content.children).forEach(node => fragment.appendChild(node));
+            window.Array.from(template.content.children).forEach(node => {
+                fragment.appendChild(node);
+            });
 
             var firstNode = nodesToRemove[0];
             firstNode.parentNode?.insertBefore(fragment, firstNode);

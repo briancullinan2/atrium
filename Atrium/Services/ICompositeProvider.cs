@@ -1,6 +1,7 @@
 ﻿
 
 using Atrium.Components;
+using System.ComponentModel;
 using static Microsoft.AspNetCore.Components.Web.RenderMode;
 
 namespace Atrium.Services;
@@ -61,7 +62,25 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         if (serviceType == typeof(IServiceScopeFactory))
             return this;
 
+        var isService = this.FindService(serviceType);
 
+        if (isService?.Lifetime == ServiceLifetime.Scoped
+            && Disposables.TryGetValue(isService.ServiceType, out var existing))
+                return existing;
+
+        if (isService?.Lifetime == ServiceLifetime.Singleton
+            && Indisposables.TryGetValue(isService.ServiceType, out var existing2))
+                return existing2;
+
+        if (isService?.ImplementationType != null 
+            && isService.Lifetime == ServiceLifetime.Scoped
+            && Disposables.TryGetValue(isService.ImplementationType, out var existing3))
+                return existing3;
+
+        if (isService?.ImplementationType != null 
+            && isService.Lifetime == ServiceLifetime.Singleton
+            && Indisposables.TryGetValue(isService.ImplementationType, out var existing4))
+                return existing4;
         try
         {
             List<IServiceCollection>? MyPlugins = null;
@@ -69,30 +88,26 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
             foreach(var container in MyPlugins ?? [])
             {
-                var isService = container.FindService(serviceType);
+                isService = container.FindService(serviceType);
                 if(isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
                 {
                     if (noCreate) return null;
                     else
                         throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first.");
                 }
+                
                 if (isService == null) continue;
 
-                if (isService.Lifetime == ServiceLifetime.Scoped)
-                    if (Disposables.TryGetValue(isService.ServiceType, out var existing))
-                        return existing;
+                if (container is CompositeServiceProvider composite
+                    && composite.GetService(isService.ServiceType, true) is object service)
+                    return service;
 
-                if (isService.Lifetime == ServiceLifetime.Singleton)
-                    if (Indisposables.TryGetValue(isService.ServiceType, out var existing))
-                        return existing;
+                if (isService.ImplementationType != null
+                    && container is CompositeServiceProvider composite2
+                    && composite2.GetService(isService.ImplementationType, true) is object service2)
+                    return service2;
 
-                if (isService.ImplementationType != null && isService.Lifetime == ServiceLifetime.Scoped)
-                    if (Disposables.TryGetValue(isService.ImplementationType, out var existing))
-                        return existing;
-
-                if (isService.ImplementationType != null && isService.Lifetime == ServiceLifetime.Singleton)
-                    if (Indisposables.TryGetValue(isService.ImplementationType, out var existing))
-                        return existing;
+                break;
             }
 
             if (PluginContainers.Count <= 1 && DisposableContainers.Count <= 1)
@@ -105,7 +120,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
             if (noCreate) return null;
 
-            var serviceComponent = CreateService(serviceType)!;
+            var serviceComponent = CreateService(serviceType, isService);
             serviceComponent.InjectService(this);
             return serviceComponent;
         }
@@ -128,7 +143,7 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
 
 
 
-    public object? CreateService(Type serviceType)
+    public object? CreateService(Type serviceType, ServiceDescriptor? isService)
     {
         var collection = new ServiceCollection();
 
@@ -138,18 +153,18 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
         var baseType = serviceTypes.FirstOrDefault(kvp => kvp.Key.Extends(serviceType)).Key
             ?? serviceTypes.FirstOrDefault(kvp => kvp.Value.Any(inter => inter == serviceType)).Key;
 
-        if (baseType == null) return null;
+        //if (baseType == null) return null;
 
-        var constructors = baseType.GetConstructors();
+        var constructors = baseType?.GetConstructors();
 
         var moreRequirements = constructors
-            .SelectMany(constructor => constructor.GetParameters())
+            ?.SelectMany(constructor => constructor.GetParameters())
             .Select(parameter => parameter.ParameterType)
             .ToList();
 
         var moreServices = serviceTypes
-            .Where(kvp => moreRequirements.Any(req => kvp.Key.Extends(req)
-                || kvp.Value.Any(inter => inter.Extends(req))))
+            .Where(kvp => moreRequirements?.Any(req => kvp.Key.Extends(req)
+                || kvp.Value.Any(inter => inter.Extends(req))) == true)
             .Select(kvp => kvp.Key)
             .ToList();
 
@@ -169,7 +184,8 @@ public partial class CompositeServiceProvider(IServiceCollection _provider, bool
             else
                 PluginContainers.Add(collection);
         }
-        var isService = InjectionExtensions.FindService(collection, serviceType);
+        isService ??= InjectionExtensions.FindService(collection, serviceType)
+             ?? InjectionExtensions.FindService(this, serviceType);
         if (isService?.Lifetime == ServiceLifetime.Scoped && !_scoped)
         {
             throw new InvalidOperationException("Trying to get a scoped services out of root container. Call sp.CreateScope() first. " + serviceType);

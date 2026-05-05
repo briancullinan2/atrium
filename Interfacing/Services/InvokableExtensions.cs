@@ -18,10 +18,10 @@ public static class InvokableExtensions
     public static object? InvokeService(this MethodInfo? myDelegate, ICompositeProvider? service, object? thisObject = null, params object?[]? args)
     {
         if (myDelegate == null) throw new InvalidOperationException("MethodInfo cannot be null.");
-        var formFactor = service?.GetService(typeof(IFormFactor)) as IFormFactor;
         var parameters = myDelegate.GetParameters();
         var parameterValues = new object?[parameters.Length];
         var Scope = service?.CreateScope();
+        var formFactor = Scope?.ServiceProvider.GetService(typeof(IFormFactor)) as IFormFactor;
         for (int i = 0; i < parameters.Length; i++)
         {
             var realType = Nullable.GetUnderlyingType(parameters[i].ParameterType) ?? parameters[i].ParameterType;

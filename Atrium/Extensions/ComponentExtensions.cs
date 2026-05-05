@@ -57,25 +57,34 @@ internal static class ComponentExtensions
     public static async Task<string> ToHtml(this RenderFragment? fragment, IServiceProvider? serviceProvider = null)
     {
         if (fragment == null) return string.Empty;
-        serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();
-        // TODO: prefer composite?
-        serviceProvider = serviceProvider.GetService<ICompositeProvider>() ?? serviceProvider;
-        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-
-        using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
-
-        return await renderer.Dispatcher.InvokeAsync(async () =>
+        try
         {
-            // Use the private wrapper defined below
-            var output = await renderer.RenderComponentAsync<FragmentWrapper>(
-                ParameterView.FromDictionary(new Dictionary<string, object?>
-                {
-                { nameof(FragmentWrapper.Content), fragment }
-                })
-            );
 
-            return output.ToHtmlString();
-        });
+            serviceProvider ??= new ServiceCollection().AddLogging().BuildServiceProvider();
+            // TODO: prefer composite?
+            serviceProvider = serviceProvider.GetService<ICompositeProvider>() ?? serviceProvider;
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+
+            using var renderer = new HtmlRenderer(serviceProvider, loggerFactory);
+
+            return await renderer.Dispatcher.InvokeAsync(async () =>
+            {
+                // Use the private wrapper defined below
+                var output = await renderer.RenderComponentAsync<FragmentWrapper>(
+                    ParameterView.FromDictionary(new Dictionary<string, object?>
+                    {
+                        { nameof(FragmentWrapper.Content), fragment }
+                    })
+                );
+
+                return output.ToHtmlString();
+            });
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine(ex);
+            throw;
+        }
     }
 
     // Private helper to satisfy the IComponent requirement
