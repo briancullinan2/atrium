@@ -7,6 +7,7 @@ using System.Runtime.InteropServices.JavaScript;
 
 #if WINDOWS
 using Microsoft.Web.WebView2.Core;
+using System.Collections;
 #endif
 
 #if ANDROID
@@ -23,8 +24,7 @@ using System.Linq.Expressions;
 using System.Reflection.Emit;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
-
+using Element = Interfacing.Services.Element;
 using IWindow = Interfacing.Services.IWindow;
 
 
@@ -68,9 +68,25 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
             VerifyThread(); // Enforcement gate
             // Trigger the execution logic manually
             string script;
-            if(value is Expression expr)
-            {
+            if (value is Expression expr)
                 script = $"{Path}['{propertyName}'] = {expr.ToJS()};";
+            else if (value?.GetType().Extends(typeof(Dictionary<,>)) == true)
+            {
+
+                var entries = ((System.Collections.IEnumerable)value)
+                 .Cast<object>()
+                 .Select(x => {
+                     // Use reflection or dynamic to get Key and Value from the KeyValuePair<K, V>
+                     var type = x.GetType();
+                     var key = type.GetProperty("Key")?.GetValue(x);
+                     var val = type.GetProperty("Value")?.GetValue(x);
+                     return new[] { key, val };
+                 });
+
+                // This serializes to [[key1, val1], [key2, val2]]
+                string jsonArrayOfArrays = JsonSerializer.Serialize(entries);
+
+                script = $"{Path}['{propertyName}'] = new Map({jsonArrayOfArrays});";
             }
             else
                 script = $"{Path}['{propertyName}'] = {JsonSerializer.Serialize(value)};";
@@ -164,17 +180,20 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
                 parameterValues[i] = JsonSerializer.Serialize(args[i]);
         }
 
-        string script = $"{Path}.{Name}({string.Join(",", parameterValues)})";
+        string script = $"({WebViewBridge.InjectToJson.ToJS()})({Path}.{Name}({string.Join(",", parameterValues)}))";
 
         // Execute and get the JSON string back
         var task = _core?.ExecuteJsAsync(script);
         task?.Wait();
 
         // Map the result back to C#
-        if(Name == "getElementById")
-            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
-        else
-            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), script, returnType);
+        //if (Name == "getElementById")
+            //result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
+        //else if (returnType != typeof(void))
+            //result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), script, returnType);
+        //else
+            result = null;
+        
         return true;
     }
 
@@ -315,11 +334,11 @@ public partial class WebViewBridge : WebViewBase
     Interfacing.Services.IWindow? _window = null;
 
     public static readonly Expression<Func<IWindow, object?, object>> InjectToJson
-        = (window, result) => result is Node ? (object)(new
+        = (window, result) => result is Element ? (object)(new
         {
-            type = "node",
-            id = window.getAtriumId((Node)result),
-            path = window.AtriumRegistry.get(window.getAtriumId((Node)result))
+            type = "element",
+            id = window.getAtriumId((Element)result),
+            path = window.AtriumRegistry.get(window.getAtriumId((Element)result))
         }) 
         : result is Function 
         ? (object)(new { type = "func", value = ((Function)result).name }) 
@@ -331,13 +350,13 @@ public partial class WebViewBridge : WebViewBase
 
 
     static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> ElementIdInterop =
-        (window, element) => element.dataset["atriumId"] == null
-                    ? window.setAtriumId(element)
-                    : window.parseInt(element.dataset["atriumId"])!.Value;
+        (window, element) => element.dataset["atriumId"] is String
+                    ? window.parseInt(element.dataset["atriumId"])!.Value
+                    : window.setAtriumId(element);
 
     static readonly Expression<Func<Interfacing.Services.IWindow, Interfacing.Services.IElement, int>> SetElementIdInterop =
     (window, element)
-        => window.AtriumRegistry.set(window.parseInt(window.Object.assign(element.dataset, new { atriumId = window.Object.assign(window, new { AtriumIdCounter = window.AtriumIdCounter + 1 }).AtriumIdCounter })["atriumId"])!.Value, element)
+        => window.AtriumRegistry.set(window.parseInt(window.Object.assign(element.dataset, new { atriumId = window.Object.assign(window.window, new { AtriumIdCounter = window.AtriumIdCounter + 1 }).AtriumIdCounter })["atriumId"])!.Value, element)
             != null ? window.AtriumIdCounter : -1;
 
 
@@ -483,13 +502,20 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
 
     public override Task<string?> ExecuteJsAsync(string script)
     {
+        if(script.Contains("ToString"))
+        {
+            Console.WriteLine("God fucking damnit this piece of shit can write one good line of code");
+        }
         TaskCompletionSource<string?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Context.Post(async _ =>
         {
             try
             {
                 var result = await core.ExecuteScriptWithResultAsync(script);
-                tcs.SetResult(result.ResultAsJson);
+                if (!result.Succeeded)
+                    tcs.SetException(new InvalidOperationException(result.Exception.Message + script));
+                else
+                    tcs.SetResult(result.ResultAsJson);
             }
             catch (Exception ex)
             {

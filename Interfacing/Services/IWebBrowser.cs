@@ -224,6 +224,7 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
 
 
     // Natural Browser Objects
+    IWindow window { get; }
     IDocument document { get; }
     IConsole console { get; }
     IStorage localStorage { get; }
@@ -296,6 +297,10 @@ public interface IString : IObject, IJsProxy
     string replace(string searchValue, string replaceValue);
     int indexOf(string searchString);
     string substring(int indexStart, int? indexEnd = null);
+}
+
+public interface Element : IElement
+{
 }
 
 public interface IElement : IObject, INode, IJsProxy
@@ -831,10 +836,11 @@ public static class InteropExtensions
         
         MethodCallExpression m => $"{m.Method.Name}({string.Join(", ", m.Arguments.Where(FILTER_WINDOW).Select(a => a.ToJS()))})",
 
-        //MethodCallExpression m => $"{m.Method.Name}({string.Join(", ", m.Arguments.Select(a => a.ToJS()))})",
+        
         NewExpression n when IsAnonymousType(n.Type) => $"({{ {string.Join(", ", (n.Members ?? []).Select((m, i) => $"{m.Name}: {n.Arguments[i].ToJS()}"))} }})",
-        //    : $"new {ne.Type.Name}({string.Join(", ", ne.Arguments.Select(a => a.ToJS()))})",
+        NewExpression n when n.Type.Name == "Dictionary" => $"new Map()",
         NewExpression n => $"({{ {string.Join(", ", n.Arguments.Select((a, i) => $"{n.Members![i].Name}: {a.ToJS()}"))} }})",
+        
         MemberExpression m when m.Member.Name == "Value" && m.Expression?.Type.IsGenericType == true
             && m.Expression.Type.GetGenericTypeDefinition() == typeof(Nullable<>) => m.Expression.ToJS(),
         MemberExpression m when IsRootWindow(m) => $"window.{m.Member.Name}",
@@ -870,7 +876,8 @@ public static class InteropExtensions
     {
         if (expr == null) return false;
         return expr is ConstantExpression { Value: IJsProxy proxy } && proxy.Path == "window"
-            || expr is ParameterExpression { Type: Type proxy3 } && proxy3 == typeof(IWindow);
+            || expr is ParameterExpression { Type: Type proxy3 } && proxy3 == typeof(IWindow)
+            || expr is MemberExpression {Type: Type proxy4 } && proxy4 == typeof(IWindow);
     }
     private static bool IsAnonymousType(Type type)
     {
@@ -905,7 +912,14 @@ public static class InteropExtensions
         var ballsToTheWall = true;
         while (ballsToTheWall)
         {
-            if (node is MemberExpression member)
+            if(node is UnaryExpression convert
+                && convert.NodeType == ExpressionType.Convert)
+            {
+                if (convert.Operand == null) return node;
+
+                node = convert.Operand;
+            }
+            else if (node is MemberExpression member)
             {
                 if (member.Expression == null) return node;
 
