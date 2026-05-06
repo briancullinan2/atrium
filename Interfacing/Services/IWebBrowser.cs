@@ -15,6 +15,11 @@ public class JsProxyInterceptor : DispatchProxy
 {
     private IJsProxy? _proxy;
 
+    public override string ToString()
+    {
+        return _proxy?.Path ?? string.Empty;
+    }
+
     public static T Create<T>(IJsProxy proxy)
     {
         object? proxyObject = Create<T, JsProxyInterceptor>();
@@ -25,6 +30,11 @@ public class JsProxyInterceptor : DispatchProxy
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
     {
         string name = targetMethod!.Name;
+
+        if(name.Contains("ToString"))
+        {
+            Console.WriteLine("Where the fuck are you coming from?");
+        }
 
         // 1. Handle Property Getters (get_PropertyName)
         if (name.StartsWith("get_"))
@@ -239,6 +249,7 @@ public interface IWindow : IUtility, IPluginManager, IJsProxy
     int AtriumIdCounter { get; set; }
     int getAtriumId(INode element);
     int setAtriumId(INode element);
+    object InjectToJson(object? val);
     int? parseInt(string? test);
 
     void addEventListener(string type, string dotnetCallbackNamespace);
@@ -338,16 +349,20 @@ public interface INodeCollection : IArray<IElement>
     new INode this[int index] { get; }
 }
 
+public interface Array : IArray<object>
+{
+
+}
 
 
 public interface IArray<T> : IObject, IJsProxy
 {
     T this[int index] { get; }
     // JavaScript Array methods
-    IArray<T> sort(Func<T, T, int> comparer);
-    void forEach(Action<T> action);
-    IArray<T> map<TResult>(Func<T, TResult> mapper);
-    IArray<T> filter(Func<T, bool> predicate);
+    IArray<T> sort(Expression<Func<T, T, int>> comparer);
+    void forEach(Expression<Action<T>> action);
+    IArray<T> map<TResult>(Expression<Func<T, TResult>> mapper);
+    IArray<T> filter(Expression<Func<T, bool>> predicate);
     IArray<T> concat(IArray<T> other);
     IArray<T> concat(IEnumerable<T> other);
     int length { get; }
@@ -783,13 +798,30 @@ public static class InteropExtensions
             JsonValueKind.Array => root.EnumerateArray().Select(e => MapToDotNet(e.GetRawText(), currentPath, expectedType)).ToList(),
 
             // For Objects, we return a new Proxy so you can chain: proxy.myObj.someMethod()
-            JsonValueKind.Object => expectedType != null
-                ? CreateProxy.MakeGenericMethod(expectedType)
-                    .Invoke(null, [Activator.CreateInstance(JsProxyType, [currentPath, expectedType])])
-                : Activator.CreateInstance(JsProxyType, [currentPath, expectedType]),
+            JsonValueKind.Object => MapObject(root, currentPath, expectedType),
 
             _ => json
         };
+    }
+
+    private static object? MapObject(JsonElement root, string? currentPath, Type? expectedType)
+    {
+        // 1. Extract the metadata if it exists
+        string? type = root.TryGetProperty("type", out var typeElem) ? typeElem.GetString() : null;
+
+        if (type == "element" && root.TryGetProperty("id", out var idElem))
+        {
+            // 2. Construct the specific registry path you mentioned
+            // Assuming id is a number based on your JSON example {"id":1...}
+            int id = idElem.GetInt32();
+            currentPath = $"window.AtriumRegistry.get({id})";
+        }
+
+        // 3. Return your Proxy logic with the updated path
+        return expectedType != null
+            ? CreateProxy.MakeGenericMethod(expectedType)
+                .Invoke(null, [Activator.CreateInstance(JsProxyType, [currentPath, expectedType])])
+            : Activator.CreateInstance(JsProxyType, [currentPath, expectedType]);
     }
 
 

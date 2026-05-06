@@ -40,6 +40,11 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     }
 
 
+    public override string ToString()
+    {
+        return Path;
+    }
+
     static JsProxy()
     {
         var assemblyName = new AssemblyName("Atrium.GeneratedProxies");
@@ -153,8 +158,7 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
         var task = _core?.ExecuteJsAsync(Path);
         task?.Wait(); // Blocking because TryConvert is synchronous
 
-        var json = task?.Result?.ToString();
-        result = InteropExtensions.MapToDotNet(json, Path, binder.ReturnType);
+        result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), Path, binder.ReturnType);
         return true;
     }
 
@@ -167,6 +171,11 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     {
         VerifyThread();
 
+
+        if(Name.Contains("filter"))
+        {
+            Console.WriteLine("fuck this is complicated");
+        }
 
         var parameterValues = new string?[args?.Length ?? 0];
 
@@ -187,11 +196,11 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
         task?.Wait();
 
         // Map the result back to C#
-        //if (Name == "getElementById")
-            //result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
-        //else if (returnType != typeof(void))
-            //result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), script, returnType);
-        //else
+        if (Name == "getElementById")
+            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), $"window['{args![0]}']", returnType);
+        else if (returnType != typeof(void))
+            result = InteropExtensions.MapToDotNet(task?.Result?.ToString(), script, returnType);
+        else
             result = null;
         
         return true;
@@ -334,7 +343,10 @@ public partial class WebViewBridge : WebViewBase
     Interfacing.Services.IWindow? _window = null;
 
     public static readonly Expression<Func<IWindow, object?, object>> InjectToJson
-        = (window, result) => result is Element ? (object)(new
+        = (window, result) => result is Interfacing.Services.Array
+        ? ((Interfacing.Services.Array)result).map(r => window.InjectToJson(r))
+        : result is Element 
+        ? (object)(new
         {
             type = "element",
             id = window.getAtriumId((Element)result),
@@ -376,6 +388,7 @@ public partial class WebViewBridge : WebViewBase
                 window["AtriumIdCounter"] = 0;
                 window["getAtriumId"] = ElementIdInterop;
                 window["setAtriumId"] = SetElementIdInterop;
+                window["InjectToJson"] = InjectToJson;
 
                 //(window["title"] as IJsProxy)?.As<Interfacing.Services.IElement>().innerHTML = "Hello from C#";
 
@@ -504,7 +517,7 @@ public partial class WebViewBridge : WebViewBase, IWebViewBridge
     {
         if(script.Contains("ToString"))
         {
-            Console.WriteLine("God fucking damnit this piece of shit can write one good line of code");
+            Console.WriteLine("God fucking damnit this piece of shit can't write one good line of code");
         }
         TaskCompletionSource<string?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Context.Post(async _ =>
