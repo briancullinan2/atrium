@@ -64,7 +64,7 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
             VerifyThread(); // Enforcement gate
             var targetType = proxyType?.GetProperty(propertyName)?.PropertyType;
             var baseProxy = new JsProxy($"{Path}['{propertyName}']", targetType);
-            return targetType != null
+            return targetType != null && targetType.Extends(typeof(IJsProxy))
                 ? CreateProxy.MakeGenericMethod(targetType).Invoke(null, [baseProxy]) as IJsProxy
                 : (IJsProxy)baseProxy;
         }

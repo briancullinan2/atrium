@@ -15,6 +15,14 @@ public class JsProxyInterceptor : DispatchProxy
 {
     private IJsProxy? _proxy;
 
+    public static MethodInfo ConvertMethod { get; }
+
+    static JsProxyInterceptor()
+    {
+        ConvertMethod = typeof(JsProxyInterceptor).GetMethod(nameof(ForceConvert), BindingFlags.Static | BindingFlags.Public)
+            ?? throw new InvalidOperationException("Could not render ForceConvert");
+    }
+
     public override string ToString()
     {
         return _proxy?.Path ?? string.Empty;
@@ -25,6 +33,12 @@ public class JsProxyInterceptor : DispatchProxy
         object? proxyObject = Create<T, JsProxyInterceptor>();
         (proxyObject as JsProxyInterceptor)?._proxy = proxy;
         return proxyObject != null ? (T)proxyObject : default!;
+    }
+    public static T ForceConvert<T>(dynamic proxy)
+    {
+        // The act of returning 'dynamic' into a 'T' slot 
+        // forces the DLR to call TryConvert.
+        return (T)proxy;
     }
 
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -39,11 +53,17 @@ public class JsProxyInterceptor : DispatchProxy
         // 1. Handle Property Getters (get_PropertyName)
         if (name.StartsWith("get_"))
         {
+            object? result;
             string propName = name[4..];
-            if(propName == "Item")
-                return _proxy![(string)args![0]!];
+            if (propName == "Item")
+                result = _proxy![(string)args![0]!];
+            else
+                result = _proxy![propName];
             // Return the proxy for the next level in the chain
-            return _proxy![propName];
+            if (result is IJsProxy proxy)
+                return ConvertMethod.MakeGenericMethod(targetMethod.ReturnType).Invoke(null, [proxy]);
+            else
+                return result;
         }
 
         // 2. Handle Property Setters (set_PropertyName)
@@ -95,7 +115,7 @@ public interface IDocument : IObject, IJsProxy
     IElement createElement(string node);
     IElement createDocumentFragment();
     IElement querySelector(string sel);
-    IArray<IElement> querySelectorAll(string sel);
+    IHtmlCollection querySelectorAll(string sel);
     IElement getElementById(string id);
 }
 
@@ -132,14 +152,14 @@ public interface IMap<TKey, TValue> : IDictionary<TKey, TValue>, IJsProxy
 public interface IDomStringMap : IJsProxy
 {
     // The indexer maps directly to how JS accesses it: dataset['atriumId']
-    string? this[string key] { get; set; }
+    new string? this[string key] { get; set; }
 }
 
 
 public interface IArrayStatic : IJsProxy
 {
     IArray<T> from<T>(IEnumerable<T> list);
-    IArray<T> from<T>(IArray<T> list);
+    IEnumerable<T> from<T>(IArray<T> list);
 }
 
 
@@ -199,21 +219,30 @@ public interface IPrototype : IJsProxy
     object? getFromChain(string key);
 }
 
-public interface IDocumentFragment : INode, IObject
+public interface INodeList : IEnumerable<INode>, IJsProxy
 {
-    // A DocumentFragment acts like an INode container 
-    // but doesn't have a parent in the DOM tree until it's appended.
-    IArray<INode> children { get; }
+    int length { get; }
+    INode this[int index] { get; }
+    INode item(int index);
+}
+
+public interface IHtmlCollection : IEnumerable<IElement>, IJsProxy
+{
+    int length { get; }
+    IElement this[int index] { get; }
+    new IElement this[string name] { get; }
+    IElement item(int index);
+    IElement namedItem(string name);
+}
+
+public interface IDocumentFragment : INode, IObject, IJsProxy
+{
+    IHtmlCollection children { get; }
 }
 public interface IStringStatic : IJsProxy
 {
-    // String.fromCharCode(code)
     string fromCharCode(params int[] codes);
-
-    // String.fromCodePoint(code)
     string fromCodePoint(params int[] codes);
-
-    // String.raw`template` (mapped to a method)
     string raw(object callSite, params object[] substitutions);
 }
 
@@ -295,7 +324,7 @@ public interface INode : IObject, IJsProxy
     string nodeName { get; }
     int nodeType { get; }
     INode? parentNode { get; }
-    INodeCollection childNodes { get; }
+    INodeList childNodes { get; }
     INode insertBefore(INode newNode, INode referenceNode);
     void appendChild(INode child);
     void removeChild(INode child);
@@ -325,29 +354,17 @@ public interface IElement : IObject, INode, IJsProxy
     IString getAttribute(string name);
     string id { get; set; }
     string innerHTML { get; set; }
-    IElementCollection children { get; }
+    IHtmlCollection children { get; }
     IDocumentFragment content { get; }
     void remove();
     // Core DOM methods
     void addEventListener(string type, Action<object> listener);
     IElement querySelector(string selector);
-    IElementCollection querySelectorAll(string selector);
+    IHtmlCollection querySelectorAll(string selector);
 
     IDomStringMap dataset { get; }
 }
 
-public interface IElementCollection : IArray<IElement>
-{
-    // This interface now supports both collection-based access 
-    // and the native JS array methods (sort, forEach, etc.)
-    new IElement this[int index] { get; }
-}
-public interface INodeCollection : IArray<IElement>
-{
-    // This interface now supports both collection-based access 
-    // and the native JS array methods (sort, forEach, etc.)
-    new INode this[int index] { get; }
-}
 
 public interface Array : IArray<object>
 {

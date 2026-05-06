@@ -48,6 +48,7 @@
             var container = window.document.querySelector(id);
             var template = window.document.createElement("template");
             template.innerHTML = content;
+            //var test = template.innerHTML;
 
             var children = template.content.children;
             var list = window.Array.from(children);
@@ -80,12 +81,11 @@
             var fragment = window.document.createDocumentFragment();
 
             var children = template.content.children;
-            IArrayStatic array = window.Array;
-            array.from(children).forEach(node => fragment.appendChild(node));
+            window.Array.from(children).forEach(node => fragment.appendChild(node));
 
             var firstNode = nodesToRemove[0];
             firstNode.parentNode?.insertBefore(fragment, firstNode);
-            nodesToRemove.forEach(oldNode => oldNode.remove());
+            window.Array.from(nodesToRemove).forEach(oldNode => oldNode.remove());
         }
         catch(Exception ex)
         {
