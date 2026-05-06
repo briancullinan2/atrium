@@ -40,6 +40,12 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     }
 
 
+    public T Create<T>(IJsProxy proxy)
+    {
+        return JsProxyInterceptor.Create<T>(proxy);
+    }
+
+
     public override string ToString()
     {
         return Path;

@@ -1,6 +1,7 @@
 ﻿
 using System.Dynamic;
 using System.Linq.Expressions;
+using System.Net;
 using System.Xml.Linq;
 
 namespace Interfacing.Services;
@@ -53,17 +54,18 @@ public class JsProxyInterceptor : DispatchProxy
         // 1. Handle Property Getters (get_PropertyName)
         if (name.StartsWith("get_"))
         {
-            object? result;
+            object? result2;
             string propName = name[4..];
             if (propName == "Item")
-                result = _proxy![(string)args![0]!];
+                result2 = _proxy![(string)args![0]!];
             else
-                result = _proxy![propName];
+                result2 = _proxy![propName];
             // Return the proxy for the next level in the chain
-            if (result is IJsProxy proxy)
-                return ConvertMethod.MakeGenericMethod(targetMethod.ReturnType).Invoke(null, [proxy]);
-            else
-                return result;
+            if (result2 is IJsProxy proxy)
+                result2 = ConvertMethod.MakeGenericMethod(targetMethod.ReturnType).Invoke(null, [proxy]);
+            
+
+            return result2;
         }
 
         // 2. Handle Property Setters (set_PropertyName)
@@ -80,12 +82,13 @@ public class JsProxyInterceptor : DispatchProxy
 
         // 3. Handle Method Calls (e.g., addEventListener, querySelector)
         // We treat these as Dynamic Invocation
-        return InvokeDynamicMethod(_proxy!, name, targetMethod.ReturnType, args);
-    }
-
-    private static object? InvokeDynamicMethod(IJsProxy dyn, string name, Type returnType, object?[]? args)
-    {
-        dyn.TryInvokeMember(name, returnType, args ?? [], out var result);
+        _proxy!.TryInvokeMember(name, targetMethod.ReturnType, args ?? [], out var result);
+        if (targetMethod.ReturnType.Extends(typeof(IJsProxy)))
+        {
+            var CreateMethod = typeof(IJsProxy).GetMethod(nameof(IJsProxy.Create))
+                ?? throw new InvalidOperationException("Failed to render JsProxyInterceptor.Create method");
+            return CreateMethod.MakeGenericMethod(targetMethod.ReturnType).Invoke(_proxy, [result]);
+        }
         return result;
     }
 
@@ -98,6 +101,8 @@ public interface IJsProxy
     object? this[string propertyName] { get; set; }
     bool TryInvokeMember(string Name, Type returnType, object?[]? args, out object? result);
     T As<T>();
+
+    T Create<T>(IJsProxy proxy);
 
     string? Path { get; }
     string? ToString();
@@ -812,14 +817,24 @@ public static class InteropExtensions
             JsonValueKind.Number => root.GetDouble(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            JsonValueKind.Array => root.EnumerateArray().Select(e => MapToDotNet(e.GetRawText(), currentPath, expectedType)).ToList(),
-
-            // For Objects, we return a new Proxy so you can chain: proxy.myObj.someMethod()
+            JsonValueKind.Array => MapArray(root, currentPath, expectedType),
             JsonValueKind.Object => MapObject(root, currentPath, expectedType),
-
             _ => json
         };
     }
+
+
+
+    private static List<object?> MapArray(JsonElement root, string? currentPath, Type? expectedType)
+    {
+        var result = root.EnumerateArray()
+            .Select(e => MapToDotNet(e.GetRawText(), currentPath, expectedType?.GenericTypeArguments.FirstOrDefault() ?? expectedType))
+            .ToList();
+
+        return result;
+    }
+
+
 
     private static object? MapObject(JsonElement root, string? currentPath, Type? expectedType)
     {
