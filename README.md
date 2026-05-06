@@ -41,6 +41,27 @@ The only reason I am here is because I heard about 2 years ago while I was worki
 available in the browser, something TypeScript couldn't even accomplish.
 I added CSS scoping and PHP -> JavaScript before php-babel was a meme.
 
+#### 5/6/2026
+
+So this project has deteriorated into pure hatred. What started as some fun recreation, turned into a well organized layout of intention.
+Then when i realized the page title still wouldn't update consistently, i realized i don't like blazor life-cycle fucking at all.
+This whole concept of OnParametersSet, OnInitialized, OnAfterRender doesn't make any goddamn sense whatsoever coming from javascript
+or even angular/typescript background. No other framework adds this much awful nuance to a web page, it's just the assholes that 
+invented blazor, seemingly without talking to anybody else as a skunk works project they convinced Microshit to pay for.
+
+I tried writing my own interop for webview. I think my bullshit has 10x more potential than blazor, but i'm stuck on some type conversions.
+i know that interop code would be more interesting than the entire blazor framework was over the last 3 months. all these thousands of
+lines of code i wrote as inaccessible, all because dumb fucking blazor can set a page title without repeating myself a dozen times.
+
+I've never felt this much hatred towards anything i wrote with nodejs. microsoft intentionally designed a rigid system to fool programmers
+into their own version of hell. imagine in the afterlike you use the context of what you learned on earth to form a new reality.
+this is exactly how sophons would ruin souls from escaping, by warping their minds into following microsoft bullshit, instead of learning
+how it became so awful. there's probably managers at microsoft actively preventing employees from discovering how awful microsoft is
+making this context for everybody. it's sad to watch everybody fall in line with something that all the other on-lookers hate. and
+there's no way to stop it because microsoft said so instead of brian.
+
+
+
 #### 4/24/2026
 
 In college my friend Travis and i had principals like "don't store a data structure inside a data structure. So here is my
