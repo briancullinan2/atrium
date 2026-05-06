@@ -40,9 +40,11 @@ public class JsProxy(string _jsPath, Type? proxyType) : DynamicObject, IJsProxy
     }
 
 
-    public T Create<T>(IJsProxy proxy)
+    public T Create<T>(object? proxy)
     {
-        return JsProxyInterceptor.Create<T>(proxy);
+        if (proxy?.GetType().Extends(typeof(IJsProxy)) == true)
+            return JsProxyInterceptor.Create<T>((IJsProxy)proxy);
+        return JsProxyInterceptor.Create<T>(new JsProxy(JsonSerializer.Serialize(proxy), typeof(T)));
     }
 
 

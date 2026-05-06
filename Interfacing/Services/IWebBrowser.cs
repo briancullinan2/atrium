@@ -102,7 +102,7 @@ public interface IJsProxy
     bool TryInvokeMember(string Name, Type returnType, object?[]? args, out object? result);
     T As<T>();
 
-    T Create<T>(IJsProxy proxy);
+    T Create<T>(object? proxy);
 
     string? Path { get; }
     string? ToString();
